@@ -1,0 +1,29 @@
+INCIPIT grimoire "civitas_admin_schema"
+
+ADVOCARE "../db_handle/db_handle.cct"
+
+RITUALE admin_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_model_registry (model_name TEXT PRIMARY KEY, table_name TEXT NOT NULL, config_json TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_audit_log (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, record_pk TEXT NOT NULL, action TEXT NOT NULL, actor_id TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}', created_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_admin_audit_lookup ON admin_audit_log(model_name, record_pk, created_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_inline_registry (id TEXT PRIMARY KEY, parent_model TEXT NOT NULL, child_model TEXT NOT NULL, config_json TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_admin_inline_registry_parent ON admin_inline_registry(parent_model)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_computed_fields (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, field_name TEXT NOT NULL, field_label TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_computed_unique ON admin_computed_fields(model_name, field_name)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_custom_actions (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, action_name TEXT NOT NULL, config_json TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_admin_custom_actions_model ON admin_custom_actions(model_name)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_permissions (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, action TEXT NOT NULL, roles_json TEXT NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_permissions_unique ON admin_permissions(model_name, action)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_widgets (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, model_name TEXT NOT NULL, query_json TEXT NOT NULL DEFAULT '{}', display_order INTEGER NOT NULL DEFAULT 0)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS moderation_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', object_id TEXT NOT NULL, object_type TEXT NOT NULL, submitter_id TEXT NOT NULL, content_preview_json TEXT NOT NULL DEFAULT '{}', report_reason TEXT NOT NULL DEFAULT '', assigned_to TEXT NOT NULL DEFAULT '', priority INTEGER NOT NULL DEFAULT 100, created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_moderation_items_queue ON moderation_items(kind, state, priority, created_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS moderation_decisions (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', notify_submitter INTEGER NOT NULL DEFAULT 0, created_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_moderation_decisions_item ON moderation_decisions(item_id, created_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_dashboard_snapshots (id TEXT PRIMARY KEY, snapshot_json TEXT NOT NULL, computed_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_admin_dashboard_snapshots_recent ON admin_dashboard_snapshots(computed_at_unix DESC)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

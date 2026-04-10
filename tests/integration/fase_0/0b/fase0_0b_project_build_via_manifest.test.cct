@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase0_0b_project_build_via_manifest_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compiler_build_project(".") != 0
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists("dist/civitas")
+    REDDE 2
+  FIN SI
+  SI CONIURA compiler_build_project("examples/salve_civitas") != 0
+    REDDE 3
+  FIN SI
+  SI NON CONIURA exists("examples/salve_civitas/dist/salve_civitas")
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

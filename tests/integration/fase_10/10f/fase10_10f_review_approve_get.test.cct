@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase10_10f_review_approve_get"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship_review.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10f_review_approve_get")
+  CONIURA review_approve(db, "page", 4, "42", "Editor", "approved")
+  EVOCA ReviewRecord review AD CONIURA review_get(db, "page", 4)
+  SI review.state != RsApproved
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(review.reviewer_name, "Editor") != 0
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

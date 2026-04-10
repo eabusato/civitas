@@ -1,0 +1,25 @@
+INCIPIT grimoire "civitas_auth_flows_schema"
+
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE auth_flows_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(
+    db,
+    "CREATE TABLE IF NOT EXISTS auth_flow_tokens (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, tipo TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, payload TEXT NOT NULL DEFAULT '', expira_em INTEGER NOT NULL, usado INTEGER NOT NULL DEFAULT 0, criado_em INTEGER NOT NULL)"
+  )
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_auth_flow_tokens_user ON auth_flow_tokens(user_id, tipo)")
+  CONIURA db_exec(
+    db,
+    "CREATE TABLE IF NOT EXISTS senha_historico (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, hash TEXT NOT NULL, criado_em INTEGER NOT NULL)"
+  )
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_senha_historico_user ON senha_historico(user_id, criado_em)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_flows_schema_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS auth_flow_tokens")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS senha_historico")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

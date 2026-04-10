@@ -1,0 +1,168 @@
+INCIPIT grimoire "civitas_auth"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM User
+  id: VERBUM
+  email: VERBUM
+  senha_hash: VERBUM
+  ativo: VERUM
+  email_verificado: VERUM
+  email_verificacao_pendente: VERBUM
+  criado_em: VERBUM
+  ultimo_login: VERBUM
+FIN SIGILLUM
+
+ORDO AuthError
+  AuthEmailNaoEncontrado,
+  AuthSenhaIncorreta,
+  AuthUsuarioInativo,
+  AuthEmailJaExiste,
+  AuthSenhaFraca,
+  AuthErroInterno(VERBUM mensagem)
+FIN ORDO
+
+SIGILLUM AuthConfig
+  iteracoes: REX
+  salt_bytes: REX
+  key_bytes: REX
+  min_senha: REX
+FIN SIGILLUM
+
+RITUALE auth_config_default() REDDE AuthConfig
+  EVOCA AuthConfig cfg
+  VINCIRE cfg.iteracoes AD 260000
+  VINCIRE cfg.salt_bytes AD 32
+  VINCIRE cfg.key_bytes AD 32
+  VINCIRE cfg.min_senha AD 8
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_authenticated() REDDE VERBUM
+  REDDE "auth.autenticado"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_user_id() REDDE VERBUM
+  REDDE "auth.user_id"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_via() REDDE VERBUM
+  REDDE "auth.via"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_scopes() REDDE VERBUM
+  REDDE "auth.escopos"
+EXPLICIT RITUALE
+
+RITUALE auth_ctx_user_id(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_user_id())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE auth_ctx_via(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_via())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE "anonymous"
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE auth_ctx_scopes(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_scopes())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE auth_ctx_is_authenticated(LocalContext ctx) REDDE VERUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_authenticated())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE CONIURA compare(value, "1") == 0
+EXPLICIT RITUALE
+
+RITUALE auth_now_iso_utc() REDDE VERBUM
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  EVOCA DateTime utc_dt AD CONIURA datetime_from_unix(now_unix)
+  REDDE CONIURA datetime_format(utc_dt, "%Y-%m-%dT%H:%M:%SZ")
+EXPLICIT RITUALE
+
+RITUALE auth_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_user_empty() REDDE User
+  EVOCA User u
+  VINCIRE u.id AD ""
+  VINCIRE u.email AD ""
+  VINCIRE u.senha_hash AD ""
+  VINCIRE u.ativo AD FALSUM
+  VINCIRE u.email_verificado AD FALSUM
+  VINCIRE u.email_verificacao_pendente AD ""
+  VINCIRE u.criado_em AD ""
+  VINCIRE u.ultimo_login AD ""
+  REDDE u
+EXPLICIT RITUALE
+
+RITUALE auth_user_from_stmt(SPECULUM NIHIL stmt) REDDE User
+  EVOCA User u AD CONIURA auth_user_empty()
+  VINCIRE u.id AD CONIURA stmt_get_text(stmt, 0)
+  VINCIRE u.email AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE u.senha_hash AD CONIURA stmt_get_text(stmt, 2)
+  VINCIRE u.ativo AD CONIURA stmt_get_int(stmt, 3) != 0
+  VINCIRE u.email_verificado AD CONIURA stmt_get_int(stmt, 4) != 0
+  VINCIRE u.email_verificacao_pendente AD CONIURA stmt_get_text(stmt, 5)
+  VINCIRE u.criado_em AD CONIURA stmt_get_text(stmt, 6)
+  VINCIRE u.ultimo_login AD CONIURA stmt_get_text(stmt, 7)
+  REDDE u
+EXPLICIT RITUALE
+
+RITUALE auth_error_name(AuthError err) REDDE VERBUM
+  ELIGE err
+    CASUS AuthEmailNaoEncontrado:
+      REDDE "AuthEmailNaoEncontrado"
+    CASUS AuthSenhaIncorreta:
+      REDDE "AuthSenhaIncorreta"
+    CASUS AuthUsuarioInativo:
+      REDDE "AuthUsuarioInativo"
+    CASUS AuthEmailJaExiste:
+      REDDE "AuthEmailJaExiste"
+    CASUS AuthSenhaFraca:
+      REDDE "AuthSenhaFraca"
+    CASUS AuthErroInterno(_):
+      REDDE "AuthErroInterno"
+    ALIOQUIN:
+      REDDE "AuthDesconhecido"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,73 @@
+INCIPIT grimoire "fase13_support_common"
+
+ADVOCARE "../../fase_11/support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_ddl.cct"
+ADVOCARE "../../../../lib/civitas/model/model_registry.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase13_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_13/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase13_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase11_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase13_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase13_tmp_dir(test_name), "test.db")
+EXPLICIT RITUALE
+
+RITUALE phase13_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir(test_name)
+  CONIURA phase13_reset_dir(root)
+  REDDE CONIURA db_open(CONIURA phase13_db_path(test_name))
+EXPLICIT RITUALE
+
+RITUALE phase13_model_categoria() REDDE ModelDef
+  EVOCA ModelDef def AD CONIURA model_def_new("categorias")
+  CONIURA model_def_add_int(def, "id", VERUM, VERUM, VERUM)
+  CONIURA model_def_add_text(def, "nome", VERUM, FALSUM)
+  CONIURA model_def_add_text(def, "slug", VERUM, VERUM)
+  CONIURA model_def_add_bool(def, "ativo", VERUM)
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE phase13_model_post() REDDE ModelDef
+  EVOCA ModelDef def AD CONIURA model_def_new("posts")
+  CONIURA model_def_add_int(def, "id", VERUM, VERUM, VERUM)
+  CONIURA model_def_add_text(def, "titulo", VERUM, FALSUM)
+  CONIURA model_def_add_text(def, "slug", VERUM, VERUM)
+  CONIURA model_def_add_fk(def, "categoria_id", "categorias", "id", VERUM)
+  CONIURA model_def_add_text(def, "email", FALSUM, FALSUM)
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE phase13_seed_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA model_def_create_table(db, CONIURA phase13_model_categoria())
+  CONIURA model_def_create_table(db, CONIURA phase13_model_post())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase13_registry_basic() REDDE ModelRegistry
+  EVOCA ModelRegistry reg AD CONIURA model_registry_new()
+  EVOCA ModelDef cat AD CONIURA phase13_model_categoria()
+  EVOCA ModelDef post AD CONIURA phase13_model_post()
+  CONIURA model_registry_register(SPECULUM reg, cat)
+  CONIURA model_registry_register(SPECULUM reg, post)
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE phase13_write_file(VERBUM test_name, VERBUM file_name, VERBUM content) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir(test_name)
+  CONIURA phase13_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA path_join(root, file_name)
+  CONIURA write_all(path, content)
+  REDDE path
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

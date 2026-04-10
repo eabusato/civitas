@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase28_28a_scan_headers_flags_missing"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/security_audit.cct"
+ADVOCARE "../../../../lib/civitas/security_audit/security_audit.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ScanConfig cfg AD CONIURA security_audit_scan_config_default()
+  EVOCA WebResponse res AD CONIURA response_html("<p>unsafe</p>")
+  EVOCA ScanResult report AD CONIURA security_audit_scan_headers(res, cfg)
+  SI report.total < 3
+    REDDE 1
+  FIN SI
+  SI report.approved
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase7_7b_choices_and_cross_field_rules_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormSchema schema AD CONIURA form_schema_new()
+  EVOCA FieldSchema pais_fs AD CONIURA field_schema_new("pais")
+  EVOCA FieldSchema senha_fs AD CONIURA field_schema_new("senha")
+  EVOCA FieldSchema conf_fs AD CONIURA field_schema_new("confirmacao")
+  EVOCA FormData fd AD CONIURA phase7_validation_fd()
+  EVOCA SPECULUM NIHIL opcoes AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM br AD "BR"
+  EVOCA VERBUM pt AD "PT"
+
+  CONIURA fluxus_push(opcoes, SPECULUM br)
+  CONIURA fluxus_push(opcoes, SPECULUM pt)
+  CONIURA field_schema_add_rule(SPECULUM pais_fs, CONIURA rule_choices(opcoes))
+  VINCIRE senha_fs.sanitizar AD FALSUM
+  VINCIRE conf_fs.sanitizar AD FALSUM
+  CONIURA form_schema_add_field(SPECULUM schema, pais_fs)
+  CONIURA form_schema_add_field(SPECULUM schema, senha_fs)
+  CONIURA form_schema_add_field(SPECULUM schema, conf_fs)
+  CONIURA form_schema_add_cross(SPECULUM schema, CONIURA cross_field_rule("senha", "confirmacao", "eq", "Senhas nao conferem."))
+
+  CONIURA phase7_validation_put(SPECULUM fd, "pais", "AR")
+  CONIURA phase7_validation_put(SPECULUM fd, "senha", "abc12345")
+  CONIURA phase7_validation_put(SPECULUM fd, "confirmacao", "xyz")
+  EVOCA ValidationResult vr AD CONIURA validate_form(schema, fd)
+
+  SI vr.valido
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA validation_first_error(vr, "pais"), "Opcao invalida.") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA validation_first_error(vr, "senha"), "Senhas nao conferem.") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

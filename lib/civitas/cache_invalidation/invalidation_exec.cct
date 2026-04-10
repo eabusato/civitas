@@ -1,0 +1,74 @@
+INCIPIT grimoire "civitas_cache_invalidation_exec"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../cache/cache_api.cct"
+ADVOCARE "../cache_query/cache_query.cct"
+ADVOCARE "../cache_view/cache_view_tags.cct"
+ADVOCARE "invalidation.cct"
+ADVOCARE "invalidation_scope.cct"
+
+RITUALE invalidation_exec_one(InvalidationCoord coord, InvalidationScope scope) REDDE InvalidationResult
+  EVOCA InvalidationResult result AD CONIURA invalidation_result_new()
+  VINCIRE result.total_escopos AD 1
+
+  ELIGE scope.kind
+    CASUS IskChave:
+      SI coord.cache_handle != NIHIL
+        EVOCA SPECULUM CacheHandle ch AD coord.cache_handle
+        SI CONIURA cache_exists(ch, scope.valor)
+          VINCIRE result.chaves_removidas AD result.chaves_removidas + 1
+        FIN SI
+        CONIURA cache_del(ch, scope.valor)
+      FIN SI
+    CASUS IskTag:
+      EVOCA VERBUM tag AD CONIURA invalidation_scope_tag_value(scope)
+      SI coord.cache_query_handle != NIHIL ET CONIURA starts_with(tag, "model:")
+        EVOCA SPECULUM CacheQuery cq AD coord.cache_query_handle
+        EVOCA VERBUM table AD CONIURA substring(tag, 6, CONIURA len(tag))
+        VINCIRE result.chaves_removidas AD result.chaves_removidas + CONIURA cache_query_table_count(cq, table)
+        CONIURA cache_query_invalidar_tabela(cq, table)
+      FIN SI
+      SI coord.cache_view_handle != NIHIL
+        VINCIRE result.chaves_removidas AD result.chaves_removidas + CONIURA cache_view_tag_count(coord.cache_view_handle, tag)
+        CONIURA cache_view_invalidar_tag(coord.cache_view_handle, tag)
+      FIN SI
+    CASUS IskModelo:
+      REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_tag(CONIURA invalidation_scope_tag_value(scope)))
+    CASUS IskRota:
+      REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_tag(CONIURA invalidation_scope_tag_value(scope)))
+    CASUS IskLocale:
+      REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_tag(CONIURA invalidation_scope_tag_value(scope)))
+    ALIOQUIN:
+      REDDE result
+  FIN ELIGE
+
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE invalidation_exec(InvalidationCoord coord, SPECULUM NIHIL escopos) REDDE InvalidationResult
+  EVOCA InvalidationResult out AD CONIURA invalidation_result_new()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(escopos)
+  DUM i < n
+    EVOCA SPECULUM InvalidationScope scope_ptr AD CONIURA fluxus_get(escopos, i)
+    CONIURA invalidation_result_merge(SPECULUM out, CONIURA invalidation_exec_one(coord, *scope_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE invalidation_on_model_save(InvalidationCoord coord, VERBUM nome_modelo) REDDE InvalidationResult
+  REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_modelo(nome_modelo))
+EXPLICIT RITUALE
+
+RITUALE invalidation_on_route_change(InvalidationCoord coord, VERBUM padrao_rota) REDDE InvalidationResult
+  REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_rota(padrao_rota))
+EXPLICIT RITUALE
+
+RITUALE invalidation_on_locale_publish(InvalidationCoord coord, VERBUM locale) REDDE InvalidationResult
+  REDDE CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_locale(locale))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,29 @@
+INCIPIT grimoire "civitas_trace_cache"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+
+RITUALE trace_cache_begin(VERBUM operation, VERBUM key) REDDE REX
+  REDDE CONIURA instrument_cache_span(operation, key)
+EXPLICIT RITUALE
+
+RITUALE trace_cache_mark_hit(REX span_id, VERUM hit) REDDE NIHIL
+  SI hit
+    CONIURA instrument_span_attr(span_id, "cache.hit", "1")
+  ALITER
+    CONIURA instrument_span_attr(span_id, "cache.hit", "0")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_cache_mark_result(REX span_id, REX result_value) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, "cache.result", CONIURA stringify_int(result_value))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_cache_end(REX span_id) REDDE NIHIL
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

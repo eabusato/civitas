@@ -1,0 +1,78 @@
+INCIPIT grimoire "fase2_2d_group_and_middleware_order_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE api_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM WebResponse out
+  EVOCA SPECULUM NIHIL id_opt
+  EVOCA VERBUM id_text
+  VINCIRE req AD req_ref
+  VINCIRE out AD out_ref
+  VINCIRE id_opt AD CONIURA request_param(*req, "id")
+  SI CONIURA option_is_none GENUS(VERBUM)(id_opt)
+    REDDE
+  FIN SI
+  VINCIRE id_text AD CONIURA option_unwrap GENUS(VERBUM)(id_opt)
+  CONIURA option_free GENUS(VERBUM)(id_opt)
+  CONIURA response_fill(out, CONIURA response_text(CONIURA concat("handler:", id_text)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE global_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  VINCIRE (*out).body AD CONIURA concat("G>", CONIURA concat((*out).body, "<G"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE group_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  VINCIRE (*out).body AD CONIURA concat("P>", CONIURA concat((*out).body, "<P"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE route_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  VINCIRE (*out).body AD CONIURA concat("R>", CONIURA concat((*out).body, "<R"))
+  CONIURA response_set_header(out, "x-route-name", CONIURA middleware_context_verbum_or(*ctx, CONIURA middleware_context_route_name_key(), ""))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA SPECULUM NIHIL group_middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+
+  CONIURA router_add_global_middleware(SPECULUM router, CONIURA middleware_binding_named("global_mw", global_mw))
+  CONIURA middleware_bindings_push(group_middlewares, "group_mw", group_mw)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add_group_route(SPECULUM router, "/api/v1", group_middlewares, "GET", "/posts/{id:int}", "api.posts.show", "api_handler", api_handler), 1)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add_middleware(SPECULUM router, "api.posts.show", CONIURA middleware_binding_named("route_mw", route_mw)), 2)
+
+  EVOCA WebResponse res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/api/v1/posts/7"))
+  SI res.status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(res.body, "G>P>R>handler:7<R<P<G") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "x-route-name", ""), "api.posts.show") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

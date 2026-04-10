@@ -1,0 +1,16 @@
+INCIPIT grimoire "fase1_1d_guess_from_path_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compare(CONIURA mime_guess_from_path("/static/app.js?v=3#asset"), "text/javascript") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA mime_guess_from_path("/files/archive.unknown"), "application/octet-stream") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

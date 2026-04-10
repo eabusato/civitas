@@ -1,0 +1,12 @@
+{% EVOCA RedeOpsReportPageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Operations</p>
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
+  </div>
+</section>
+{{ body_html|safe }}
+{% FIN SECTIO %}

@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase9_9f_check_signed_url_valid"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_url.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9f_root("check_valid")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9f_private_artifact(root, "private.txt", "secret-data")
+  EVOCA SPECULUM NIHIL registry_ref AD CONIURA phase9_9f_registry()
+  EVOCA SignedUrlConfig cfg AD CONIURA phase9_9f_signed_cfg()
+  EVOCA SPECULUM NIHIL signed_res AD CONIURA storage_sign_url_from_registry(cfg, registry_ref, artifact, 1700000000)
+  SI CONIURA result_is_err GENUS(SignedUrl, VERBUM)(signed_res)
+    IACE CONIURA result_unwrap_err GENUS(SignedUrl, VERBUM)(signed_res)
+  FIN SI
+  EVOCA SignedUrl signed_url AD CONIURA result_unwrap GENUS(SignedUrl, VERBUM)(signed_res)
+  EVOCA SPECULUM NIHIL check_res AD CONIURA delivery_check_signed_url(
+    artifact.artifact_id,
+    signed_url.token,
+    signed_url.expires_unix,
+    1700000001,
+    registry_ref,
+    cfg
+  )
+  SI CONIURA result_is_err GENUS(REX, DeliveryError)(check_res)
+    IACE "valid signed url should pass"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

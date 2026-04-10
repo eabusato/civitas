@@ -1,0 +1,12 @@
+INCIPIT grimoire "fase9_9b_nexus_template_helper_fallback"
+
+ADVOCARE "../../../../lib/civitas/template/integration.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  SI CONIURA compare(CONIURA tpl_static_url("css/app.css"), "/static/css/app.css") != 0
+    IACE "tpl_static_url should keep canonical static fallback"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

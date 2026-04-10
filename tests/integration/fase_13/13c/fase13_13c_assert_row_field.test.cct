@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase13_13c_assert_row_field"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_assert.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA test_db_run_migrations(tdb, CONIURA phase13_registry_basic())
+  CONIURA db_exec(tdb.db, "INSERT INTO categorias (nome, slug, ativo) VALUES ('Tech', 'tech', 1)")
+  SI CONIURA compare(CONIURA test_db_row_field(tdb, "categorias", 1, "nome"), "Tech") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA test_db_row_field(tdb, "categorias", 1, "slug"), "tech") != 0
+    REDDE 2
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

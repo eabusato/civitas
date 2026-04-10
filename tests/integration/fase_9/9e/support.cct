@@ -1,0 +1,111 @@
+INCIPIT grimoire "fase9_9e_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_thumb.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_transcode.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_types.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase9_9e_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase9_tmp_dir(CONIURA concat("9e_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_config(VERBUM root) REDDE StorageConfig
+  REDDE CONIURA storage_config_make(
+    CONIURA path_join(root, "media"),
+    "/media",
+    "/media/private",
+    60,
+    MEDIA_NAMING_UUID_WITH_EXT
+  )
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_open_store(VERBUM root) REDDE MediaStore
+  EVOCA SPECULUM NIHIL open_res AD CONIURA storage_open(CONIURA phase9_9e_config(root))
+  SI CONIURA result_is_err GENUS(MediaStore, VERBUM)(open_res)
+    IACE CONIURA result_unwrap_err GENUS(MediaStore, VERBUM)(open_res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(MediaStore, VERBUM)(open_res)
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_make_video(VERBUM root, VERBUM filename, UMBRA duration_seconds, REX width, REX height) REDDE VERBUM
+  EVOCA VERBUM uploads_dir AD CONIURA path_join(root, "uploads")
+  EVOCA VERBUM video_path AD CONIURA path_join(uploads_dir, filename)
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "ffmpeg -f lavfi -i color=c=blue:s=",
+    CONIURA concat(
+      CONIURA stringify_int(width),
+      CONIURA concat(
+        "x",
+        CONIURA concat(
+          CONIURA stringify_int(height),
+          CONIURA concat(
+            ":d=",
+            CONIURA concat(
+              CONIURA stringify_real_fixed(duration_seconds, 3),
+              CONIURA concat(
+                " -f lavfi -i sine=frequency=1000:sample_rate=44100:duration=",
+                CONIURA concat(
+                  CONIURA stringify_real_fixed(duration_seconds, 3),
+                  CONIURA concat(
+                    " -shortest -c:v libx264 -pix_fmt yuv420p -c:a aac \"",
+                    CONIURA concat(video_path, "\" -y >/dev/null 2>&1")
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+  CONIURA mkdir_all(uploads_dir)
+  SI CONIURA run(cmd) != 0
+    IACE "ffmpeg failed to generate video fixture"
+  FIN SI
+  REDDE video_path
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_make_watermark(VERBUM root) REDDE VERBUM
+  EVOCA VERBUM uploads_dir AD CONIURA path_join(root, "uploads")
+  EVOCA VERBUM image_path AD CONIURA path_join(uploads_dir, "watermark.png")
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "ffmpeg -f lavfi -i color=c=white:s=32x32 -frames:v 1 \"",
+    CONIURA concat(image_path, "\" -y >/dev/null 2>&1")
+  )
+  CONIURA mkdir_all(uploads_dir)
+  SI CONIURA run(cmd) != 0
+    IACE "ffmpeg failed to generate watermark fixture"
+  FIN SI
+  REDDE image_path
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_specs_sd() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL specs AD CONIURA fluxus_init(MENSURA(TranscodeSpec))
+  EVOCA TranscodeSpec spec AD CONIURA video_spec_sd()
+  CONIURA fluxus_push(specs, SPECULUM spec)
+  REDDE specs
+EXPLICIT RITUALE
+
+RITUALE phase9_9e_config_default() REDDE VideoProcessConfig
+  REDDE CONIURA video_process_config_new(
+    CONIURA phase9_9e_specs_sd(),
+    0.0,
+    "",
+    MEDIA_ZONE_PROCESSED,
+    10.0,
+    10485760,
+    60000
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

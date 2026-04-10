@@ -1,0 +1,272 @@
+INCIPIT grimoire "civitas_media_delivery"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../mime.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../storage/storage_url.cct"
+ADVOCARE "delivery_accel.cct"
+ADVOCARE "delivery_range.cct"
+
+RITUALE delivery_check_signed_url(
+  VERBUM artifact_id,
+  VERBUM token,
+  REX expires_unix,
+  REX now_unix,
+  SPECULUM NIHIL registry_ref,
+  SignedUrlConfig cfg
+) REDDE SPECULUM NIHIL
+  SI CONIURA len(artifact_id) == 0 VEL CONIURA len(token) == 0
+    REDDE CONIURA delivery_unit_err(DeInvalidToken)
+  FIN SI
+  SI expires_unix <= 0
+    REDDE CONIURA delivery_unit_err(DeInvalidToken)
+  FIN SI
+  SI now_unix > expires_unix
+    REDDE CONIURA delivery_unit_err(DeExpired)
+  FIN SI
+  SI NON CONIURA storage_verify_signed_url_candidates(registry_ref, cfg, artifact_id, token, expires_unix, now_unix)
+    REDDE CONIURA delivery_unit_err(DeInvalidToken)
+  FIN SI
+  REDDE CONIURA delivery_unit_ok()
+EXPLICIT RITUALE
+
+RITUALE delivery_request_query_or_empty(WebRequest req, VERBUM name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA request_query_first(req, name)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE delivery_request_artifact_id(WebRequest req) REDDE VERBUM
+  EVOCA VERBUM query_value AD CONIURA delivery_request_query_or_empty(req, "artifact_id")
+  SI CONIURA len(query_value) != 0
+    REDDE query_value
+  FIN SI
+  EVOCA SPECULUM NIHIL path_opt AD CONIURA request_param(req, "artifact_id")
+  SI CONIURA option_is_none GENUS(VERBUM)(path_opt)
+    CONIURA option_free GENUS(VERBUM)(path_opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM path_value AD CONIURA option_unwrap GENUS(VERBUM)(path_opt)
+  CONIURA option_free GENUS(VERBUM)(path_opt)
+  REDDE path_value
+EXPLICIT RITUALE
+
+RITUALE delivery_filename_matches_artifact(VERBUM filename, VERBUM artifact_id) REDDE VERUM
+  SI CONIURA compare(filename, artifact_id) == 0
+    REDDE VERUM
+  FIN SI
+  SI CONIURA starts_with(filename, CONIURA concat(artifact_id, "."))
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE delivery_artifact_from_path(MediaStore store, MediaZone zone, VERBUM filename) REDDE MediaArtifact
+  EVOCA VERBUM absolute_path AD CONIURA path_join(CONIURA media_store_zone_dir(store, zone), filename)
+  EVOCA VERBUM ext AD CONIURA path_ext(filename)
+  EVOCA VERBUM artifact_id AD filename
+  SI CONIURA len(ext) > 0
+    VINCIRE artifact_id AD CONIURA substring(filename, 0, CONIURA len(filename) - CONIURA len(ext))
+  FIN SI
+  EVOCA VERBUM now_iso AD ""
+  SI CONIURA exists(absolute_path)
+    VINCIRE now_iso AD CONIURA stringify_int(CONIURA modified_time(absolute_path))
+  FIN SI
+  REDDE CONIURA media_store_artifact(
+    artifact_id,
+    zone,
+    filename,
+    CONIURA mime_guess_from_path(filename),
+    CONIURA size(absolute_path),
+    "",
+    now_iso,
+    now_iso
+  )
+EXPLICIT RITUALE
+
+RITUALE delivery_find_artifact_in_zone(MediaStore store, MediaZone zone, VERBUM artifact_id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM zone_dir AD CONIURA media_store_zone_dir(store, zone)
+  SI NON CONIURA is_dir(zone_dir)
+    REDDE CONIURA None GENUS(MediaArtifact)()
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(zone_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM entry_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM filename AD *entry_ptr
+    SI CONIURA delivery_filename_matches_artifact(filename, artifact_id)
+      REDDE CONIURA Some GENUS(MediaArtifact)(CONIURA delivery_artifact_from_path(store, zone, filename))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(MediaArtifact)()
+EXPLICIT RITUALE
+
+RITUALE delivery_find_artifact(MediaStore store, VERBUM artifact_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL artifact_opt AD CONIURA delivery_find_artifact_in_zone(store, MEDIA_ZONE_PRIVATE, artifact_id)
+  SI CONIURA option_is_some GENUS(MediaArtifact)(artifact_opt)
+    REDDE artifact_opt
+  FIN SI
+  CONIURA option_free GENUS(MediaArtifact)(artifact_opt)
+  REDDE CONIURA delivery_find_artifact_in_zone(store, MEDIA_ZONE_PROCESSED, artifact_id)
+EXPLICIT RITUALE
+
+RITUALE delivery_response_416(REX file_size) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(416)
+  CONIURA response_set_header(SPECULUM res, "content-range", CONIURA concat("bytes */", CONIURA stringify_int(file_size)))
+  CONIURA response_set_header(SPECULUM res, "accept-ranges", "bytes")
+  CONIURA response_set_header(SPECULUM res, "cache-control", "private, no-store")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE delivery_read_slice(VERBUM absolute_path, REX start, REX length) REDDE VERBUM
+  EVOCA VERBUM payload AD OBSECRO fs_read_all(absolute_path)
+  REDDE CONIURA substring(payload, start, start + length)
+EXPLICIT RITUALE
+
+RITUALE delivery_serve_direct(
+  VERBUM absolute_path,
+  VERBUM content_type,
+  DeliveryConfig cfg,
+  SPECULUM NIHIL request_headers
+) REDDE SPECULUM NIHIL
+  SI NON CONIURA exists(absolute_path)
+    REDDE CONIURA delivery_response_err(DeNotFound)
+  FIN SI
+
+  EVOCA REX file_size AD CONIURA size(absolute_path)
+  EVOCA VERBUM range_header AD CONIURA request_header_or(request_headers, "range", "")
+
+  SI CONIURA len(range_header) > 0
+    EVOCA SPECULUM NIHIL parse_res AD CONIURA delivery_parse_range(range_header, file_size)
+    SI CONIURA result_is_err GENUS(RangeRequest, DeliveryError)(parse_res)
+      REDDE CONIURA delivery_response_ok(CONIURA delivery_response_416(file_size))
+    FIN SI
+
+    EVOCA RangeRequest rr AD CONIURA result_unwrap GENUS(RangeRequest, DeliveryError)(parse_res)
+    SI cfg.max_range_bytes > 0 ET (rr.end - rr.start + 1) > cfg.max_range_bytes
+      REDDE CONIURA delivery_response_ok(CONIURA delivery_response_416(file_size))
+    FIN SI
+
+    EVOCA WebResponse res AD CONIURA response_new(206)
+    CONIURA response_set_header(SPECULUM res, "content-type", content_type)
+    CONIURA response_set_header(SPECULUM res, "cache-control", "private, no-store")
+    CONIURA response_set_header(SPECULUM res, "content-disposition", cfg.content_disposition)
+    CONIURA delivery_apply_headers(SPECULUM res, CONIURA delivery_range_headers(rr))
+    VINCIRE res.body AD CONIURA delivery_read_slice(absolute_path, rr.start, rr.end - rr.start + 1)
+    VINCIRE res.body_kind AD WEB_RESPONSE_TEXT
+    REDDE CONIURA delivery_response_ok(res)
+  FIN SI
+
+  EVOCA WebResponse res_ok AD CONIURA response_ok()
+  CONIURA response_set_header(SPECULUM res_ok, "content-type", content_type)
+  CONIURA response_set_header(SPECULUM res_ok, "content-length", CONIURA stringify_int(file_size))
+  CONIURA response_set_header(SPECULUM res_ok, "accept-ranges", "bytes")
+  CONIURA response_set_header(SPECULUM res_ok, "cache-control", "private, no-store")
+  CONIURA response_set_header(SPECULUM res_ok, "content-disposition", cfg.content_disposition)
+  VINCIRE res_ok.body AD OBSECRO fs_read_all(absolute_path)
+  VINCIRE res_ok.body_kind AD WEB_RESPONSE_TEXT
+  REDDE CONIURA delivery_response_ok(res_ok)
+EXPLICIT RITUALE
+
+RITUALE delivery_error_response(DeliveryError err) REDDE WebResponse
+  ELIGE err
+    CASUS DeNotFound:
+      REDDE CONIURA response_not_found()
+    CASUS DeExpired:
+      REDDE CONIURA response_with_body(403, "link expired", WEB_RESPONSE_TEXT)
+    CASUS DeInvalidToken:
+      REDDE CONIURA response_with_body(403, "invalid token", WEB_RESPONSE_TEXT)
+    CASUS DeForbidden:
+      REDDE CONIURA response_with_body(403, "access denied", WEB_RESPONSE_TEXT)
+    CASUS DeRangeNotSatisfiable:
+      REDDE CONIURA response_with_body(416, "range not satisfiable", WEB_RESPONSE_TEXT)
+    ALIOQUIN:
+      REDDE CONIURA response_internal_error("delivery failure")
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE delivery_handler(
+  WebRequest req,
+  DeliveryConfig cfg,
+  MediaStore store,
+  SPECULUM NIHIL registry_ref,
+  SignedUrlConfig url_cfg,
+  REX now_unix
+) REDDE WebResponse
+  EVOCA VERBUM artifact_id AD CONIURA delivery_request_artifact_id(req)
+  EVOCA VERBUM token AD CONIURA delivery_request_query_or_empty(req, "token")
+  EVOCA VERBUM expires_text AD CONIURA delivery_request_query_or_empty(req, "expires")
+
+  SI CONIURA len(artifact_id) == 0 VEL CONIURA len(token) == 0 VEL CONIURA len(expires_text) == 0
+    REDDE CONIURA response_with_body(403, "access denied", WEB_RESPONSE_TEXT)
+  FIN SI
+  SI NON CONIURA is_int(expires_text)
+    REDDE CONIURA response_with_body(403, "invalid token", WEB_RESPONSE_TEXT)
+  FIN SI
+
+  EVOCA REX expires_unix AD CONIURA parse_int(expires_text)
+  EVOCA SPECULUM NIHIL auth_res AD CONIURA delivery_check_signed_url(
+    artifact_id,
+    token,
+    expires_unix,
+    now_unix,
+    registry_ref,
+    url_cfg
+  )
+  SI CONIURA result_is_err GENUS(REX, DeliveryError)(auth_res)
+    REDDE CONIURA delivery_error_response(CONIURA result_unwrap_err GENUS(REX, DeliveryError)(auth_res))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL artifact_opt AD CONIURA delivery_find_artifact(store, artifact_id)
+  SI CONIURA option_is_none GENUS(MediaArtifact)(artifact_opt)
+    CONIURA option_free GENUS(MediaArtifact)(artifact_opt)
+    REDDE CONIURA response_not_found()
+  FIN SI
+
+  EVOCA MediaArtifact artifact AD CONIURA option_unwrap GENUS(MediaArtifact)(artifact_opt)
+  CONIURA option_free GENUS(MediaArtifact)(artifact_opt)
+  EVOCA VERBUM absolute_path AD CONIURA media_store_absolute_path(store, artifact)
+
+  ELIGE cfg.mode
+    CASUS DmDirect:
+      EVOCA SPECULUM NIHIL direct_res AD CONIURA delivery_serve_direct(absolute_path, artifact.content_type, cfg, req.headers)
+      SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(direct_res)
+        REDDE CONIURA delivery_error_response(CONIURA result_unwrap_err GENUS(WebResponse, DeliveryError)(direct_res))
+      FIN SI
+      REDDE CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(direct_res)
+    CASUS DmAccelRedirect:
+      EVOCA SPECULUM NIHIL accel_res AD CONIURA delivery_serve_accel(artifact, artifact.content_type, cfg)
+      SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(accel_res)
+        REDDE CONIURA delivery_error_response(CONIURA result_unwrap_err GENUS(WebResponse, DeliveryError)(accel_res))
+      FIN SI
+      REDDE CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(accel_res)
+    CASUS DmSendfile:
+      EVOCA SPECULUM NIHIL sendfile_res AD CONIURA delivery_serve_sendfile(absolute_path, artifact.content_type, cfg)
+      SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(sendfile_res)
+        REDDE CONIURA delivery_error_response(CONIURA result_unwrap_err GENUS(WebResponse, DeliveryError)(sendfile_res))
+      FIN SI
+      REDDE CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(sendfile_res)
+    ALIOQUIN:
+      REDDE CONIURA response_internal_error("delivery mode not configured")
+  FIN ELIGE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

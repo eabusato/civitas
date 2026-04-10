@@ -1,0 +1,23 @@
+{% EVOCA RedeOpsLoginPageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Operations</p>
+    <h1>Ops access</h1>
+    <p>Use the local admin credential for sigils, traces and operational reports. Wrong credentials stay inside this page and do not poison the browser.</p>
+  </div>
+</section>
+<section class="narrow">
+  {% SI has_notice %}
+    <div class="alert">{{ notice }}</div>
+  {% FIN SI %}
+  <form method="POST" action="/ops/login" class="card stack-form">
+    {{ csrf_html|safe }}
+    <input type="hidden" name="next" value="{{ next_path }}">
+    <label>User<input name="username" value="admin" autocomplete="username"></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password"></label>
+    <button type="submit">Enter ops</button>
+  </form>
+</section>
+{% FIN SECTIO %}

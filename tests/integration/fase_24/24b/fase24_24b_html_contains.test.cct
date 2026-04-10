@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase24_24b_html_contains"
+
+ADVOCARE "../../../../lib/civitas/test_mail/test_mail.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL outbox AD CONIURA test_mail_outbox_new()
+  EVOCA MailMessage msg AD CONIURA mail_message_new()
+  CONIURA mail_message_set_from(SPECULUM msg, CONIURA mail_address("noreply@test.local", "Test"))
+  CONIURA mail_message_add_to(SPECULUM msg, CONIURA mail_address("mika@example.com", "Mika"))
+  CONIURA mail_message_set_subject(SPECULUM msg, "Published")
+  CONIURA mail_message_set_text(SPECULUM msg, "fallback text")
+  CONIURA mail_message_set_html(SPECULUM msg, "<h1>Published</h1><p>story is live</p>")
+  SI CONIURA result_is_err GENUS(MailSendResult, VERBUM)(CONIURA mail_send(CONIURA test_mail_client(outbox), msg))
+    REDDE 1
+  FIN SI
+  CONIURA assert_email_html_contains(CONIURA test_mail_last(outbox), "story is live")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

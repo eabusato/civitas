@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase18_18c_permissions_fail_closed"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_permissions.cct"
+
+RITUALE test_permissions_fail_closed() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18c_permissions")
+  CONIURA admin_permissions_schema_up(stack.dbh)
+  SI CONIURA admin_permission_allows(stack.dbh, "Post", "publish", "[\"editor\"]")
+    IACE "permissions should fail closed without explicit rule"
+  FIN SI
+  CONIURA admin_permission_upsert(stack.dbh, "Post", "publish", "[\"editor\",\"admin\"]")
+  SI NON CONIURA admin_permission_allows(stack.dbh, "Post", "publish", "[\"editor\"]")
+    IACE "granted role should be allowed"
+  FIN SI
+  SI CONIURA admin_permission_allows(stack.dbh, "Post", "publish", "[\"guest\"]")
+    IACE "non granted role should not be allowed"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_permissions_fail_closed()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

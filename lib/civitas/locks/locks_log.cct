@@ -1,0 +1,36 @@
+INCIPIT grimoire "civitas_locks_log"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "locks.cct"
+
+RITUALE lock_event_fields(LockEvent evento) REDDE VERBUM
+  EVOCA VERBUM fields AD "{\"lock_key\":\""
+  VINCIRE fields AD CONIURA concat(fields, evento.key_raw_name)
+  VINCIRE fields AD CONIURA concat(fields, "\",\"job_name\":\"")
+  VINCIRE fields AD CONIURA concat(fields, evento.job_name)
+  VINCIRE fields AD CONIURA concat(fields, "\",\"elapsed_ms\":")
+  VINCIRE fields AD CONIURA concat(fields, CONIURA stringify_int(evento.elapsed_ms))
+  VINCIRE fields AD CONIURA concat(fields, ",\"acquired\":")
+  SI evento.acquired
+    VINCIRE fields AD CONIURA concat(fields, "true}")
+  ALITER
+    VINCIRE fields AD CONIURA concat(fields, "false}")
+  FIN SI
+  REDDE fields
+EXPLICIT RITUALE
+
+RITUALE lock_event_log(SPECULUM NIHIL logger, LockEvent evento) REDDE NIHIL
+  SI logger == NIHIL
+    REDDE
+  FIN SI
+  SI evento.acquired
+    CONIURA log_info(logger, "lock acquired", CONIURA lock_event_fields(evento))
+  ALITER
+    CONIURA log_warn(logger, "lock not acquired", CONIURA lock_event_fields(evento))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

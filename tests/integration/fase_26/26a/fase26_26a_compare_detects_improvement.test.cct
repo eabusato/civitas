@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase26_26a_compare_detects_improvement"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+
+RITUALE main() REDDE REX
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/feed", "GET")
+  EVOCA BenchResult before AD CONIURA bench_result_empty(cfg)
+  EVOCA BenchResult after AD CONIURA bench_result_empty(cfg)
+  VINCIRE before.throughput AD 12.0
+  VINCIRE before.p95_ms AD 180
+  VINCIRE before.p99_ms AD 240
+  VINCIRE after.throughput AD 190.0
+  VINCIRE after.p95_ms AD 26
+  VINCIRE after.p99_ms AD 34
+  EVOCA BenchComparison cmp AD CONIURA bench_compare(before, after)
+  SI NON cmp.improved
+    REDDE 1
+  FIN SI
+  SI cmp.delta_throughput_pct <= 0.0
+    REDDE 2
+  FIN SI
+  SI cmp.delta_p99_pct >= 0.0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

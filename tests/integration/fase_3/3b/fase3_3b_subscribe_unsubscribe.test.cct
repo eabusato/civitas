@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase3_3b_subscribe_unsubscribe_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE noop(SPECULUM NIHIL env_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA EventBus bus
+  EVOCA SPECULUM NIHIL sub_res
+  EVOCA REX sub_id AD 0
+
+  CONIURA event_bus_init(SPECULUM bus, "app-bus")
+  SI CONIURA event_bus_has_subscribers(bus, "user.registered")
+    REDDE 1
+  FIN SI
+
+  VINCIRE sub_res AD CONIURA event_subscribe(SPECULUM bus, "user.registered", "noop", noop)
+  CONIURA phase3_3b_ok_or_fail(sub_res)
+  VINCIRE sub_id AD CONIURA result_unwrap GENUS(REX, VERBUM)(sub_res)
+  SI NON CONIURA event_bus_has_subscribers(bus, "user.registered")
+    REDDE 2
+  FIN SI
+
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_unsubscribe(SPECULUM bus, sub_id))
+  SI CONIURA event_bus_has_subscribers(bus, "user.registered")
+    REDDE 3
+  FIN SI
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(CONIURA event_unsubscribe(SPECULUM bus, sub_id))
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

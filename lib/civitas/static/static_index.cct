@@ -1,0 +1,195 @@
+INCIPIT grimoire "civitas_static_index"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../mime.cct"
+ADVOCARE "static_headers.cct"
+
+ORDO StaticMode
+  SmDesenvolvimento
+  SmProducao
+FIN ORDO
+
+SIGILLUM StaticConfig
+  raiz: VERBUM
+  prefixo_url: VERBUM
+  modo: StaticMode
+  cache_max_age: REX
+FIN SIGILLUM
+
+SIGILLUM StaticFile
+  nome: VERBUM
+  nome_com_hash: VERBUM
+  caminho: VERBUM
+  url: VERBUM
+  etag: VERBUM
+  tamanho: REX
+  last_modified: REX
+  mime_type: VERBUM
+FIN SIGILLUM
+
+SIGILLUM StaticIndex
+  config: StaticConfig
+  arquivos: SPECULUM NIHIL
+  urls_hash: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE static_file_default() REDDE StaticFile
+  EVOCA StaticFile sf
+  VINCIRE sf.nome AD ""
+  VINCIRE sf.nome_com_hash AD ""
+  VINCIRE sf.caminho AD ""
+  VINCIRE sf.url AD ""
+  VINCIRE sf.etag AD ""
+  VINCIRE sf.tamanho AD 0
+  VINCIRE sf.last_modified AD 0
+  VINCIRE sf.mime_type AD "application/octet-stream"
+  REDDE sf
+EXPLICIT RITUALE
+
+RITUALE static_file_clone(StaticFile src) REDDE StaticFile
+  EVOCA StaticFile out
+  VINCIRE out.nome AD CONIURA concat("", src.nome)
+  VINCIRE out.nome_com_hash AD CONIURA concat("", src.nome_com_hash)
+  VINCIRE out.caminho AD CONIURA concat("", src.caminho)
+  VINCIRE out.url AD CONIURA concat("", src.url)
+  VINCIRE out.etag AD CONIURA concat("", src.etag)
+  VINCIRE out.tamanho AD src.tamanho
+  VINCIRE out.last_modified AD src.last_modified
+  VINCIRE out.mime_type AD CONIURA concat("", src.mime_type)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE static_config_new(VERBUM raiz, VERBUM prefixo_url, StaticMode modo) REDDE StaticConfig
+  EVOCA StaticConfig cfg
+  VINCIRE cfg.raiz AD CONIURA resolve(raiz)
+  VINCIRE cfg.prefixo_url AD CONIURA static_normalize_prefix(prefixo_url)
+  VINCIRE cfg.modo AD modo
+  VINCIRE cfg.cache_max_age AD 31536000
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE static_index_empty(StaticConfig cfg) REDDE StaticIndex
+  EVOCA StaticIndex idx
+  VINCIRE idx.config AD cfg
+  VINCIRE idx.arquivos AD CONIURA map_init GENUS(VERBUM, StaticFile)()
+  VINCIRE idx.urls_hash AD CONIURA map_init GENUS(VERBUM, StaticFile)()
+  REDDE idx
+EXPLICIT RITUALE
+
+RITUALE static_storage_key(SPECULUM NIHIL items, VERBUM wanted) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, StaticFile)(items)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, wanted) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE static_indexar_arquivo(SPECULUM StaticIndex idx, VERBUM nome_relativo, VERBUM caminho_abs) REDDE NIHIL
+  EVOCA VERBUM hash8 AD CONIURA static_file_hash(caminho_abs)
+  EVOCA VERBUM nome_hash AD CONIURA static_nome_com_hash(nome_relativo, hash8)
+  EVOCA VERBUM url AD CONIURA concat((*idx).config.prefixo_url, nome_hash)
+  EVOCA StaticFile sf
+  VINCIRE sf.nome AD nome_relativo
+  VINCIRE sf.nome_com_hash AD nome_hash
+  VINCIRE sf.caminho AD caminho_abs
+  VINCIRE sf.url AD url
+  VINCIRE sf.etag AD CONIURA static_etag(caminho_abs)
+  VINCIRE sf.tamanho AD CONIURA size(caminho_abs)
+  VINCIRE sf.last_modified AD CONIURA modified_time(caminho_abs)
+  VINCIRE sf.mime_type AD CONIURA mime_guess_from_path(nome_relativo)
+  CONIURA map_update_or_insert GENUS(VERBUM, StaticFile)((*idx).arquivos, nome_relativo, sf)
+  CONIURA map_update_or_insert GENUS(VERBUM, StaticFile)((*idx).urls_hash, url, sf)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE static_indexar_dir(SPECULUM StaticIndex idx, VERBUM root, VERBUM current_dir, VERBUM prefix) REDDE NIHIL
+  EVOCA SPECULUM NIHIL items AD CONIURA list_dir(current_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA VERBUM name AD *item_ptr
+    EVOCA VERBUM caminho_abs AD CONIURA path_join(current_dir, name)
+    EVOCA VERBUM nome_relativo AD name
+    SI CONIURA len(prefix) != 0
+      VINCIRE nome_relativo AD CONIURA concat(prefix, CONIURA concat("/", name))
+    FIN SI
+    SI CONIURA is_dir(caminho_abs)
+      CONIURA static_indexar_dir(idx, root, caminho_abs, nome_relativo)
+    ALITER
+      CONIURA static_indexar_arquivo(idx, nome_relativo, caminho_abs)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE static_index_build(StaticConfig cfg) REDDE StaticIndex
+  EVOCA StaticIndex idx AD CONIURA static_index_empty(cfg)
+  SI NON CONIURA is_dir(cfg.raiz)
+    REDDE idx
+  FIN SI
+  CONIURA static_indexar_dir(SPECULUM idx, cfg.raiz, cfg.raiz, "")
+  REDDE idx
+EXPLICIT RITUALE
+
+RITUALE static_url(StaticIndex idx, VERBUM nome) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(nome)
+  SI CONIURA len(cleaned) == 0
+    REDDE idx.config.prefixo_url
+  FIN SI
+  SI idx.config.modo == SmDesenvolvimento
+    REDDE CONIURA concat(idx.config.prefixo_url, cleaned)
+  FIN SI
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA static_storage_key(idx.arquivos, cleaned)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    EVOCA StaticFile sf AD CONIURA static_file_clone(CONIURA map_get_or_default GENUS(VERBUM, StaticFile)(idx.arquivos, stored_key, CONIURA static_file_default()))
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE sf.url
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE CONIURA concat(idx.config.prefixo_url, cleaned)
+EXPLICIT RITUALE
+
+RITUALE static_find_by_name(StaticIndex idx, VERBUM nome) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA static_storage_key(idx.arquivos, nome)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA None GENUS(StaticFile)()
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA StaticFile sf AD CONIURA static_file_clone(CONIURA map_get_or_default GENUS(VERBUM, StaticFile)(idx.arquivos, stored_key, CONIURA static_file_default()))
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE CONIURA Some GENUS(StaticFile)(sf)
+EXPLICIT RITUALE
+
+RITUALE static_find_by_url(StaticIndex idx, VERBUM url_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA static_storage_key(idx.urls_hash, url_path)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA None GENUS(StaticFile)()
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA StaticFile sf AD CONIURA static_file_clone(CONIURA map_get_or_default GENUS(VERBUM, StaticFile)(idx.urls_hash, stored_key, CONIURA static_file_default()))
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE CONIURA Some GENUS(StaticFile)(sf)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase19_19c_handler"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/openapi/openapi.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_handler_serves_schema() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19c_handler")
+  EVOCA ApiViewConfig cfg
+  EVOCA ViewSetConfig viewset
+  EVOCA ApiViewSetRegistry reg
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  CONIURA api_viewset_registry_init(SPECULUM reg)
+  CONIURA api_viewset_config_init(SPECULUM viewset, "posts", "/api/v1/posts", "v1", SPECULUM cfg)
+  CONIURA api_viewset_registry_put(SPECULUM reg, viewset)
+  EVOCA WebRequest req AD CONIURA phase19_request("GET", "/api/schema.json", "")
+  EVOCA WebResponse res AD CONIURA openapi_handler(stack.db, stack.serializers, SPECULUM reg, req, "Civitas API", "v1", "https://example.test")
+  SI res.status != 200
+    IACE "handler status mismatch"
+  FIN SI
+  SI CONIURA find(res.body, "\"openapi\":\"3.1.0\"") == -1 VEL CONIURA find(res.body, "\"/api/v1/posts\"") == -1
+    IACE "schema body mismatch"
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "content-type", ""), "application/json; charset=utf-8") != 0
+    IACE "content-type mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_handler_serves_schema()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

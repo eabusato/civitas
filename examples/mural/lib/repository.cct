@@ -1,0 +1,89 @@
+INCIPIT grimoire "mural_repository"
+
+ADVOCARE "config.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MuralMessageRecord
+  id: REX
+  name: VERBUM
+  email: VERBUM
+  body: VERBUM
+  created_at: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MuralCreateMessage
+  name: VERBUM
+  email: VERBUM
+  body: VERBUM
+FIN SIGILLUM
+
+RITUALE mural_db_open(MuralConfig cfg) REDDE SPECULUM NIHIL
+  CONIURA mkdir_all(CONIURA path_dirname(cfg.database_path))
+  REDDE CONIURA db_open(cfg.database_path)
+EXPLICIT RITUALE
+
+RITUALE mural_repository_init_schema(MuralConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA mural_db_open(cfg)
+  CONIURA db_exec(
+    db,
+    "CREATE TABLE IF NOT EXISTS mensagens (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', body TEXT NOT NULL, created_at_ms INTEGER NOT NULL)"
+  )
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_mensagens_created_at_ms ON mensagens(created_at_ms DESC)")
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_repository_insert(MuralConfig cfg, MuralCreateMessage input) REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA mural_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO mensagens (name, email, body, created_at_ms) VALUES (?, ?, ?, ?)")
+  EVOCA REX created_at_ms AD CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000
+  CONIURA stmt_bind_text(stmt, 1, input.name)
+  CONIURA stmt_bind_text(stmt, 2, input.email)
+  CONIURA stmt_bind_text(stmt, 3, input.body)
+  CONIURA stmt_bind_int(stmt, 4, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  EVOCA REX inserted_id AD CONIURA db_scalar_int(db, "SELECT last_insert_rowid()")
+  CONIURA db_close(db)
+  REDDE inserted_id
+EXPLICIT RITUALE
+
+RITUALE mural_repository_recent(MuralConfig cfg, REX limit) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA mural_db_open(cfg)
+  EVOCA SPECULUM NIHIL rows
+  EVOCA SPECULUM NIHIL items AD CONIURA fluxus_init(MENSURA(MuralMessageRecord))
+  EVOCA VERBUM sql AD "SELECT id, name, email, body, strftime('%Y-%m-%d %H:%M:%S', created_at_ms / 1000, 'unixepoch', 'localtime') FROM mensagens ORDER BY created_at_ms DESC LIMIT "
+
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(limit))
+  VINCIRE rows AD CONIURA db_query(db, sql)
+  DUM CONIURA rows_next(rows)
+    EVOCA MuralMessageRecord row
+    VINCIRE row.id AD CONIURA rows_get_int(rows, 0)
+    VINCIRE row.name AD CONIURA rows_get_text(rows, 1)
+    VINCIRE row.email AD CONIURA rows_get_text(rows, 2)
+    VINCIRE row.body AD CONIURA rows_get_text(rows, 3)
+    VINCIRE row.created_at AD CONIURA rows_get_text(rows, 4)
+    CONIURA fluxus_push(items, SPECULUM row)
+  FIN DUM
+  CONIURA rows_close(rows)
+  CONIURA db_close(db)
+  REDDE items
+EXPLICIT RITUALE
+
+RITUALE mural_repository_delete(MuralConfig cfg, REX id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA mural_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM mensagens WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

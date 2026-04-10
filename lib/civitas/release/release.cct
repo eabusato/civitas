@@ -1,0 +1,55 @@
+INCIPIT grimoire "civitas_release"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../doc_gen.cct"
+ADVOCARE "../doc_gen/doc_gen.cct"
+
+SIGILLUM ReleaseConfig
+  out_dir: VERBUM
+  version: VERBUM
+FIN SIGILLUM
+
+RITUALE release_config_default(VERBUM out_dir, VERBUM version) REDDE ReleaseConfig
+  EVOCA ReleaseConfig cfg
+  VINCIRE cfg.out_dir AD out_dir
+  VINCIRE cfg.version AD version
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE release_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA mkdir_all(CONIURA path_dirname(path))
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE release_build_notes(ReleaseConfig cfg) REDDE VERBUM
+  EVOCA VERBUM content AD "# Civitas "
+  VINCIRE content AD CONIURA concat(content, cfg.version)
+  VINCIRE content AD CONIURA concat(content, " — Release Notes\n\n")
+  VINCIRE content AD CONIURA concat(content, "This release closes the framework baseline through FASE 28 and marks the Civitas 1.0 delivery bundle.\n\n")
+  VINCIRE content AD CONIURA concat(content, "Highlights:\n\n- hardened security audit and parser fuzzing\n- in-process load test and memory watch\n- dependency review with local CVE database\n- generated end-user docs and release bundle\n- phases 29, 30 and 31 are intentionally not part of the 1.0 line\n")
+  EVOCA VERBUM path AD CONIURA path_join(cfg.out_dir, CONIURA concat("release-notes-v", CONIURA concat(cfg.version, ".md")))
+  CONIURA release_write(path, content)
+  REDDE path
+EXPLICIT RITUALE
+
+RITUALE release_build_changelog(ReleaseConfig cfg) REDDE VERBUM
+  EVOCA VERBUM content AD "# CHANGELOG\n\n## v"
+  VINCIRE content AD CONIURA concat(content, cfg.version)
+  VINCIRE content AD CONIURA concat(content, "\n\n- FASE 0-9: HTTP core, router, middleware, templates, forms, sessions and media.\n- FASE 10-19: ORM, cache, fixtures, i18n, auth, jobs, admin, REST and SEO.\n- FASE 20-28: trace sigilos, dev ergonomics, CLI, deploy, profiling and final hardening.\n")
+  EVOCA VERBUM path AD CONIURA path_join(cfg.out_dir, "CHANGELOG.md")
+  CONIURA release_write(path, content)
+  REDDE path
+EXPLICIT RITUALE
+
+RITUALE release_finalize(ReleaseConfig cfg) REDDE NIHIL
+  EVOCA DocConfig docs_cfg AD CONIURA doc_gen_config_default(CONIURA path_join(cfg.out_dir, "docs"))
+  CONIURA doc_gen_build(docs_cfg)
+  CONIURA release_build_changelog(cfg)
+  CONIURA release_build_notes(cfg)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

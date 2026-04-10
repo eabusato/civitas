@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase15_15d_destroy_user_and_purge"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_store.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_session_db_open("15d_destroy_user_and_purge")
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.ttl_segundos AD 3600
+  EVOCA Session a AD CONIURA session_create(db, cfg, "user-1", "127.0.0.1", "Agent/1.0")
+  EVOCA Session b AD CONIURA session_create(db, cfg, "user-1", "127.0.0.1", "Agent/1.0")
+  SI CONIURA session_destroy_user(db, "user-1") < 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL opt_a AD CONIURA session_lookup(db, a.id)
+  EVOCA SPECULUM NIHIL opt_b AD CONIURA session_lookup(db, b.id)
+  SI NON CONIURA option_is_none GENUS(Session)(opt_a) VEL NON CONIURA option_is_none GENUS(Session)(opt_b)
+    CONIURA option_free GENUS(Session)(opt_a)
+    CONIURA option_free GENUS(Session)(opt_b)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA option_free GENUS(Session)(opt_a)
+  CONIURA option_free GENUS(Session)(opt_b)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO sessoes (id, user_id, dados, criado_em, expira_em, ip, user_agent) VALUES (?, '', '{}', 1, 1, '', '')")
+  CONIURA stmt_bind_text(stmt, 1, "expired-1")
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  SI CONIURA session_purge_expiradas(db) <= 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,41 @@
+INCIPIT grimoire "rede_social_ops_views"
+
+ADVOCARE "../../../gen/ops_dashboard.cct"
+ADVOCARE "../../../gen/ops_login.cct"
+ADVOCARE "../../../gen/ops_report.cct"
+ADVOCARE "../../shared/template_contexts.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_render_ops_dashboard(VERBUM current_user, VERBUM csrf_html) REDDE VERBUM
+  EVOCA RedeOpsDashboardPageContext ctx
+  VINCIRE ctx.page_title AD "Ops"
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.csrf_html AD csrf_html
+  REDDE CONIURA render_ops_dashboard(ctx)
+EXPLICIT RITUALE
+
+RITUALE rede_render_ops_login(VERBUM notice, VERBUM csrf_html, VERBUM next_path) REDDE VERBUM
+  EVOCA RedeOpsLoginPageContext ctx
+  VINCIRE ctx.page_title AD "Ops login"
+  VINCIRE ctx.current_user AD ""
+  VINCIRE ctx.has_user AD FALSUM
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.notice AD notice
+  VINCIRE ctx.has_notice AD CONIURA len(notice) > 0
+  VINCIRE ctx.next_path AD next_path
+  REDDE CONIURA render_ops_login(ctx)
+EXPLICIT RITUALE
+
+RITUALE rede_render_ops_report(VERBUM title, VERBUM subtitle, VERBUM body_html) REDDE VERBUM
+  EVOCA RedeOpsReportPageContext ctx
+  VINCIRE ctx.page_title AD title
+  VINCIRE ctx.current_user AD "admin"
+  VINCIRE ctx.has_user AD VERUM
+  VINCIRE ctx.title AD title
+  VINCIRE ctx.subtitle AD subtitle
+  VINCIRE ctx.body_html AD body_html
+  REDDE CONIURA render_ops_report(ctx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

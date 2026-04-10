@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase18_18a_register_and_registry"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_register_and_persist_registry() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18a_register")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA SPECULUM AdminModelConfig stored_ptr AD CONIURA admin_registry_find(stack.registry, "Post")
+  SI stored_ptr == NIHIL
+    IACE "registered model missing from memory registry"
+  FIN SI
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, "Post")
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT table_name, config_json FROM admin_model_registry WHERE model_name = ?", params)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "registered model missing from table"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), (*cfg_ptr).table_name) != 0
+    IACE "registered table_name mismatch"
+  FIN SI
+  SI CONIURA find(CONIURA dbrows_get_text(rows, 1), "\"model_name\":\"Post\"") == -1
+    IACE "config json missing model_name"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_register_and_persist_registry()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

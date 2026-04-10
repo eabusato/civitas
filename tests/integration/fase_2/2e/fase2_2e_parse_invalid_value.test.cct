@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase2_2e_parse_invalid_value_test"
+
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL invalid_res AD CONIURA visibility_parse("friends-only")
+  SI NON CONIURA result_is_err GENUS(VisibilityPolicy, VERBUM)(invalid_res)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

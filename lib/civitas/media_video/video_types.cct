@@ -1,0 +1,81 @@
+INCIPIT grimoire "civitas_media_video_types"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/media_store.cct"
+
+ORDO VideoProcessState
+  VpsPending
+  VpsProcessing
+  VpsReady
+  VpsFailed
+  VpsUnsafe
+FIN ORDO
+
+ORDO VideoModerationState
+  VmsPending
+  VmsApproved
+  VmsRejected
+  VmsUnsafe
+FIN ORDO
+
+SIGILLUM VideoRecord
+  artifact_id: VERBUM
+  owner_id: VERBUM
+  original_filename: VERBUM
+  content_type: VERBUM
+  filetype: FileType
+  duration_seconds: UMBRA
+  video_codec: VERBUM
+  audio_codec: VERBUM
+  width: REX
+  height: REX
+  fps: UMBRA
+  size_bytes: REX
+  checksum: VERBUM
+  zone: MediaZone
+  process_state: VideoProcessState
+  moderation_state: VideoModerationState
+  active: VERUM
+  deleted: VERUM
+  error_message: VERBUM
+  created_at_iso: VERBUM
+  updated_at_iso: VERBUM
+FIN SIGILLUM
+
+SIGILLUM VideoProbe
+  valid: VERUM
+  error_message: VERBUM
+  format_name: VERBUM
+  video_codec: VERBUM
+  audio_codec: VERBUM
+  size_bytes: REX
+  duration_seconds: UMBRA
+  has_video: VERUM
+  has_audio: VERUM
+  video_width: REX
+  video_height: REX
+  video_fps: UMBRA
+FIN SIGILLUM
+
+SIGILLUM TranscodeSpec
+  name: VERBUM
+  video_codec: VERBUM
+  audio_codec: VERBUM
+  max_width: REX
+  max_height: REX
+  bitrate_kbps: REX
+  audio_bitrate_kbps: REX
+  extension: VERBUM
+FIN SIGILLUM
+
+SIGILLUM VideoProcessConfig
+  specs: SPECULUM NIHIL
+  thumb_offset_seconds: UMBRA
+  watermark_path: VERBUM
+  auto_promote_zone: MediaZone
+  max_duration_seconds: UMBRA
+  max_size_bytes: REX
+  transcode_timeout_ms: REX
+FIN SIGILLUM
+
+EXPLICIT grimoire

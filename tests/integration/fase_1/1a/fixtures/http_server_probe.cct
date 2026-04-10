@@ -1,0 +1,275 @@
+INCIPIT grimoire "fase1a_http_server_probe"
+
+ADVOCARE "../../../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../../../lib/civitas/core/version.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    REDDE CONIURA getenv(name)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE env_or_int(VERBUM name, REX fallback) REDDE REX
+  SI CONIURA has_env(name)
+    REDDE CONIURA fmt_parse_int(CONIURA getenv(name))
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE maybe_write_file(VERBUM path, VERBUM content) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE maybe_append_file(VERBUM path, VERBUM content) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  CONIURA append_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bool_text(VERUM value) REDDE VERBUM
+  SI value
+    REDDE "true"
+  FIN SI
+  REDDE "false"
+EXPLICIT RITUALE
+
+RITUALE append_request_log(VERBUM path, HttpRawRequest req) REDDE NIHIL
+  EVOCA VERBUM line AD req.method
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, req.target)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, req.version)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, req.body)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, CONIURA bool_text(req.keep_alive))
+  VINCIRE line AD CONIURA concat(line, "\n")
+  CONIURA maybe_append_file(path, line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE append_error_log(VERBUM path, HttpServerError err) REDDE NIHIL
+  EVOCA VERBUM line AD "ERR|"
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(err.status_code))
+  VINCIRE line AD CONIURA concat(line, "|")
+  SI err.has_parse_error
+    VINCIRE line AD CONIURA concat(line, CONIURA http_parse_error_name(err.parse_error))
+  ALITER
+    VINCIRE line AD CONIURA concat(line, "HttpServerError")
+  FIN SI
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, CONIURA http_connection_policy_name(err.policy))
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, err.message)
+  VINCIRE line AD CONIURA concat(line, "\n")
+  CONIURA maybe_append_file(path, line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE parse_bool_env(VERBUM name, VERUM fallback) REDDE VERUM
+  SI NON CONIURA has_env(name)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA fmt_parse_int(CONIURA getenv(name)) != 0
+EXPLICIT RITUALE
+
+RITUALE parse_trusted_proxies(VERBUM csv) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL proxies AD CONIURA http_server_trusted_proxies_new()
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(csv, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM item AD CONIURA trim(*item_ptr)
+    SI CONIURA len(item) != 0
+      CONIURA http_server_trusted_proxies_add(proxies, item)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE proxies
+EXPLICIT RITUALE
+
+RITUALE append_access_log(VERBUM path, AccessLogEntry entry) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  CONIURA maybe_append_file(path, CONIURA concat(CONIURA http_server_access_log_line(entry), "\n"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE write_final_stats(VERBUM path, HttpServer srv) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  EVOCA HttpServerStats stats AD CONIURA http_server_stats(srv)
+  EVOCA VERBUM line AD "accepted="
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(stats.accepted_connections))
+  VINCIRE line AD CONIURA concat(line, "|handled=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(stats.handled_requests))
+  VINCIRE line AD CONIURA concat(line, "|active=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(stats.active_connections))
+  VINCIRE line AD CONIURA concat(line, "|uptime=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(stats.uptime_ms))
+  CONIURA write_all(path, line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_for(HttpRawRequest req, HttpServer srv) REDDE HttpRawResponse
+  EVOCA HttpRawResponse resp AD CONIURA http_server_response_new(200, "ok")
+  CONIURA http_server_headers_set(resp.headers, "content-type", "text/plain; charset=utf-8")
+  CONIURA http_server_headers_set(resp.headers, "x-civitas-version", CONIURA civitas_version())
+  SI CONIURA len(req.request_id) != 0
+    CONIURA http_server_headers_set(resp.headers, "x-request-id", req.request_id)
+  FIN SI
+
+  SI CONIURA compare(req.target, "/echo") == 0
+    VINCIRE resp.body AD req.body
+    REDDE resp
+  FIN SI
+
+  SI CONIURA compare(req.target, "/meta") == 0
+    EVOCA VERBUM body AD req.method
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.target)
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.version)
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, CONIURA bool_text(req.keep_alive))
+    VINCIRE resp.body AD body
+    REDDE resp
+  FIN SI
+
+  SI CONIURA compare(req.target, "/forwarded") == 0
+    EVOCA VERBUM body AD req.request_id
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.client_ip)
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.scheme)
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.proxy_addr)
+    VINCIRE body AD CONIURA concat(body, "|")
+    VINCIRE body AD CONIURA concat(body, req.original_host)
+    VINCIRE resp.body AD body
+    REDDE resp
+  FIN SI
+
+  SI CONIURA compare(req.target, "/close") == 0
+    VINCIRE resp.body AD "closing"
+    VINCIRE resp.close_connection AD VERUM
+    REDDE resp
+  FIN SI
+
+  SI CONIURA compare(req.target, "/stats") == 0
+    EVOCA HttpServerStats stats AD CONIURA http_server_stats(srv)
+    EVOCA VERBUM body AD "accepted="
+    VINCIRE body AD CONIURA concat(body, CONIURA stringify_int(stats.accepted_connections))
+    VINCIRE body AD CONIURA concat(body, "|handled=")
+    VINCIRE body AD CONIURA concat(body, CONIURA stringify_int(stats.handled_requests))
+    VINCIRE body AD CONIURA concat(body, "|active=")
+    VINCIRE body AD CONIURA concat(body, CONIURA stringify_int(stats.active_connections))
+    VINCIRE resp.body AD body
+    REDDE resp
+  FIN SI
+
+  REDDE resp
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  EVOCA VERBUM ready_file AD CONIURA env_or("CIVITAS_READY_FILE", "")
+  EVOCA VERBUM done_file AD CONIURA env_or("CIVITAS_DONE_FILE", "")
+  EVOCA VERBUM request_log AD CONIURA env_or("CIVITAS_REQUEST_LOG_FILE", "")
+  EVOCA VERBUM access_log AD CONIURA env_or("CIVITAS_ACCESS_LOG_FILE", "")
+  EVOCA VERBUM stats_file AD CONIURA env_or("CIVITAS_STATS_FILE", "")
+  EVOCA REX max_requests AD CONIURA env_or_int("CIVITAS_MAX_REQUESTS", 0)
+  EVOCA VERUM require_signal AD CONIURA parse_bool_env("CIVITAS_REQUIRE_SIGNAL", FALSUM)
+  EVOCA REX served AD 0
+
+  VINCIRE opts.host AD CONIURA env_or("CIVITAS_HOST", "127.0.0.1")
+  VINCIRE opts.port AD CONIURA env_or_int("CIVITAS_PORT", 18101)
+  VINCIRE opts.read_header_timeout_ms AD CONIURA env_or_int("CIVITAS_READ_HEADER_TIMEOUT_MS", opts.read_header_timeout_ms)
+  VINCIRE opts.read_body_timeout_ms AD CONIURA env_or_int("CIVITAS_READ_BODY_TIMEOUT_MS", opts.read_body_timeout_ms)
+  VINCIRE opts.idle_timeout_ms AD CONIURA env_or_int("CIVITAS_IDLE_TIMEOUT_MS", opts.idle_timeout_ms)
+  VINCIRE opts.max_header_bytes AD CONIURA env_or_int("CIVITAS_MAX_HEADER_BYTES", opts.max_header_bytes)
+  VINCIRE opts.max_header_count AD CONIURA env_or_int("CIVITAS_MAX_HEADER_COUNT", opts.max_header_count)
+  VINCIRE opts.max_body_bytes AD CONIURA env_or_int("CIVITAS_MAX_BODY_BYTES", opts.max_body_bytes)
+  VINCIRE opts.enable_request_id AD CONIURA parse_bool_env("CIVITAS_ENABLE_REQUEST_ID", opts.enable_request_id)
+  VINCIRE opts.enable_access_log AD CONIURA parse_bool_env("CIVITAS_ENABLE_ACCESS_LOG", opts.enable_access_log)
+  VINCIRE opts.allow_proxy_request_id AD CONIURA parse_bool_env("CIVITAS_ALLOW_PROXY_REQUEST_ID", opts.allow_proxy_request_id)
+  VINCIRE opts.honor_x_forwarded_for AD CONIURA parse_bool_env("CIVITAS_HONOR_X_FORWARDED_FOR", opts.honor_x_forwarded_for)
+  VINCIRE opts.honor_x_forwarded_proto AD CONIURA parse_bool_env("CIVITAS_HONOR_X_FORWARDED_PROTO", opts.honor_x_forwarded_proto)
+  VINCIRE opts.honor_x_forwarded_host AD CONIURA parse_bool_env("CIVITAS_HONOR_X_FORWARDED_HOST", opts.honor_x_forwarded_host)
+  VINCIRE opts.trusted_proxies AD CONIURA parse_trusted_proxies(CONIURA env_or("CIVITAS_TRUSTED_PROXIES", ""))
+
+  EVOCA SPECULUM NIHIL create_res AD CONIURA http_server_create(opts)
+  SI CONIURA result_is_err GENUS(HttpServer, HttpServerError)(create_res)
+    EVOCA HttpServerError create_err AD CONIURA result_unwrap_err GENUS(HttpServer, HttpServerError)(create_res)
+    SI CONIURA compare(create_err.message, "sock_bind falhou") == 0 VEL CONIURA compare(create_err.message, "socket tcp create falhou") == 0
+      CONIURA maybe_write_file(ready_file, "skip")
+      CONIURA maybe_write_file(done_file, "skip")
+      REDDE 0
+    FIN SI
+    IACE create_err.message
+  FIN SI
+
+  EVOCA HttpServer srv AD CONIURA result_unwrap GENUS(HttpServer, HttpServerError)(create_res)
+  SI require_signal ET NON CONIURA http_server_signal_enabled(srv)
+    CONIURA maybe_write_file(ready_file, "skip")
+    CONIURA maybe_write_file(done_file, "skip")
+    CONIURA http_server_stop(srv)
+    REDDE 0
+  FIN SI
+  CONIURA maybe_write_file(ready_file, "ready")
+
+  DUM (max_requests == 0 VEL served < max_requests) ET NON CONIURA http_server_should_shutdown(srv)
+    EVOCA REX request_started_ms AD CONIURA now_ms()
+    EVOCA SPECULUM NIHIL req_res AD CONIURA civitas_http_server_accept(srv)
+    SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+      EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+      SI CONIURA compare(err.message, "server stopping") == 0
+        RECEDE
+      FIN SI
+      CONIURA append_error_log(request_log, err)
+      SI CONIURA http_server_error_should_respond(err)
+        CONIURA http_server_respond(srv, CONIURA http_server_error_response(err))
+      FIN SI
+      SI opts.enable_access_log
+        CONIURA append_access_log(access_log, CONIURA http_server_access_log_error_entry(srv, err, CONIURA now_ms() - request_started_ms))
+      FIN SI
+      VINCIRE served AD served + 1
+      RECEDE
+    FIN SI
+
+    EVOCA HttpRawRequest req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+    EVOCA HttpRawResponse resp AD CONIURA response_for(req, srv)
+    CONIURA append_request_log(request_log, req)
+    CONIURA http_server_respond(srv, resp)
+    SI opts.enable_access_log
+      CONIURA append_access_log(access_log, CONIURA http_server_access_log_entry(req, resp.status_code, CONIURA now_ms() - request_started_ms, CONIURA len(resp.body)))
+    FIN SI
+    VINCIRE served AD served + 1
+  FIN DUM
+
+  CONIURA write_final_stats(stats_file, srv)
+  CONIURA maybe_write_file(done_file, "ok")
+  CONIURA http_server_stop(srv)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,131 @@
+INCIPIT grimoire "civitas_upload_descriptor"
+
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_scan.cct"
+
+ORDO UploadState
+  UsTemp,
+  UsFinal,
+  UsOrphan
+FIN ORDO
+
+SIGILLUM UploadDescriptor
+  path: VERBUM
+  hash: VERBUM
+  size: REX
+  mime: VERBUM
+  original_name: VERBUM
+  state: UploadState
+FIN SIGILLUM
+
+RITUALE upload_descriptor_new(
+  VERBUM path,
+  VERBUM hash,
+  REX size,
+  VERBUM mime,
+  VERBUM original_name
+) REDDE UploadDescriptor
+  EVOCA UploadDescriptor d
+  VINCIRE d.path AD path
+  VINCIRE d.hash AD hash
+  VINCIRE d.size AD size
+  VINCIRE d.mime AD mime
+  VINCIRE d.original_name AD original_name
+  VINCIRE d.state AD UsTemp
+  REDDE d
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_is_final(UploadDescriptor d) REDDE VERUM
+  REDDE d.state == UsFinal
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_state_str(UploadState state) REDDE VERBUM
+  ELIGE state
+    CASUS UsTemp:
+      REDDE "temp"
+    CASUS UsFinal:
+      REDDE "final"
+    CASUS UsOrphan:
+      REDDE "orphan"
+    ALIOQUIN:
+      REDDE "orphan"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_state_from_str(VERBUM s) REDDE UploadState
+  SI CONIURA compare(s, "temp") == 0
+    REDDE UsTemp
+  FIN SI
+  SI CONIURA compare(s, "final") == 0
+    REDDE UsFinal
+  FIN SI
+  REDDE UsOrphan
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_to_json(UploadDescriptor d) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  CONIURA json_obj_push(root, "path", CONIURA json_str(d.path))
+  CONIURA json_obj_push(root, "hash", CONIURA json_str(d.hash))
+  CONIURA json_obj_push(root, "size", CONIURA json_num(cast GENUS(UMBRA)(d.size)))
+  CONIURA json_obj_push(root, "mime", CONIURA json_str(d.mime))
+  CONIURA json_obj_push(root, "original_name", CONIURA json_str(d.original_name))
+  CONIURA json_obj_push(root, "state", CONIURA json_str(CONIURA upload_descriptor_state_str(d.state)))
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_from_json(VERBUM payload) REDDE UploadDescriptor
+  EVOCA UploadDescriptor d
+  VINCIRE d.path AD ""
+  VINCIRE d.hash AD ""
+  VINCIRE d.size AD 0
+  VINCIRE d.mime AD ""
+  VINCIRE d.original_name AD ""
+  VINCIRE d.state AD UsOrphan
+
+  SI CONIURA len(CONIURA trim(payload)) == 0
+    REDDE d
+  FIN SI
+
+  TEMPTA
+    EVOCA SPECULUM NIHIL c AD CONIURA cursor_init(payload)
+    EVOCA Json root AD CONIURA json_parse_value(payload, c)
+    CONIURA cursor_free(c)
+
+    SI NON CONIURA json_is_obj(root)
+      REDDE d
+    FIN SI
+
+    EVOCA Json path_json AD CONIURA json_get_key(root, "path")
+    EVOCA Json hash_json AD CONIURA json_get_key(root, "hash")
+    EVOCA Json size_json AD CONIURA json_get_key(root, "size")
+    EVOCA Json mime_json AD CONIURA json_get_key(root, "mime")
+    EVOCA Json original_name_json AD CONIURA json_get_key(root, "original_name")
+    EVOCA Json state_json AD CONIURA json_get_key(root, "state")
+
+    SI CONIURA json_is_str(path_json)
+      VINCIRE d.path AD CONIURA json_expect_str(path_json)
+    FIN SI
+    SI CONIURA json_is_str(hash_json)
+      VINCIRE d.hash AD CONIURA json_expect_str(hash_json)
+    FIN SI
+    SI CONIURA json_is_num(size_json)
+      VINCIRE d.size AD cast GENUS(REX)(CONIURA json_expect_num(size_json))
+    FIN SI
+    SI CONIURA json_is_str(mime_json)
+      VINCIRE d.mime AD CONIURA json_expect_str(mime_json)
+    FIN SI
+    SI CONIURA json_is_str(original_name_json)
+      VINCIRE d.original_name AD CONIURA json_expect_str(original_name_json)
+    FIN SI
+    SI CONIURA json_is_str(state_json)
+      VINCIRE d.state AD CONIURA upload_descriptor_state_from_str(CONIURA json_expect_str(state_json))
+    FIN SI
+  CAPE FRACTUM error
+    REDDE d
+  FIN TEMPTA
+
+  REDDE d
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

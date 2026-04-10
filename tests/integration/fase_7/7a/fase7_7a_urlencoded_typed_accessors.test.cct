@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase7_7a_urlencoded_typed_accessors_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  CONIURA phase7_set_content_type(headers, "application/x-www-form-urlencoded")
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/cadastro", headers, "idade=42&preco=9.5&aceito=on&nome=Ada+Lovelace")
+  EVOCA FormData fd AD CONIURA phase7_form_unwrap(CONIURA form_parse_urlencoded(SPECULUM req))
+  EVOCA SPECULUM NIHIL idade_opt AD CONIURA form_data_get_int(fd, "idade")
+  EVOCA SPECULUM NIHIL preco_opt AD CONIURA form_data_get_real(fd, "preco")
+  EVOCA SPECULUM NIHIL aceito_opt AD CONIURA form_data_get_bool(fd, "aceito")
+
+  SI CONIURA compare(fd.content_type, "urlencoded") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA form_data_get_or(fd, "nome", ""), "Ada Lovelace") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA option_is_some GENUS(REX)(idade_opt)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA option_is_some GENUS(UMBRA)(preco_opt)
+    REDDE 4
+  FIN SI
+  SI NON CONIURA option_is_some GENUS(VERUM)(aceito_opt)
+    REDDE 5
+  FIN SI
+  SI CONIURA option_unwrap GENUS(REX)(idade_opt) != 42
+    REDDE 6
+  FIN SI
+  SI CONIURA option_unwrap GENUS(VERUM)(aceito_opt) != VERUM
+    REDDE 7
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

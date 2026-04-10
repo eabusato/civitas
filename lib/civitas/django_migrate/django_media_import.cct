@@ -1,0 +1,31 @@
+INCIPIT grimoire "civitas_django_media_import"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "django_migrate.cct"
+
+RITUALE django_media_import(DjangoMigrateConfig cfg, VERBUM subdir) REDDE DjangoMigrateResult
+  EVOCA DjangoMigrateResult result AD CONIURA django_migrate_result_new()
+  EVOCA VERBUM src_dir AD CONIURA path_join(cfg.media_root_django, subdir)
+  EVOCA VERBUM dst_dir AD CONIURA path_join(cfg.media_root_civitas, subdir)
+  CONIURA mkdir_all(dst_dir)
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(src_dir)
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM ep AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM src AD CONIURA path_join(src_dir, *ep)
+    EVOCA VERBUM dst AD CONIURA path_join(dst_dir, *ep)
+    SI CONIURA is_file(src)
+      SI NON cfg.dry_run
+        CONIURA copy(src, dst)
+      FIN SI
+      VINCIRE result.arquivos_copiados AD result.arquivos_copiados + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE result
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase26_26b_middleware_adds_trace_header"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "../../../../lib/civitas/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26b_middleware_adds_trace_header")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "profiles.db"))
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(db, 2)
+  EVOCA Router router AD CONIURA phase26_profiler_router()
+  CONIURA profiler_enable(SPECULUM state)
+  CONIURA profiler_middleware_add(SPECULUM router, SPECULUM state)
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_client_get(SPECULUM client, "/profiled")
+  CONIURA profiler_disable(SPECULUM state)
+  CONIURA test_client_free(SPECULUM client)
+  CONIURA db_close(db)
+  SI res.status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA len(CONIURA tc_header_or(res, "x-profile-trace-id", "")) == 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA tc_header_or(res, "x-civitas-profiler-n1", ""), "1") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

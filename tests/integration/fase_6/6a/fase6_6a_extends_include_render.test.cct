@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase6_6a_extends_include_render_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase6_tmp_dir("6a_extends_include_render")
+  EVOCA REX compiled AD 0
+  EVOCA VERBUM html AD ""
+
+  CONIURA phase6_init_project(root)
+  CONIURA phase6_write_template(
+    root,
+    "base.html",
+    "{% EVOCA BlogPageContext %}\n<!DOCTYPE html>\n<html><head><title>{% SECTIO title %}Base{% FIN SECTIO %}</title></head><body>{% SECTIO content %}<p>base</p>{% FIN SECTIO %}</body></html>\n"
+  )
+  CONIURA phase6_write_template(
+    root,
+    "partials/post_card.html",
+    "{% EVOCA PostCardContext %}\n<article><h2>{{ titulo }}</h2><p>{{ resumo }}</p></article>\n"
+  )
+  CONIURA phase6_write_template(
+    root,
+    "page.html",
+    "{% EVOCA BlogPageContext %}\n{% EXTENDE \"base.html\" %}\n{% SECTIO title %}{{ page_title }}{% FIN SECTIO %}\n{% SECTIO content %}<section>{% ADVOCARE \"partials/post_card.html\" AD post %}</section>{% FIN SECTIO %}\n"
+  )
+
+  VINCIRE compiled AD CONIURA phase6_compile_directory_ok(root)
+  VINCIRE html AD CONIURA phase6_render_blog_template(root, "gen/page.cct", "page", "")
+
+  SI compiled != 3
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "<title>Painel &lt;Admin&gt;</title>") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "<section><article><h2>Primeiro &lt;Post&gt;</h2><p>Resumo &amp; detalhes</p></article></section>") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "<!DOCTYPE html>") == -1
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase3_3c_commit_then_publish_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "../../../../lib/civitas/outbox.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE sink_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM EventEnvelope env
+  VINCIRE env AD env_ref
+  CONIURA write_all("tests/tmp/fase_3/3c_commit_then_publish/consumed.log", CONIURA concat((*env).event_type, CONIURA concat("|", (*env).request_id)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase3_3c_tmp_dir("3c_commit_then_publish")
+  EVOCA OutboxStore store
+  EVOCA EventBus bus
+  EVOCA OutboxTransaction tx
+  EVOCA VERBUM entry_id
+  EVOCA OutboxPublishReport report
+  EVOCA OutboxEntry entry
+  EVOCA REX base_now AD 0
+
+  CONIURA phase3_3c_reset_dir(dir)
+  VINCIRE store AD CONIURA phase3_3c_ok_or_fail_store(CONIURA outbox_store_open(dir, 3))
+  CONIURA event_bus_init(SPECULUM bus, "outbox-bus")
+  CONIURA phase3_3c_ok_or_fail_unit(CONIURA event_subscribe(SPECULUM bus, "user.registered", "sink_handler", sink_handler))
+
+  CONIURA outbox_tx_init(SPECULUM tx, store)
+  VINCIRE entry_id AD CONIURA phase3_3c_ok_or_fail_entry_id(CONIURA outbox_tx_enqueue(SPECULUM tx, CONIURA phase3_3c_event("user.registered", "req-3c-commit", "actor-1", "{\"user_id\":\"1\"}", "public"), "user.registered:1"))
+  VINCIRE base_now AD CONIURA now_ms()
+  VINCIRE report AD CONIURA phase3_3c_ok_or_fail_report(CONIURA outbox_tx_commit_and_publish(SPECULUM tx, bus, 10, 5000, base_now))
+  VINCIRE entry AD CONIURA phase3_3c_ok_or_fail_entry(CONIURA outbox_get_entry(SPECULUM store, entry_id))
+
+  SI report.claimed_count != 1 VEL report.published_count != 1
+    REDDE 1
+  FIN SI
+  SI entry.status != OUTBOX_PUBLISHED
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/consumed.log")), "user.registered|req-3c-commit") != 0
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

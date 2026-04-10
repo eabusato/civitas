@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase1_1b_helpers_join_path_and_with_query_test"
+
+ADVOCARE "../../../../lib/civitas/url.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA url_parse("https://example.com/app")
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  EVOCA WebUrl url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(res)
+  EVOCA WebUrl joined AD CONIURA url_join_path(url, "v1/../users")
+  EVOCA WebUrl with_q AD CONIURA url_with_query(joined, "page", "2")
+  SI CONIURA compare(joined.path, "/app/users") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(with_q.query_raw, "page=2") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA url_build(with_q), "https://example.com/app/users?page=2") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA url_default_port_for_scheme("https") != 443
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

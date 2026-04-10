@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase11_11b_pool_acquire_release_metrics"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  CONIURA phase11_reset_dir(CONIURA phase11_tmp_dir("11b_pool_acquire_release_metrics"))
+  EVOCA SPECULUM NIHIL pool AD CONIURA pool_new_sqlite(CONIURA phase11_db_path("11b_pool_acquire_release_metrics"), NIHIL)
+  EVOCA SPECULUM NIHIL handle_ptr AD CONIURA pool_acquire(pool)
+  SI handle_ptr == NIHIL
+    REDDE 1
+  FIN SI
+  EVOCA PoolMetrics during AD CONIURA pool_metrics(pool)
+  SI during.ativas != 1 VEL during.ociosas != 0
+    REDDE 2
+  FIN SI
+  CONIURA pool_release(pool, handle_ptr)
+  EVOCA PoolMetrics after AD CONIURA pool_metrics(pool)
+  SI after.ativas != 0 VEL after.ociosas != 1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

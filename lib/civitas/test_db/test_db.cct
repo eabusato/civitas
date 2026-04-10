@@ -1,0 +1,24 @@
+INCIPIT grimoire "civitas_test_db"
+
+SIGILLUM TestDbConfig
+  usar_memoria: VERUM
+  path_temp: VERBUM
+  auto_migrate: VERUM
+FIN SIGILLUM
+
+SIGILLUM TestDb
+  db: SPECULUM NIHIL
+  config: TestDbConfig
+  sp_contador: REX
+  sp_ativo: VERBUM
+FIN SIGILLUM
+
+RITUALE test_db_config_memoria() REDDE TestDbConfig
+  EVOCA TestDbConfig cfg
+  VINCIRE cfg.usar_memoria AD VERUM
+  VINCIRE cfg.path_temp AD ""
+  VINCIRE cfg.auto_migrate AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

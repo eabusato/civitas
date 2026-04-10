@@ -1,0 +1,76 @@
+INCIPIT grimoire "fase3_3a_create_connect_disconnect_order_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceState
+  value: VERBUM
+FIN SIGILLUM
+
+RITUALE handler_a(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).payload_ref
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "A")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE handler_b(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).payload_ref
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "B")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Signal signal
+  EVOCA SPECULUM NIHIL first_res
+  EVOCA SPECULUM NIHIL second_res
+  EVOCA TraceState state
+  EVOCA SignalEnvelope env
+  EVOCA SignalDispatchReport report
+  EVOCA REX first_id AD 0
+
+  CONIURA signal_init(SPECULUM signal, "ordered", SIGNAL_CONTINUE_ON_ERROR)
+  VINCIRE first_res AD CONIURA signal_connect(SPECULUM signal, "handler_a", handler_a)
+  VINCIRE second_res AD CONIURA signal_connect(SPECULUM signal, "handler_b", handler_b)
+  CONIURA phase3_3a_ok_or_fail(first_res)
+  CONIURA phase3_3a_ok_or_fail(second_res)
+  VINCIRE first_id AD CONIURA result_unwrap GENUS(REX, VERBUM)(first_res)
+  VINCIRE state.value AD ""
+  CONIURA signal_envelope_fill(SPECULUM env, "ordered", "test", "", "TraceState", SPECULUM state)
+
+  SI CONIURA signal_handler_count(signal) != 2
+    REDDE 1
+  FIN SI
+
+  VINCIRE report AD CONIURA signal_send(signal, SPECULUM env)
+  SI CONIURA compare(state.value, "AB") != 0
+    REDDE 2
+  FIN SI
+  SI report.invoked_count != 2 VEL report.failed_count != 0
+    REDDE 3
+  FIN SI
+
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_disconnect(SPECULUM signal, first_id))
+  VINCIRE state.value AD ""
+  VINCIRE report AD CONIURA signal_send(signal, SPECULUM env)
+  SI CONIURA compare(state.value, "B") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA signal_handler_count(signal) != 1
+    REDDE 5
+  FIN SI
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(CONIURA signal_disconnect(SPECULUM signal, first_id))
+    REDDE 6
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase10_10c_migrator_rollback_last"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/migrate/migrate.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE migration_0001_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE a(id INTEGER PRIMARY KEY)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migration_0001_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS a")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migration_0002_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE b(id INTEGER PRIMARY KEY)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migration_0002_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS b")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10c_migrator_rollback_last")
+  EVOCA Migrator mgr AD CONIURA migrator_new(db, NIHIL)
+  CONIURA migrator_add(mgr, "0001", "create_a", migration_0001_up, migration_0001_down)
+  CONIURA migrator_add(mgr, "0002", "create_b", migration_0002_up, migration_0002_down)
+  CONIURA migrator_run(mgr)
+  EVOCA SPECULUM NIHIL res AD CONIURA migrator_rollback(mgr)
+  SI CONIURA result_is_err GENUS(REX, MigrateError)(res)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'b'") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'a'") != 1
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

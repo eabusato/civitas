@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase27_27b_deploy_promote_and_rollback"
+
+ADVOCARE "../../../../lib/civitas/restore/restore.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_deploy_promote_and_rollback_swap_binaries() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase27_reset_root("27b_deploy_swap")
+  EVOCA VERBUM app_dir AD CONIURA path_join(root, "appdir")
+  CONIURA mkdir_all(app_dir)
+
+  EVOCA VERBUM active_seed AD CONIURA path_join(root, "active.bin")
+  EVOCA VERBUM next_seed AD CONIURA path_join(root, "next.bin")
+  CONIURA write_all(active_seed, "version-one")
+  CONIURA write_all(next_seed, "version-two")
+
+  EVOCA DeployState ds AD CONIURA deploy_state_new(app_dir, "phase27", CONIURA path_join(app_dir, "civitas.pid"))
+  CONIURA deploy_promote_binary(ds, active_seed)
+  SI CONIURA compare(CONIURA read_all(CONIURA path_join(app_dir, "app")), "version-one") != 0
+    IACE "first promote should install active binary"
+  FIN SI
+
+  CONIURA deploy_promote_binary(ds, next_seed)
+  SI CONIURA compare(CONIURA read_all(CONIURA path_join(app_dir, "app")), "version-two") != 0
+    IACE "second promote should replace active binary"
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA path_join(app_dir, "app.prev")), "version-one") != 0
+    IACE "second promote should keep previous binary as app.prev"
+  FIN SI
+
+  SI NON CONIURA deploy_rollback(ds)
+    IACE "rollback should succeed when app.prev exists"
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA path_join(app_dir, "app")), "version-one") != 0
+    IACE "rollback should restore previous binary as active"
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA path_join(app_dir, "app.broken")), "version-two") != 0
+    IACE "rollback should keep replaced binary as app.broken"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

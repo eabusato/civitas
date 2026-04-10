@@ -1,0 +1,101 @@
+INCIPIT grimoire "fase9_9d_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_derive.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_exif.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase9_9d_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase9_tmp_dir(CONIURA concat("9d_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_config(VERBUM root) REDDE StorageConfig
+  REDDE CONIURA storage_config_make(
+    CONIURA path_join(root, "media"),
+    "/media",
+    "/media/private",
+    60,
+    MEDIA_NAMING_UUID_WITH_EXT
+  )
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_open_store(VERBUM root) REDDE MediaStore
+  EVOCA SPECULUM NIHIL open_res AD CONIURA storage_open(CONIURA phase9_9d_config(root))
+  SI CONIURA result_is_err GENUS(MediaStore, VERBUM)(open_res)
+    IACE CONIURA result_unwrap_err GENUS(MediaStore, VERBUM)(open_res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(MediaStore, VERBUM)(open_res)
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_make_image(VERBUM root, VERBUM filename, VERBUM color, REX width, REX height) REDDE VERBUM
+  EVOCA VERBUM uploads_dir AD CONIURA path_join(root, "uploads")
+  EVOCA VERBUM image_path AD CONIURA path_join(uploads_dir, filename)
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "ffmpeg -f lavfi -i color=c=",
+    CONIURA concat(
+      color,
+      CONIURA concat(
+        ":s=",
+        CONIURA concat(
+          CONIURA stringify_int(width),
+          CONIURA concat(
+            "x",
+            CONIURA concat(
+              CONIURA stringify_int(height),
+              CONIURA concat(" -frames:v 1 \"", CONIURA concat(image_path, "\" -y >/dev/null 2>&1"))
+            )
+          )
+        )
+      )
+    )
+  )
+  CONIURA mkdir_all(uploads_dir)
+  SI CONIURA run(cmd) != 0
+    IACE "ffmpeg failed to generate image fixture"
+  FIN SI
+  REDDE image_path
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_add_gps_exif(VERBUM path) REDDE NIHIL
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "exiftool -GPSLatitude=1 -GPSLongitude=1 -overwrite_original \"",
+    CONIURA concat(path, "\" >/dev/null 2>&1")
+  )
+  SI CONIURA run(cmd) != 0
+    IACE "failed to add exif metadata"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_exif_value(VERBUM path, VERBUM key) REDDE VERBUM
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "exiftool -s3 -",
+    CONIURA concat(key, CONIURA concat(" \"", CONIURA concat(path, "\"")))
+  )
+  REDDE CONIURA trim(CONIURA run_capture(cmd))
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_specs_avatar_thumb() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL specs AD CONIURA fluxus_init(MENSURA(ImageDerivativeSpec))
+  EVOCA ImageDerivativeSpec avatar AD CONIURA image_spec_avatar()
+  EVOCA ImageDerivativeSpec thumb AD CONIURA image_spec_thumb()
+  CONIURA fluxus_push(specs, SPECULUM avatar)
+  CONIURA fluxus_push(specs, SPECULUM thumb)
+  REDDE specs
+EXPLICIT RITUALE
+
+RITUALE phase9_9d_process_config() REDDE ImageProcessConfig
+  REDDE CONIURA image_process_config_new(CONIURA phase9_9d_specs_avatar_thumb(), VERUM, MEDIA_ZONE_QUARANTINE)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

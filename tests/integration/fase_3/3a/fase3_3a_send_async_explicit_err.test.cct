@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase3_3a_send_async_explicit_err_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Signal signal
+  EVOCA SignalEnvelope env
+  CONIURA signal_init(SPECULUM signal, "async", SIGNAL_CONTINUE_ON_ERROR)
+  CONIURA signal_envelope_fill(SPECULUM env, "async", "test", "", "", SPECULUM env)
+  EVOCA SPECULUM NIHIL res AD CONIURA signal_send_async(signal, SPECULUM env)
+
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  SI CONIURA find(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res), "nao configurado") == -1
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

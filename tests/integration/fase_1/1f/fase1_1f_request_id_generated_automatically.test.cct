@@ -1,0 +1,68 @@
+INCIPIT grimoire "fase1_1f_request_id_generated_automatically_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "./support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM ready AD CONIURA tmp_file("fase1_1f_request_id.ready")
+  EVOCA VERBUM done AD CONIURA tmp_file("fase1_1f_request_id.done")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase1_1f_request_id.log")
+  EVOCA VERBUM reqlog AD CONIURA tmp_file("fase1_1f_request_id.requests.log")
+  EVOCA VERBUM access_log AD CONIURA tmp_file("fase1_1f_request_id.access.log")
+  EVOCA VERBUM stats AD CONIURA tmp_file("fase1_1f_request_id.stats")
+  EVOCA SPECULUM NIHIL sock
+  EVOCA VERBUM req AD "GET /forwarded HTTP/1.1"
+  EVOCA HttpResponse res
+  EVOCA VERBUM request_id AD ""
+
+  CONIURA cleanup_file(ready)
+  CONIURA cleanup_file(done)
+  CONIURA cleanup_file(log)
+  CONIURA cleanup_file(reqlog)
+  CONIURA cleanup_file(access_log)
+  CONIURA cleanup_file(stats)
+
+  SI CONIURA build_probe_server(log) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA spawn_to_log(CONIURA probe_command_with_proxy(18122, 1, ready, done, reqlog, access_log, stats, "", 1, 0, 0), log) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 4000)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(ready), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Host: app.local")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+
+  VINCIRE sock AD CONIURA open_local_socket(18122)
+  SI CONIURA send_raw(sock, req) != 0
+    REDDE 4
+  FIN SI
+  VINCIRE res AD CONIURA read_http_response(sock)
+  CONIURA net_close(sock)
+  VINCIRE request_id AD CONIURA response_request_id(res)
+
+  SI CONIURA len(request_id) < 30
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(request_id, CONIURA forwarded_field(CONIURA http_response_body(res), 0)) != 0
+    REDDE 6
+  FIN SI
+  SI NON CONIURA wait_for_file(done, 4000)
+    REDDE 7
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

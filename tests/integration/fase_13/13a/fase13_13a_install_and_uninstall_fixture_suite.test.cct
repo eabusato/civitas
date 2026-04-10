@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase13_13a_install_and_uninstall_fixture_suite"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase13_db_open("13a_install_and_uninstall_fixture_suite")
+  CONIURA phase13_seed_schema(db)
+
+  EVOCA FixtureSuite suite AD CONIURA fixture_suite_new("cats", FkReference)
+  EVOCA FixtureEntry one
+  CONIURA fixture_entry_fill(SPECULUM one, "categorias", "1")
+  CONIURA fixture_entry_add_field(SPECULUM one, "nome", "Tecnologia", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM one, "slug", "tecnologia", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM one, "ativo", "1", FALSUM)
+  CONIURA fixture_suite_add_entry(SPECULUM suite, one)
+
+  CONIURA fixture_install(db, suite)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM categorias") != 1
+    REDDE 1
+  FIN SI
+
+  CONIURA fixture_uninstall(db, suite)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM categorias") != 0
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

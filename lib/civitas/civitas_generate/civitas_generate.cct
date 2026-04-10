@@ -1,0 +1,452 @@
+INCIPIT grimoire "civitas_generate"
+
+ADVOCARE "cct/code_writer.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO FieldKind
+  FieldVerbum,
+  FieldRex,
+  FieldUmbra,
+  FieldVerum,
+  FieldDate,
+  FieldDatetime
+FIN ORDO
+
+SIGILLUM ModelField
+  name: VERBUM
+  kind: FieldKind
+  nullable: VERUM
+FIN SIGILLUM
+
+SIGILLUM GenerateModelConfig
+  model_name: VERBUM
+  table_name: VERBUM
+  module_name: VERBUM
+  fields: SPECULUM NIHIL
+  dest_dir: VERBUM
+FIN SIGILLUM
+
+SIGILLUM GenerateApiConfig
+  model_name: VERBUM
+  module_name: VERBUM
+  dest_dir: VERBUM
+FIN SIGILLUM
+
+SIGILLUM GenerateMigrationConfig
+  description: VERBUM
+  migrations_dir: VERBUM
+FIN SIGILLUM
+
+RITUALE civitas_gen_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_to_snake(VERBUM name) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(name)
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(name, i)
+    SI c >= 65 ET c <= 90
+      SI i > 0
+        VINCIRE out AD CONIURA concat(out, "_")
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, CONIURA to_lower(CONIURA from_char(c)))
+    ALITER
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(c))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_capitalize(VERBUM raw) REDDE VERBUM
+  SI CONIURA len(raw) == 0
+    REDDE raw
+  FIN SI
+  REDDE CONIURA concat(CONIURA to_upper(CONIURA substring(raw, 0, 1)), CONIURA substring(raw, 1, CONIURA len(raw)))
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_parse_field_kind(VERBUM tipo) REDDE FieldKind
+  SI CONIURA starts_with(tipo, "REX")
+    REDDE FieldRex
+  FIN SI
+  SI CONIURA starts_with(tipo, "UMBRA")
+    REDDE FieldUmbra
+  FIN SI
+  SI CONIURA starts_with(tipo, "VERUM")
+    REDDE FieldVerum
+  FIN SI
+  SI CONIURA starts_with(tipo, "DATE")
+    REDDE FieldDate
+  FIN SI
+  SI CONIURA starts_with(tipo, "DATETIME")
+    REDDE FieldDatetime
+  FIN SI
+  REDDE FieldVerbum
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_parse_field(VERBUM spec) REDDE ModelField
+  EVOCA ModelField field
+  EVOCA REX colon AD CONIURA find(spec, ":")
+  SI colon == -1
+    VINCIRE field.name AD spec
+    VINCIRE field.kind AD FieldVerbum
+    VINCIRE field.nullable AD FALSUM
+    REDDE field
+  FIN SI
+  EVOCA VERBUM field_name AD CONIURA trim(CONIURA substring(spec, 0, colon))
+  EVOCA VERBUM field_type AD CONIURA trim(CONIURA substring(spec, colon + 1, CONIURA len(spec)))
+  VINCIRE field.name AD field_name
+  VINCIRE field.kind AD CONIURA civitas_gen_parse_field_kind(field_type)
+  VINCIRE field.nullable AD CONIURA ends_with(field_type, "?")
+  REDDE field
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_cct_type(FieldKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS FieldRex:
+      REDDE "REX"
+    CASUS FieldUmbra:
+      REDDE "UMBRA"
+    CASUS FieldVerum:
+      REDDE "VERUM"
+    ALIOQUIN:
+      REDDE "VERBUM"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_sql_type(ModelField field) REDDE VERBUM
+  SI field.kind == FieldVerbum
+    SI field.nullable
+      REDDE "TEXT"
+    FIN SI
+    REDDE "TEXT NOT NULL"
+  FIN SI
+  SI field.kind == FieldRex
+    SI field.nullable
+      REDDE "INTEGER"
+    FIN SI
+    REDDE "INTEGER NOT NULL"
+  FIN SI
+  SI field.kind == FieldUmbra
+    SI field.nullable
+      REDDE "REAL"
+    FIN SI
+    REDDE "REAL NOT NULL"
+  FIN SI
+  SI field.kind == FieldVerum
+    REDDE "BOOLEAN NOT NULL DEFAULT FALSE"
+  FIN SI
+  SI field.kind == FieldDate
+    SI field.nullable
+      REDDE "DATE"
+    FIN SI
+    REDDE "DATE NOT NULL"
+  FIN SI
+  SI field.nullable
+    REDDE "TIMESTAMPTZ"
+  FIN SI
+  REDDE "TIMESTAMPTZ NOT NULL"
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_next_migration_number(VERBUM migrations_dir) REDDE VERBUM
+  SI NON CONIURA exists(migrations_dir)
+    REDDE "0001"
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(migrations_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX max_value AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM entry_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA ends_with(*entry_ptr, ".sql") ET CONIURA len(*entry_ptr) >= 4
+      EVOCA REX current AD CONIURA fmt_parse_int(CONIURA substring(*entry_ptr, 0, 4))
+      SI current > max_value
+        VINCIRE max_value AD current
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE CONIURA pad_left(CONIURA stringify_int(max_value + 1), 4, 48)
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_migration_prefix(VERBUM migrations_dir) REDDE VERBUM
+  REDDE CONIURA civitas_gen_next_migration_number(migrations_dir)
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_app_name(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM value AD CONIURA trim(raw)
+  SI CONIURA len(value) == 0
+    REDDE "core"
+  FIN SI
+  REDDE CONIURA civitas_gen_to_snake(value)
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_app_dir(VERBUM dest_dir, VERBUM app_name) REDDE VERBUM
+  REDDE CONIURA path_join(dest_dir, CONIURA concat("apps/", CONIURA civitas_gen_app_name(app_name)))
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_model_path(GenerateModelConfig cfg) REDDE VERBUM
+  REDDE CONIURA civitas_gen_model_path_in_app(cfg, "core")
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_model_path_in_app(GenerateModelConfig cfg, VERBUM app_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA civitas_gen_app_dir(cfg.dest_dir, app_name)
+  REDDE CONIURA path_join(root, CONIURA concat("models/", CONIURA concat(cfg.module_name, ".cct")))
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_model_cct(GenerateModelConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(cfg.module_name, "_model\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/verbum.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("SIGILLUM ", cfg.model_name))
+  CONIURA writer_writeln(w, "  id: REX")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM ModelField field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    CONIURA writer_writeln(w, CONIURA concat("  ", CONIURA concat((*field_ptr).name, CONIURA concat(": ", CONIURA civitas_gen_cct_type((*field_ptr).kind)))))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA writer_writeln(w, "FIN SIGILLUM")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_table_name() REDDE VERBUM")))
+  CONIURA writer_writeln(w, CONIURA concat("  REDDE \"", CONIURA concat(cfg.table_name, "\"")))
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(CONIURA concat(cfg.module_name, "_new() REDDE "), cfg.model_name)))
+  CONIURA writer_writeln(w, CONIURA concat("  EVOCA ", CONIURA concat(cfg.model_name, " item")))
+  CONIURA writer_writeln(w, "  VINCIRE item.id AD 0")
+  VINCIRE i AD 0
+  DUM i < n
+    EVOCA SPECULUM ModelField field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI (*field_ptr).kind == FieldVerum
+      CONIURA writer_writeln(w, CONIURA concat("  VINCIRE item.", CONIURA concat((*field_ptr).name, " AD FALSUM")))
+    ALITER
+      SI (*field_ptr).kind == FieldRex
+        CONIURA writer_writeln(w, CONIURA concat("  VINCIRE item.", CONIURA concat((*field_ptr).name, " AD 0")))
+      ALITER
+        SI (*field_ptr).kind == FieldUmbra
+          CONIURA writer_writeln(w, CONIURA concat("  VINCIRE item.", CONIURA concat((*field_ptr).name, " AD 0.0")))
+        ALITER
+          CONIURA writer_writeln(w, CONIURA concat("  VINCIRE item.", CONIURA concat((*field_ptr).name, " AD \"\"")))
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA writer_writeln(w, "  REDDE item")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_migration_sql(GenerateModelConfig cfg, VERBUM prefix) REDDE VERBUM
+  EVOCA VERBUM out AD "-- UP\n"
+  VINCIRE out AD CONIURA concat(out, CONIURA concat("CREATE TABLE IF NOT EXISTS ", CONIURA concat(cfg.table_name, " (\n")))
+  VINCIRE out AD CONIURA concat(out, "  id INTEGER PRIMARY KEY,\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM ModelField field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    VINCIRE out AD CONIURA concat(out, "  ")
+    VINCIRE out AD CONIURA concat(out, (*field_ptr).name)
+    VINCIRE out AD CONIURA concat(out, " ")
+    VINCIRE out AD CONIURA concat(out, CONIURA civitas_gen_sql_type(*field_ptr))
+    SI i + 1 < n
+      VINCIRE out AD CONIURA concat(out, ",\n")
+    ALITER
+      VINCIRE out AD CONIURA concat(out, "\n")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, ");\n")
+  VINCIRE out AD CONIURA concat(out, "\n-- DOWN\n")
+  VINCIRE out AD CONIURA concat(out, CONIURA concat("DROP TABLE IF EXISTS ", CONIURA concat(cfg.table_name, ";\n")))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_api_cct(GenerateApiConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(cfg.module_name, "_api_handlers\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("ADVOCARE \"../models/", CONIURA concat(cfg.module_name, ".cct\"")))
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/verbum.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_api_base_path() REDDE VERBUM")))
+  CONIURA writer_writeln(w, CONIURA concat("  REDDE \"/api/", CONIURA concat(cfg.module_name, "\"")))
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_api_list_json() REDDE VERBUM")))
+  CONIURA writer_writeln(w, CONIURA concat("  REDDE \"{\\\"resource\\\":\\\"", CONIURA concat(cfg.module_name, "\\\",\\\"items\\\":[]}\"")))
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_api_detail_json(REX id) REDDE VERBUM")))
+  CONIURA writer_writeln(w, CONIURA concat("  REDDE \"{\\\"resource\\\":\\\"", CONIURA concat(cfg.module_name, "\\\",\\\"detail\\\":true}\"")))
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_route_module_cct(GenerateApiConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(cfg.module_name, "_route_module\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("ADVOCARE \"../views/", CONIURA concat(cfg.module_name, ".cct\"")))
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_routes_register() REDDE NIHIL")))
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA println(\"register routes for ", CONIURA concat(cfg.module_name, "\")")))
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_admin_cct(GenerateApiConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(cfg.module_name, "_admin\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("ADVOCARE \"../models/", CONIURA concat(cfg.module_name, ".cct\"")))
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/fluxus.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/verbum.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_admin_label() REDDE VERBUM")))
+  CONIURA writer_writeln(w, CONIURA concat("  REDDE \"", CONIURA concat(cfg.model_name, "\"")))
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(cfg.module_name, "_admin_fields() REDDE SPECULUM NIHIL")))
+  CONIURA writer_writeln(w, "  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))")
+  CONIURA writer_writeln(w, "  EVOCA VERBUM field_id AD \"id\"")
+  CONIURA writer_writeln(w, "  CONIURA fluxus_push(out, SPECULUM field_id)")
+  CONIURA writer_writeln(w, "  REDDE out")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_write(VERBUM path_value, VERBUM content) REDDE NIHIL
+  CONIURA mkdir_all(CONIURA path_dirname(path_value))
+  CONIURA write_all(path_value, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_routes_index_default() REDDE VERBUM
+  REDDE CONIURA civitas_gen_routes_index_default_for_app("core")
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_routes_index_default_for_app(VERBUM app_name) REDDE VERBUM
+  EVOCA VERBUM app_value AD CONIURA civitas_gen_app_name(app_name)
+  EVOCA VERBUM out AD CONIURA concat("INCIPIT grimoire \"", CONIURA concat(app_value, "_urls\"\n\n"))
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"cct/io.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"views/index.cct\"\n\n")
+  VINCIRE out AD CONIURA concat(out, CONIURA concat("RITUALE ", CONIURA concat(app_value, "_urls_register() REDDE NIHIL\n")))
+  VINCIRE out AD CONIURA concat(out, CONIURA concat("  CONIURA ", CONIURA concat(app_value, "_views_register()\n")))
+  VINCIRE out AD CONIURA concat(out, "  REDDE\nEXPLICIT RITUALE\n\nEXPLICIT grimoire\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_routes_index_add(VERBUM index_path, VERBUM module_name) REDDE NIHIL
+  CONIURA civitas_gen_routes_index_add_in_app(index_path, "core", module_name)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_routes_index_add_in_app(VERBUM index_path, VERBUM app_name, VERBUM module_name) REDDE NIHIL
+  EVOCA VERBUM app_value AD CONIURA civitas_gen_app_name(app_name)
+  EVOCA VERBUM content AD CONIURA civitas_gen_routes_index_default_for_app(app_value)
+  EVOCA VERBUM import_line AD CONIURA concat("ADVOCARE \"routes/", CONIURA concat(module_name, ".cct\"\n"))
+  EVOCA VERBUM call_line AD CONIURA concat("  CONIURA ", CONIURA concat(module_name, "_routes_register()\n"))
+  EVOCA VERBUM base_import AD "ADVOCARE \"views/index.cct\"\n"
+  EVOCA VERBUM base_return AD "  REDDE\n"
+  SI CONIURA exists(index_path)
+    VINCIRE content AD CONIURA read_all(index_path)
+  FIN SI
+  SI CONIURA find(content, import_line) == -1
+    VINCIRE content AD CONIURA replace(content, base_import, CONIURA concat(base_import, import_line))
+  FIN SI
+  SI CONIURA find(content, call_line) == -1
+    VINCIRE content AD CONIURA replace(content, base_return, CONIURA concat(call_line, base_return))
+  FIN SI
+  CONIURA civitas_gen_write(index_path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_model_run(GenerateModelConfig cfg) REDDE SPECULUM NIHIL
+  REDDE CONIURA civitas_gen_model_run_in_app(cfg, "core")
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_model_run_in_app(GenerateModelConfig cfg, VERBUM app_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM model_path AD CONIURA civitas_gen_model_path(cfg)
+  EVOCA VERBUM migrations_dir AD CONIURA path_join(cfg.dest_dir, "migrations")
+  EVOCA VERBUM prefix AD CONIURA civitas_gen_migration_prefix(migrations_dir)
+  EVOCA VERBUM migration_name AD CONIURA concat(prefix, CONIURA concat("_create_", CONIURA concat(cfg.module_name, ".sql")))
+  VINCIRE model_path AD CONIURA civitas_gen_model_path_in_app(cfg, app_name)
+  CONIURA civitas_gen_write(model_path, CONIURA civitas_gen_model_cct(cfg))
+  CONIURA civitas_gen_write(CONIURA path_join(migrations_dir, migration_name), CONIURA civitas_gen_migration_sql(cfg, prefix))
+  REDDE CONIURA civitas_gen_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_migration_run(GenerateMigrationConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM prefix AD CONIURA civitas_gen_migration_prefix(cfg.migrations_dir)
+  EVOCA VERBUM slug AD CONIURA replace_all(CONIURA to_lower(CONIURA trim(cfg.description)), " ", "_")
+  EVOCA VERBUM file_path AD CONIURA path_join(cfg.migrations_dir, CONIURA concat(prefix, CONIURA concat("_", CONIURA concat(slug, ".sql"))))
+  CONIURA civitas_gen_write(file_path, CONIURA concat("-- UP\n-- ", CONIURA concat(cfg.description, "\n\n-- DOWN\n")))
+  REDDE CONIURA civitas_gen_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_api_run(GenerateApiConfig cfg) REDDE SPECULUM NIHIL
+  REDDE CONIURA civitas_gen_api_run_in_app(cfg, "core")
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_api_run_in_app(GenerateApiConfig cfg, VERBUM app_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_gen_app_dir(cfg.dest_dir, app_name)
+  EVOCA VERBUM model_path AD CONIURA path_join(root, CONIURA concat("models/", CONIURA concat(cfg.module_name, ".cct")))
+  SI NON CONIURA exists(model_path)
+    REDDE CONIURA civitas_gen_err("model file missing")
+  FIN SI
+  CONIURA civitas_gen_write(CONIURA path_join(root, CONIURA concat("views/", CONIURA concat(cfg.module_name, ".cct"))), CONIURA civitas_gen_api_cct(cfg))
+  CONIURA civitas_gen_write(CONIURA path_join(root, CONIURA concat("routes/", CONIURA concat(cfg.module_name, ".cct"))), CONIURA civitas_gen_route_module_cct(cfg))
+  CONIURA civitas_gen_routes_index_add_in_app(CONIURA path_join(root, "urls.cct"), app_name, cfg.module_name)
+  REDDE CONIURA civitas_gen_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_admin_run(GenerateApiConfig cfg) REDDE SPECULUM NIHIL
+  REDDE CONIURA civitas_gen_admin_run_in_app(cfg, "core")
+EXPLICIT RITUALE
+
+RITUALE civitas_gen_admin_run_in_app(GenerateApiConfig cfg, VERBUM app_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_gen_app_dir(cfg.dest_dir, app_name)
+  EVOCA VERBUM model_path AD CONIURA path_join(root, CONIURA concat("models/", CONIURA concat(cfg.module_name, ".cct")))
+  SI NON CONIURA exists(model_path)
+    REDDE CONIURA civitas_gen_err("model file missing")
+  FIN SI
+  CONIURA civitas_gen_write(CONIURA path_join(root, CONIURA concat("admin/", CONIURA concat(cfg.module_name, ".cct"))), CONIURA civitas_gen_admin_cct(cfg))
+  REDDE CONIURA civitas_gen_ok()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

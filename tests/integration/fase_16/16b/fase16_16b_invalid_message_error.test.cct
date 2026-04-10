@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase16_16b_invalid_message_error"
+
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_settings.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_memory("no-reply@test.example", "Test App")
+  EVOCA SPECULUM NIHIL open_res AD CONIURA mailer_open(cfg)
+  EVOCA Mailer mailer AD CONIURA result_unwrap GENUS(Mailer, MailerError)(open_res)
+  EVOCA MailMessage msg AD CONIURA mailer_new_message()
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(SPECULUM mailer, msg)
+  SI NON CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA mailer_error_name(CONIURA result_unwrap_err GENUS(MailSendResult, MailerError)(send_res)), "MailerMensagemInvalida") != 0
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 2
+  FIN SI
+  CONIURA mailer_close(SPECULUM mailer)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

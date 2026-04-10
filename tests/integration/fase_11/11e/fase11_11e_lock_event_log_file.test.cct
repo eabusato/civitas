@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase11_11e_lock_event_log_file"
+
+ADVOCARE "../../fase_3/support/common.cct"
+ADVOCARE "../../../../lib/civitas/locks/locks.cct"
+ADVOCARE "../../../../lib/civitas/locks/locks_log.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD "tests/tmp/fase_11/11e_lock_event_log_file"
+  CONIURA phase3_reset_dir(root)
+  EVOCA Logger logger AD CONIURA log_new("fase11", DEBUG)
+  EVOCA VERBUM path AD CONIURA path_join(root, "phase11.log")
+  CONIURA log_set_sink_file(SPECULUM logger, path)
+  EVOCA LockEvent event AD CONIURA lock_event_new("cron:publish", VERUM, 12, "cron:publish")
+  CONIURA lock_event_log(SPECULUM logger, event)
+  EVOCA VERBUM content AD CONIURA read_all(path)
+  SI CONIURA find(content, "lock acquired") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(content, "cron:publish") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

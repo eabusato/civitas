@@ -1,0 +1,30 @@
+INCIPIT grimoire "civitas_factory_rel"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "factory.cct"
+ADVOCARE "factory_build.cct"
+ADVOCARE "factory_exec.cct"
+
+RITUALE factory_create_with_deps(SPECULUM NIHIL db, FactoryDef def, FactoryRegistry reg, Json overrides) REDDE REX
+  EVOCA REX nd AD CONIURA fluxus_len(def.deps)
+  EVOCA REX di AD 0
+  DUM di < nd
+    EVOCA SPECULUM FactoryDep dp AD CONIURA fluxus_get(def.deps, di)
+    SI NON CONIURA factory_override_has(overrides, (*dp).campo_fk)
+      EVOCA SPECULUM NIHIL opt_dep AD CONIURA factory_registry_get(reg, (*dp).factory_dep)
+      SI CONIURA option_is_none GENUS(FactoryDef)(opt_dep)
+        IACE (*dp).factory_dep
+      FIN SI
+      EVOCA FactoryDef dep_def AD CONIURA option_unwrap GENUS(FactoryDef)(opt_dep)
+      EVOCA REX dep_id AD CONIURA factory_create(db, dep_def)
+      CONIURA json_set_key(overrides, (*dp).campo_fk, CONIURA json_num(cast GENUS(UMBRA)(dep_id)))
+    FIN SI
+    VINCIRE di AD di + 1
+  FIN DUM
+  REDDE CONIURA factory_create_with(db, def, overrides)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

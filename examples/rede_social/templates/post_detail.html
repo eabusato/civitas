@@ -1,0 +1,29 @@
+{% EVOCA RedePostDetailPageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Post</p>
+    <h1>{{ post.title }}</h1>
+    <p>By <a href="/perfil/{{ post.author_handle }}">@{{ post.author_handle }}</a></p>
+  </div>
+</section>
+{% ADVOCARE "partials/post_card.html" AD post_card %}
+<section class="card">
+  <h3>Conversation</h3>
+  {% SI can_comment %}
+    <form method="POST" action="{{ comment_action }}" class="stack-form">
+      {{ csrf_html|safe }}
+      <label>Reply<textarea name="body" rows="4" placeholder="Add a public note"></textarea></label>
+      <button type="submit">Publish reply</button>
+    </form>
+  {% FIN SI %}
+  {% DUM row IN comments %}
+    <article class="comment">
+      <strong>{{ row.author_name }}</strong>
+      <span class="muted"> @{{ row.author_handle }} &middot; {{ row.created_at }}</span>
+      <p>{{ row.body }}</p>
+    </article>
+  {% FIN DUM %}
+</section>
+{% FIN SECTIO %}

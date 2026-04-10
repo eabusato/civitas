@@ -1,0 +1,58 @@
+INCIPIT grimoire "civitas_validate_sanitize"
+
+ADVOCARE "cct/regex.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE sanitize_trim(VERBUM v) REDDE VERBUM
+  REDDE CONIURA trim(v)
+EXPLICIT RITUALE
+
+RITUALE sanitize_lower(VERBUM v) REDDE VERBUM
+  REDDE CONIURA to_lower(v)
+EXPLICIT RITUALE
+
+RITUALE sanitize_upper(VERBUM v) REDDE VERBUM
+  REDDE CONIURA to_upper(v)
+EXPLICIT RITUALE
+
+RITUALE sanitize_normalize_email(VERBUM email) REDDE VERBUM
+  REDDE CONIURA to_lower(CONIURA trim(email))
+EXPLICIT RITUALE
+
+RITUALE sanitize_strip_tags(VERBUM v) REDDE VERBUM
+  EVOCA SPECULUM NIHIL compiled AD CONIURA regex_compile("<[^>]*>")
+  SI CONIURA result_is_err GENUS(Regex, VERBUM)(compiled)
+    REDDE v
+  FIN SI
+  EVOCA Regex rx AD CONIURA result_unwrap GENUS(Regex, VERBUM)(compiled)
+  EVOCA VERBUM out AD CONIURA regex_replace_all(rx, v, "")
+  CONIURA regex_free(rx)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE sanitize_normalize_spaces(VERBUM v) REDDE VERBUM
+  EVOCA VERBUM trimmed AD CONIURA trim(v)
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(trimmed)
+  EVOCA VERUM previous_space AD FALSUM
+
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(trimmed, i)
+    SI c == 32 VEL c == 9 VEL c == 10 VEL c == 13
+      SI NON previous_space
+        VINCIRE out AD CONIURA concat(out, " ")
+        VINCIRE previous_space AD VERUM
+      FIN SI
+    ALITER
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(c))
+      VINCIRE previous_space AD FALSUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

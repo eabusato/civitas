@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase13_13e_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model_ddl.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_schema_map.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE phase13_13e_schema_json() REDDE VERBUM
+  REDDE "{\"models\":[{\"name\":\"Post\",\"app\":\"blog\",\"db_table\":\"blog_post\",\"fields\":[{\"name\":\"id\",\"type\":\"AutoField\",\"primary_key\":true,\"null\":false},{\"name\":\"titulo\",\"type\":\"CharField\",\"max_length\":200,\"null\":false},{\"name\":\"conteudo\",\"type\":\"TextField\",\"null\":false},{\"name\":\"imagem\",\"type\":\"ImageField\",\"null\":true}]}]}"
+EXPLICIT RITUALE
+
+RITUALE phase13_13e_prepare_schema_db(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir(test_name)
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "civitas.db"))
+  EVOCA SPECULUM NIHIL models AD CONIURA django_schema_parse(CONIURA phase13_13e_schema_json())
+  EVOCA SPECULUM DjangoModel dmp AD CONIURA fluxus_get(models, 0)
+  CONIURA model_def_create_table(db, CONIURA django_model_to_civitas(*dmp))
+  REDDE db
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

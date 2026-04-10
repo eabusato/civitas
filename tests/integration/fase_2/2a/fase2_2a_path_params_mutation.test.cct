@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase2_2a_path_params_mutation_test"
+
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest raw AD CONIURA http_request_new("GET", "/posts/42")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_from_http(raw, "127.0.0.1", "http", "example.test", "req-5")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    REDDE 1
+  FIN SI
+
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA SPECULUM NIHIL params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(params, "id", "42")
+  CONIURA request_set_path_params(SPECULUM req, params)
+
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA request_param(req, "id")
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(value_opt), "42") != 0
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

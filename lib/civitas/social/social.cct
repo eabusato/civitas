@@ -1,0 +1,145 @@
+INCIPIT grimoire "civitas_social"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO CommentState
+  CsPending,
+  CsApproved,
+  CsRejected,
+  CsDeleted
+FIN ORDO
+
+ORDO ReactionKind
+  RkLike,
+  RkLove,
+  RkBookmark
+FIN ORDO
+
+SIGILLUM Comment
+  id: REX
+  object_type: VERBUM
+  object_id: REX
+  author_name: VERBUM
+  author_email: VERBUM
+  body: VERBUM
+  state: CommentState
+  created_at: REX
+  updated_at: REX
+FIN SIGILLUM
+
+SIGILLUM Reaction
+  id: REX
+  object_type: VERBUM
+  object_id: REX
+  actor_id: VERBUM
+  kind: ReactionKind
+  created_at: REX
+FIN SIGILLUM
+
+SIGILLUM ViewCounter
+  object_type: VERBUM
+  object_id: REX
+  total: REX
+  updated_at: REX
+FIN SIGILLUM
+
+SIGILLUM EditorialTimestamp
+  created_at: REX
+  updated_at: REX
+FIN SIGILLUM
+
+RITUALE social_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE social_ensure_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, object_type TEXT NOT NULL, object_id INTEGER NOT NULL, author_name TEXT NOT NULL, author_email TEXT NOT NULL, body TEXT NOT NULL, state INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_reactions (id INTEGER PRIMARY KEY AUTOINCREMENT, object_type TEXT NOT NULL, object_id INTEGER NOT NULL, actor_id TEXT NOT NULL, kind INTEGER NOT NULL, created_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_civitas_reactions_unique ON civitas_reactions(object_type, object_id, actor_id, kind)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_view_counters (object_type TEXT NOT NULL, object_id INTEGER NOT NULL, total INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (object_type, object_id))")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE comment_state_to_int(CommentState state) REDDE REX
+  ELIGE state
+    CASUS CsPending: REDDE 0
+    CASUS CsApproved: REDDE 1
+    CASUS CsRejected: REDDE 2
+    CASUS CsDeleted: REDDE 3
+    ALIOQUIN: REDDE 0
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE comment_state_from_int(REX state) REDDE CommentState
+  SI state == 1
+    REDDE CsApproved
+  FIN SI
+  SI state == 2
+    REDDE CsRejected
+  FIN SI
+  SI state == 3
+    REDDE CsDeleted
+  FIN SI
+  REDDE CsPending
+EXPLICIT RITUALE
+
+RITUALE reaction_kind_to_int(ReactionKind kind) REDDE REX
+  ELIGE kind
+    CASUS RkLike: REDDE 0
+    CASUS RkLove: REDDE 1
+    CASUS RkBookmark: REDDE 2
+    ALIOQUIN: REDDE 0
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE reaction_kind_from_int(REX kind) REDDE ReactionKind
+  SI kind == 1
+    REDDE RkLove
+  FIN SI
+  SI kind == 2
+    REDDE RkBookmark
+  FIN SI
+  REDDE RkLike
+EXPLICIT RITUALE
+
+RITUALE comment_empty() REDDE Comment
+  EVOCA Comment c
+  VINCIRE c.id AD 0
+  VINCIRE c.object_type AD ""
+  VINCIRE c.object_id AD 0
+  VINCIRE c.author_name AD ""
+  VINCIRE c.author_email AD ""
+  VINCIRE c.body AD ""
+  VINCIRE c.state AD CsPending
+  VINCIRE c.created_at AD 0
+  VINCIRE c.updated_at AD 0
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE comment_from_stmt(SPECULUM NIHIL stmt) REDDE Comment
+  EVOCA Comment c
+  VINCIRE c.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE c.object_type AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE c.object_id AD CONIURA stmt_get_int(stmt, 2)
+  VINCIRE c.author_name AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE c.author_email AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE c.body AD CONIURA stmt_get_text(stmt, 5)
+  VINCIRE c.state AD CONIURA comment_state_from_int(CONIURA stmt_get_int(stmt, 6))
+  VINCIRE c.created_at AD CONIURA stmt_get_int(stmt, 7)
+  VINCIRE c.updated_at AD CONIURA stmt_get_int(stmt, 8)
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE view_counter_empty(VERBUM object_type, REX object_id) REDDE ViewCounter
+  EVOCA ViewCounter counter
+  VINCIRE counter.object_type AD object_type
+  VINCIRE counter.object_id AD object_id
+  VINCIRE counter.total AD 0
+  VINCIRE counter.updated_at AD 0
+  REDDE counter
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

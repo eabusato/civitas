@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase8_8b_render_html_and_levels_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash_render.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL msgs AD CONIURA fluxus_init(MENSURA(FlashMessage))
+  EVOCA FlashMessage msg
+  VINCIRE msg.level AD FlError
+  VINCIRE msg.texto AD "Falhou"
+  CONIURA fluxus_push(msgs, SPECULUM msg)
+  EVOCA VERBUM html AD CONIURA flash_render(msgs)
+
+  SI CONIURA compare(CONIURA flash_level_to_class(FlSuccess), "flash-success") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "flash-message flash-error") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "role=\"alert\"") == -1 VEL CONIURA find(html, "aria-live=\"polite\"") == -1
+    REDDE 3
+  FIN SI
+  CONIURA fluxus_free(msgs)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

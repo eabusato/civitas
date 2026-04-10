@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase7_7e_field_and_form_free_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldDef field AD CONIURA field_def_new("cpf", "CPF", IkText)
+  EVOCA FormDef def AD CONIURA form_def_new("/cadastro", CONIURA phase7_render_csrf("token"))
+
+  CONIURA field_def_add_attr(SPECULUM field, "autocomplete", "off")
+  CONIURA field_def_add_wrapper_attr(SPECULUM field, "data-wrapper", "main")
+  CONIURA form_def_add_attr(SPECULUM def, "data-form", "signup")
+  CONIURA form_def_add_field(SPECULUM def, field)
+  CONIURA form_def_free(SPECULUM def)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

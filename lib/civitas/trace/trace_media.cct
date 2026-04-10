@@ -1,0 +1,24 @@
+INCIPIT grimoire "civitas_trace_media"
+
+ADVOCARE "cct/instrument.cct"
+
+RITUALE trace_media_transcode_span_begin(VERBUM input_path, VERBUM output_path, VERBUM format) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), "ffmpeg:transcode")
+  CONIURA instrument_span_attr(span_id, "ffmpeg.input", input_path)
+  CONIURA instrument_span_attr(span_id, "ffmpeg.output", output_path)
+  CONIURA instrument_span_attr(span_id, "ffmpeg.format", format)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_media_probe_span(VERBUM path) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), "ffmpeg:probe")
+  CONIURA instrument_span_attr(span_id, "ffmpeg.path", path)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_media_span_end(REX span_id) REDDE NIHIL
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase7_7a_urlencoded_multi_and_percent_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  EVOCA SPECULUM NIHIL tags_opt
+  CONIURA phase7_set_content_type(headers, "application/x-www-form-urlencoded")
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/tags", headers, "tag=red&tag=blue&nota=hello%20world&vazio=")
+  EVOCA FormData fd AD CONIURA phase7_form_unwrap(CONIURA form_parse(SPECULUM req, CONIURA form_parse_config_default()))
+  VINCIRE tags_opt AD CONIURA form_data_get_multi(fd, "tag")
+
+  SI NON CONIURA form_data_has(fd, "vazio")
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA form_data_get_or(fd, "nota", ""), "hello world") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA option_is_none GENUS(FormValues)(tags_opt)
+    REDDE 3
+  FIN SI
+
+  EVOCA FormValues tags AD CONIURA option_unwrap GENUS(FormValues)(tags_opt)
+  SI CONIURA fluxus_len(tags.items) != 2
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM VERBUM tag0_ptr AD CONIURA fluxus_get(tags.items, 0)
+  EVOCA SPECULUM VERBUM tag1_ptr AD CONIURA fluxus_get(tags.items, 1)
+  SI CONIURA compare(*tag0_ptr, "red") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(*tag1_ptr, "blue") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

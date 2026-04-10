@@ -1,0 +1,47 @@
+INCIPIT grimoire "civitas_i18n"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/gettext.cct"
+
+SIGILLUM I18nConfig
+  locale_padrao: VERBUM
+  dir_catalogo: VERBUM
+  formato: VERBUM
+  falha_silenciosa: VERUM
+FIN SIGILLUM
+
+SIGILLUM I18nLocaleEntry
+  locale: VERBUM
+  handle: REX
+  known_keys: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE i18n_entry_catalog(I18nLocaleEntry entry) REDDE Catalog
+  EVOCA Catalog cat
+  VINCIRE cat.locale AD entry.locale
+  VINCIRE cat.handle AD entry.handle
+  REDDE cat
+EXPLICIT RITUALE
+
+SIGILLUM I18nRegistry
+  config: I18nConfig
+  locales: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE i18n_config_new(VERBUM locale_padrao, VERBUM dir_catalogo) REDDE I18nConfig
+  EVOCA I18nConfig cfg
+  VINCIRE cfg.locale_padrao AD locale_padrao
+  VINCIRE cfg.dir_catalogo AD dir_catalogo
+  VINCIRE cfg.formato AD "po"
+  VINCIRE cfg.falha_silenciosa AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_new(I18nConfig config) REDDE I18nRegistry
+  EVOCA I18nRegistry reg
+  VINCIRE reg.config AD config
+  VINCIRE reg.locales AD CONIURA fluxus_init(MENSURA(I18nLocaleEntry))
+  REDDE reg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

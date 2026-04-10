@@ -1,0 +1,190 @@
+INCIPIT grimoire "civitas_query_exec"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "query.cct"
+
+RITUALE query_bind_filter_at(SPECULUM NIHIL stmt, REX idx, QueryFilter f) REDDE REX
+  SI f.op == IsNull VEL f.op == IsNotNull
+    REDDE idx
+  FIN SI
+  ELIGE f.kind
+    CASUS FkInt:
+      CONIURA stmt_bind_int(stmt, idx, f.valor_int)
+      REDDE idx + 1
+    CASUS FkBool:
+      CONIURA stmt_bind_int(stmt, idx, f.valor_int)
+      REDDE idx + 1
+    CASUS FkDateTime:
+      CONIURA stmt_bind_int(stmt, idx, f.valor_int)
+      REDDE idx + 1
+    CASUS FkReal:
+      CONIURA stmt_bind_real(stmt, idx, f.valor_real)
+      REDDE idx + 1
+    ALIOQUIN:
+      CONIURA stmt_bind_text(stmt, idx, f.valor_texto)
+      REDDE idx + 1
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE query_bind_params(SPECULUM NIHIL stmt, SPECULUM NIHIL filtros) REDDE NIHIL
+  CONIURA query_bind_params_offset(stmt, filtros, 1)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_bind_params_offset(SPECULUM NIHIL stmt, SPECULUM NIHIL filtros, REX idx_inicial) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len(filtros)
+  EVOCA REX i AD 0
+  EVOCA REX idx AD idx_inicial
+  DUM i < n
+    EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(filtros, i)
+    VINCIRE idx AD CONIURA query_bind_filter_at(stmt, idx, *fptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_all(SPECULUM NIHIL db, Query q) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sql AD CONIURA query_build_sql(q)
+  SI q.logger != NIHIL
+    CONIURA log_debug(q.logger, sql, "{\"op\":\"query_all\"}")
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA query_bind_params(stmt, q.filtros)
+  REDDE stmt
+EXPLICIT RITUALE
+
+RITUALE query_filter_to_params(SPECULUM NIHIL filtros) REDDE DbParams
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX n AD CONIURA fluxus_len(filtros)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(filtros, i)
+    SI (*fptr).op == IsNull VEL (*fptr).op == IsNotNull
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    ELIGE (*fptr).kind
+      CASUS FkInt:
+        CONIURA dbh_param_int(SPECULUM params, (*fptr).valor_int)
+      CASUS FkBool:
+        CONIURA dbh_param_bool(SPECULUM params, (*fptr).valor_int != 0)
+      CASUS FkDateTime:
+        CONIURA dbh_param_int(SPECULUM params, (*fptr).valor_int)
+      CASUS FkReal:
+        CONIURA dbh_param_real(SPECULUM params, (*fptr).valor_real)
+      CASUS FkUUID:
+        CONIURA dbh_param_uuid(SPECULUM params, (*fptr).valor_texto)
+      ALIOQUIN:
+        CONIURA dbh_param_text(SPECULUM params, (*fptr).valor_texto)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE params
+EXPLICIT RITUALE
+
+RITUALE query_all_dbh(DbHandle dbh, Query q) REDDE DbRows
+  EVOCA VERBUM sql AD CONIURA query_build_sql(q)
+  SI q.logger != NIHIL
+    CONIURA log_debug(q.logger, sql, "{\"op\":\"query_all_dbh\"}")
+  FIN SI
+  EVOCA DbParams params AD CONIURA query_filter_to_params(q.filtros)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE rows
+EXPLICIT RITUALE
+
+RITUALE query_first_dbh(DbHandle dbh, Query q) REDDE DbRows
+  VINCIRE q.limite AD 1
+  REDDE CONIURA query_all_dbh(dbh, q)
+EXPLICIT RITUALE
+
+RITUALE query_first(SPECULUM NIHIL db, Query q) REDDE SPECULUM NIHIL
+  VINCIRE q.limite AD 1
+  EVOCA SPECULUM NIHIL stmt AD CONIURA query_all(db, q)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE NIHIL
+  FIN SI
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE NIHIL
+  FIN SI
+  REDDE stmt
+EXPLICIT RITUALE
+
+RITUALE query_count_sql(Query q) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM ", q.tabela)
+  EVOCA REX nf AD CONIURA fluxus_len(q.filtros)
+  SI nf > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    EVOCA REX fi AD 0
+    DUM fi < nf
+      EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(q.filtros, fi)
+      VINCIRE sql AD CONIURA concat(sql, CONIURA query_filter_sql(*fptr))
+      SI fi < nf - 1
+        VINCIRE sql AD CONIURA concat(sql, " AND ")
+      FIN SI
+      VINCIRE fi AD fi + 1
+    FIN DUM
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE query_count(SPECULUM NIHIL db, Query q) REDDE REX
+  EVOCA VERBUM sql AD CONIURA query_count_sql(q)
+  SI q.logger != NIHIL
+    CONIURA log_debug(q.logger, sql, "{\"op\":\"query_count\"}")
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA query_bind_params(stmt, q.filtros)
+  EVOCA REX total AD 0
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE total AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE query_count_dbh(DbHandle dbh, Query q) REDDE REX
+  EVOCA VERBUM sql AD CONIURA query_count_sql(q)
+  SI q.logger != NIHIL
+    CONIURA log_debug(q.logger, sql, "{\"op\":\"query_count_dbh\"}")
+  FIN SI
+  EVOCA DbParams params AD CONIURA query_filter_to_params(q.filtros)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE query_exists_dbh(DbHandle dbh, Query q) REDDE VERUM
+  REDDE CONIURA query_count_dbh(dbh, q) > 0
+EXPLICIT RITUALE
+
+RITUALE query_exists(SPECULUM NIHIL db, Query q) REDDE VERUM
+  REDDE CONIURA query_count(db, q) > 0
+EXPLICIT RITUALE
+
+RITUALE query_rows_close(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_all_with_prefetch(SPECULUM NIHIL db, Query q) REDDE SPECULUM NIHIL
+  REDDE CONIURA query_all(db, q)
+EXPLICIT RITUALE
+
+RITUALE query_all_with_prefetch_dbh(DbHandle dbh, Query q) REDDE DbRows
+  REDDE CONIURA query_all_dbh(dbh, q)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

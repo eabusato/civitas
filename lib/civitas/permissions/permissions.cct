@@ -1,0 +1,55 @@
+INCIPIT grimoire "civitas_permissions"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Permission
+  id: REX
+  codigo: VERBUM
+  descricao: VERBUM
+FIN SIGILLUM
+
+SIGILLUM Group
+  id: REX
+  nome: VERBUM
+FIN SIGILLUM
+
+RITUALE permissions_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE permission_empty() REDDE Permission
+  EVOCA Permission p
+  VINCIRE p.id AD 0
+  VINCIRE p.codigo AD ""
+  VINCIRE p.descricao AD ""
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE group_empty() REDDE Group
+  EVOCA Group g
+  VINCIRE g.id AD 0
+  VINCIRE g.nome AD ""
+  REDDE g
+EXPLICIT RITUALE
+
+RITUALE permission_from_stmt(SPECULUM NIHIL stmt) REDDE Permission
+  EVOCA Permission p AD CONIURA permission_empty()
+  VINCIRE p.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE p.codigo AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE p.descricao AD CONIURA stmt_get_text(stmt, 2)
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE group_from_stmt(SPECULUM NIHIL stmt) REDDE Group
+  EVOCA Group g AD CONIURA group_empty()
+  VINCIRE g.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE g.nome AD CONIURA stmt_get_text(stmt, 1)
+  REDDE g
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

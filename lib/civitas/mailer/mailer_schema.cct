@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_mailer_schema"
+
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE mailer_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

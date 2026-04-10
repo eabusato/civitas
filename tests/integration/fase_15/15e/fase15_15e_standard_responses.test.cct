@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase15_15e_standard_responses"
+
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_guards.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpResponse redirect AD CONIURA auth_resposta_nao_autenticado("/login")
+  SI CONIURA http_response_status(redirect) != 302
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA http_headers_get_or(CONIURA http_response_headers_handle(redirect), "Location", ""), "/login") != 0
+    REDDE 2
+  FIN SI
+  EVOCA HttpResponse forbidden AD CONIURA auth_resposta_sem_permissao()
+  SI CONIURA http_response_status(forbidden) != 403
+    REDDE 3
+  FIN SI
+  EVOCA HttpResponse api AD CONIURA auth_resposta_nao_autorizado_api()
+  SI CONIURA http_response_status(api) != 401
+    REDDE 4
+  FIN SI
+  SI CONIURA find(CONIURA http_headers_get_or(CONIURA http_response_headers_handle(api), "WWW-Authenticate", ""), "Bearer") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

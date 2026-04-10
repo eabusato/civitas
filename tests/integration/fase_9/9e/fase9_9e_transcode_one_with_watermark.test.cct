@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase9_9e_transcode_one_with_watermark"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_transcode.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_types.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9e_root("transcode")
+  EVOCA VERBUM dest_path AD CONIURA concat(root, "/sd.mp4")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA phase9_9e_make_video(root, "clip.mp4", 1.0, 640, 360)
+  EVOCA VERBUM watermark_path AD CONIURA phase9_9e_make_watermark(root)
+  EVOCA VideoProcessConfig cfg AD CONIURA video_process_config_new(
+    CONIURA phase9_9e_specs_sd(),
+    0.0,
+    watermark_path,
+    MEDIA_ZONE_PROCESSED,
+    10.0,
+    10485760,
+    60000
+  )
+  EVOCA SPECULUM NIHIL res AD CONIURA video_transcode_one(path, CONIURA video_spec_sd(), dest_path, cfg)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  SI NON CONIURA exists(dest_path) VEL CONIURA size(dest_path) <= 0
+    IACE "transcode output should exist and be non-empty"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

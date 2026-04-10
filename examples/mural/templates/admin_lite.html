@@ -1,0 +1,52 @@
+{% EVOCA MuralAdminPageContext %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link rel="stylesheet" href="{{ css_url }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero hero-tight">
+      <p class="eyebrow">Admin-lite</p>
+      <h1>{{ page_title }}</h1>
+      <p class="lead">Protected with HTTP Basic Auth and a simple secret from settings.</p>
+      <p><a class="admin-link" href="/">Back to wall</a></p>
+    </header>
+
+    {% SI has_flash %}
+      <div class="flash flash-success"><p>{{ flash_message }}</p></div>
+    {% FIN SI %}
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Stored messages</h2>
+        <span class="badge">{{ message_count }}</span>
+      </div>
+      {% SI message_count == 0 %}
+        <p class="empty">{{ empty_text }}</p>
+      {% ALITER %}
+        <ol class="messages admin-messages">
+          {% DUM item IN messages %}
+            <li class="message-card">
+              <div class="message-head">
+                <strong>#{{ item.id }} {{ item.name }}</strong>
+                {% SI item.has_email %}
+                  <span class="muted">{{ item.email }}</span>
+                {% FIN SI %}
+                <time>{{ item.created_at }}</time>
+              </div>
+              <p>{{ item.body }}</p>
+              <form method="post" action="/admin-lite/mensagens/{{ item.id }}/delete" class="inline-form">
+                <button type="submit" class="danger">Delete message</button>
+              </form>
+            </li>
+          {% FIN DUM %}
+        </ol>
+      {% FIN SI %}
+    </section>
+  </main>
+</body>
+</html>

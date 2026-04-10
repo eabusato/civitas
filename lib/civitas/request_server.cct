@@ -1,0 +1,45 @@
+INCIPIT grimoire "civitas_request_server"
+
+ADVOCARE "request.cct"
+ADVOCARE "http/server.cct"
+
+RITUALE request_headers_from_raw(SPECULUM NIHIL raw_headers) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_copy_string_map(raw_headers)
+EXPLICIT RITUALE
+
+RITUALE request_from_raw(HttpRawRequest raw_req) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build(
+    raw_req.method,
+    raw_req.target,
+    raw_req.version,
+    CONIURA request_headers_from_raw(raw_req.headers),
+    raw_req.body,
+    raw_req.client_ip,
+    raw_req.scheme,
+    raw_req.original_host,
+    raw_req.request_id,
+    raw_req.proxy_addr,
+    raw_req.remote_addr,
+    raw_req.local_addr
+  )
+EXPLICIT RITUALE
+
+RITUALE request_from_raw_stream(HttpRawRequest raw_req) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build_with_raw_body(
+    raw_req.method,
+    raw_req.target,
+    raw_req.version,
+    CONIURA request_headers_from_raw(raw_req.headers),
+    raw_req.body,
+    raw_req.body_socket,
+    raw_req.client_ip,
+    raw_req.scheme,
+    raw_req.original_host,
+    raw_req.request_id,
+    raw_req.proxy_addr,
+    raw_req.remote_addr,
+    raw_req.local_addr
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

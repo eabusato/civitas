@@ -1,0 +1,44 @@
+INCIPIT grimoire "civitas_auth_token_revoke"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth_token.cct"
+
+RITUALE token_revoke(SPECULUM NIHIL db, VERBUM jti) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO token_blacklist (jti, revogado_em) VALUES (?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, jti)
+  CONIURA stmt_bind_text(stmt, 2, CONIURA token_blacklist_timestamp_utc())
+  CONIURA token_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE token_is_revoked(SPECULUM NIHIL db, VERBUM jti) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM token_blacklist WHERE jti = ?")
+  CONIURA stmt_bind_text(stmt, 1, jti)
+  CONIURA stmt_step(stmt)
+  EVOCA REX count AD 0
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count > 0
+EXPLICIT RITUALE
+
+RITUALE token_blacklist_purge(SPECULUM NIHIL db, REX max_age_segundos) REDDE REX
+  EVOCA REX limite_unix AD CONIURA token_now_unix() - max_age_segundos
+  EVOCA VERBUM limite AD CONIURA datetime_format(CONIURA datetime_from_unix(limite_unix), "%Y-%m-%dT%H:%M:%SZ")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM token_blacklist WHERE revogado_em < ?")
+  CONIURA stmt_bind_text(stmt, 1, limite)
+  CONIURA token_exec_stmt_no_rows(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT changes()")
+EXPLICIT RITUALE
+
+RITUALE refresh_token_revogar_usuario(SPECULUM NIHIL db, VERBUM user_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE refresh_tokens SET revogado = 1 WHERE user_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA token_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

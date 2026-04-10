@@ -1,0 +1,47 @@
+INCIPIT grimoire "fase4_support_common"
+
+ADVOCARE "../../fase_3/support/common.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase4_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_4/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase4_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase3_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_copy_fixture_to_tmp(VERBUM fixture_name, VERBUM dest_dir) REDDE VERBUM
+  EVOCA VERBUM src AD CONIURA path_join("tests/integration/fase_4/4a/fixtures", fixture_name)
+  EVOCA VERBUM dst AD CONIURA path_join(dest_dir, fixture_name)
+  CONIURA write_all(dst, CONIURA read_all(src))
+  REDDE dst
+EXPLICIT RITUALE
+
+RITUALE phase4_compiler_bin() REDDE VERBUM
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM candidate AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(candidate) > 0
+      REDDE candidate
+    FIN SI
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

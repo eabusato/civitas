@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase2_2e_restricted_deleted_admin_rules_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VisibilityContext mod_html AD CONIURA phase2_visibility_ctx(VERUM, FALSUM, FALSUM, VERUM, VISIBILITY_SURFACE_HTML)
+  EVOCA VisibilityContext mod_admin AD CONIURA phase2_visibility_ctx(VERUM, FALSUM, FALSUM, VERUM, VISIBILITY_SURFACE_ADMIN)
+  EVOCA VisibilityContext auth_api AD CONIURA phase2_visibility_ctx(VERUM, FALSUM, FALSUM, FALSUM, VISIBILITY_SURFACE_API)
+
+  SI CONIURA visibility_decide(VISIBILITY_RESTRICTED, auth_api) != VISIBILITY_REQUIRE_ELEVATED_ACCESS
+    REDDE 1
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_RESTRICTED, mod_html) != VISIBILITY_REQUIRE_ELEVATED_ACCESS
+    REDDE 2
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_RESTRICTED, mod_admin) != VISIBILITY_ALLOW
+    REDDE 3
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_DELETED, auth_api) != VISIBILITY_DENY
+    REDDE 4
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_DELETED, mod_admin) != VISIBILITY_ALLOW
+    REDDE 5
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

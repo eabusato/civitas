@@ -1,0 +1,134 @@
+INCIPIT grimoire "civitas_template_extras_pagination"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "qs.cct"
+
+SIGILLUM PaginationConfig
+  base_url: VERBUM
+  page_param: VERBUM
+  current_page: REX
+  total_pages: REX
+  window_size: REX
+  prev_label: VERBUM
+  next_label: VERBUM
+  css_class: VERBUM
+FIN SIGILLUM
+
+RITUALE pagination_config_default(VERBUM base_url, REX current_page, REX total_pages) REDDE PaginationConfig
+  EVOCA PaginationConfig cfg
+  VINCIRE cfg.base_url AD base_url
+  VINCIRE cfg.page_param AD "page"
+  VINCIRE cfg.current_page AD current_page
+  VINCIRE cfg.total_pages AD total_pages
+  VINCIRE cfg.window_size AD 2
+  VINCIRE cfg.prev_label AD "Anterior"
+  VINCIRE cfg.next_label AD "Proximo"
+  VINCIRE cfg.css_class AD "pagination"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE pagination_page_url(PaginationConfig cfg, REX page) REDDE VERBUM
+  EVOCA REX normalized AD page
+  SI normalized <= 0
+    VINCIRE normalized AD 1
+  FIN SI
+  REDDE CONIURA qs_set(cfg.base_url, cfg.page_param, CONIURA stringify_int(normalized))
+EXPLICIT RITUALE
+
+RITUALE pagination_add_page_node(SPECULUM NIHIL nav, PaginationConfig cfg, REX page) REDDE NIHIL
+  SI page == cfg.current_page
+    EVOCA SPECULUM NIHIL current AD CONIURA html_tag("span")
+    CONIURA html_class(current, "pagination-current")
+    CONIURA html_attr(current, "aria-current", "page")
+    CONIURA html_text(current, CONIURA stringify_int(page))
+    CONIURA html_child(nav, current)
+    REDDE
+  FIN SI
+
+  EVOCA SPECULUM NIHIL link AD CONIURA html_a(CONIURA pagination_page_url(cfg, page), CONIURA stringify_int(page))
+  CONIURA html_child(nav, link)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pagination_add_ellipsis(SPECULUM NIHIL nav) REDDE NIHIL
+  EVOCA SPECULUM NIHIL ellipsis AD CONIURA html_tag("span")
+  CONIURA html_class(ellipsis, "pagination-ellipsis")
+  CONIURA html_text(ellipsis, "…")
+  CONIURA html_child(nav, ellipsis)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pagination_html(PaginationConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL nav AD CONIURA html_tag("nav")
+  EVOCA REX current_page AD cfg.current_page
+  EVOCA REX total_pages AD cfg.total_pages
+  EVOCA REX window_size AD cfg.window_size
+  EVOCA REX start_page AD 1
+  EVOCA REX end_page AD total_pages
+  EVOCA REX page AD 0
+
+  SI total_pages <= 0
+    REDDE ""
+  FIN SI
+  SI current_page <= 0
+    VINCIRE current_page AD 1
+  FIN SI
+  SI current_page > total_pages
+    VINCIRE current_page AD total_pages
+  FIN SI
+  SI window_size < 0
+    VINCIRE window_size AD 0
+  FIN SI
+
+  CONIURA html_attr(nav, "aria-label", "Paginacao")
+  SI CONIURA len(cfg.css_class) != 0
+    CONIURA html_class(nav, cfg.css_class)
+  FIN SI
+
+  SI current_page > 1
+    EVOCA SPECULUM NIHIL prev AD CONIURA html_a(CONIURA pagination_page_url(cfg, current_page - 1), cfg.prev_label)
+    CONIURA html_class(prev, "pagination-prev")
+    CONIURA html_child(nav, prev)
+  FIN SI
+
+  VINCIRE start_page AD current_page - window_size
+  VINCIRE end_page AD current_page + window_size
+  SI start_page < 1
+    VINCIRE start_page AD 1
+  FIN SI
+  SI end_page > total_pages
+    VINCIRE end_page AD total_pages
+  FIN SI
+
+  SI start_page > 1
+    CONIURA pagination_add_page_node(nav, cfg, 1)
+    SI start_page > 2
+      CONIURA pagination_add_ellipsis(nav)
+    FIN SI
+  FIN SI
+
+  VINCIRE page AD start_page
+  DUM page <= end_page
+    CONIURA pagination_add_page_node(nav, cfg, page)
+    VINCIRE page AD page + 1
+  FIN DUM
+
+  SI end_page < total_pages
+    SI end_page < total_pages - 1
+      CONIURA pagination_add_ellipsis(nav)
+    FIN SI
+    CONIURA pagination_add_page_node(nav, cfg, total_pages)
+  FIN SI
+
+  SI current_page < total_pages
+    EVOCA SPECULUM NIHIL next AD CONIURA html_a(CONIURA pagination_page_url(cfg, current_page + 1), cfg.next_label)
+    CONIURA html_class(next, "pagination-next")
+    CONIURA html_child(nav, next)
+  FIN SI
+
+  REDDE CONIURA html_render_free(nav)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

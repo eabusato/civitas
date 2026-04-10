@@ -1,0 +1,416 @@
+INCIPIT grimoire "civitas_dev_server"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fs_watch.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+
+SIGILLUM DevServerConfig
+  src_dir: VERBUM
+  entry_file: VERBUM
+  build_cmd: VERBUM
+  server_cmd: VERBUM
+  gen_file: VERBUM
+  poll_ms: REX
+  port: REX
+FIN SIGILLUM
+
+SIGILLUM CompileError
+  filename: VERBUM
+  line: REX
+  column: REX
+  message: VERBUM
+  raw_output: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DevWatcher
+  config: DevServerConfig
+  watchers: SPECULUM NIHIL
+  server_pid: REX
+  has_error: VERUM
+  error: CompileError
+  reload_count: REX
+FIN SIGILLUM
+
+RITUALE dev_server_default_compile_error() REDDE CompileError
+  EVOCA CompileError err
+  VINCIRE err.filename AD "unknown"
+  VINCIRE err.line AD 0
+  VINCIRE err.column AD 0
+  VINCIRE err.message AD ""
+  VINCIRE err.raw_output AD ""
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE dev_server_pid_file() REDDE VERBUM
+  REDDE ".civitas-pid"
+EXPLICIT RITUALE
+
+RITUALE dev_server_collect_files(VERBUM dir, SPECULUM NIHIL out) REDDE NIHIL
+  SI NON CONIURA exists(dir)
+    REDDE
+  FIN SI
+  SI NON CONIURA is_dir(dir)
+    REDDE
+  FIN SI
+
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM name AD *name_ptr
+    SI NON CONIURA starts_with(name, ".")
+      SI NON (CONIURA compare(name, "build") == 0 VEL CONIURA compare(name, "target") == 0)
+        EVOCA VERBUM full_path AD CONIURA concat(CONIURA concat(dir, "/"), name)
+        SI CONIURA is_dir(full_path)
+          CONIURA dev_server_collect_files(full_path, out)
+        ALITER
+          SI CONIURA ends_with(name, ".cct")
+            CONIURA fluxus_push(out, SPECULUM full_path)
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_collect_cct_files(VERBUM src_dir) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL files AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA dev_server_collect_files(src_dir, files)
+  CONIURA fluxus_sort_verbum(files)
+  REDDE files
+EXPLICIT RITUALE
+
+RITUALE dev_server_open_watchers_from_files(SPECULUM NIHIL files) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL watchers AD CONIURA fluxus_init(MENSURA(FsWatch))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(files)
+  DUM i < n
+    EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(files, i)
+    EVOCA FsWatch watch AD CONIURA fs_watch_open(*path_ptr)
+    CONIURA fluxus_push(watchers, SPECULUM watch)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE watchers
+EXPLICIT RITUALE
+
+RITUALE dev_server_open_watchers(VERBUM src_dir) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL files AD CONIURA dev_server_collect_cct_files(src_dir)
+  EVOCA SPECULUM NIHIL watchers AD CONIURA dev_server_open_watchers_from_files(files)
+  CONIURA fluxus_free(files)
+  REDDE watchers
+EXPLICIT RITUALE
+
+RITUALE dev_server_close_watchers(SPECULUM NIHIL watchers) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(watchers)
+  DUM i < n
+    EVOCA SPECULUM FsWatch watch_ptr AD CONIURA fluxus_get(watchers, i)
+    CONIURA fs_watch_close(watch_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(watchers)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_refresh_watchers(SPECULUM DevWatcher watcher) REDDE NIHIL
+  CONIURA dev_server_close_watchers((*watcher).watchers)
+  VINCIRE (*watcher).watchers AD CONIURA dev_server_open_watchers((*watcher).config.src_dir)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_parse_compile_error_line(VERBUM line_text, SPECULUM CompileError err) REDDE NIHIL
+  EVOCA REX colon1 AD CONIURA find(line_text, ":")
+  SI colon1 <= 0
+    REDDE
+  FIN SI
+  EVOCA REX colon2 AD CONIURA find_from(line_text, ":", colon1 + 1)
+  SI colon2 <= colon1
+    REDDE
+  FIN SI
+  EVOCA REX colon3 AD CONIURA find_from(line_text, ":", colon2 + 1)
+  SI colon3 <= colon2
+    REDDE
+  FIN SI
+  VINCIRE (*err).filename AD CONIURA substring(line_text, 0, colon1)
+  VINCIRE (*err).line AD CONIURA fmt_parse_int(CONIURA trim(CONIURA substring(line_text, colon1 + 1, colon2)))
+  VINCIRE (*err).column AD CONIURA fmt_parse_int(CONIURA trim(CONIURA substring(line_text, colon2 + 1, colon3)))
+  EVOCA REX msg_idx AD CONIURA find(line_text, ": erro:")
+  SI msg_idx == -1
+    VINCIRE (*err).message AD CONIURA trim(CONIURA substring(line_text, colon3 + 1, CONIURA len(line_text)))
+    REDDE
+  FIN SI
+  VINCIRE (*err).message AD CONIURA trim(CONIURA substring(line_text, msg_idx + 7, CONIURA len(line_text)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_parse_compile_error(VERBUM raw_output) REDDE CompileError
+  EVOCA CompileError err AD CONIURA dev_server_default_compile_error()
+  VINCIRE err.raw_output AD raw_output
+  VINCIRE err.message AD CONIURA trim(raw_output)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(raw_output)
+  DUM i < n
+    EVOCA REX j AD i
+    DUM j < n ET CONIURA char_at(raw_output, j) != 10
+      VINCIRE j AD j + 1
+    FIN DUM
+    EVOCA VERBUM line_text AD CONIURA substring(raw_output, i, j)
+    SI CONIURA find(line_text, ": erro:") != -1
+      CONIURA dev_server_parse_compile_error_line(line_text, SPECULUM err)
+      VINCIRE i AD j + 1
+      RECEDE
+    FIN SI
+    VINCIRE i AD j + 1
+  FIN DUM
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE dev_server_error_context_lines(VERBUM filename, REX error_line, REX context_radius) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL result AD CONIURA fluxus_init(MENSURA(VERBUM))
+  SI NON CONIURA exists(filename)
+    REDDE result
+  FIN SI
+  EVOCA SPECULUM NIHIL all_lines AD CONIURA read_lines(filename)
+  EVOCA REX total AD CONIURA fluxus_len(all_lines)
+  EVOCA REX from_line AD error_line - context_radius - 1
+  EVOCA REX to_line AD error_line + context_radius
+  SI from_line < 0
+    VINCIRE from_line AD 0
+  FIN SI
+  SI to_line > total
+    VINCIRE to_line AD total
+  FIN SI
+  EVOCA REX i AD from_line
+  DUM i < to_line
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(all_lines, i)
+    EVOCA VERBUM numbered AD CONIURA pad_left(CONIURA stringify_int(i + 1), 4, 32)
+    VINCIRE numbered AD CONIURA concat(numbered, "  ")
+    VINCIRE numbered AD CONIURA concat(numbered, *line_ptr)
+    CONIURA fluxus_push(result, SPECULUM numbered)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(all_lines)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE dev_server_compile_error_page(CompileError err) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
+  CONIURA builder_append(b, "<title>Civitas Dev Compile Error</title><style>")
+  CONIURA builder_append(b, "*{box-sizing:border-box}body{margin:0;background:#020617;color:#e2e8f0;font:13px/1.6 ui-monospace,monospace}")
+  CONIURA builder_append(b, ".header{padding:24px 28px;background:#450a0a;border-bottom:1px solid #7f1d1d}.header h1{margin:0 0 8px;font-size:18px;color:#fecaca}.header p{margin:0;color:#fca5a5}")
+  CONIURA builder_append(b, ".meta{padding:14px 28px;background:#0f172a;border-bottom:1px solid #1e293b;color:#94a3b8}.code,.raw{padding:24px 28px}.code pre,.raw pre{margin:0;white-space:pre-wrap;overflow:auto}")
+  CONIURA builder_append(b, ".line-normal{display:block;color:#94a3b8}.line-error{display:block;background:#1f1515;border-left:3px solid #f87171;color:#fecaca;padding-left:12px;margin-left:-12px}.hint{position:fixed;right:16px;bottom:16px;padding:10px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#94a3b8}")
+  CONIURA builder_append(b, "</style></head><body>")
+  CONIURA builder_append(b, "<div class=\"header\"><h1>Compile Error</h1><p>")
+  CONIURA builder_append(b, CONIURA html_encode(err.message))
+  CONIURA builder_append(b, "</p></div><div class=\"meta\">")
+  CONIURA builder_append(b, CONIURA html_encode(err.filename))
+  CONIURA builder_append(b, " · line ")
+  CONIURA builder_append(b, CONIURA stringify_int(err.line))
+  CONIURA builder_append(b, ", column ")
+  CONIURA builder_append(b, CONIURA stringify_int(err.column))
+  CONIURA builder_append(b, "</div><div class=\"code\"><pre>")
+  EVOCA SPECULUM NIHIL ctx_lines AD CONIURA dev_server_error_context_lines(err.filename, err.line, 5)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(ctx_lines)
+  EVOCA REX start_line AD err.line - 5
+  SI start_line < 1
+    VINCIRE start_line AD 1
+  FIN SI
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(ctx_lines, i)
+    SI start_line + i == err.line
+      CONIURA builder_append(b, "<span class=\"line-error\">")
+      CONIURA builder_append(b, CONIURA html_encode(*line_ptr))
+      CONIURA builder_append(b, "</span>")
+    ALITER
+      CONIURA builder_append(b, "<span class=\"line-normal\">")
+      CONIURA builder_append(b, CONIURA html_encode(*line_ptr))
+      CONIURA builder_append(b, "</span>")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(ctx_lines)
+  CONIURA builder_append(b, "</pre></div><div class=\"raw\"><pre>")
+  CONIURA builder_append(b, CONIURA html_encode(err.raw_output))
+  CONIURA builder_append(b, "</pre></div><div class=\"hint\">Fix the file and save. Livereload will refresh automatically.</div></body></html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dev_server_runtime_error_page(VERBUM reason, VERBUM log_tail) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
+  CONIURA builder_append(b, "<title>Civitas Dev Runtime Error</title><style>")
+  CONIURA builder_append(b, "*{box-sizing:border-box}body{margin:0;background:#020617;color:#e2e8f0;font:13px/1.6 ui-monospace,monospace}.header{padding:24px 28px;background:#431407;border-bottom:1px solid #7c2d12}.header h1{margin:0 0 8px;font-size:18px;color:#fed7aa}.header p{margin:0;color:#fdba74}.log{padding:24px 28px}.log pre{margin:0;white-space:pre-wrap;color:#cbd5e1}</style></head><body>")
+  CONIURA builder_append(b, "<div class=\"header\"><h1>Runtime Error</h1><p>")
+  CONIURA builder_append(b, CONIURA html_encode(reason))
+  CONIURA builder_append(b, "</p></div><div class=\"log\"><pre>")
+  CONIURA builder_append(b, CONIURA html_encode(log_tail))
+  CONIURA builder_append(b, "</pre></div></body></html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dev_server_capture_command(VERBUM cmd) REDDE VERBUM
+  REDDE CONIURA run_capture_err(cmd)
+EXPLICIT RITUALE
+
+RITUALE dev_server_output_has_compile_error(VERBUM output) REDDE VERUM
+  SI CONIURA find(output, ": erro:") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(output), " erro ") != -1
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE dev_server_kill(REX pid) REDDE NIHIL
+  SI pid <= 0
+    REDDE
+  FIN SI
+  CONIURA run(CONIURA concat("kill ", CONIURA stringify_int(pid)))
+  CONIURA sleep_ms(200)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_start_process(VERBUM server_cmd) REDDE REX
+  EVOCA VERBUM pid_file AD CONIURA dev_server_pid_file()
+  CONIURA run(CONIURA concat("rm -f ", pid_file))
+  EVOCA VERBUM cmd AD CONIURA concat(server_cmd, " >/dev/null 2>&1 & echo $! > ")
+  VINCIRE cmd AD CONIURA concat(cmd, pid_file)
+  CONIURA run(cmd)
+  CONIURA sleep_ms(300)
+  SI NON CONIURA exists(pid_file)
+    REDDE 0
+  FIN SI
+  REDDE CONIURA fmt_parse_int(CONIURA trim(CONIURA read_all(pid_file)))
+EXPLICIT RITUALE
+
+RITUALE dev_server_is_pid_alive(REX pid) REDDE VERUM
+  SI pid <= 0
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM out AD CONIURA run_capture(CONIURA concat(CONIURA concat("kill -0 ", CONIURA stringify_int(pid)), " 2>/dev/null && echo alive"))
+  REDDE CONIURA find(out, "alive") != -1
+EXPLICIT RITUALE
+
+RITUALE dev_server_write_gen(VERBUM gen_file) REDDE VERBUM
+  EVOCA VERBUM gen AD CONIURA stringify_int(CONIURA now_ms())
+  CONIURA write_all(gen_file, gen)
+  REDDE gen
+EXPLICIT RITUALE
+
+RITUALE dev_server_read_gen(VERBUM gen_file) REDDE VERBUM
+  SI NON CONIURA exists(gen_file)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA trim(CONIURA read_all(gen_file))
+EXPLICIT RITUALE
+
+RITUALE dev_server_watch_once(SPECULUM DevWatcher watcher) REDDE VERUM
+  EVOCA SPECULUM NIHIL current_files AD CONIURA dev_server_collect_cct_files((*watcher).config.src_dir)
+  EVOCA REX current_count AD CONIURA fluxus_len(current_files)
+  EVOCA REX watch_count AD CONIURA fluxus_len((*watcher).watchers)
+  SI current_count != watch_count
+    CONIURA fluxus_free(current_files)
+    CONIURA dev_server_refresh_watchers(watcher)
+    REDDE VERUM
+  FIN SI
+  CONIURA fluxus_free(current_files)
+  EVOCA REX i AD 0
+  DUM i < watch_count
+    EVOCA SPECULUM FsWatch watch_ptr AD CONIURA fluxus_get((*watcher).watchers, i)
+    EVOCA FsWatchEvent ev AD CONIURA fs_watch_poll(watch_ptr)
+    SI ev.kind != WATCH_NONE
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE dev_server_rebuild(SPECULUM DevWatcher watcher) REDDE VERUM
+  EVOCA VERBUM output AD CONIURA dev_server_capture_command((*watcher).config.build_cmd)
+  SI CONIURA dev_server_output_has_compile_error(output)
+    VINCIRE (*watcher).has_error AD VERUM
+    VINCIRE (*watcher).error AD CONIURA dev_server_parse_compile_error(output)
+    REDDE FALSUM
+  FIN SI
+  VINCIRE (*watcher).has_error AD FALSUM
+  CONIURA dev_server_kill((*watcher).server_pid)
+  VINCIRE (*watcher).server_pid AD CONIURA dev_server_start_process((*watcher).config.server_cmd)
+  CONIURA dev_server_write_gen((*watcher).config.gen_file)
+  VINCIRE (*watcher).reload_count AD (*watcher).reload_count + 1
+  CONIURA dev_server_refresh_watchers(watcher)
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE dev_server_run(DevServerConfig config) REDDE NIHIL
+  EVOCA DevWatcher watcher
+  VINCIRE watcher.config AD config
+  VINCIRE watcher.watchers AD CONIURA dev_server_open_watchers(config.src_dir)
+  VINCIRE watcher.server_pid AD 0
+  VINCIRE watcher.has_error AD FALSUM
+  VINCIRE watcher.error AD CONIURA dev_server_default_compile_error()
+  VINCIRE watcher.reload_count AD 0
+
+  EVOCA VERBUM initial_output AD CONIURA dev_server_capture_command(config.build_cmd)
+  SI CONIURA dev_server_output_has_compile_error(initial_output)
+    VINCIRE watcher.has_error AD VERUM
+    VINCIRE watcher.error AD CONIURA dev_server_parse_compile_error(initial_output)
+  ALITER
+    VINCIRE watcher.server_pid AD CONIURA dev_server_start_process(config.server_cmd)
+    CONIURA dev_server_write_gen(config.gen_file)
+  FIN SI
+
+  DUM VERUM
+    CONIURA sleep_ms(config.poll_ms)
+    SI watcher.server_pid > 0 ET NON CONIURA dev_server_is_pid_alive(watcher.server_pid)
+      VINCIRE watcher.server_pid AD 0
+    FIN SI
+    SI CONIURA dev_server_watch_once(SPECULUM watcher)
+      CONIURA dev_server_rebuild(SPECULUM watcher)
+    FIN SI
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dev_server_error_middleware(HttpRequest req, SPECULUM DevWatcher watcher) REDDE SPECULUM NIHIL
+  SI NON (*watcher).has_error
+    REDDE CONIURA None GENUS(HttpResponse)()
+  FIN SI
+  EVOCA HttpResponse out AD CONIURA http_response_new(500, CONIURA dev_server_compile_error_page((*watcher).error))
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Content-Type", "text/html; charset=utf-8")
+  REDDE CONIURA Some GENUS(HttpResponse)(out)
+EXPLICIT RITUALE
+
+RITUALE dev_server_config_default(VERBUM src_dir, VERBUM entry, REX port) REDDE DevServerConfig
+  EVOCA DevServerConfig cfg
+  VINCIRE cfg.src_dir AD src_dir
+  VINCIRE cfg.entry_file AD entry
+  VINCIRE cfg.build_cmd AD CONIURA concat("cct build ", CONIURA concat(entry, " -o build/app"))
+  VINCIRE cfg.server_cmd AD CONIURA concat("./build/app --port ", CONIURA stringify_int(port))
+  VINCIRE cfg.gen_file AD ".civitas-gen"
+  VINCIRE cfg.poll_ms AD 250
+  VINCIRE cfg.port AD port
+  REDDE cfg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

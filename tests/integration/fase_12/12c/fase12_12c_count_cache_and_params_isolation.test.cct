@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase12_12c_count_cache_and_params_isolation"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12c_count_params")
+  CONIURA phase12_12c_setup_items(dbh)
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12c-count")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM h, 60, "cq12c", NIHIL)
+
+  EVOCA Query active_q AD CONIURA query_from("items")
+  CONIURA query_filter_int(active_q, "active", Eq, 1)
+  EVOCA Query inactive_q AD CONIURA query_from("items")
+  CONIURA query_filter_int(inactive_q, "active", Eq, 0)
+
+  SI CONIURA query_count_cache(dbh, active_q, SPECULUM cq) != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA query_count_cache(dbh, inactive_q, SPECULUM cq) != 1
+    REDDE 2
+  FIN SI
+
+  CONIURA db_exec(dbh.sqlite_conn, "UPDATE items SET active = 1 WHERE id = 2")
+  SI CONIURA query_count_cache(dbh, active_q, SPECULUM cq) != 1
+    REDDE 3
+  FIN SI
+
+  CONIURA cache_query_invalidar_tabela(SPECULUM cq, "items")
+  SI CONIURA query_count_cache(dbh, active_q, SPECULUM cq) != 2
+    REDDE 4
+  FIN SI
+  SI CONIURA query_count_cache(dbh, inactive_q, SPECULUM cq) != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

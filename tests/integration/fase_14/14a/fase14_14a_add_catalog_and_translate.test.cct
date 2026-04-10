@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase14_14a_add_catalog_and_translate"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(CONIURA i18n_config_new("pt-BR", ""))
+  EVOCA Catalog cat AD CONIURA gettext_catalog_new("pt-BR")
+  CONIURA gettext_add_message(SPECULUM cat, "nav.home", "Inicio")
+  CONIURA i18n_registry_add_catalog(SPECULUM reg, "pt-BR", cat)
+
+  SI CONIURA compare(CONIURA i18n_t(reg, "pt-BR", "nav.home"), "Inicio") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

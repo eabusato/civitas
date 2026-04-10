@@ -1,0 +1,382 @@
+INCIPIT grimoire "civitas_signals"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "response.cct"
+ADVOCARE "router.cct"
+
+ORDO SignalErrorPolicy
+  SIGNAL_STOP_ON_ERROR,
+  SIGNAL_CONTINUE_ON_ERROR
+FIN ORDO
+
+SIGILLUM SignalHandlerBinding
+  id: REX
+  handler_name: VERBUM
+  handler_ref: SPECULUM NIHIL
+  handler_ctx_ref: SPECULUM NIHIL
+  handler_has_ctx: VERUM
+  active: VERUM
+FIN SIGILLUM
+
+SIGILLUM Signal
+  name: VERBUM
+  error_policy: SignalErrorPolicy
+  handlers: SPECULUM NIHIL
+  next_handler_id: REX
+FIN SIGILLUM
+
+SIGILLUM SignalEnvelope
+  signal_name: VERBUM
+  sender: VERBUM
+  request_id: VERBUM
+  payload_type: VERBUM
+  payload_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM SignalDispatchReport
+  invoked_count: REX
+  failed_count: REX
+  stopped_early: VERUM
+  first_error: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RequestStartedPayload
+  request_id: VERBUM
+  method: VERBUM
+  path: VERBUM
+  started_at_iso: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RequestFinishedPayload
+  request_id: VERBUM
+  method: VERBUM
+  path: VERBUM
+  route_name: VERBUM
+  status_code: REX
+  duration_ms: REX
+FIN SIGILLUM
+
+SIGILLUM RequestFailedPayload
+  request_id: VERBUM
+  method: VERBUM
+  path: VERBUM
+  route_name: VERBUM
+  error_kind: VERBUM
+  error_message_safe: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RequestSignals
+  request_started: Signal
+  request_finished: Signal
+  request_failed: Signal
+  post_request: Signal
+FIN SIGILLUM
+
+SIGILLUM NamedSignalTextPayload
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM NamedSignalRegistryEntry
+  name: VERBUM
+  signal: Signal
+FIN SIGILLUM
+
+SIGILLUM NamedSignalRegistry
+  entries: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE signal_ok_id(REX value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE signal_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE signal_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE signal_dispatch_report_new() REDDE SignalDispatchReport
+  EVOCA SignalDispatchReport report
+  VINCIRE report.invoked_count AD 0
+  VINCIRE report.failed_count AD 0
+  VINCIRE report.stopped_early AD FALSUM
+  VINCIRE report.first_error AD ""
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE signal_now_iso() REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_now(), "%Y-%m-%dT%H:%M:%S%z")
+EXPLICIT RITUALE
+
+RITUALE signal_new(VERBUM name, SignalErrorPolicy error_policy) REDDE Signal
+  EVOCA Signal signal
+  CONIURA signal_init(SPECULUM signal, name, error_policy)
+  REDDE signal
+EXPLICIT RITUALE
+
+RITUALE signal_init(SPECULUM Signal signal, VERBUM name, SignalErrorPolicy error_policy) REDDE NIHIL
+  VINCIRE (*signal).name AD name
+  VINCIRE (*signal).error_policy AD error_policy
+  VINCIRE (*signal).handlers AD CONIURA fluxus_init(MENSURA(SignalHandlerBinding))
+  VINCIRE (*signal).next_handler_id AD 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE signal_handler_count(Signal signal) REDDE REX
+  REDDE CONIURA fluxus_len(signal.handlers)
+EXPLICIT RITUALE
+
+RITUALE signal_has_handlers(Signal signal) REDDE VERUM
+  REDDE CONIURA signal_handler_count(signal) != 0
+EXPLICIT RITUALE
+
+RITUALE signal_connect(SPECULUM Signal signal, VERBUM handler_name, SPECULUM NIHIL handler_ref) REDDE SPECULUM NIHIL
+  REDDE CONIURA signal_connect_with_ctx(signal, handler_name, handler_ref, NIHIL, FALSUM)
+EXPLICIT RITUALE
+
+RITUALE signal_connect_with_ctx(SPECULUM Signal signal, VERBUM handler_name, SPECULUM NIHIL handler_ref, SPECULUM NIHIL handler_ctx_ref, VERUM handler_has_ctx) REDDE SPECULUM NIHIL
+  EVOCA SignalHandlerBinding binding
+  SI CONIURA len(CONIURA trim(handler_name)) == 0
+    REDDE CONIURA signal_err("signal handler name nao pode ser vazio")
+  FIN SI
+
+  VINCIRE binding.id AD (*signal).next_handler_id
+  VINCIRE binding.handler_name AD handler_name
+  VINCIRE binding.handler_ref AD handler_ref
+  VINCIRE binding.handler_ctx_ref AD handler_ctx_ref
+  VINCIRE binding.handler_has_ctx AD handler_has_ctx
+  VINCIRE binding.active AD VERUM
+  CONIURA fluxus_push((*signal).handlers, SPECULUM binding)
+  VINCIRE (*signal).next_handler_id AD (*signal).next_handler_id + 1
+  REDDE CONIURA signal_ok_id(binding.id)
+EXPLICIT RITUALE
+
+RITUALE signal_disconnect(SPECULUM Signal signal, REX handler_id) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*signal).handlers)
+
+  DUM i < n
+    EVOCA SPECULUM SignalHandlerBinding binding_ptr AD CONIURA fluxus_get((*signal).handlers, i)
+    SI (*binding_ptr).id == handler_id
+      CONIURA fluxus_remove((*signal).handlers, i)
+      REDDE CONIURA signal_ok_unit()
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA signal_err("signal handler id nao encontrado")
+EXPLICIT RITUALE
+
+RITUALE signal_send(Signal signal, SPECULUM NIHIL envelope_ref) REDDE SignalDispatchReport
+  EVOCA SignalDispatchReport report AD CONIURA signal_dispatch_report_new()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(signal.handlers)
+
+  DUM i < n
+    EVOCA SPECULUM SignalHandlerBinding binding_ptr AD CONIURA fluxus_get(signal.handlers, i)
+    VINCIRE report.invoked_count AD report.invoked_count + 1
+    TEMPTA
+      SI (*binding_ptr).handler_has_ctx
+        CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL)((*binding_ptr).handler_ref, envelope_ref, (*binding_ptr).handler_ctx_ref)
+      ALITER
+        CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*binding_ptr).handler_ref, envelope_ref)
+      FIN SI
+    CAPE FRACTUM error
+      EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(error)
+      VINCIRE report.failed_count AD report.failed_count + 1
+      SI CONIURA len(report.first_error) == 0
+        VINCIRE report.first_error AD error_text
+      FIN SI
+      SI signal.error_policy == SIGNAL_STOP_ON_ERROR
+        VINCIRE report.stopped_early AD VERUM
+        REDDE report
+      FIN SI
+    FIN TEMPTA
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE signal_send_async(Signal signal, SPECULUM NIHIL envelope_ref) REDDE SPECULUM NIHIL
+  REDDE CONIURA signal_err("signal async dispatcher nao configurado")
+EXPLICIT RITUALE
+
+RITUALE signal_envelope_new(VERBUM signal_name, VERBUM sender, VERBUM request_id, VERBUM payload_type, SPECULUM NIHIL payload_ref) REDDE SignalEnvelope
+  EVOCA SignalEnvelope env
+  CONIURA signal_envelope_fill(SPECULUM env, signal_name, sender, request_id, payload_type, payload_ref)
+  REDDE env
+EXPLICIT RITUALE
+
+RITUALE signal_envelope_fill(SPECULUM SignalEnvelope env, VERBUM signal_name, VERBUM sender, VERBUM request_id, VERBUM payload_type, SPECULUM NIHIL payload_ref) REDDE NIHIL
+  VINCIRE (*env).signal_name AD signal_name
+  VINCIRE (*env).sender AD sender
+  VINCIRE (*env).request_id AD request_id
+  VINCIRE (*env).payload_type AD payload_type
+  VINCIRE (*env).payload_ref AD payload_ref
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE signal_request_started_payload(WebRequest req) REDDE RequestStartedPayload
+  EVOCA RequestStartedPayload payload
+  VINCIRE payload.request_id AD req.request_id
+  VINCIRE payload.method AD req.method
+  VINCIRE payload.path AD req.path
+  VINCIRE payload.started_at_iso AD CONIURA signal_now_iso()
+  REDDE payload
+EXPLICIT RITUALE
+
+RITUALE signal_request_finished_payload(WebRequest req, VERBUM route_name, REX status_code, REX duration_ms) REDDE RequestFinishedPayload
+  EVOCA RequestFinishedPayload payload
+  VINCIRE payload.request_id AD req.request_id
+  VINCIRE payload.method AD req.method
+  VINCIRE payload.path AD req.path
+  VINCIRE payload.route_name AD route_name
+  VINCIRE payload.status_code AD status_code
+  VINCIRE payload.duration_ms AD duration_ms
+  REDDE payload
+EXPLICIT RITUALE
+
+RITUALE signal_request_failed_payload(WebRequest req, VERBUM route_name, VERBUM error_kind, VERBUM error_message_safe) REDDE RequestFailedPayload
+  EVOCA RequestFailedPayload payload
+  VINCIRE payload.request_id AD req.request_id
+  VINCIRE payload.method AD req.method
+  VINCIRE payload.path AD req.path
+  VINCIRE payload.route_name AD route_name
+  VINCIRE payload.error_kind AD error_kind
+  VINCIRE payload.error_message_safe AD error_message_safe
+  REDDE payload
+EXPLICIT RITUALE
+
+RITUALE request_signals_new() REDDE RequestSignals
+  EVOCA RequestSignals signals
+  CONIURA request_signals_init(SPECULUM signals)
+  REDDE signals
+EXPLICIT RITUALE
+
+RITUALE request_signals_init(SPECULUM RequestSignals signals) REDDE NIHIL
+  CONIURA signal_init(SPECULUM (*signals).request_started, "request_started", SIGNAL_CONTINUE_ON_ERROR)
+  CONIURA signal_init(SPECULUM (*signals).request_finished, "request_finished", SIGNAL_CONTINUE_ON_ERROR)
+  CONIURA signal_init(SPECULUM (*signals).request_failed, "request_failed", SIGNAL_CONTINUE_ON_ERROR)
+  CONIURA signal_init(SPECULUM (*signals).post_request, "post_request", SIGNAL_CONTINUE_ON_ERROR)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE named_signal_registry_new() REDDE NamedSignalRegistry
+  EVOCA NamedSignalRegistry registry
+  VINCIRE registry.entries AD CONIURA fluxus_init(MENSURA(NamedSignalRegistryEntry))
+  REDDE registry
+EXPLICIT RITUALE
+
+RITUALE named_signal_registry_find_index(SPECULUM NamedSignalRegistry registry, VERBUM signal_name) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*registry).entries)
+  DUM i < n
+    EVOCA SPECULUM NamedSignalRegistryEntry entry_ptr AD CONIURA fluxus_get((*registry).entries, i)
+    SI CONIURA compare((*entry_ptr).name, signal_name) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE named_signal_registry_get_or_create(SPECULUM NamedSignalRegistry registry, VERBUM signal_name) REDDE SPECULUM Signal
+  EVOCA REX idx AD CONIURA named_signal_registry_find_index(registry, signal_name)
+  SI idx != -1
+    EVOCA SPECULUM NamedSignalRegistryEntry found_ptr AD CONIURA fluxus_get((*registry).entries, idx)
+    REDDE SPECULUM (*found_ptr).signal
+  FIN SI
+  EVOCA NamedSignalRegistryEntry entry
+  VINCIRE entry.name AD signal_name
+  CONIURA signal_init(SPECULUM entry.signal, signal_name, SIGNAL_CONTINUE_ON_ERROR)
+  CONIURA fluxus_push((*registry).entries, SPECULUM entry)
+  EVOCA SPECULUM NamedSignalRegistryEntry pushed_ptr AD CONIURA fluxus_get((*registry).entries, CONIURA fluxus_len((*registry).entries) - 1)
+  REDDE SPECULUM (*pushed_ptr).signal
+EXPLICIT RITUALE
+
+RITUALE signal_connect_named(SPECULUM NamedSignalRegistry registry, VERBUM signal_name, VERBUM handler_name, SPECULUM NIHIL handler_ref) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Signal signal_ptr AD CONIURA named_signal_registry_get_or_create(registry, signal_name)
+  REDDE CONIURA signal_connect(signal_ptr, handler_name, handler_ref)
+EXPLICIT RITUALE
+
+RITUALE signal_connect_named_with_ctx(SPECULUM NamedSignalRegistry registry, VERBUM signal_name, VERBUM handler_name, SPECULUM NIHIL handler_ref, SPECULUM NIHIL handler_ctx_ref) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Signal signal_ptr AD CONIURA named_signal_registry_get_or_create(registry, signal_name)
+  REDDE CONIURA signal_connect_with_ctx(signal_ptr, handler_name, handler_ref, handler_ctx_ref, VERUM)
+EXPLICIT RITUALE
+
+RITUALE signal_emit_named_text(SPECULUM NamedSignalRegistry registry, VERBUM signal_name, VERBUM payload) REDDE SignalDispatchReport
+  EVOCA SPECULUM Signal signal_ptr AD CONIURA named_signal_registry_get_or_create(registry, signal_name)
+  EVOCA NamedSignalTextPayload text_payload
+  VINCIRE text_payload.value AD payload
+  EVOCA SignalEnvelope env AD CONIURA signal_envelope_new(signal_name, "named", "", "text", SPECULUM text_payload)
+  REDDE CONIURA signal_send(*signal_ptr, SPECULUM env)
+EXPLICIT RITUALE
+
+RITUALE signal_request_route_name(Router router, WebRequest req) REDDE VERBUM
+  EVOCA RouteMatch match AD CONIURA router_match(router, req)
+  SI match.status != ROUTE_MATCH
+    REDDE ""
+  FIN SI
+
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, match.route_index)
+  REDDE (*route_ptr).name
+EXPLICIT RITUALE
+
+RITUALE signal_emit_request_started(SPECULUM RequestSignals signals, WebRequest req) REDDE SignalDispatchReport
+  EVOCA RequestStartedPayload payload AD CONIURA signal_request_started_payload(req)
+  EVOCA SignalEnvelope env
+  CONIURA signal_envelope_fill(SPECULUM env, "request_started", "civitas.request_cycle", req.request_id, "RequestStartedPayload", SPECULUM payload)
+  REDDE CONIURA signal_send((*signals).request_started, SPECULUM env)
+EXPLICIT RITUALE
+
+RITUALE signal_emit_request_failed(SPECULUM RequestSignals signals, WebRequest req, VERBUM route_name, VERBUM error_kind, VERBUM error_message_safe) REDDE SignalDispatchReport
+  EVOCA RequestFailedPayload payload AD CONIURA signal_request_failed_payload(req, route_name, error_kind, error_message_safe)
+  EVOCA SignalEnvelope env
+  CONIURA signal_envelope_fill(SPECULUM env, "request_failed", "civitas.request_cycle", req.request_id, "RequestFailedPayload", SPECULUM payload)
+  REDDE CONIURA signal_send((*signals).request_failed, SPECULUM env)
+EXPLICIT RITUALE
+
+RITUALE signal_emit_request_finished(SPECULUM RequestSignals signals, WebRequest req, VERBUM route_name, WebResponse res, REX duration_ms) REDDE SignalDispatchReport
+  EVOCA RequestFinishedPayload payload AD CONIURA signal_request_finished_payload(req, route_name, res.status, duration_ms)
+  EVOCA SignalEnvelope env
+  CONIURA signal_envelope_fill(SPECULUM env, "request_finished", "civitas.request_cycle", req.request_id, "RequestFinishedPayload", SPECULUM payload)
+  REDDE CONIURA signal_send((*signals).request_finished, SPECULUM env)
+EXPLICIT RITUALE
+
+RITUALE signal_emit_post_request(SPECULUM RequestSignals signals, WebRequest req, VERBUM route_name, WebResponse res, REX duration_ms) REDDE SignalDispatchReport
+  EVOCA RequestFinishedPayload payload AD CONIURA signal_request_finished_payload(req, route_name, res.status, duration_ms)
+  EVOCA SignalEnvelope env
+  CONIURA signal_envelope_fill(SPECULUM env, "post_request", "civitas.request_cycle", req.request_id, "RequestFinishedPayload", SPECULUM payload)
+  REDDE CONIURA signal_send((*signals).post_request, SPECULUM env)
+EXPLICIT RITUALE
+
+RITUALE signals_dispatch_router_request(SPECULUM RequestSignals signals, Router router, WebRequest req) REDDE WebResponse
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA VERBUM route_name AD CONIURA signal_request_route_name(router, req)
+  EVOCA WebResponse res AD CONIURA response_new(500)
+
+  CONIURA signal_emit_request_started(signals, req)
+  TEMPTA
+    CONIURA response_fill(SPECULUM res, CONIURA router_dispatch(router, req))
+  CAPE FRACTUM error
+    EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(error)
+    CONIURA signal_emit_request_failed(signals, req, route_name, "fractum", error_text)
+    CONIURA response_fill(SPECULUM res, CONIURA response_internal_error("internal server error"))
+  FIN TEMPTA
+
+  CONIURA signal_emit_request_finished(signals, req, route_name, res, CONIURA now_ms() - started_ms)
+  CONIURA signal_emit_post_request(signals, req, route_name, res, CONIURA now_ms() - started_ms)
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

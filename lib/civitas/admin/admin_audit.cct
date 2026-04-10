@@ -1,0 +1,35 @@
+INCIPIT grimoire "civitas_admin_audit"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+
+RITUALE admin_audit_write(DbHandle dbh, VERBUM model_name, VERBUM record_pk, AdminAuditAction action, VERBUM actor_id, VERBUM payload_json) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, model_name)
+  CONIURA dbh_param_text(SPECULUM params, record_pk)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA admin_audit_action_to_string(action))
+  CONIURA dbh_param_text(SPECULUM params, actor_id)
+  CONIURA dbh_param_text(SPECULUM params, payload_json)
+  CONIURA dbh_param_int(SPECULUM params, CONIURA datetime_to_unix(CONIURA datetime_now()))
+  CONIURA dbh_exec(dbh, "INSERT INTO admin_audit_log (id, model_name, record_pk, action, actor_id, payload_json, created_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_audit_count(DbHandle dbh, VERBUM model_name) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, model_name)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM admin_audit_log WHERE model_name = ?", params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,90 @@
+INCIPIT grimoire "civitas_permissions_check"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "permissions.cct"
+
+RITUALE permissions_fluxus_contains(SPECULUM NIHIL lista, VERBUM cod) REDDE VERUM
+  EVOCA REX n AD CONIURA fluxus_len(lista)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(lista, i)
+    SI CONIURA compare(*item_ptr, cod) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE usuario_tem_permissao(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt_dir AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM user_permissions WHERE user_id = ? AND permissao = ?")
+  CONIURA stmt_bind_text(stmt_dir, 1, user_id)
+  CONIURA stmt_bind_text(stmt_dir, 2, permissao)
+  CONIURA stmt_step(stmt_dir)
+  EVOCA REX count_dir AD 0
+  SI CONIURA stmt_has_row(stmt_dir)
+    VINCIRE count_dir AD CONIURA stmt_get_int(stmt_dir, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt_dir)
+  SI count_dir > 0
+    REDDE VERUM
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt_grp AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM group_permissions gp JOIN user_groups ug ON gp.group_id = ug.group_id WHERE ug.user_id = ? AND gp.permissao = ?")
+  CONIURA stmt_bind_text(stmt_grp, 1, user_id)
+  CONIURA stmt_bind_text(stmt_grp, 2, permissao)
+  CONIURA stmt_step(stmt_grp)
+  EVOCA REX count_grp AD 0
+  SI CONIURA stmt_has_row(stmt_grp)
+    VINCIRE count_grp AD CONIURA stmt_get_int(stmt_grp, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt_grp)
+  REDDE count_grp > 0
+EXPLICIT RITUALE
+
+RITUALE usuario_listar_permissoes(SPECULUM NIHIL db, VERBUM user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL lista AD CONIURA fluxus_init(MENSURA(VERBUM))
+
+  EVOCA SPECULUM NIHIL stmt_dir AD CONIURA db_prepare(db, "SELECT permissao FROM user_permissions WHERE user_id = ?")
+  CONIURA stmt_bind_text(stmt_dir, 1, user_id)
+  CONIURA stmt_step(stmt_dir)
+  DUM CONIURA stmt_has_row(stmt_dir)
+    EVOCA VERBUM cod AD CONIURA stmt_get_text(stmt_dir, 0)
+    SI NON CONIURA permissions_fluxus_contains(lista, cod)
+      CONIURA fluxus_push(lista, SPECULUM cod)
+    FIN SI
+    CONIURA stmt_step(stmt_dir)
+  FIN DUM
+  CONIURA stmt_finalize(stmt_dir)
+
+  EVOCA SPECULUM NIHIL stmt_grp AD CONIURA db_prepare(db, "SELECT DISTINCT gp.permissao FROM group_permissions gp JOIN user_groups ug ON gp.group_id = ug.group_id WHERE ug.user_id = ?")
+  CONIURA stmt_bind_text(stmt_grp, 1, user_id)
+  CONIURA stmt_step(stmt_grp)
+  DUM CONIURA stmt_has_row(stmt_grp)
+    EVOCA VERBUM cod AD CONIURA stmt_get_text(stmt_grp, 0)
+    SI NON CONIURA permissions_fluxus_contains(lista, cod)
+      CONIURA fluxus_push(lista, SPECULUM cod)
+    FIN SI
+    CONIURA stmt_step(stmt_grp)
+  FIN DUM
+  CONIURA stmt_finalize(stmt_grp)
+
+  REDDE lista
+EXPLICIT RITUALE
+
+RITUALE usuario_tem_qualquer_permissao(SPECULUM NIHIL db, VERBUM user_id, SPECULUM NIHIL permissoes) REDDE VERUM
+  EVOCA REX n AD CONIURA fluxus_len(permissoes)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM cod_ptr AD CONIURA fluxus_get(permissoes, i)
+    SI CONIURA usuario_tem_permissao(db, user_id, *cod_ptr)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

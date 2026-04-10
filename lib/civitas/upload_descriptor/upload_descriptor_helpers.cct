@@ -1,0 +1,27 @@
+INCIPIT grimoire "civitas_upload_descriptor_helpers"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "upload_descriptor.cct"
+
+RITUALE upload_descriptor_promote(SPECULUM UploadDescriptor d) REDDE NIHIL
+  VINCIRE (*d).state AD UsFinal
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_orphan(SPECULUM UploadDescriptor d) REDDE NIHIL
+  VINCIRE (*d).state AD UsOrphan
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_has_hash(UploadDescriptor d) REDDE VERUM
+  REDDE CONIURA len(d.hash) > 0
+EXPLICIT RITUALE
+
+RITUALE upload_descriptor_same_content(UploadDescriptor a, UploadDescriptor b) REDDE VERUM
+  SI NON CONIURA upload_descriptor_has_hash(a) VEL NON CONIURA upload_descriptor_has_hash(b)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA compare(a.hash, b.hash) == 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

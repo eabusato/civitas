@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase2_2c_timing_sets_header_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "timing", middleware_timing)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/timing"), terminal)
+  SI CONIURA len(CONIURA response_header_or(out, "x-response-time-ms", "")) == 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

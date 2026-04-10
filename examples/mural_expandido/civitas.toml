@@ -1,0 +1,25 @@
+[app]
+name = "Mural Expandido"
+version = "0.1.0"
+environment = "development"
+allowed_hosts = ["127.0.0.1", "localhost"]
+
+[http]
+host = "0.0.0.0"
+port = 8081
+
+[security]
+rate_limit_enabled = false
+enforce_https = false
+
+[mural_expandido]
+site_title = "Mural Expandido"
+database_path = "var/mural_expandido.db"
+static_dir = "static"
+locale_dir = "locales"
+trace_dir = "var/traces"
+recent_limit = 24
+cache_entries = 128
+default_locale = "pt-BR"
+admin_secret = "change-me-expanded-admin-secret"
+session_secret = "change-me-expanded-session-secret"

@@ -1,0 +1,640 @@
+INCIPIT grimoire "civitas_forms_render"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../csrf.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "../validate/validate.cct"
+ADVOCARE "forms.cct"
+
+ORDO InputKind
+  IkText,
+  IkPassword,
+  IkEmail,
+  IkNumber,
+  IkTextarea,
+  IkSelect,
+  IkCheckbox,
+  IkRadio,
+  IkHidden
+FIN ORDO
+
+SIGILLUM SelectOption
+  valor: VERBUM
+  label: VERBUM
+FIN SIGILLUM
+
+SIGILLUM FieldDef
+  nome: VERBUM
+  label: VERBUM
+  kind: InputKind
+  placeholder: VERBUM
+  help_text: VERBUM
+  options: SPECULUM NIHIL
+  css_class: VERBUM
+  required: VERUM
+  rows: REX
+  extra_attrs: SPECULUM NIHIL
+  wrapper_attrs: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM FormDef
+  action: VERBUM
+  method: VERBUM
+  enctype: VERBUM
+  campos: SPECULUM NIHIL
+  submit_label: VERBUM
+  form_css_class: VERBUM
+  csrf_token: CsrfToken
+  extra_attrs: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE render_attr_map_find_key(SPECULUM NIHIL attrs, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(attrs)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE render_attr_map_put(SPECULUM NIHIL attrs, VERBUM key, VERBUM value) REDDE NIHIL
+  EVOCA VERBUM lowered_key AD CONIURA trim(key)
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA render_attr_map_find_key(attrs, lowered_key)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(attrs, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt), value)
+    REDDE
+  FIN SI
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(attrs, lowered_key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE render_attr_is_inline_event(VERBUM name) REDDE VERUM
+  REDDE CONIURA starts_with(CONIURA to_lower(name), "on")
+EXPLICIT RITUALE
+
+RITUALE render_attr_is_reserved_form(VERBUM name) REDDE VERUM
+  EVOCA VERBUM lowered AD CONIURA to_lower(name)
+  REDDE CONIURA compare(lowered, "action") == 0 VEL CONIURA compare(lowered, "method") == 0 VEL CONIURA compare(lowered, "enctype") == 0
+EXPLICIT RITUALE
+
+RITUALE render_attr_is_reserved_field(VERBUM name) REDDE VERUM
+  EVOCA VERBUM lowered AD CONIURA to_lower(name)
+  REDDE CONIURA compare(lowered, "type") == 0 VEL CONIURA compare(lowered, "name") == 0 VEL CONIURA compare(lowered, "id") == 0 VEL CONIURA compare(lowered, "value") == 0 VEL CONIURA compare(lowered, "checked") == 0 VEL CONIURA compare(lowered, "selected") == 0 VEL CONIURA compare(lowered, "required") == 0 VEL CONIURA compare(lowered, "aria-invalid") == 0 VEL CONIURA compare(lowered, "rows") == 0
+EXPLICIT RITUALE
+
+RITUALE render_apply_extra_attrs(SPECULUM NIHIL node, SPECULUM NIHIL attrs, VERUM form_reserved) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(attrs)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    EVOCA VERBUM lowered AD CONIURA to_lower(key)
+    EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(attrs, key, "")
+
+    SI CONIURA len(value) == 0
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA render_attr_is_inline_event(lowered)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI form_reserved
+      SI CONIURA render_attr_is_reserved_form(lowered)
+        VINCIRE i AD i + 1
+        RECEDE
+      FIN SI
+    ALITER
+      SI CONIURA render_attr_is_reserved_field(lowered)
+        VINCIRE i AD i + 1
+        RECEDE
+      FIN SI
+    FIN SI
+
+    SI CONIURA compare(lowered, "class") == 0
+      CONIURA html_class(node, value)
+    ALITER
+      CONIURA html_attr(node, key, value)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA fluxus_free(keys)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_new(VERBUM nome, VERBUM label, InputKind kind) REDDE FieldDef
+  EVOCA FieldDef fd
+  VINCIRE fd.nome AD nome
+  VINCIRE fd.label AD label
+  VINCIRE fd.kind AD kind
+  VINCIRE fd.placeholder AD ""
+  VINCIRE fd.help_text AD ""
+  VINCIRE fd.options AD CONIURA fluxus_init(MENSURA(SelectOption))
+  VINCIRE fd.css_class AD ""
+  VINCIRE fd.required AD FALSUM
+  VINCIRE fd.rows AD 3
+  VINCIRE fd.extra_attrs AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE fd.wrapper_attrs AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  REDDE fd
+EXPLICIT RITUALE
+
+RITUALE field_def_add_option(SPECULUM FieldDef fd, VERBUM valor, VERBUM label) REDDE NIHIL
+  EVOCA SelectOption so
+  VINCIRE so.valor AD valor
+  VINCIRE so.label AD label
+  CONIURA fluxus_push((*fd).options, SPECULUM so)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_def_new(VERBUM action, CsrfToken csrf) REDDE FormDef
+  EVOCA FormDef def
+  VINCIRE def.action AD action
+  VINCIRE def.method AD "post"
+  VINCIRE def.enctype AD ""
+  VINCIRE def.campos AD CONIURA fluxus_init(MENSURA(FieldDef))
+  VINCIRE def.submit_label AD "Enviar"
+  VINCIRE def.form_css_class AD ""
+  VINCIRE def.csrf_token AD csrf
+  VINCIRE def.extra_attrs AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE form_def_add_field(SPECULUM FormDef def, FieldDef fd) REDDE NIHIL
+  CONIURA fluxus_push((*def).campos, SPECULUM fd)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_add_attr(SPECULUM FieldDef fd, VERBUM nome, VERBUM valor) REDDE NIHIL
+  CONIURA render_attr_map_put((*fd).extra_attrs, nome, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_add_wrapper_attr(SPECULUM FieldDef fd, VERBUM nome, VERBUM valor) REDDE NIHIL
+  CONIURA render_attr_map_put((*fd).wrapper_attrs, nome, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_def_add_attr(SPECULUM FormDef def, VERBUM nome, VERBUM valor) REDDE NIHIL
+  CONIURA render_attr_map_put((*def).extra_attrs, nome, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_add_data(SPECULUM FieldDef fd, VERBUM chave, VERBUM valor) REDDE NIHIL
+  CONIURA field_def_add_attr(fd, CONIURA concat("data-", chave), valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_add_wrapper_data(SPECULUM FieldDef fd, VERBUM chave, VERBUM valor) REDDE NIHIL
+  CONIURA field_def_add_wrapper_attr(fd, CONIURA concat("data-", chave), valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_def_add_data(SPECULUM FormDef def, VERBUM chave, VERBUM valor) REDDE NIHIL
+  CONIURA form_def_add_attr(def, CONIURA concat("data-", chave), valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_def_free(SPECULUM FieldDef fd) REDDE NIHIL
+  CONIURA fluxus_free((*fd).options)
+  CONIURA map_free GENUS(VERBUM, VERBUM)((*fd).extra_attrs)
+  CONIURA map_free GENUS(VERBUM, VERBUM)((*fd).wrapper_attrs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_def_free(SPECULUM FormDef def) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*def).campos)
+  DUM i < n
+    EVOCA SPECULUM FieldDef campo_ptr AD CONIURA fluxus_get((*def).campos, i)
+    CONIURA field_def_free(campo_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free((*def).campos)
+  CONIURA map_free GENUS(VERBUM, VERBUM)((*def).extra_attrs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE field_wrapper_class(ValidationResult vr, VERBUM nome, VERBUM extra) REDDE VERBUM
+  EVOCA VERBUM cls AD "form-group"
+  SI CONIURA len(extra) > 0
+    VINCIRE cls AD CONIURA concat(CONIURA concat(cls, " "), extra)
+  FIN SI
+  SI CONIURA validation_has_error(vr, nome)
+    VINCIRE cls AD CONIURA concat(cls, " field-error")
+  FIN SI
+  REDDE cls
+EXPLICIT RITUALE
+
+RITUALE render_field_errors(ValidationResult vr, VERBUM nome) REDDE VERBUM
+  SI NON CONIURA validation_has_error(vr, nome)
+    REDDE ""
+  FIN SI
+
+  EVOCA SPECULUM NIHIL msgs AD CONIURA validation_get_errors(vr, nome)
+  EVOCA REX n AD CONIURA fluxus_len(msgs)
+  EVOCA REX i AD 0
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+
+  SI n == 0
+    CONIURA builder_free(b)
+    REDDE ""
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(msgs, i)
+    EVOCA SPECULUM NIHIL span AD CONIURA html_tag("span")
+    CONIURA html_attr(span, "class", "error-message")
+    CONIURA html_text(span, *msg_ptr)
+    CONIURA builder_append(b, CONIURA html_render_free(span))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE render_field_label(FieldDef fd) REDDE VERBUM
+  SI CONIURA len(fd.label) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL lbl AD CONIURA html_tag("label")
+  EVOCA VERBUM texto AD fd.label
+  CONIURA html_attr(lbl, "for", fd.nome)
+  SI fd.required
+    VINCIRE texto AD CONIURA concat(texto, " *")
+  FIN SI
+  CONIURA html_text(lbl, texto)
+  REDDE CONIURA html_render_free(lbl)
+EXPLICIT RITUALE
+
+RITUALE render_field_help(FieldDef fd) REDDE VERBUM
+  SI CONIURA len(fd.help_text) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL small AD CONIURA html_tag("small")
+  CONIURA html_attr(small, "class", "help-text")
+  CONIURA html_text(small, fd.help_text)
+  REDDE CONIURA html_render_free(small)
+EXPLICIT RITUALE
+
+RITUALE render_field_text_input(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  EVOCA VERBUM wrapper_class AD CONIURA field_wrapper_class(vr, fd.nome, fd.css_class)
+  EVOCA SPECULUM NIHIL wrapper AD CONIURA html_tag("div")
+  EVOCA VERBUM lbl_html AD CONIURA render_field_label(fd)
+  EVOCA VERBUM erros_html AD CONIURA render_field_errors(vr, fd.nome)
+  EVOCA VERBUM help_html AD CONIURA render_field_help(fd)
+  EVOCA VERBUM input_type AD "text"
+  EVOCA SPECULUM NIHIL inp AD CONIURA html_void_tag("input")
+
+  CONIURA html_attr(wrapper, "class", wrapper_class)
+  CONIURA render_apply_extra_attrs(wrapper, fd.wrapper_attrs, FALSUM)
+  SI CONIURA len(lbl_html) > 0
+    CONIURA html_raw(wrapper, lbl_html)
+  FIN SI
+
+  ELIGE fd.kind
+    CASUS IkText:
+      VINCIRE input_type AD "text"
+    CASUS IkPassword:
+      VINCIRE input_type AD "password"
+    CASUS IkEmail:
+      VINCIRE input_type AD "email"
+    CASUS IkNumber:
+      VINCIRE input_type AD "number"
+    CASUS IkTextarea:
+      VINCIRE input_type AD "text"
+    CASUS IkSelect:
+      VINCIRE input_type AD "text"
+    CASUS IkCheckbox:
+      VINCIRE input_type AD "text"
+    CASUS IkRadio:
+      VINCIRE input_type AD "text"
+    CASUS IkHidden:
+      VINCIRE input_type AD "hidden"
+  FIN ELIGE
+
+  CONIURA html_attr(inp, "type", input_type)
+  CONIURA html_attr(inp, "name", fd.nome)
+  CONIURA html_attr(inp, "id", fd.nome)
+  SI fd.kind != IkPassword
+    EVOCA VERBUM valor AD CONIURA form_data_get_or(form_fd, fd.nome, "")
+    SI CONIURA len(valor) > 0
+      CONIURA html_attr(inp, "value", valor)
+    FIN SI
+  FIN SI
+  SI CONIURA len(fd.placeholder) > 0
+    CONIURA html_attr(inp, "placeholder", fd.placeholder)
+  FIN SI
+  SI fd.required
+    CONIURA html_attr(inp, "required", "required")
+  FIN SI
+  SI CONIURA validation_has_error(vr, fd.nome)
+    CONIURA html_attr(inp, "aria-invalid", "true")
+  FIN SI
+  CONIURA render_apply_extra_attrs(inp, fd.extra_attrs, FALSUM)
+  CONIURA html_append_child(wrapper, inp)
+
+  SI CONIURA len(erros_html) > 0
+    CONIURA html_raw(wrapper, erros_html)
+  FIN SI
+  SI CONIURA len(help_html) > 0
+    CONIURA html_raw(wrapper, help_html)
+  FIN SI
+
+  REDDE CONIURA html_render_free(wrapper)
+EXPLICIT RITUALE
+
+RITUALE render_field_textarea(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  EVOCA VERBUM wrapper_class AD CONIURA field_wrapper_class(vr, fd.nome, fd.css_class)
+  EVOCA SPECULUM NIHIL wrapper AD CONIURA html_tag("div")
+  EVOCA SPECULUM NIHIL ta AD CONIURA html_tag("textarea")
+  EVOCA VERBUM lbl_html AD CONIURA render_field_label(fd)
+  EVOCA VERBUM erros_html AD CONIURA render_field_errors(vr, fd.nome)
+  EVOCA VERBUM help_html AD CONIURA render_field_help(fd)
+  EVOCA VERBUM valor AD CONIURA form_data_get_or(form_fd, fd.nome, "")
+
+  CONIURA html_attr(wrapper, "class", wrapper_class)
+  CONIURA render_apply_extra_attrs(wrapper, fd.wrapper_attrs, FALSUM)
+  SI CONIURA len(lbl_html) > 0
+    CONIURA html_raw(wrapper, lbl_html)
+  FIN SI
+
+  CONIURA html_attr(ta, "name", fd.nome)
+  CONIURA html_attr(ta, "id", fd.nome)
+  CONIURA html_attr(ta, "rows", CONIURA stringify_int(fd.rows))
+  SI CONIURA len(fd.placeholder) > 0
+    CONIURA html_attr(ta, "placeholder", fd.placeholder)
+  FIN SI
+  SI fd.required
+    CONIURA html_attr(ta, "required", "required")
+  FIN SI
+  SI CONIURA validation_has_error(vr, fd.nome)
+    CONIURA html_attr(ta, "aria-invalid", "true")
+  FIN SI
+  CONIURA render_apply_extra_attrs(ta, fd.extra_attrs, FALSUM)
+  SI CONIURA len(valor) > 0
+    CONIURA html_text(ta, valor)
+  FIN SI
+
+  CONIURA html_append_child(wrapper, ta)
+  SI CONIURA len(erros_html) > 0
+    CONIURA html_raw(wrapper, erros_html)
+  FIN SI
+  SI CONIURA len(help_html) > 0
+    CONIURA html_raw(wrapper, help_html)
+  FIN SI
+  REDDE CONIURA html_render_free(wrapper)
+EXPLICIT RITUALE
+
+RITUALE render_field_select(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  EVOCA VERBUM wrapper_class AD CONIURA field_wrapper_class(vr, fd.nome, fd.css_class)
+  EVOCA SPECULUM NIHIL wrapper AD CONIURA html_tag("div")
+  EVOCA SPECULUM NIHIL sel AD CONIURA html_tag("select")
+  EVOCA VERBUM lbl_html AD CONIURA render_field_label(fd)
+  EVOCA VERBUM erros_html AD CONIURA render_field_errors(vr, fd.nome)
+  EVOCA VERBUM help_html AD CONIURA render_field_help(fd)
+  EVOCA VERBUM valor_atual AD CONIURA form_data_get_or(form_fd, fd.nome, "")
+  EVOCA SPECULUM NIHIL opt_blank AD CONIURA html_tag("option")
+  EVOCA REX n AD CONIURA fluxus_len(fd.options)
+  EVOCA REX i AD 0
+
+  CONIURA html_attr(wrapper, "class", wrapper_class)
+  CONIURA render_apply_extra_attrs(wrapper, fd.wrapper_attrs, FALSUM)
+  SI CONIURA len(lbl_html) > 0
+    CONIURA html_raw(wrapper, lbl_html)
+  FIN SI
+
+  CONIURA html_attr(sel, "name", fd.nome)
+  CONIURA html_attr(sel, "id", fd.nome)
+  SI fd.required
+    CONIURA html_attr(sel, "required", "required")
+  FIN SI
+  SI CONIURA validation_has_error(vr, fd.nome)
+    CONIURA html_attr(sel, "aria-invalid", "true")
+  FIN SI
+  CONIURA render_apply_extra_attrs(sel, fd.extra_attrs, FALSUM)
+
+  CONIURA html_attr(opt_blank, "value", "")
+  CONIURA html_text(opt_blank, "- selecione -")
+  CONIURA html_append_child(sel, opt_blank)
+
+  DUM i < n
+    EVOCA SPECULUM SelectOption so_ptr AD CONIURA fluxus_get(fd.options, i)
+    EVOCA SPECULUM NIHIL opt AD CONIURA html_tag("option")
+    CONIURA html_attr(opt, "value", (*so_ptr).valor)
+    SI CONIURA compare((*so_ptr).valor, valor_atual) == 0
+      CONIURA html_attr(opt, "selected", "selected")
+    FIN SI
+    CONIURA html_text(opt, (*so_ptr).label)
+    CONIURA html_append_child(sel, opt)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA html_append_child(wrapper, sel)
+  SI CONIURA len(erros_html) > 0
+    CONIURA html_raw(wrapper, erros_html)
+  FIN SI
+  SI CONIURA len(help_html) > 0
+    CONIURA html_raw(wrapper, help_html)
+  FIN SI
+  REDDE CONIURA html_render_free(wrapper)
+EXPLICIT RITUALE
+
+RITUALE render_field_checkbox(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  EVOCA VERBUM wrapper_class AD CONIURA concat(CONIURA field_wrapper_class(vr, fd.nome, fd.css_class), " form-group-checkbox")
+  EVOCA SPECULUM NIHIL wrapper AD CONIURA html_tag("div")
+  EVOCA SPECULUM NIHIL hidden AD CONIURA html_void_tag("input")
+  EVOCA SPECULUM NIHIL inp AD CONIURA html_void_tag("input")
+  EVOCA VERBUM erros_html AD CONIURA render_field_errors(vr, fd.nome)
+  EVOCA VERBUM valor AD CONIURA form_data_get_or(form_fd, fd.nome, "")
+
+  CONIURA html_attr(wrapper, "class", wrapper_class)
+  CONIURA render_apply_extra_attrs(wrapper, fd.wrapper_attrs, FALSUM)
+
+  CONIURA html_attr(hidden, "type", "hidden")
+  CONIURA html_attr(hidden, "name", fd.nome)
+  CONIURA html_attr(hidden, "value", "0")
+  CONIURA html_append_child(wrapper, hidden)
+
+  CONIURA html_attr(inp, "type", "checkbox")
+  CONIURA html_attr(inp, "name", fd.nome)
+  CONIURA html_attr(inp, "id", fd.nome)
+  CONIURA html_attr(inp, "value", "1")
+  SI CONIURA compare(valor, "1") == 0 VEL CONIURA compare(valor, "on") == 0
+    CONIURA html_attr(inp, "checked", "checked")
+  FIN SI
+  CONIURA render_apply_extra_attrs(inp, fd.extra_attrs, FALSUM)
+  CONIURA html_append_child(wrapper, inp)
+
+  SI CONIURA len(fd.label) > 0
+    EVOCA SPECULUM NIHIL lbl AD CONIURA html_tag("label")
+    CONIURA html_attr(lbl, "for", fd.nome)
+    CONIURA html_text(lbl, fd.label)
+    CONIURA html_append_child(wrapper, lbl)
+  FIN SI
+
+  SI CONIURA len(erros_html) > 0
+    CONIURA html_raw(wrapper, erros_html)
+  FIN SI
+  REDDE CONIURA html_render_free(wrapper)
+EXPLICIT RITUALE
+
+RITUALE render_field_radio(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  EVOCA VERBUM wrapper_class AD CONIURA field_wrapper_class(vr, fd.nome, fd.css_class)
+  EVOCA SPECULUM NIHIL wrapper AD CONIURA html_tag("fieldset")
+  EVOCA VERBUM valor_atual AD CONIURA form_data_get_or(form_fd, fd.nome, "")
+  EVOCA VERBUM erros_html AD CONIURA render_field_errors(vr, fd.nome)
+  EVOCA REX n AD CONIURA fluxus_len(fd.options)
+  EVOCA REX i AD 0
+
+  CONIURA html_attr(wrapper, "class", wrapper_class)
+  CONIURA render_apply_extra_attrs(wrapper, fd.wrapper_attrs, FALSUM)
+  SI CONIURA len(fd.label) > 0
+    EVOCA SPECULUM NIHIL legend AD CONIURA html_tag("legend")
+    CONIURA html_text(legend, fd.label)
+    CONIURA html_append_child(wrapper, legend)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM SelectOption so_ptr AD CONIURA fluxus_get(fd.options, i)
+    EVOCA VERBUM radio_id AD CONIURA concat(CONIURA concat(fd.nome, "_"), (*so_ptr).valor)
+    EVOCA SPECULUM NIHIL radio_wrap AD CONIURA html_tag("div")
+    EVOCA SPECULUM NIHIL inp AD CONIURA html_void_tag("input")
+    EVOCA SPECULUM NIHIL lbl AD CONIURA html_tag("label")
+
+    CONIURA html_attr(radio_wrap, "class", "radio-option")
+    CONIURA html_attr(inp, "type", "radio")
+    CONIURA html_attr(inp, "name", fd.nome)
+    CONIURA html_attr(inp, "id", radio_id)
+    CONIURA html_attr(inp, "value", (*so_ptr).valor)
+    SI CONIURA compare((*so_ptr).valor, valor_atual) == 0
+      CONIURA html_attr(inp, "checked", "checked")
+    FIN SI
+    CONIURA render_apply_extra_attrs(inp, fd.extra_attrs, FALSUM)
+    CONIURA html_append_child(radio_wrap, inp)
+
+    CONIURA html_attr(lbl, "for", radio_id)
+    CONIURA html_text(lbl, (*so_ptr).label)
+    CONIURA html_append_child(radio_wrap, lbl)
+    CONIURA html_append_child(wrapper, radio_wrap)
+
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA len(erros_html) > 0
+    CONIURA html_raw(wrapper, erros_html)
+  FIN SI
+  REDDE CONIURA html_render_free(wrapper)
+EXPLICIT RITUALE
+
+RITUALE render_field(FieldDef fd, ValidationResult vr, FormData form_fd) REDDE VERBUM
+  ELIGE fd.kind
+    CASUS IkText:
+      REDDE CONIURA render_field_text_input(fd, vr, form_fd)
+    CASUS IkPassword:
+      REDDE CONIURA render_field_text_input(fd, vr, form_fd)
+    CASUS IkEmail:
+      REDDE CONIURA render_field_text_input(fd, vr, form_fd)
+    CASUS IkNumber:
+      REDDE CONIURA render_field_text_input(fd, vr, form_fd)
+    CASUS IkTextarea:
+      REDDE CONIURA render_field_textarea(fd, vr, form_fd)
+    CASUS IkSelect:
+      REDDE CONIURA render_field_select(fd, vr, form_fd)
+    CASUS IkCheckbox:
+      REDDE CONIURA render_field_checkbox(fd, vr, form_fd)
+    CASUS IkRadio:
+      REDDE CONIURA render_field_radio(fd, vr, form_fd)
+    CASUS IkHidden:
+      EVOCA SPECULUM NIHIL inp AD CONIURA html_void_tag("input")
+      CONIURA html_attr(inp, "type", "hidden")
+      CONIURA html_attr(inp, "name", fd.nome)
+      CONIURA html_attr(inp, "value", CONIURA form_data_get_or(form_fd, fd.nome, ""))
+      CONIURA render_apply_extra_attrs(inp, fd.extra_attrs, FALSUM)
+      REDDE CONIURA html_render_free(inp)
+  FIN ELIGE
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE render_form(FormDef def, ValidationResult vr, FormData fd) REDDE VERBUM
+  EVOCA SPECULUM NIHIL form AD CONIURA html_tag("form")
+  EVOCA CsrfConfig csrf_cfg AD CONIURA csrf_config_default()
+  EVOCA SPECULUM NIHIL csrf_inp AD CONIURA html_csrf_input(csrf_cfg.field_name, def.csrf_token.token)
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  EVOCA REX i AD 0
+  EVOCA SPECULUM NIHIL submit AD CONIURA html_button(def.submit_label, "submit")
+
+  CONIURA html_attr(form, "action", def.action)
+  CONIURA html_attr(form, "method", def.method)
+  SI CONIURA len(def.enctype) > 0
+    CONIURA html_attr(form, "enctype", def.enctype)
+  FIN SI
+  SI CONIURA len(def.form_css_class) > 0
+    CONIURA html_attr(form, "class", def.form_css_class)
+  FIN SI
+  CONIURA render_apply_extra_attrs(form, def.extra_attrs, VERUM)
+
+  CONIURA html_append_child(form, csrf_inp)
+
+  DUM i < n
+    EVOCA SPECULUM FieldDef campo_ptr AD CONIURA fluxus_get(def.campos, i)
+    CONIURA html_raw(form, CONIURA render_field(*campo_ptr, vr, fd))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA html_attr(submit, "class", "btn btn-primary")
+  CONIURA html_append_child(form, submit)
+  REDDE CONIURA html_render_free(form)
+EXPLICIT RITUALE
+
+RITUALE render_form_errors_summary(ValidationResult vr) REDDE VERBUM
+  SI vr.valido
+    REDDE ""
+  FIN SI
+
+  EVOCA SPECULUM NIHIL div AD CONIURA html_tag("div")
+  EVOCA SPECULUM NIHIL p AD CONIURA html_tag("p")
+  EVOCA SPECULUM NIHIL ul AD CONIURA html_tag("ul")
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, FieldError)(vr.errors)
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA REX i AD 0
+
+  CONIURA html_attr(div, "class", "form-errors-summary")
+  CONIURA html_attr(div, "role", "alert")
+  CONIURA html_text(p, "Por favor, corrija os erros abaixo para continuar.")
+  CONIURA html_append_child(div, p)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA SPECULUM NIHIL li AD CONIURA html_tag("li")
+    EVOCA SPECULUM NIHIL a AD CONIURA html_tag("a")
+    EVOCA VERBUM primeiro_erro AD CONIURA validation_first_error(vr, *key_ptr)
+    CONIURA html_attr(a, "href", CONIURA concat("#", *key_ptr))
+    CONIURA html_text(a, CONIURA concat(CONIURA concat(*key_ptr, ": "), primeiro_erro))
+    CONIURA html_append_child(li, a)
+    CONIURA html_append_child(ul, li)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA html_append_child(div, ul)
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA html_render_free(div)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

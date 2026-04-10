@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase19_19a_content_and_envelope"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_content_negotiation_csv_and_envelopes() REDDE NIHIL
+  EVOCA ContentFormat csv_fmt AD CONIURA api_content_format_from_accept("text/csv,application/json")
+  SI csv_fmt != CONTENT_CSV
+    IACE "accept header should negotiate csv"
+  FIN SI
+  EVOCA VERBUM data_json AD "[{\"id\":1,\"title\":\"Hello\"},{\"id\":2,\"title\":\"World\"}]"
+  EVOCA VERBUM csv_text AD CONIURA api_format_response(data_json, csv_fmt)
+  SI CONIURA find(csv_text, "id,title") == -1
+    IACE "csv header missing"
+  FIN SI
+  SI CONIURA find(csv_text, "1,Hello") == -1
+    IACE "csv row missing"
+  FIN SI
+  EVOCA VERBUM ok_json AD CONIURA api_response_ok("{\"id\":1}")
+  SI CONIURA find(ok_json, "\"ok\":true") == -1 VEL CONIURA find(ok_json, "\"data\":{\"id\":1}") == -1
+    IACE "ok envelope mismatch"
+  FIN SI
+  EVOCA VERBUM err_json AD CONIURA api_response_error("bad_request", "broken", "{\"reason\":\"x\"}")
+  SI CONIURA find(err_json, "\"ok\":false") == -1 VEL CONIURA find(err_json, "\"code\":\"bad_request\"") == -1
+    IACE "error envelope mismatch"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_content_negotiation_csv_and_envelopes()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

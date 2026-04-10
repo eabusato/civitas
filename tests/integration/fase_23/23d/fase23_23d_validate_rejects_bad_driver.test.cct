@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase23_23d_validate_rejects_bad_driver"
+
+ADVOCARE "../../../../lib/civitas/civitas_config/civitas_config.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CivitasProject proj AD CONIURA civitas_project_default("tests/tmp/fase_23/23d_validate_rejects_bad_driver/civitas.toml")
+  VINCIRE proj.name AD "bad"
+  VINCIRE proj.entry AD "project/main.cct"
+  VINCIRE proj.db_driver AD "mysql"
+  VINCIRE proj.db_url AD "db"
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_project_validate(proj))
+    REDDE 1
+  FIN SI
+  VINCIRE proj.db_driver AD "sqlite"
+  VINCIRE proj.db_url AD ""
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_project_validate(proj))
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

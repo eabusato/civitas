@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase26_26c_record_persists_sqlite_row"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26c_record_persists_sqlite_row")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "mem.db"))
+  EVOCA MemProfilerState state AD CONIURA mem_profiler_state_new(db, 1)
+  EVOCA MemDelta delta
+  VINCIRE delta.route AD "/posts"
+  VINCIRE delta.request_id AD "req-3"
+  VINCIRE delta.alloc_count_delta AD 5
+  VINCIRE delta.alloc_bytes_delta AD 128
+  VINCIRE delta.free_count_delta AD 4
+  VINCIRE delta.live_count_delta AD 1
+  VINCIRE delta.live_bytes_delta AD 32
+  VINCIRE delta.duration_ms AD 7
+  VINCIRE delta.suspected_leak AD VERUM
+  VINCIRE delta.timestamp_ms AD 1234
+  CONIURA mem_profiler_record(SPECULUM state, delta)
+  SI CONIURA mem_profiler_count(SPECULUM state) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT suspected_leak FROM mem_deltas LIMIT 1") != 1
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

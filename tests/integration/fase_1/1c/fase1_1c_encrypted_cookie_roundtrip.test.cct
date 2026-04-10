@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase1_1c_encrypted_cookie_roundtrip_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM protected AD CONIURA cookie_encrypt("sid", "segredo-do-cookie", "chave-super")
+  EVOCA SPECULUM NIHIL res AD CONIURA cookie_decrypt(protected, "chave-super")
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA result_unwrap GENUS(VERBUM, VERBUM)(res), "segredo-do-cookie") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

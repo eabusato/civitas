@@ -1,0 +1,375 @@
+INCIPIT grimoire "civitas_security"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM HstsPolicy
+  max_age_seconds: REX
+  include_subdomains: VERUM
+  preload: VERUM
+FIN SIGILLUM
+
+SIGILLUM CspPolicy
+  default_src: VERBUM
+  script_src: VERBUM
+  style_src: VERBUM
+  img_src: VERBUM
+  font_src: VERBUM
+  connect_src: VERBUM
+  frame_ancestors: VERBUM
+  use_nonces: VERUM
+FIN SIGILLUM
+
+SIGILLUM SecurityConfig
+  hsts: HstsPolicy
+  csp: CspPolicy
+  x_frame_options: VERBUM
+  x_content_type_options: VERUM
+  referrer_policy: VERBUM
+  allowed_hosts: SPECULUM NIHIL
+  enforce_https: VERUM
+  rate_limit_enabled: VERUM
+  rate_limit_max_rps: REX
+  rate_limit_burst: REX
+FIN SIGILLUM
+
+SIGILLUM RateLimitBucket
+  tokens: REX
+  last_refill_ms: REX
+  max_tokens: REX
+  tokens_per_sec: REX
+FIN SIGILLUM
+
+SIGILLUM RateLimitEntry
+  client_ip: VERBUM
+  bucket: RateLimitBucket
+FIN SIGILLUM
+
+SIGILLUM RateLimiter
+  buckets: SPECULUM NIHIL
+  max_rps: REX
+  burst: REX
+FIN SIGILLUM
+
+SIGILLUM SecurityMetrics
+  host_rejected: REX
+  rate_limited: REX
+  path_traversal_blocked: REX
+FIN SIGILLUM
+
+RITUALE hsts_policy_default() REDDE HstsPolicy
+  EVOCA HstsPolicy policy
+  VINCIRE policy.max_age_seconds AD 31536000
+  VINCIRE policy.include_subdomains AD FALSUM
+  VINCIRE policy.preload AD FALSUM
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE csp_policy_default() REDDE CspPolicy
+  EVOCA CspPolicy policy
+  VINCIRE policy.default_src AD "'self'"
+  VINCIRE policy.script_src AD "'self'"
+  VINCIRE policy.style_src AD "'self'"
+  VINCIRE policy.img_src AD "'self' data:"
+  VINCIRE policy.font_src AD "'self'"
+  VINCIRE policy.connect_src AD "'self'"
+  VINCIRE policy.frame_ancestors AD "'none'"
+  VINCIRE policy.use_nonces AD VERUM
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE security_config_default() REDDE SecurityConfig
+  EVOCA SecurityConfig cfg
+  VINCIRE cfg.hsts AD CONIURA hsts_policy_default()
+  VINCIRE cfg.csp AD CONIURA csp_policy_default()
+  VINCIRE cfg.x_frame_options AD "DENY"
+  VINCIRE cfg.x_content_type_options AD VERUM
+  VINCIRE cfg.referrer_policy AD "strict-origin-when-cross-origin"
+  VINCIRE cfg.allowed_hosts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE cfg.enforce_https AD FALSUM
+  VINCIRE cfg.rate_limit_enabled AD FALSUM
+  VINCIRE cfg.rate_limit_max_rps AD 5
+  VINCIRE cfg.rate_limit_burst AD 10
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE security_logger_new() REDDE Logger
+  EVOCA Logger logger AD CONIURA log_new("civitas.security", WARN)
+  CONIURA log_set_sink_stderr(SPECULUM logger)
+  REDDE logger
+EXPLICIT RITUALE
+
+RITUALE security_metrics_new() REDDE SecurityMetrics
+  EVOCA SecurityMetrics metrics
+  VINCIRE metrics.host_rejected AD 0
+  VINCIRE metrics.rate_limited AD 0
+  VINCIRE metrics.path_traversal_blocked AD 0
+  REDDE metrics
+EXPLICIT RITUALE
+
+RITUALE security_metrics_inc_host_rejected(SPECULUM SecurityMetrics metrics) REDDE NIHIL
+  VINCIRE (*metrics).host_rejected AD (*metrics).host_rejected + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_metrics_inc_rate_limited(SPECULUM SecurityMetrics metrics) REDDE NIHIL
+  VINCIRE (*metrics).rate_limited AD (*metrics).rate_limited + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_metrics_inc_path_traversal_blocked(SPECULUM SecurityMetrics metrics) REDDE NIHIL
+  VINCIRE (*metrics).path_traversal_blocked AD (*metrics).path_traversal_blocked + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_context_config_key() REDDE VERBUM
+  REDDE "civitas.security.config"
+EXPLICIT RITUALE
+
+RITUALE security_host_normalize(VERBUM raw_host) REDDE VERBUM
+  EVOCA VERBUM host AD CONIURA to_lower(CONIURA trim(raw_host))
+  EVOCA REX bracket_end AD CONIURA find(host, "]")
+  EVOCA REX colon AD CONIURA find(host, ":")
+  SI CONIURA len(host) == 0
+    REDDE ""
+  FIN SI
+  SI CONIURA starts_with(host, "[") ET bracket_end != -1
+    REDDE CONIURA substring(host, 0, bracket_end + 1)
+  FIN SI
+  SI colon != -1
+    REDDE CONIURA substring(host, 0, colon)
+  FIN SI
+  REDDE host
+EXPLICIT RITUALE
+
+RITUALE security_allowed_hosts_contains(SPECULUM NIHIL allowed_hosts, VERBUM host) REDDE VERUM
+  EVOCA VERBUM normalized_target AD CONIURA security_host_normalize(host)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(allowed_hosts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(allowed_hosts, i)
+    SI CONIURA compare(CONIURA security_host_normalize(*item_ptr), normalized_target) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE security_host_is_allowed(SPECULUM NIHIL allowed_hosts, VERBUM host) REDDE VERUM
+  SI CONIURA fluxus_len(allowed_hosts) == 0
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA security_allowed_hosts_contains(allowed_hosts, host)
+EXPLICIT RITUALE
+
+RITUALE security_header_put(SPECULUM NIHIL headers, VERBUM name, VERBUM value) REDDE NIHIL
+  EVOCA VERBUM key AD CONIURA to_lower(name)
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(headers, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_hsts_value(SPECULUM HstsPolicy policy) REDDE VERBUM
+  EVOCA VERBUM value AD CONIURA concat("max-age=", CONIURA stringify_int((*policy).max_age_seconds))
+  SI (*policy).include_subdomains
+    VINCIRE value AD CONIURA concat(value, "; includeSubDomains")
+  FIN SI
+  SI (*policy).preload
+    VINCIRE value AD CONIURA concat(value, "; preload")
+  FIN SI
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE security_csp_append_directive(VERBUM out, VERBUM name, VERBUM value) REDDE VERBUM
+  SI CONIURA len(CONIURA trim(value)) == 0
+    REDDE out
+  FIN SI
+  SI CONIURA len(out) != 0
+    VINCIRE out AD CONIURA concat(out, "; ")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, name)
+  VINCIRE out AD CONIURA concat(out, " ")
+  VINCIRE out AD CONIURA concat(out, value)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_csp_with_nonce(VERBUM base_value, VERBUM nonce) REDDE VERBUM
+  SI CONIURA len(CONIURA trim(base_value)) == 0
+    REDDE CONIURA concat("'nonce-", CONIURA concat(nonce, "'"))
+  FIN SI
+  REDDE CONIURA concat(
+    CONIURA concat(base_value, " "),
+    CONIURA concat("'nonce-", CONIURA concat(nonce, "'"))
+  )
+EXPLICIT RITUALE
+
+RITUALE csp_nonce_generate() REDDE VERBUM
+  EVOCA SPECULUM NIHIL bytes AD CONIURA csprng_bytes(16)
+  REDDE CONIURA bytes_to_hex(bytes)
+EXPLICIT RITUALE
+
+RITUALE csp_build(SPECULUM CspPolicy policy, VERBUM nonce) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA VERBUM script_src AD (*policy).script_src
+  EVOCA VERBUM style_src AD (*policy).style_src
+  SI (*policy).use_nonces
+    VINCIRE script_src AD CONIURA security_csp_with_nonce(script_src, nonce)
+    VINCIRE style_src AD CONIURA security_csp_with_nonce(style_src, nonce)
+  FIN SI
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "default-src", (*policy).default_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "script-src", script_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "style-src", style_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "img-src", (*policy).img_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "font-src", (*policy).font_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "connect-src", (*policy).connect_src)
+  VINCIRE out AD CONIURA security_csp_append_directive(out, "frame-ancestors", (*policy).frame_ancestors)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_headers_apply(SPECULUM SecurityConfig cfg, VERBUM nonce, SPECULUM NIHIL headers_out) REDDE NIHIL
+  EVOCA VERBUM csp_value AD CONIURA csp_build(SPECULUM (*cfg).csp, nonce)
+  SI (*cfg).enforce_https
+    CONIURA security_header_put(headers_out, "strict-transport-security", CONIURA security_hsts_value(SPECULUM (*cfg).hsts))
+  FIN SI
+  SI CONIURA len(csp_value) != 0
+    CONIURA security_header_put(headers_out, "content-security-policy", csp_value)
+    SI (*cfg).csp.use_nonces
+      CONIURA security_header_put(headers_out, "cache-control", "no-store")
+    FIN SI
+  FIN SI
+  SI CONIURA len((*cfg).x_frame_options) != 0
+    CONIURA security_header_put(headers_out, "x-frame-options", (*cfg).x_frame_options)
+  FIN SI
+  SI (*cfg).x_content_type_options
+    CONIURA security_header_put(headers_out, "x-content-type-options", "nosniff")
+  FIN SI
+  SI CONIURA len((*cfg).referrer_policy) != 0
+    CONIURA security_header_put(headers_out, "referrer-policy", (*cfg).referrer_policy)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rate_bucket_new(REX max_rps, REX burst) REDDE RateLimitBucket
+  EVOCA RateLimitBucket bucket
+  EVOCA REX capacity AD burst
+  SI capacity <= 0
+    VINCIRE capacity AD 1
+  FIN SI
+  VINCIRE bucket.tokens AD capacity
+  VINCIRE bucket.last_refill_ms AD CONIURA now_ms()
+  VINCIRE bucket.max_tokens AD capacity
+  VINCIRE bucket.tokens_per_sec AD max_rps
+  SI bucket.tokens_per_sec <= 0
+    VINCIRE bucket.tokens_per_sec AD 1
+  FIN SI
+  REDDE bucket
+EXPLICIT RITUALE
+
+RITUALE rate_bucket_consume(SPECULUM RateLimitBucket bucket) REDDE VERUM
+  EVOCA REX now AD CONIURA now_ms()
+  EVOCA REX elapsed AD now - (*bucket).last_refill_ms
+  EVOCA REX add AD 0
+  SI elapsed > 0 ET (*bucket).tokens_per_sec > 0
+    VINCIRE add AD CONIURA quotient(elapsed * (*bucket).tokens_per_sec, 1000)
+  FIN SI
+  SI add > 0
+    VINCIRE (*bucket).tokens AD (*bucket).tokens + add
+    SI (*bucket).tokens > (*bucket).max_tokens
+      VINCIRE (*bucket).tokens AD (*bucket).max_tokens
+    FIN SI
+    VINCIRE (*bucket).last_refill_ms AD now
+  FIN SI
+  SI (*bucket).tokens > 0
+    VINCIRE (*bucket).tokens AD (*bucket).tokens - 1
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE rate_limiter_new(REX max_rps, REX burst) REDDE RateLimiter
+  EVOCA RateLimiter limiter
+  VINCIRE limiter.buckets AD CONIURA fluxus_init(MENSURA(RateLimitEntry))
+  VINCIRE limiter.max_rps AD max_rps
+  VINCIRE limiter.burst AD burst
+  REDDE limiter
+EXPLICIT RITUALE
+
+RITUALE rate_limiter_bucket_index(SPECULUM NIHIL buckets, VERBUM client_ip) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(buckets)
+  DUM i < n
+    EVOCA SPECULUM RateLimitEntry entry_ptr AD CONIURA fluxus_get(buckets, i)
+    SI CONIURA compare((*entry_ptr).client_ip, client_ip) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE rate_limiter_check(SPECULUM RateLimiter limiter, VERBUM client_ip) REDDE VERUM
+  EVOCA REX bucket_index AD CONIURA rate_limiter_bucket_index((*limiter).buckets, client_ip)
+  SI bucket_index != -1
+    EVOCA SPECULUM RateLimitEntry entry_ptr AD CONIURA fluxus_get((*limiter).buckets, bucket_index)
+    REDDE CONIURA rate_bucket_consume(SPECULUM (*entry_ptr).bucket)
+  FIN SI
+
+  EVOCA RateLimitEntry entry
+  EVOCA VERUM allowed AD FALSUM
+  VINCIRE entry.client_ip AD client_ip
+  VINCIRE entry.bucket AD CONIURA rate_bucket_new((*limiter).max_rps, (*limiter).burst)
+  VINCIRE allowed AD CONIURA rate_bucket_consume(SPECULUM entry.bucket)
+  CONIURA fluxus_push((*limiter).buckets, SPECULUM entry)
+  REDDE allowed
+EXPLICIT RITUALE
+
+RITUALE security_trim_trailing_slash(VERBUM path_value) REDDE VERBUM
+  EVOCA VERBUM out AD path_value
+  DUM CONIURA len(out) > 1 ET CONIURA ends_with(out, "/")
+    VINCIRE out AD CONIURA substring(out, 0, CONIURA len(out) - 1)
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE path_is_safe(VERBUM root, VERBUM requested_path) REDDE VERUM
+  EVOCA VERBUM safe_root AD CONIURA security_trim_trailing_slash(CONIURA normalize(root))
+  EVOCA SPECULUM NIHIL decoded_opt AD CONIURA url_decode(requested_path)
+  EVOCA VERBUM decoded AD requested_path
+  EVOCA VERBUM relative AD ""
+  EVOCA VERBUM resolved AD ""
+  EVOCA REX root_len AD 0
+
+  SI CONIURA option_is_some GENUS(VERBUM)(decoded_opt)
+    VINCIRE decoded AD CONIURA option_unwrap GENUS(VERBUM)(decoded_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(decoded_opt)
+
+  VINCIRE relative AD decoded
+  SI CONIURA starts_with(relative, "/")
+    VINCIRE relative AD CONIURA substring(relative, 1, CONIURA len(relative))
+  FIN SI
+
+  VINCIRE resolved AD CONIURA security_trim_trailing_slash(CONIURA normalize(CONIURA path_join(safe_root, relative)))
+  VINCIRE root_len AD CONIURA len(safe_root)
+  SI CONIURA len(resolved) < root_len
+    REDDE FALSUM
+  FIN SI
+  SI NON CONIURA constant_time_compare(CONIURA substring(resolved, 0, root_len), safe_root)
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA len(resolved) == root_len
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA compare(CONIURA substring(resolved, root_len, root_len + 1), "/") == 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

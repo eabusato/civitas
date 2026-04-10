@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase25_25a_router_register_sse"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/sse/sse.cct"
+ADVOCARE "cct/option.cct"
+
+RITUALE noop_sse_handler(SPECULUM NIHIL writer_ptr, SPECULUM NIHIL ctx) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA REX ctx AD 77
+  CONIURA sse_handler_add(SPECULUM router, "/stream/editorial", noop_sse_handler, SPECULUM ctx)
+
+  EVOCA WebRequest req AD CONIURA phase25_request("GET", "/stream/editorial")
+  EVOCA SPECULUM NIHIL route_opt AD CONIURA router_match_route(router, req)
+  SI CONIURA option_is_none GENUS(Route)(route_opt)
+    CONIURA option_free GENUS(Route)(route_opt)
+    REDDE 1
+  FIN SI
+
+  EVOCA Route route AD CONIURA option_unwrap GENUS(Route)(route_opt)
+  CONIURA option_free GENUS(Route)(route_opt)
+  SI CONIURA router_route_transport(route) != ROUTE_TRANSPORT_SSE
+    REDDE 1
+  FIN SI
+  SI CONIURA router_route_handler_ctx(route) != SPECULUM ctx
+    REDDE 1
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

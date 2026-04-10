@@ -1,0 +1,32 @@
+INCIPIT grimoire "civitas_l10n_fmt_ordinal"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n_fmt.cct"
+
+RITUALE l10n_format_ordinal(REX n, SPECULUM L10nFmtRules rules, VERUM feminino) REDDE VERBUM
+  EVOCA VERBUM num_str AD CONIURA stringify_int(n)
+  SI (*rules).ordinal.usa_sufixo_irregular
+    EVOCA REX ultimo_2 AD n - (n / 100) * 100
+    SI ultimo_2 >= 11 ET ultimo_2 <= 13
+      REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_resto)
+    FIN SI
+    EVOCA REX ultimo_1 AD n - (n / 10) * 10
+    SI ultimo_1 == 1
+      REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_1)
+    FIN SI
+    SI ultimo_1 == 2
+      REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_2)
+    FIN SI
+    SI ultimo_1 == 3
+      REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_3)
+    FIN SI
+    REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_resto)
+  FIN SI
+  SI feminino
+    REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_fem)
+  FIN SI
+  REDDE CONIURA concat(num_str, (*rules).ordinal.sufixo_masc)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

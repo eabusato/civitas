@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase15_15d_data_set_get_del"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_store.cct"
+ADVOCARE "../../../../lib/civitas/session/session_data.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_session_db_open("15d_data_set_get_del")
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.ttl_segundos AD 3600
+  EVOCA Session sess AD CONIURA session_create(db, cfg, "", "127.0.0.1", "Agent/1.0")
+  CONIURA session_dados_set(db, sess.id, "csrf", "abc123")
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_lookup(db, sess.id)
+  EVOCA Session loaded AD CONIURA option_unwrap GENUS(Session)(opt)
+  CONIURA option_free GENUS(Session)(opt)
+  EVOCA SPECULUM NIHIL csrf_opt AD CONIURA session_dados_get(loaded, "csrf")
+  SI CONIURA option_is_none GENUS(VERBUM)(csrf_opt)
+    CONIURA option_free GENUS(VERBUM)(csrf_opt)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(csrf_opt), "abc123") != 0
+    CONIURA option_free GENUS(VERBUM)(csrf_opt)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(csrf_opt)
+  CONIURA session_dados_del(db, sess.id, "csrf")
+  VINCIRE opt AD CONIURA session_lookup(db, sess.id)
+  EVOCA Session loaded2 AD CONIURA option_unwrap GENUS(Session)(opt)
+  CONIURA option_free GENUS(Session)(opt)
+  VINCIRE csrf_opt AD CONIURA session_dados_get(loaded2, "csrf")
+  CONIURA db_close(db)
+  SI NON CONIURA option_is_none GENUS(VERBUM)(csrf_opt)
+    CONIURA option_free GENUS(VERBUM)(csrf_opt)
+    REDDE 3
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(csrf_opt)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

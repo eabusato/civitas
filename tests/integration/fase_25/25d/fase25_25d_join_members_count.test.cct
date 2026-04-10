@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase25_25d_join_members_count"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/ws_room/ws_room.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25d_join_members_count")
+  CONIURA ws_room_join(db, "room:7", "conn-a", 100, "member")
+  CONIURA ws_room_join(db, "room:7", "conn-b", 101, "moderator")
+
+  SI CONIURA ws_room_member_count(db, "room:7", 60000) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL members AD CONIURA ws_room_members(db, "room:7", 60000)
+  SI CONIURA fluxus_len(members) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

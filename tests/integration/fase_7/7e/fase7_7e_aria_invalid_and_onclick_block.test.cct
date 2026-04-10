@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase7_7e_aria_invalid_and_onclick_block_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldDef field AD CONIURA field_def_new("email", "E-mail", IkEmail)
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA VERBUM html
+
+  CONIURA phase7_render_add_error(SPECULUM vr, "email", "Erro")
+  CONIURA field_def_add_attr(SPECULUM field, "aria-invalid", "false")
+  CONIURA field_def_add_attr(SPECULUM field, "onclick", "evil()")
+  VINCIRE html AD CONIURA render_field(field, vr, fd)
+
+  SI CONIURA find(html, "aria-invalid=\"true\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "onclick") != -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

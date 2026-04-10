@@ -1,0 +1,232 @@
+INCIPIT grimoire "civitas_l10n_fmt_rules"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n_fmt.cct"
+
+RITUALE l10n_fmt_verbum_fluxus_csv(VERBUM csv, VERUM placeholder_zero) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM vazio AD ""
+  SI placeholder_zero
+    CONIURA fluxus_push(out, SPECULUM vazio)
+  FIN SI
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(csv, ",")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(partes)
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(partes, i)
+    EVOCA VERBUM item AD CONIURA concat("", *ptr)
+    CONIURA fluxus_push(out, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_rules_pt_br() REDDE L10nFmtRules
+  EVOCA L10nFmtRules r
+  VINCIRE r.locale AD "pt-BR"
+  VINCIRE r.meses.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("janeiro,fevereiro,marco,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro", VERUM)
+  VINCIRE r.meses.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("jan,fev,mar,abr,mai,jun,jul,ago,set,out,nov,dez", VERUM)
+  VINCIRE r.dias.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("domingo,segunda,terca,quarta,quinta,sexta,sabado", FALSUM)
+  VINCIRE r.dias.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("dom,seg,ter,qua,qui,sex,sab", FALSUM)
+  VINCIRE r.dias.inicio_semana AD 1
+  VINCIRE r.formato_data_longa AD "{dia} de {mes} de {ano}"
+  VINCIRE r.lista.sep AD ", "
+  VINCIRE r.lista.conj AD " e "
+  VINCIRE r.lista.conj_oxford AD FALSUM
+  VINCIRE r.ordinal.sufixo_masc AD "o"
+  VINCIRE r.ordinal.sufixo_fem AD "a"
+  VINCIRE r.ordinal.sufixo_1 AD ""
+  VINCIRE r.ordinal.sufixo_2 AD ""
+  VINCIRE r.ordinal.sufixo_3 AD ""
+  VINCIRE r.ordinal.sufixo_resto AD ""
+  VINCIRE r.ordinal.usa_sufixo_irregular AD FALSUM
+  VINCIRE r.reltime.agora AD "agora"
+  VINCIRE r.reltime.seg_singular AD "ha {n} segundo"
+  VINCIRE r.reltime.seg_plural AD "ha {n} segundos"
+  VINCIRE r.reltime.min_singular AD "ha {n} minuto"
+  VINCIRE r.reltime.min_plural AD "ha {n} minutos"
+  VINCIRE r.reltime.hora_singular AD "ha {n} hora"
+  VINCIRE r.reltime.hora_plural AD "ha {n} horas"
+  VINCIRE r.reltime.dia_singular AD "ontem"
+  VINCIRE r.reltime.dia_plural AD "ha {n} dias"
+  VINCIRE r.reltime.semana_singular AD "ha {n} semana"
+  VINCIRE r.reltime.semana_plural AD "ha {n} semanas"
+  VINCIRE r.reltime.mes_singular AD "ha {n} mes"
+  VINCIRE r.reltime.mes_plural AD "ha {n} meses"
+  VINCIRE r.reltime.ano_singular AD "ha {n} ano"
+  VINCIRE r.reltime.ano_plural AD "ha {n} anos"
+  VINCIRE r.reltime.futuro_seg_singular AD "em {n} segundo"
+  VINCIRE r.reltime.futuro_seg_plural AD "em {n} segundos"
+  VINCIRE r.reltime.futuro_min_singular AD "em {n} minuto"
+  VINCIRE r.reltime.futuro_min_plural AD "em {n} minutos"
+  VINCIRE r.reltime.futuro_hora_singular AD "em {n} hora"
+  VINCIRE r.reltime.futuro_hora_plural AD "em {n} horas"
+  VINCIRE r.reltime.futuro_dia_singular AD "amanha"
+  VINCIRE r.reltime.futuro_dia_plural AD "em {n} dias"
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_rules_en_us() REDDE L10nFmtRules
+  EVOCA L10nFmtRules r
+  VINCIRE r.locale AD "en-US"
+  VINCIRE r.meses.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("January,February,March,April,May,June,July,August,September,October,November,December", VERUM)
+  VINCIRE r.meses.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec", VERUM)
+  VINCIRE r.dias.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday", FALSUM)
+  VINCIRE r.dias.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("Sun,Mon,Tue,Wed,Thu,Fri,Sat", FALSUM)
+  VINCIRE r.dias.inicio_semana AD 0
+  VINCIRE r.formato_data_longa AD "{mes} {dia2}, {ano}"
+  VINCIRE r.lista.sep AD ", "
+  VINCIRE r.lista.conj AD " and "
+  VINCIRE r.lista.conj_oxford AD VERUM
+  VINCIRE r.ordinal.sufixo_masc AD ""
+  VINCIRE r.ordinal.sufixo_fem AD ""
+  VINCIRE r.ordinal.sufixo_1 AD "st"
+  VINCIRE r.ordinal.sufixo_2 AD "nd"
+  VINCIRE r.ordinal.sufixo_3 AD "rd"
+  VINCIRE r.ordinal.sufixo_resto AD "th"
+  VINCIRE r.ordinal.usa_sufixo_irregular AD VERUM
+  VINCIRE r.reltime.agora AD "just now"
+  VINCIRE r.reltime.seg_singular AD "{n} second ago"
+  VINCIRE r.reltime.seg_plural AD "{n} seconds ago"
+  VINCIRE r.reltime.min_singular AD "{n} minute ago"
+  VINCIRE r.reltime.min_plural AD "{n} minutes ago"
+  VINCIRE r.reltime.hora_singular AD "{n} hour ago"
+  VINCIRE r.reltime.hora_plural AD "{n} hours ago"
+  VINCIRE r.reltime.dia_singular AD "yesterday"
+  VINCIRE r.reltime.dia_plural AD "{n} days ago"
+  VINCIRE r.reltime.semana_singular AD "{n} week ago"
+  VINCIRE r.reltime.semana_plural AD "{n} weeks ago"
+  VINCIRE r.reltime.mes_singular AD "{n} month ago"
+  VINCIRE r.reltime.mes_plural AD "{n} months ago"
+  VINCIRE r.reltime.ano_singular AD "{n} year ago"
+  VINCIRE r.reltime.ano_plural AD "{n} years ago"
+  VINCIRE r.reltime.futuro_seg_singular AD "in {n} second"
+  VINCIRE r.reltime.futuro_seg_plural AD "in {n} seconds"
+  VINCIRE r.reltime.futuro_min_singular AD "in {n} minute"
+  VINCIRE r.reltime.futuro_min_plural AD "in {n} minutes"
+  VINCIRE r.reltime.futuro_hora_singular AD "in {n} hour"
+  VINCIRE r.reltime.futuro_hora_plural AD "in {n} hours"
+  VINCIRE r.reltime.futuro_dia_singular AD "tomorrow"
+  VINCIRE r.reltime.futuro_dia_plural AD "in {n} days"
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_reltime_en_us() REDDE RelTimeRules
+  EVOCA RelTimeRules rules
+  VINCIRE rules.agora AD "just now"
+  VINCIRE rules.seg_singular AD "{n} second ago"
+  VINCIRE rules.seg_plural AD "{n} seconds ago"
+  VINCIRE rules.min_singular AD "{n} minute ago"
+  VINCIRE rules.min_plural AD "{n} minutes ago"
+  VINCIRE rules.hora_singular AD "{n} hour ago"
+  VINCIRE rules.hora_plural AD "{n} hours ago"
+  VINCIRE rules.dia_singular AD "yesterday"
+  VINCIRE rules.dia_plural AD "{n} days ago"
+  VINCIRE rules.semana_singular AD "{n} week ago"
+  VINCIRE rules.semana_plural AD "{n} weeks ago"
+  VINCIRE rules.mes_singular AD "{n} month ago"
+  VINCIRE rules.mes_plural AD "{n} months ago"
+  VINCIRE rules.ano_singular AD "{n} year ago"
+  VINCIRE rules.ano_plural AD "{n} years ago"
+  VINCIRE rules.futuro_seg_singular AD "in {n} second"
+  VINCIRE rules.futuro_seg_plural AD "in {n} seconds"
+  VINCIRE rules.futuro_min_singular AD "in {n} minute"
+  VINCIRE rules.futuro_min_plural AD "in {n} minutes"
+  VINCIRE rules.futuro_hora_singular AD "in {n} hour"
+  VINCIRE rules.futuro_hora_plural AD "in {n} hours"
+  VINCIRE rules.futuro_dia_singular AD "tomorrow"
+  VINCIRE rules.futuro_dia_plural AD "in {n} days"
+  REDDE rules
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_rules_de_de() REDDE L10nFmtRules
+  EVOCA L10nFmtRules r
+  VINCIRE r.locale AD "de-DE"
+  VINCIRE r.meses.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("Januar,Februar,Marz,April,Mai,Juni,Juli,August,September,Oktober,November,Dezember", VERUM)
+  VINCIRE r.meses.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("Jan,Feb,Mar,Apr,Mai,Jun,Jul,Aug,Sep,Okt,Nov,Dez", VERUM)
+  VINCIRE r.dias.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("Sonntag,Montag,Dienstag,Mittwoch,Donnerstag,Freitag,Samstag", FALSUM)
+  VINCIRE r.dias.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("So,Mo,Di,Mi,Do,Fr,Sa", FALSUM)
+  VINCIRE r.dias.inicio_semana AD 1
+  VINCIRE r.formato_data_longa AD "{dia}. {mes} {ano}"
+  VINCIRE r.lista.conj AD " und "
+  VINCIRE r.lista.sep AD ", "
+  VINCIRE r.lista.conj_oxford AD FALSUM
+  VINCIRE r.ordinal.sufixo_masc AD "."
+  VINCIRE r.ordinal.sufixo_fem AD "."
+  VINCIRE r.ordinal.sufixo_1 AD ""
+  VINCIRE r.ordinal.sufixo_2 AD ""
+  VINCIRE r.ordinal.sufixo_3 AD ""
+  VINCIRE r.ordinal.sufixo_resto AD ""
+  VINCIRE r.ordinal.usa_sufixo_irregular AD FALSUM
+  VINCIRE r.reltime AD CONIURA l10n_fmt_reltime_en_us()
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_rules_fr_fr() REDDE L10nFmtRules
+  EVOCA L10nFmtRules r
+  VINCIRE r.locale AD "fr-FR"
+  VINCIRE r.meses.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("janvier,fevrier,mars,avril,mai,juin,juillet,aout,septembre,octobre,novembre,decembre", VERUM)
+  VINCIRE r.meses.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("janv,fevr,mars,avr,mai,juin,juil,aout,sept,oct,nov,dec", VERUM)
+  VINCIRE r.dias.completos AD CONIURA l10n_fmt_verbum_fluxus_csv("dimanche,lundi,mardi,mercredi,jeudi,vendredi,samedi", FALSUM)
+  VINCIRE r.dias.abreviados AD CONIURA l10n_fmt_verbum_fluxus_csv("dim,lun,mar,mer,jeu,ven,sam", FALSUM)
+  VINCIRE r.dias.inicio_semana AD 1
+  VINCIRE r.formato_data_longa AD "{dia} {mes} {ano}"
+  VINCIRE r.lista.conj AD " et "
+  VINCIRE r.lista.sep AD ", "
+  VINCIRE r.lista.conj_oxford AD FALSUM
+  VINCIRE r.ordinal.sufixo_masc AD "e"
+  VINCIRE r.ordinal.sufixo_fem AD "e"
+  VINCIRE r.ordinal.sufixo_1 AD ""
+  VINCIRE r.ordinal.sufixo_2 AD ""
+  VINCIRE r.ordinal.sufixo_3 AD ""
+  VINCIRE r.ordinal.sufixo_resto AD ""
+  VINCIRE r.ordinal.usa_sufixo_irregular AD FALSUM
+  VINCIRE r.reltime AD CONIURA l10n_fmt_reltime_en_us()
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_registry_new(VERBUM padrao) REDDE L10nFmtRegistry
+  EVOCA L10nFmtRegistry reg
+  VINCIRE reg.regras AD CONIURA fluxus_init(MENSURA(L10nFmtRules))
+  VINCIRE reg.padrao AD padrao
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_registry_add(SPECULUM L10nFmtRegistry reg, L10nFmtRules r) REDDE NIHIL
+  CONIURA fluxus_push((*reg).regras, SPECULUM r)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_registry_get(L10nFmtRegistry reg, VERBUM locale) REDDE L10nFmtRules
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(reg.regras)
+  DUM i < n
+    EVOCA SPECULUM L10nFmtRules rp AD CONIURA fluxus_get(reg.regras, i)
+    SI CONIURA compare((*rp).locale, locale) == 0
+      REDDE *rp
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  DUM i < n
+    EVOCA SPECULUM L10nFmtRules rp AD CONIURA fluxus_get(reg.regras, i)
+    SI CONIURA compare((*rp).locale, reg.padrao) == 0
+      REDDE *rp
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  IACE "l10n_fmt_registry: no locale available"
+  EVOCA L10nFmtRules vazio
+  REDDE vazio
+EXPLICIT RITUALE
+
+RITUALE l10n_fmt_registry_default() REDDE L10nFmtRegistry
+  EVOCA L10nFmtRegistry reg AD CONIURA l10n_fmt_registry_new("pt-BR")
+  CONIURA l10n_fmt_registry_add(SPECULUM reg, CONIURA l10n_fmt_rules_pt_br())
+  CONIURA l10n_fmt_registry_add(SPECULUM reg, CONIURA l10n_fmt_rules_en_us())
+  CONIURA l10n_fmt_registry_add(SPECULUM reg, CONIURA l10n_fmt_rules_de_de())
+  CONIURA l10n_fmt_registry_add(SPECULUM reg, CONIURA l10n_fmt_rules_fr_fr())
+  REDDE reg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

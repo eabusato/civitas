@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_auth_test_session"
+
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_login.cct"
+ADVOCARE "../session/session.cct"
+ADVOCARE "../session/session_store.cct"
+ADVOCARE "../test_db/test_db.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "auth_test.cct"
+ADVOCARE "auth_test_user.cct"
+
+RITUALE auth_test_session_config() REDDE SessionConfig
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.cookie_nome AD "test_session"
+  VINCIRE cfg.ttl_segundos AD 3600
+  VINCIRE cfg.http_only AD VERUM
+  VINCIRE cfg.secure AD FALSUM
+  VINCIRE cfg.samesite AD "Lax"
+  VINCIRE cfg.max_idle AD 0
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE auth_test_session_cookie_name() REDDE VERBUM
+  EVOCA SessionConfig cfg AD CONIURA auth_test_session_config()
+  REDDE cfg.cookie_nome
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_sessao(TestDb tdb, VERBUM user_id) REDDE Session
+  EVOCA SessionConfig cfg AD CONIURA auth_test_session_config()
+  REDDE CONIURA session_create(tdb.db, cfg, user_id, "127.0.0.1", "TestAgent/1.0")
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_sessao_id(TestDb tdb, VERBUM user_id) REDDE VERBUM
+  EVOCA Session sess AD CONIURA auth_test_criar_sessao(tdb, user_id)
+  REDDE sess.id
+EXPLICIT RITUALE
+
+RITUALE auth_test_session_id(Session sess) REDDE VERBUM
+  REDDE sess.id
+EXPLICIT RITUALE
+
+RITUALE auth_test_login(TestDb tdb, AuthTestUser tu) REDDE Session
+  EVOCA AuthConfig auth_cfg AD CONIURA auth_test_config()
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_login(tdb.db, auth_cfg, tu.user.email, tu.senha)
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    IACE "auth_test_login: login falhou"
+  FIN SI
+  REDDE CONIURA auth_test_criar_sessao(tdb, tu.user.id)
+EXPLICIT RITUALE
+
+RITUALE auth_test_login_session_id(TestDb tdb, AuthTestUser tu) REDDE VERBUM
+  EVOCA Session sess AD CONIURA auth_test_login(tdb, tu)
+  REDDE sess.id
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

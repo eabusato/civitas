@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase20_20b_begin_end_persist_and_header"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_spans.cct"
+ADVOCARE "../../../../lib/civitas/trace_collector/trace_collector.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase20_trace_dir("20b_persist_header")
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  EVOCA TraceCollectorConfig cfg AD CONIURA trace_collector_config_default()
+  VINCIRE cfg.trace_dir AD dir
+  EVOCA WebRequest req AD CONIURA phase20_request("GET", "/trace")
+  EVOCA WebResponse res AD CONIURA phase20_response(200)
+  EVOCA TraceRequestContext tctx AD CONIURA trace_collector_begin(cfg, req, 1)
+  EVOCA REX span_id AD CONIURA civitas_span_handler("TraceView")
+  CONIURA civitas_span_end(span_id)
+  EVOCA TracePersistResult persisted AD CONIURA trace_collector_end(cfg, SPECULUM tctx, req, SPECULUM res)
+  SI NON persisted.persisted
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "x-trace-id", ""), persisted.trace_id) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(persisted.file_path)
+    REDDE 3
+  FIN SI
+  SI persisted.span_count != 2
+    CONIURA instrument_disable()
+    REDDE 4
+  FIN SI
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

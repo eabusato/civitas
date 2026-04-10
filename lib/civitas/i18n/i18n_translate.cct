@@ -1,0 +1,82 @@
+INCIPIT grimoire "civitas_i18n_translate"
+
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "i18n.cct"
+ADVOCARE "i18n_registry.cct"
+
+RITUALE i18n_t(I18nRegistry reg, VERBUM locale, VERBUM chave) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA i18n_registry_find(reg, locale)
+  SI CONIURA option_is_some GENUS(I18nLocaleEntry)(opt)
+    EVOCA I18nLocaleEntry entry AD CONIURA option_unwrap GENUS(I18nLocaleEntry)(opt)
+    EVOCA Catalog cat AD CONIURA i18n_entry_catalog(entry)
+    EVOCA VERBUM trad AD CONIURA gettext_translate(cat, chave)
+    SI CONIURA compare(trad, chave) != 0
+      REDDE trad
+    FIN SI
+    SI CONIURA i18n_registry_entry_has_key(entry, chave)
+      REDDE chave
+    FIN SI
+  FIN SI
+  CONIURA option_free GENUS(I18nLocaleEntry)(opt)
+
+  SI CONIURA compare(locale, reg.config.locale_padrao) != 0
+    EVOCA SPECULUM NIHIL opt_pad AD CONIURA i18n_registry_find(reg, reg.config.locale_padrao)
+    SI CONIURA option_is_some GENUS(I18nLocaleEntry)(opt_pad)
+      EVOCA I18nLocaleEntry entry_pad AD CONIURA option_unwrap GENUS(I18nLocaleEntry)(opt_pad)
+      EVOCA Catalog cat_pad AD CONIURA i18n_entry_catalog(entry_pad)
+      EVOCA VERBUM trad_pad AD CONIURA gettext_translate(cat_pad, chave)
+      SI CONIURA compare(trad_pad, chave) != 0
+        REDDE trad_pad
+      FIN SI
+    FIN SI
+    CONIURA option_free GENUS(I18nLocaleEntry)(opt_pad)
+  FIN SI
+
+  SI NON reg.config.falha_silenciosa
+    IACE chave
+  FIN SI
+  REDDE chave
+EXPLICIT RITUALE
+
+RITUALE i18n_t_plural(I18nRegistry reg, VERBUM locale, VERBUM singular, VERBUM plural, REX n) REDDE VERBUM
+  EVOCA VERBUM fallback_chave AD plural
+  SI n == 1
+    VINCIRE fallback_chave AD singular
+  FIN SI
+
+  EVOCA SPECULUM NIHIL opt AD CONIURA i18n_registry_find(reg, locale)
+  SI CONIURA option_is_some GENUS(I18nLocaleEntry)(opt)
+    EVOCA I18nLocaleEntry entry AD CONIURA option_unwrap GENUS(I18nLocaleEntry)(opt)
+    EVOCA Catalog cat AD CONIURA i18n_entry_catalog(entry)
+    EVOCA VERBUM trad AD CONIURA gettext_translate_plural(cat, singular, plural, n)
+    SI CONIURA compare(trad, fallback_chave) != 0
+      REDDE trad
+    FIN SI
+    SI CONIURA i18n_registry_entry_has_key(entry, singular)
+      REDDE fallback_chave
+    FIN SI
+  FIN SI
+  CONIURA option_free GENUS(I18nLocaleEntry)(opt)
+
+  SI CONIURA compare(locale, reg.config.locale_padrao) != 0
+    EVOCA SPECULUM NIHIL opt_pad AD CONIURA i18n_registry_find(reg, reg.config.locale_padrao)
+    SI CONIURA option_is_some GENUS(I18nLocaleEntry)(opt_pad)
+      EVOCA I18nLocaleEntry entry_pad AD CONIURA option_unwrap GENUS(I18nLocaleEntry)(opt_pad)
+      EVOCA Catalog cat_pad AD CONIURA i18n_entry_catalog(entry_pad)
+      EVOCA VERBUM trad_pad AD CONIURA gettext_translate_plural(cat_pad, singular, plural, n)
+      SI CONIURA compare(trad_pad, fallback_chave) != 0
+        REDDE trad_pad
+      FIN SI
+    FIN SI
+    CONIURA option_free GENUS(I18nLocaleEntry)(opt_pad)
+  FIN SI
+
+  SI n == 1
+    REDDE singular
+  FIN SI
+  REDDE plural
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,24 @@
+INCIPIT grimoire "civitas_authorship_audit"
+
+ADVOCARE "cct/audit.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "authorship.cct"
+
+RITUALE authorship_audit_open(VERBUM path) REDDE AuditLogger
+  REDDE CONIURA audit_logger_open(path, CONIURA audit_options_default())
+EXPLICIT RITUALE
+
+RITUALE authorship_emit(SPECULUM AuditLogger logger, VERBUM action, VERBUM object_type, REX object_id, ContentOrigin origin, VERBUM metadata_json) REDDE NIHIL
+  EVOCA AuditActor actor AD CONIURA audit_actor_make("user", origin.user_id, origin.user_id)
+  EVOCA AuditTarget target AD CONIURA audit_target_make(object_type, CONIURA stringify_int(object_id), object_type)
+  EVOCA AuditEvent event AD CONIURA audit_event_new(actor, action, target, AUDIT_SUCCESS, "", origin.request_id, metadata_json)
+  CONIURA audit_append_event(logger, event)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE authorship_emit_review(SPECULUM AuditLogger logger, ReviewRecord review, ContentOrigin origin) REDDE NIHIL
+  CONIURA authorship_emit(logger, "review", review.object_type, review.object_id, origin, review.notes)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

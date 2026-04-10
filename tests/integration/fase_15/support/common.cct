@@ -1,0 +1,94 @@
+INCIPIT grimoire "fase15_support_common"
+
+ADVOCARE "../../fase_11/support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_schema.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit_schema.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_schema.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_schema.cct"
+ADVOCARE "../../../../lib/civitas/session/session_schema.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase15_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_15/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase15_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase11_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase15_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase15_tmp_dir(test_name), "test.db")
+EXPLICIT RITUALE
+
+RITUALE phase15_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA phase15_tmp_dir(test_name)
+  CONIURA phase15_reset_dir(root)
+  REDDE CONIURA db_open(CONIURA phase15_db_path(test_name))
+EXPLICIT RITUALE
+
+RITUALE phase15_auth_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_db_open(test_name)
+  CONIURA auth_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_auth_token_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open(test_name)
+  CONIURA auth_token_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_permissions_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open(test_name)
+  CONIURA permissions_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_session_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_db_open(test_name)
+  CONIURA session_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_auth_stack_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open(test_name)
+  CONIURA auth_token_schema_up(db)
+  CONIURA permissions_schema_up(db)
+  CONIURA session_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_auth_rate_limit_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open(test_name)
+  CONIURA auth_rate_limit_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_auth_full_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_stack_db_open(test_name)
+  CONIURA auth_rate_limit_schema_up(db)
+  REDDE db
+EXPLICIT RITUALE
+
+RITUALE phase15_ctx_anonymous() REDDE LocalContext
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  REDDE ctx
+EXPLICIT RITUALE
+
+RITUALE phase15_ctx_authenticated(VERBUM user_id, VERBUM via, VERBUM scopes) REDDE LocalContext
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA auth_context_key_authenticated(), "1")
+  CONIURA local_context_set(SPECULUM ctx, CONIURA auth_context_key_user_id(), user_id)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA auth_context_key_via(), via)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA auth_context_key_scopes(), scopes)
+  REDDE ctx
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase28_28a_static_scan_and_http_fuzz_pass"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/fuzz_http.cct"
+ADVOCARE "../../../../lib/civitas/fuzz_http/fuzz_http.cct"
+ADVOCARE "../../../../lib/civitas/security_audit.cct"
+ADVOCARE "../../../../lib/civitas/security_audit/security_audit.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28a_static_scan")
+  CONIURA mkdir_all(CONIURA path_join(root, "nested"))
+  CONIURA write_all(CONIURA path_join(root, "nested/app.css"), "body{}")
+  EVOCA ScanConfig cfg AD CONIURA security_audit_scan_config_default()
+  EVOCA ScanResult scan AD CONIURA security_audit_scan_static_root(root, cfg)
+  SI scan.total != 0
+    REDDE 1
+  FIN SI
+  EVOCA FuzzConfig fuzz_cfg AD CONIURA fuzz_http_config_default()
+  EVOCA FuzzResult fuzz AD CONIURA fuzz_http_run(fuzz_cfg)
+  SI fuzz.total_inputs < 4
+    REDDE 2
+  FIN SI
+  SI NON fuzz.approved
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

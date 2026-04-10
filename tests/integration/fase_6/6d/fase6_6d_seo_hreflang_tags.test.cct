@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase6_6d_seo_hreflang_tags_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/seo.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL entries AD CONIURA fluxus_init(MENSURA(HreflangEntry))
+  EVOCA HreflangEntry pt
+  EVOCA HreflangEntry en
+  EVOCA VERBUM html AD ""
+
+  VINCIRE pt.locale AD "pt-BR"
+  VINCIRE pt.url AD "https://civitas.dev/pt/posts"
+  VINCIRE en.locale AD "en"
+  VINCIRE en.url AD "https://civitas.dev/en/posts"
+  CONIURA fluxus_push(entries, SPECULUM pt)
+  CONIURA fluxus_push(entries, SPECULUM en)
+  VINCIRE html AD CONIURA seo_hreflang_tags(entries)
+
+  SI CONIURA find(html, "hreflang=\"pt-BR\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "hreflang=\"en\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "https://civitas.dev/en/posts") == -1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

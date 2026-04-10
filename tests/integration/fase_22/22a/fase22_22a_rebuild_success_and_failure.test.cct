@@ -1,0 +1,54 @@
+INCIPIT grimoire "fase22_22a_rebuild_success_and_failure"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/dev_server/dev_server.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase22_reset_root("22a_rebuild_success_and_failure")
+  EVOCA VERBUM src_dir AD CONIURA path_join(root, "src")
+  CONIURA mkdir_all(src_dir)
+  CONIURA write_all(CONIURA path_join(src_dir, "main.cct"), "main")
+  EVOCA VERBUM ok_log AD CONIURA path_join(root, "server.log")
+  EVOCA VERBUM gen_file AD CONIURA path_join(root, ".civitas-gen")
+  EVOCA DevWatcher watcher
+  VINCIRE watcher.config AD CONIURA dev_server_config_default(src_dir, CONIURA path_join(src_dir, "main.cct"), 18080)
+  VINCIRE watcher.config.build_cmd AD CONIURA concat("printf 'build ok\\n' > ", CONIURA path_join(root, "build.ok"))
+  VINCIRE watcher.config.server_cmd AD CONIURA concat("sh -c \"echo started >> ", CONIURA concat(ok_log, "; sleep 5\""))
+  VINCIRE watcher.config.gen_file AD gen_file
+  VINCIRE watcher.watchers AD CONIURA dev_server_open_watchers(src_dir)
+  VINCIRE watcher.server_pid AD 0
+  VINCIRE watcher.has_error AD FALSUM
+  VINCIRE watcher.error AD CONIURA dev_server_default_compile_error()
+  VINCIRE watcher.reload_count AD 0
+  SI NON CONIURA dev_server_rebuild(SPECULUM watcher)
+    REDDE 1
+  FIN SI
+  SI watcher.reload_count != 1
+    REDDE 2
+  FIN SI
+  SI CONIURA len(CONIURA dev_server_read_gen(gen_file)) == 0
+    REDDE 3
+  FIN SI
+  SI watcher.server_pid <= 0
+    REDDE 4
+  FIN SI
+  VINCIRE watcher.config.build_cmd AD CONIURA concat("printf '", CONIURA concat(CONIURA path_join(src_dir, "main.cct"), ":7:2: erro: broken build\\n' 1>&2; false"))
+  SI CONIURA dev_server_rebuild(SPECULUM watcher)
+    REDDE 5
+  FIN SI
+  SI NON watcher.has_error
+    REDDE 6
+  FIN SI
+  SI CONIURA find(watcher.error.message, "broken build") == -1
+    REDDE 7
+  FIN SI
+  CONIURA dev_server_kill(watcher.server_pid)
+  CONIURA dev_server_close_watchers(watcher.watchers)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

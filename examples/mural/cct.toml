@@ -1,0 +1,16 @@
+[project]
+name = "mural"
+version = "0.1.0"
+entry = "main.cct"
+description = "Canonical Civitas example: Mural"
+license = "MIT"
+cct_min_version = "0.40.0"
+cct_capability_floor = "FASE_40"
+
+[project.requires]
+cct = ">=0.40.0"
+
+[build]
+out_dir = "dist"
+default_profile = "debug"
+

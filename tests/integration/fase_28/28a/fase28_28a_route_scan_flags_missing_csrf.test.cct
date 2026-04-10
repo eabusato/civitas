@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase28_28a_route_scan_flags_missing_csrf"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/security_audit.cct"
+ADVOCARE "../../../../lib/civitas/security_audit/security_audit.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA phase28_router_with_post(FALSUM)
+  EVOCA ScanConfig cfg AD CONIURA security_audit_scan_config_default()
+  EVOCA ScanResult report AD CONIURA security_audit_scan_router(router, cfg)
+  SI report.high_count != 1
+    REDDE 1
+  FIN SI
+  SI report.approved
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

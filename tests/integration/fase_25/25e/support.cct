@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase25_25e_support"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase25e_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_25", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase25e_reset_root(VERBUM test_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase25e_root(test_name)
+  SI CONIURA exists(root)
+    CONIURA run(CONIURA concat("rm -rf ", root))
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase25e_compile_file(VERBUM source_path) REDDE REX
+  EVOCA VERBUM compiler AD "cct-host"
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM candidate AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(candidate) > 0
+      VINCIRE compiler AD candidate
+    FIN SI
+  ALITER
+    SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+      VINCIRE compiler AD "cct-host"
+    ALITER
+      SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+        VINCIRE compiler AD "cct"
+      FIN SI
+    FIN SI
+  FIN SI
+  EVOCA VERBUM cmd AD CONIURA concat(compiler, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, source_path)
+  REDDE CONIURA run(cmd)
+EXPLICIT RITUALE
+
+RITUALE phase25e_contains(VERBUM path, VERBUM needle) REDDE VERUM
+  SI NON CONIURA exists(path)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA find(CONIURA read_all(path), needle) != -1
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

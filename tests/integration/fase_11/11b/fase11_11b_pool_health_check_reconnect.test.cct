@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase11_11b_pool_health_check_reconnect"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  CONIURA phase11_reset_dir(CONIURA phase11_tmp_dir("11b_pool_health_check_reconnect"))
+  EVOCA SPECULUM NIHIL pool AD CONIURA pool_new_sqlite(CONIURA phase11_db_path("11b_pool_health_check_reconnect"), NIHIL)
+  EVOCA SPECULUM Pool p AD pool
+  EVOCA SPECULUM PoolSlot slot AD CONIURA fluxus_get((*p).slots, 0)
+  EVOCA SPECULUM NIHIL old_handle AD (*slot).handle
+  CONIURA dbh_close(old_handle)
+  CONIURA pool_health_check(pool)
+  SI (*slot).handle == old_handle
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM DbHandle new_handle AD (*slot).handle
+  SI NON CONIURA dbh_is_alive(*new_handle)
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

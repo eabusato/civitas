@@ -1,0 +1,95 @@
+INCIPIT grimoire "civitas_auth_test"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_schema.cct"
+ADVOCARE "../auth_middleware/auth_context.cct"
+ADVOCARE "../auth_rate_limit/auth_rate_limit_schema.cct"
+ADVOCARE "../auth_token/auth_token_schema.cct"
+ADVOCARE "../permissions/permissions_schema.cct"
+ADVOCARE "../session/session_schema.cct"
+ADVOCARE "../test_db/test_db.cct"
+
+RITUALE auth_test_schema_up(TestDb tdb) REDDE NIHIL
+  CONIURA auth_schema_up(tdb.db)
+  CONIURA auth_token_schema_up(tdb.db)
+  CONIURA session_schema_up(tdb.db)
+  CONIURA permissions_schema_up(tdb.db)
+  CONIURA auth_rate_limit_schema_up(tdb.db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_schema_down(TestDb tdb) REDDE NIHIL
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS auth_attempts")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS object_permissions")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS user_groups")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS group_permissions")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS user_permissions")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS groups")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS permissions")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS sessoes")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS refresh_tokens")
+  CONIURA db_exec(tdb.db, "DROP TABLE IF EXISTS token_blacklist")
+  CONIURA auth_schema_down(tdb.db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_config() REDDE AuthConfig
+  EVOCA AuthConfig cfg
+  VINCIRE cfg.iteracoes AD 100000
+  VINCIRE cfg.salt_bytes AD 16
+  VINCIRE cfg.key_bytes AD 16
+  VINCIRE cfg.min_senha AD 4
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE auth_test_config_min_senha() REDDE REX
+  EVOCA AuthConfig cfg AD CONIURA auth_test_config()
+  REDDE cfg.min_senha
+EXPLICIT RITUALE
+
+RITUALE auth_test_assert_autenticado(LocalContext ctx, VERBUM msg) REDDE NIHIL
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  SI NON ac.autenticado
+    IACE CONIURA concat("assert_autenticado falhou: ", msg)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_assert_anonimo(LocalContext ctx, VERBUM msg) REDDE NIHIL
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  SI ac.autenticado
+    IACE CONIURA concat("assert_anonimo falhou: ", msg)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_assert_user_id(LocalContext ctx, VERBUM user_id_esperado, VERBUM msg) REDDE NIHIL
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  SI CONIURA compare(ac.user_id, user_id_esperado) != 0
+    EVOCA VERBUM falha AD CONIURA concat("assert_user_id falhou (esperado=", user_id_esperado)
+    VINCIRE falha AD CONIURA concat(falha, ", obtido=")
+    VINCIRE falha AD CONIURA concat(falha, ac.user_id)
+    VINCIRE falha AD CONIURA concat(falha, "): ")
+    VINCIRE falha AD CONIURA concat(falha, msg)
+    IACE falha
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_assert_via(LocalContext ctx, VERBUM via_esperada, VERBUM msg) REDDE NIHIL
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  SI CONIURA compare(ac.via, via_esperada) != 0
+    EVOCA VERBUM falha AD CONIURA concat("assert_via falhou (esperado=", via_esperada)
+    VINCIRE falha AD CONIURA concat(falha, ", obtido=")
+    VINCIRE falha AD CONIURA concat(falha, ac.via)
+    VINCIRE falha AD CONIURA concat(falha, "): ")
+    VINCIRE falha AD CONIURA concat(falha, msg)
+    IACE falha
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

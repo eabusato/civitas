@@ -1,0 +1,74 @@
+INCIPIT grimoire "fase1_1f_access_log_omits_sensitive_fields_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM ready AD CONIURA tmp_file("fase1_1f_access_safe.ready")
+  EVOCA VERBUM done AD CONIURA tmp_file("fase1_1f_access_safe.done")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase1_1f_access_safe.log")
+  EVOCA VERBUM reqlog AD CONIURA tmp_file("fase1_1f_access_safe.requests.log")
+  EVOCA VERBUM access_log AD CONIURA tmp_file("fase1_1f_access_safe.access.log")
+  EVOCA VERBUM stats AD CONIURA tmp_file("fase1_1f_access_safe.stats")
+  EVOCA SPECULUM NIHIL sock
+  EVOCA VERBUM req AD "POST /echo HTTP/1.1"
+  EVOCA VERBUM line AD ""
+
+  CONIURA cleanup_file(ready)
+  CONIURA cleanup_file(done)
+  CONIURA cleanup_file(log)
+  CONIURA cleanup_file(reqlog)
+  CONIURA cleanup_file(access_log)
+  CONIURA cleanup_file(stats)
+
+  SI CONIURA build_probe_server(log) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA spawn_to_log(CONIURA probe_command_with_proxy(18126, 1, ready, done, reqlog, access_log, stats, "", 1, 1, 0), log) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 4000)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(ready), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Host: app.local")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Cookie: session=super-secret")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Content-Length: 11")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "hello-world")
+
+  VINCIRE sock AD CONIURA open_local_socket(18126)
+  SI CONIURA send_raw(sock, req) != 0
+    REDDE 4
+  FIN SI
+  CONIURA read_http_response(sock)
+  CONIURA net_close(sock)
+
+  SI NON CONIURA wait_for_file(done, 4000)
+    REDDE 5
+  FIN SI
+  SI NON CONIURA exists(access_log)
+    REDDE 6
+  FIN SI
+  VINCIRE line AD CONIURA read_all(access_log)
+  SI CONIURA find(line, "super-secret") != -1
+    REDDE 7
+  FIN SI
+  SI CONIURA find(line, "Cookie") != -1 VEL CONIURA find(line, "hello-world") != -1
+    REDDE 8
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

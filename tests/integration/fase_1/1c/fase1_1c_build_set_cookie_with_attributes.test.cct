@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase1_1c_build_set_cookie_with_attributes_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set("sid", "abc")
+  VINCIRE cookie.path AD "/app"
+  VINCIRE cookie.domain AD "example.com"
+  VINCIRE cookie.expires AD "Wed, 01 Jan 2031 00:00:00 GMT"
+  VINCIRE cookie.max_age AD 3600
+  VINCIRE cookie.secure AD VERUM
+  VINCIRE cookie.http_only AD VERUM
+  VINCIRE cookie.same_site AD "Lax"
+  EVOCA VERBUM header AD CONIURA cookie_build_set(cookie)
+  SI CONIURA compare(header, "sid=abc; Path=/app; Domain=example.com; Expires=Wed, 01 Jan 2031 00:00:00 GMT; Max-Age=3600; Secure; HttpOnly; SameSite=Lax") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

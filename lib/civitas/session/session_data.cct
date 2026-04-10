@@ -1,0 +1,45 @@
+INCIPIT grimoire "civitas_session_data"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "session.cct"
+ADVOCARE "session_store.cct"
+
+RITUALE session_dados_get(Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  REDDE CONIURA session_get(SPECULUM sess, chave)
+EXPLICIT RITUALE
+
+RITUALE session_dados_set(SPECULUM NIHIL db, VERBUM session_id, VERBUM chave, VERBUM valor) REDDE NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_lookup(db, session_id)
+  SI CONIURA option_is_none GENUS(Session)(opt)
+    CONIURA option_free GENUS(Session)(opt)
+    REDDE
+  FIN SI
+  EVOCA Session sess AD CONIURA option_unwrap GENUS(Session)(opt)
+  CONIURA option_free GENUS(Session)(opt)
+  CONIURA session_set(SPECULUM sess, chave, valor)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sessoes SET dados = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, CONIURA session_store_data_to_json(SPECULUM sess))
+  CONIURA stmt_bind_text(stmt, 2, session_id)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_dados_del(SPECULUM NIHIL db, VERBUM session_id, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_lookup(db, session_id)
+  SI CONIURA option_is_none GENUS(Session)(opt)
+    CONIURA option_free GENUS(Session)(opt)
+    REDDE
+  FIN SI
+  EVOCA Session sess AD CONIURA option_unwrap GENUS(Session)(opt)
+  CONIURA option_free GENUS(Session)(opt)
+  CONIURA session_delete(SPECULUM sess, chave)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sessoes SET dados = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, CONIURA session_store_data_to_json(SPECULUM sess))
+  CONIURA stmt_bind_text(stmt, 2, session_id)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

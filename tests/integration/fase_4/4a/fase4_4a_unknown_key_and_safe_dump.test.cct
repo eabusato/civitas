@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase4_4a_unknown_key_and_safe_dump_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4a_tmp_dir("4a_dump_safe")
+  EVOCA SPECULUM NIHIL envs AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM diag_out AD ""
+  EVOCA VERBUM dump AD ""
+
+  CONIURA phase4_4a_reset_dir(root)
+  CONIURA phase4_4a_write(
+    CONIURA path_join(root, "civitas.toml"),
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"localhost\"]\n\n[http]\nport = 8080\n\n[mail]\npassword = \"segredo\"\n\n[extra]\nunknown = true\n"
+  )
+
+  VINCIRE diag_out AD CONIURA phase4_4a_run_probe(root, root, "development", "has_diag", "extra.unknown", envs)
+  SI CONIURA compare(CONIURA trim(diag_out), "true") != 0
+    REDDE 1
+  FIN SI
+
+  VINCIRE dump AD CONIURA phase4_4a_run_probe(root, root, "development", "dump", "", envs)
+  SI CONIURA find(dump, "segredo") != -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(dump, "[redacted]") == -1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

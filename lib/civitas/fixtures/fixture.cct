@@ -1,0 +1,70 @@
+INCIPIT grimoire "civitas_fixtures"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+
+ORDO FixtureKind
+  FkReference,
+  FkTest
+FIN ORDO
+
+SIGILLUM FixtureField
+  nome: VERBUM
+  valor: VERBUM
+  is_null: VERUM
+FIN SIGILLUM
+
+SIGILLUM FixtureEntry
+  modelo: VERBUM
+  pk: VERBUM
+  campos: Json
+FIN SIGILLUM
+
+SIGILLUM FixtureSuite
+  nome: VERBUM
+  kind: FixtureKind
+  entradas: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE fixture_entry_fill(SPECULUM FixtureEntry e, VERBUM modelo, VERBUM pk) REDDE NIHIL
+  VINCIRE (*e).modelo AD modelo
+  VINCIRE (*e).pk AD pk
+  VINCIRE (*e).campos AD CONIURA json_obj()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_suite_new(VERBUM nome, FixtureKind kind) REDDE FixtureSuite
+  EVOCA FixtureSuite s
+  VINCIRE s.nome AD nome
+  VINCIRE s.kind AD kind
+  VINCIRE s.entradas AD CONIURA fluxus_init(MENSURA(FixtureEntry))
+  REDDE s
+EXPLICIT RITUALE
+
+RITUALE fixture_entry_new(VERBUM modelo, VERBUM pk) REDDE FixtureEntry
+  EVOCA FixtureEntry e
+  CONIURA fixture_entry_fill(SPECULUM e, modelo, pk)
+  REDDE e
+EXPLICIT RITUALE
+
+RITUALE fixture_entry_add_field(SPECULUM FixtureEntry e, VERBUM nome, VERBUM valor, VERUM is_null) REDDE NIHIL
+  SI is_null
+    CONIURA json_set_key((*e).campos, nome, CONIURA json_null())
+    REDDE
+  FIN SI
+  CONIURA json_set_key((*e).campos, nome, CONIURA json_str(valor))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_suite_add_entry(SPECULUM FixtureSuite suite, FixtureEntry entry) REDDE NIHIL
+  CONIURA fluxus_push((*suite).entradas, SPECULUM entry)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_suite_merge(FixtureSuite a, FixtureSuite b) REDDE FixtureSuite
+  EVOCA FixtureSuite merged AD CONIURA fixture_suite_new(a.nome, a.kind)
+  VINCIRE merged.entradas AD CONIURA fluxus_concat GENUS(FixtureEntry)(a.entradas, b.entradas)
+  REDDE merged
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,211 @@
+INCIPIT grimoire "civitas_upload_stream"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../forms/multipart.cct"
+ADVOCARE "upload_types.cct"
+ADVOCARE "upload_save.cct"
+
+SIGILLUM UploadStreamPartState
+  active: VERUM
+  is_file: VERUM
+  field_name: VERBUM
+  filename: VERBUM
+  text_value: VERBUM
+  temp_path: VERBUM
+  bytes_written: REX
+FIN SIGILLUM
+
+RITUALE upload_stream_state_new() REDDE UploadStreamPartState
+  EVOCA UploadStreamPartState state
+  VINCIRE state.active AD FALSUM
+  VINCIRE state.is_file AD FALSUM
+  VINCIRE state.field_name AD ""
+  VINCIRE state.filename AD ""
+  VINCIRE state.text_value AD ""
+  VINCIRE state.temp_path AD ""
+  VINCIRE state.bytes_written AD 0
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE upload_stream_finalize_part(SPECULUM MultipartResult resultado, SPECULUM UploadStreamPartState current, UploadConfig cfg) REDDE SPECULUM NIHIL
+  SI NON (*current).active
+    REDDE CONIURA upload_result_ok(*resultado)
+  FIN SI
+
+  SI (*current).is_file
+    EVOCA SPECULUM NIHIL save_res AD CONIURA upload_salvar_parte((*current).temp_path, (*current).filename, cfg)
+    SI CONIURA result_is_err GENUS(UploadedFile, UploadError)(save_res)
+      REDDE CONIURA upload_result_err(CONIURA result_unwrap_err GENUS(UploadedFile, UploadError)(save_res))
+    FIN SI
+    CONIURA map_update_or_insert GENUS(VERBUM, UploadedFile)((*resultado).arquivos, (*current).field_name, CONIURA result_unwrap GENUS(UploadedFile, UploadError)(save_res))
+  ALITER
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*resultado).campos, (*current).field_name, (*current).text_value)
+  FIN SI
+
+  VINCIRE (*current) AD CONIURA upload_stream_state_new()
+  REDDE CONIURA upload_result_ok(*resultado)
+EXPLICIT RITUALE
+
+RITUALE upload_stream_append_data(SPECULUM UploadStreamPartState current, VERBUM data, UploadConfig cfg) REDDE SPECULUM NIHIL
+  SI CONIURA len(data) == 0
+    REDDE CONIURA upload_result_ok(CONIURA upload_new_result())
+  FIN SI
+
+  VINCIRE (*current).bytes_written AD (*current).bytes_written + CONIURA len(data)
+  SI (*current).bytes_written > cfg.max_tamanho_campo
+    SI (*current).is_file ET CONIURA len((*current).temp_path) != 0 ET CONIURA exists((*current).temp_path)
+      CONIURA delete_file((*current).temp_path)
+    FIN SI
+    REDDE CONIURA upload_result_err(UeExcedeuLimite)
+  FIN SI
+
+  SI (*current).is_file
+    TEMPTA
+      CONIURA append_all((*current).temp_path, data)
+    CAPE FRACTUM erro
+      SI CONIURA exists((*current).temp_path)
+        CONIURA delete_file((*current).temp_path)
+      FIN SI
+      REDDE CONIURA upload_result_err(UeWriteFalhou)
+    FIN TEMPTA
+    REDDE CONIURA upload_result_ok(CONIURA upload_new_result())
+  FIN SI
+
+  VINCIRE (*current).text_value AD CONIURA concat((*current).text_value, data)
+  REDDE CONIURA upload_result_ok(CONIURA upload_new_result())
+EXPLICIT RITUALE
+
+RITUALE upload_stream_begin_part(SPECULUM UploadStreamPartState current, VERBUM headers_block, UploadConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM disposition AD CONIURA multipart_header_value(headers_block, "Content-Disposition:")
+  EVOCA VERBUM field_name AD CONIURA multipart_disposition_param(disposition, "name")
+  EVOCA VERBUM filename AD CONIURA multipart_disposition_param(disposition, "filename")
+
+  SI CONIURA len(field_name) == 0
+    REDDE CONIURA upload_result_err(UePartHeaderMalformado)
+  FIN SI
+
+  VINCIRE (*current).active AD VERUM
+  VINCIRE (*current).field_name AD field_name
+  VINCIRE (*current).filename AD filename
+  VINCIRE (*current).is_file AD CONIURA len(filename) != 0
+  VINCIRE (*current).text_value AD ""
+  VINCIRE (*current).bytes_written AD 0
+  SI (*current).is_file
+    VINCIRE (*current).temp_path AD CONIURA upload_temp_path(cfg)
+    TEMPTA
+      CONIURA write_all((*current).temp_path, "")
+    CAPE FRACTUM erro
+      REDDE CONIURA upload_result_err(UeWriteFalhou)
+    FIN TEMPTA
+  ALITER
+    VINCIRE (*current).temp_path AD ""
+  FIN SI
+  REDDE CONIURA upload_result_ok(CONIURA upload_new_result())
+EXPLICIT RITUALE
+
+RITUALE upload_parse_stream(SPECULUM NIHIL socket, VERBUM boundary, UploadConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA MultipartResult resultado AD CONIURA upload_new_result()
+  EVOCA UploadStreamPartState current AD CONIURA upload_stream_state_new()
+  EVOCA VERBUM buffer AD ""
+  EVOCA VERBUM marker_boundary AD CONIURA concat("--", boundary)
+  EVOCA VERBUM marker_body AD CONIURA concat(CONIURA multipart_crlf(), marker_boundary)
+  EVOCA VERBUM marker_final AD CONIURA concat(marker_boundary, "--")
+  EVOCA REX total_lido AD 0
+  EVOCA VERUM expecting_boundary AD VERUM
+  EVOCA VERUM expecting_headers AD FALSUM
+
+  DUM VERUM
+    EVOCA VERBUM bloco AD OBSECRO sock_recv(socket, cfg.tamanho_bloco)
+    SI CONIURA len(bloco) == 0
+      REDDE CONIURA upload_result_err(UeRequestTruncado)
+    FIN SI
+
+    VINCIRE total_lido AD total_lido + CONIURA len(bloco)
+    SI total_lido > cfg.max_tamanho_total
+      SI current.is_file ET CONIURA len(current.temp_path) != 0 ET CONIURA exists(current.temp_path)
+        CONIURA delete_file(current.temp_path)
+      FIN SI
+      REDDE CONIURA upload_result_err(UeExcedeuLimite)
+    FIN SI
+
+    VINCIRE buffer AD CONIURA concat(buffer, bloco)
+
+    DUM VERUM
+      SI expecting_boundary
+        SI CONIURA starts_with(buffer, marker_final)
+          REDDE CONIURA upload_result_ok(resultado)
+        FIN SI
+        EVOCA VERBUM opening AD CONIURA concat(marker_boundary, CONIURA multipart_crlf())
+        SI CONIURA starts_with(buffer, opening)
+          VINCIRE buffer AD CONIURA substring(buffer, CONIURA len(opening), CONIURA len(buffer))
+          VINCIRE expecting_boundary AD FALSUM
+          VINCIRE expecting_headers AD VERUM
+          RECEDE
+        FIN SI
+        EVOCA REX boundary_pos AD CONIURA find(buffer, marker_boundary)
+        SI boundary_pos > 0
+          VINCIRE buffer AD CONIURA substring(buffer, boundary_pos, CONIURA len(buffer))
+          RECEDE
+        FIN SI
+        SI CONIURA len(buffer) > CONIURA len(opening) + 4
+          REDDE CONIURA upload_result_err(UeBoundaryMalformado)
+        FIN SI
+        FRANGE
+      FIN SI
+
+      SI expecting_headers
+        EVOCA REX sep AD CONIURA find(buffer, CONIURA concat(CONIURA multipart_crlf(), CONIURA multipart_crlf()))
+        SI sep == -1
+          FRANGE
+        FIN SI
+        EVOCA VERBUM headers_block AD CONIURA substring(buffer, 0, sep)
+        EVOCA SPECULUM NIHIL begin_res AD CONIURA upload_stream_begin_part(SPECULUM current, headers_block, cfg)
+        SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(begin_res)
+          REDDE begin_res
+        FIN SI
+        VINCIRE buffer AD CONIURA substring(buffer, sep + 4, CONIURA len(buffer))
+        VINCIRE expecting_headers AD FALSUM
+        RECEDE
+      FIN SI
+
+      EVOCA REX marker_pos AD CONIURA find(buffer, marker_body)
+      SI marker_pos != -1
+        EVOCA VERBUM chunk_final AD CONIURA substring(buffer, 0, marker_pos)
+        EVOCA SPECULUM NIHIL append_res AD CONIURA upload_stream_append_data(SPECULUM current, chunk_final, cfg)
+        SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(append_res)
+          REDDE append_res
+        FIN SI
+        EVOCA SPECULUM NIHIL finalize_res AD CONIURA upload_stream_finalize_part(SPECULUM resultado, SPECULUM current, cfg)
+        SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(finalize_res)
+          REDDE finalize_res
+        FIN SI
+        VINCIRE buffer AD CONIURA substring(buffer, marker_pos + 2, CONIURA len(buffer))
+        VINCIRE expecting_boundary AD VERUM
+        RECEDE
+      FIN SI
+
+      EVOCA REX preserve AD CONIURA len(marker_body) + 8
+      SI current.is_file
+        SI CONIURA len(buffer) > preserve
+          EVOCA VERBUM write_chunk AD CONIURA substring(buffer, 0, CONIURA len(buffer) - preserve)
+          EVOCA SPECULUM NIHIL write_res AD CONIURA upload_stream_append_data(SPECULUM current, write_chunk, cfg)
+          SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(write_res)
+            REDDE write_res
+          FIN SI
+          VINCIRE buffer AD CONIURA substring(buffer, CONIURA len(buffer) - preserve, CONIURA len(buffer))
+        FIN SI
+        FRANGE
+      FIN SI
+
+      FRANGE
+    FIN DUM
+  FIN DUM
+
+  REDDE CONIURA upload_result_err(UeRequestTruncado)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

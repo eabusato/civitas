@@ -1,0 +1,16 @@
+INCIPIT grimoire "fase10_10f_review_state_roundtrip"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA review_state_from_int(CONIURA review_state_to_int(RsNeedsRevision)) != RsNeedsRevision
+    REDDE 1
+  FIN SI
+  SI CONIURA review_state_from_int(CONIURA review_state_to_int(RsApproved)) != RsApproved
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,130 @@
+INCIPIT grimoire "civitas_core_app_services"
+
+ADVOCARE "app.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "external_tools.cct"
+ADVOCARE "services.cct"
+ADVOCARE "settings_schema.cct"
+ADVOCARE "storage_settings.cct"
+
+RITUALE redis_settings_fill(SPECULUM RedisSettings dest, RedisSettings src) REDDE NIHIL
+  VINCIRE (*dest).enabled AD src.enabled
+  VINCIRE (*dest).configured AD src.configured
+  VINCIRE (*dest).namespace AD src.namespace
+  VINCIRE (*dest).host AD src.host
+  VINCIRE (*dest).port AD src.port
+  VINCIRE (*dest).password AD src.password
+  VINCIRE (*dest).db_index AD src.db_index
+  VINCIRE (*dest).connect_timeout_ms AD src.connect_timeout_ms
+  VINCIRE (*dest).read_timeout_ms AD src.read_timeout_ms
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mail_settings_fill(SPECULUM MailSettings dest, MailSettings src) REDDE NIHIL
+  VINCIRE (*dest).enabled AD src.enabled
+  VINCIRE (*dest).configured AD src.configured
+  VINCIRE (*dest).backend_name AD src.backend_name
+  VINCIRE (*dest).default_from AD src.default_from
+  VINCIRE (*dest).host AD src.host
+  VINCIRE (*dest).port AD src.port
+  VINCIRE (*dest).username AD src.username
+  VINCIRE (*dest).password AD src.password
+  VINCIRE (*dest).auth_kind AD src.auth_kind
+  VINCIRE (*dest).use_starttls AD src.use_starttls
+  VINCIRE (*dest).use_smtps AD src.use_smtps
+  VINCIRE (*dest).out_dir AD src.out_dir
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE search_settings_fill(SPECULUM SearchSettings dest, SearchSettings src) REDDE NIHIL
+  VINCIRE (*dest).enabled AD src.enabled
+  VINCIRE (*dest).configured AD src.configured
+  VINCIRE (*dest).backend AD src.backend
+  VINCIRE (*dest).url AD src.url
+  VINCIRE (*dest).index_prefix AD src.index_prefix
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE proxy_settings_fill(SPECULUM ProxySettings dest, ProxySettings src) REDDE NIHIL
+  VINCIRE (*dest).trusted_proxies_csv AD src.trusted_proxies_csv
+  VINCIRE (*dest).trusted_proxies_count AD src.trusted_proxies_count
+  VINCIRE (*dest).trust_forwarded_proto AD src.trust_forwarded_proto
+  VINCIRE (*dest).trust_forwarded_for AD src.trust_forwarded_for
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE media_tool_settings_fill(SPECULUM MediaToolSettings dest, MediaToolSettings src) REDDE NIHIL
+  VINCIRE (*dest).ffmpeg_path AD src.ffmpeg_path
+  VINCIRE (*dest).ffprobe_path AD src.ffprobe_path
+  VINCIRE (*dest).ffmpeg_required AD src.ffmpeg_required
+  VINCIRE (*dest).ffprobe_required AD src.ffprobe_required
+  VINCIRE (*dest).ffmpeg_available AD src.ffmpeg_available
+  VINCIRE (*dest).ffprobe_available AD src.ffprobe_available
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE storage_settings_fill(SPECULUM StorageSettings dest, StorageSettings src) REDDE NIHIL
+  VINCIRE (*dest).root_dir AD src.root_dir
+  VINCIRE (*dest).public_base_url AD src.public_base_url
+  VINCIRE (*dest).create_missing_dirs AD src.create_missing_dirs
+  VINCIRE (*dest).tmp_dir AD src.tmp_dir
+  VINCIRE (*dest).quarantine_dir AD src.quarantine_dir
+  VINCIRE (*dest).processed_dir AD src.processed_dir
+  VINCIRE (*dest).public_dir AD src.public_dir
+  VINCIRE (*dest).private_dir AD src.private_dir
+  VINCIRE (*dest).object_storage_enabled AD src.object_storage_enabled
+  VINCIRE (*dest).object_storage AD src.object_storage
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_materialize_services(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Settings settings AD CONIURA app_settings(app)
+  EVOCA SPECULUM NIHIL storage_res AD CONIURA settings_storage(settings)
+  EVOCA SPECULUM NIHIL redis_res AD CONIURA settings_redis(settings)
+  EVOCA SPECULUM NIHIL mail_res AD CONIURA settings_mail(settings)
+  EVOCA SPECULUM NIHIL search_res AD CONIURA settings_search(settings)
+  EVOCA SPECULUM NIHIL tools_res AD CONIURA settings_media_tools(settings)
+  EVOCA SPECULUM NIHIL proxy_res AD CONIURA settings_proxy(settings)
+  EVOCA SPECULUM StorageSettings storage_ptr AD OBSECRO mem_alloc(MENSURA(StorageSettings))
+  EVOCA SPECULUM RedisSettings redis_ptr AD OBSECRO mem_alloc(MENSURA(RedisSettings))
+  EVOCA SPECULUM MailSettings mail_ptr AD OBSECRO mem_alloc(MENSURA(MailSettings))
+  EVOCA SPECULUM SearchSettings search_ptr AD OBSECRO mem_alloc(MENSURA(SearchSettings))
+  EVOCA SPECULUM MediaToolSettings tools_ptr AD OBSECRO mem_alloc(MENSURA(MediaToolSettings))
+  EVOCA SPECULUM ProxySettings proxy_ptr AD OBSECRO mem_alloc(MENSURA(ProxySettings))
+
+  SI CONIURA result_is_err GENUS(StorageSettings, VERBUM)(storage_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(StorageSettings, VERBUM)(storage_res))
+  FIN SI
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(redis_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(redis_res))
+  FIN SI
+  SI CONIURA result_is_err GENUS(MailSettings, VERBUM)(mail_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(MailSettings, VERBUM)(mail_res))
+  FIN SI
+  SI CONIURA result_is_err GENUS(SearchSettings, VERBUM)(search_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(SearchSettings, VERBUM)(search_res))
+  FIN SI
+  SI CONIURA result_is_err GENUS(MediaToolSettings, VERBUM)(tools_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(MediaToolSettings, VERBUM)(tools_res))
+  FIN SI
+  SI CONIURA result_is_err GENUS(ProxySettings, VERBUM)(proxy_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(ProxySettings, VERBUM)(proxy_res))
+  FIN SI
+
+  CONIURA storage_settings_fill(storage_ptr, CONIURA result_unwrap GENUS(StorageSettings, VERBUM)(storage_res))
+  CONIURA redis_settings_fill(redis_ptr, CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(redis_res))
+  CONIURA mail_settings_fill(mail_ptr, CONIURA result_unwrap GENUS(MailSettings, VERBUM)(mail_res))
+  CONIURA search_settings_fill(search_ptr, CONIURA result_unwrap GENUS(SearchSettings, VERBUM)(search_res))
+  CONIURA media_tool_settings_fill(tools_ptr, CONIURA result_unwrap GENUS(MediaToolSettings, VERBUM)(tools_res))
+  CONIURA proxy_settings_fill(proxy_ptr, CONIURA result_unwrap GENUS(ProxySettings, VERBUM)(proxy_res))
+
+  CONIURA app_service_set(app, CONIURA app_service_storage_key(), storage_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_redis_key(), redis_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_mail_key(), mail_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_search_key(), search_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_media_tools_key(), tools_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_proxy_key(), proxy_ptr)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

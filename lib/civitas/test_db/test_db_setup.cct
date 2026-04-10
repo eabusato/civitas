@@ -1,0 +1,45 @@
+INCIPIT grimoire "civitas_test_db_setup"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../model/model.cct"
+ADVOCARE "../model/model_ddl.cct"
+ADVOCARE "../model/model_registry.cct"
+ADVOCARE "test_db.cct"
+
+RITUALE test_db_open(TestDbConfig cfg) REDDE TestDb
+  EVOCA TestDb tdb
+  VINCIRE tdb.config AD cfg
+  VINCIRE tdb.sp_contador AD 0
+  VINCIRE tdb.sp_ativo AD ""
+  SI cfg.usar_memoria
+    VINCIRE tdb.db AD CONIURA db_open(":memory:")
+  ALITER
+    VINCIRE tdb.db AD CONIURA db_open(cfg.path_temp)
+  FIN SI
+  REDDE tdb
+EXPLICIT RITUALE
+
+RITUALE test_db_open_memory() REDDE TestDb
+  EVOCA TestDbConfig cfg AD CONIURA test_db_config_memoria()
+  VINCIRE cfg.auto_migrate AD FALSUM
+  REDDE CONIURA test_db_open(cfg)
+EXPLICIT RITUALE
+
+RITUALE test_db_run_migrations(TestDb tdb, ModelRegistry registry) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len(registry.items)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM ModelDef defp AD CONIURA fluxus_get(registry.items, i)
+    CONIURA model_def_create_table(tdb.db, *defp)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_db_close(TestDb tdb) REDDE NIHIL
+  CONIURA db_close(tdb.db)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

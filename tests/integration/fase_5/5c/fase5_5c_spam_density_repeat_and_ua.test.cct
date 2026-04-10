@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase5_5c_spam_density_repeat_and_ua_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA form_data_new()
+  EVOCA SpamCheckConfig cfg AD CONIURA spam_check_config_default()
+  EVOCA SpamCheckResult result
+  EVOCA VERBUM repeated AD "visite agora http://a.test http://b.test oferta exclusiva"
+
+  CONIURA form_data_put_text(SPECULUM fd, "message", repeated)
+  CONIURA form_data_put_text(SPECULUM fd, "bio", repeated)
+  CONIURA form_data_put_text(SPECULUM fd, "__user_agent", "curl/8.5.0")
+  VINCIRE cfg.max_url_density AD 20
+  VINCIRE cfg.auto_block_score AD 99
+  CONIURA spam_check_fill(SPECULUM result, cfg, SPECULUM fd, 10)
+
+  SI NON CONIURA phase5_5c_has_signal(result, SsRepeatedContent)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA phase5_5c_has_signal(result, SsHighUrlDensity)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA phase5_5c_has_signal(result, SsSuspiciousUserAgent)
+    REDDE 3
+  FIN SI
+  SI result.blocked
+    REDDE 4
+  FIN SI
+  CONIURA spam_check_result_free(SPECULUM result)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

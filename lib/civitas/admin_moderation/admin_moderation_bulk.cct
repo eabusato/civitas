@@ -1,0 +1,28 @@
+INCIPIT grimoire "civitas_admin_moderation_bulk"
+
+ADVOCARE "cct/json.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../tasks/tasks.cct"
+ADVOCARE "admin_moderation.cct"
+ADVOCARE "admin_moderation_decide.cct"
+
+RITUALE moderation_bulk_apply(DbHandle dbh, VERBUM item_ids_json, VERBUM action, VERBUM reason, VERBUM moderator_id, TaskConfig task_cfg) REDDE ModerationBulkResult
+  EVOCA ModerationBulkResult out AD CONIURA moderation_bulk_result_empty()
+  EVOCA Json ids AD CONIURA json_parse(item_ids_json)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(ids)
+  VINCIRE out.matched AD n
+  DUM i < n
+    EVOCA VERBUM item_id AD CONIURA json_expect_str(CONIURA json_arr_get(ids, i))
+    TEMPTA
+      CONIURA moderation_decide(dbh, item_id, action, reason, moderator_id, FALSUM, task_cfg)
+      VINCIRE out.changed AD out.changed + 1
+    CAPE FRACTUM error
+      VINCIRE out.failed AD out.failed + 1
+    FIN TEMPTA
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

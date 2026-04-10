@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase2_2e_parse_valid_and_name_test"
+
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL public_res AD CONIURA visibility_parse(" public ")
+  SI CONIURA result_is_err GENUS(VisibilityPolicy, VERBUM)(public_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA visibility_name(VISIBILITY_PUBLIC), "public") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA visibility_is_public(VISIBILITY_PUBLIC)
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

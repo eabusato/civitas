@@ -1,0 +1,576 @@
+INCIPIT grimoire "fase8_8c_fake_redis_server"
+
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM FakeRedisState
+  strings: SPECULUM NIHIL
+  sets: SPECULUM NIHIL
+  expiries_ms: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM FakeRedisCommand
+  parts: SPECULUM NIHIL
+  eof: VERUM
+  valid: VERUM
+FIN SIGILLUM
+
+RITUALE fake_redis_crlf() REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA from_char(13)
+  REDDE CONIURA concat(out, "\n")
+EXPLICIT RITUALE
+
+RITUALE fake_redis_copy(VERBUM texto) REDDE VERBUM
+  REDDE CONIURA substring(texto, 0, CONIURA len(texto))
+EXPLICIT RITUALE
+
+RITUALE fake_redis_state_new() REDDE FakeRedisState
+  EVOCA FakeRedisState state
+  VINCIRE state.strings AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE state.sets AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE state.expiries_ms AD CONIURA map_init GENUS(VERBUM, REX)()
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_get_text(SPECULUM NIHIL mappa, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERBUM valor AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(mappa, *key_ptr, "")
+      CONIURA fluxus_free(keys)
+      REDDE CONIURA Some GENUS(VERBUM)(valor)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_put_text(SPECULUM NIHIL mappa, VERBUM chave, VERBUM valor) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(mappa, *key_ptr, CONIURA fake_redis_copy(valor))
+      CONIURA fluxus_free(keys)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(mappa, CONIURA fake_redis_copy(chave), CONIURA fake_redis_copy(valor))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_remove_text(SPECULUM NIHIL mappa, VERBUM chave) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERUM removed AD CONIURA map_remove GENUS(VERBUM, VERBUM)(mappa, *key_ptr)
+      CONIURA fluxus_free(keys)
+      REDDE removed
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_has_text(SPECULUM NIHIL mappa, VERBUM chave) REDDE VERUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA fake_redis_map_get_text(mappa, chave)
+  SI CONIURA option_is_some GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE VERUM
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_get_int(SPECULUM NIHIL mappa, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, REX)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA REX valor AD CONIURA map_get_or_default GENUS(VERBUM, REX)(mappa, *key_ptr, 0)
+      CONIURA fluxus_free(keys)
+      REDDE CONIURA Some GENUS(REX)(valor)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA None GENUS(REX)()
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_put_int(SPECULUM NIHIL mappa, VERBUM chave, REX valor) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, REX)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      CONIURA map_update_or_insert GENUS(VERBUM, REX)(mappa, *key_ptr, valor)
+      CONIURA fluxus_free(keys)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  CONIURA map_insert GENUS(VERBUM, REX)(mappa, CONIURA fake_redis_copy(chave), valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fake_redis_map_remove_int(SPECULUM NIHIL mappa, VERBUM chave) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, REX)(mappa)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERUM removed AD CONIURA map_remove GENUS(VERBUM, REX)(mappa, *key_ptr)
+      CONIURA fluxus_free(keys)
+      REDDE removed
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE fake_redis_set_contains(VERBUM encoded, VERBUM needle) REDDE VERUM
+  SI CONIURA len(encoded) == 0
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(encoded, "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part AD CONIURA fluxus_get(parts, i)
+    SI CONIURA compare(*part, needle) == 0
+      CONIURA fluxus_free(parts)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(parts)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE fake_redis_set_add(VERBUM encoded, VERBUM valor) REDDE VERBUM
+  SI CONIURA len(encoded) == 0
+    REDDE CONIURA fake_redis_copy(valor)
+  FIN SI
+  SI CONIURA fake_redis_set_contains(encoded, valor)
+    REDDE encoded
+  FIN SI
+  REDDE CONIURA concat(CONIURA concat(encoded, "\n"), valor)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_set_remove(VERBUM encoded, VERBUM valor) REDDE VERBUM
+  SI CONIURA len(encoded) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(encoded, "\n")
+  EVOCA SPECULUM NIHIL kept AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part AD CONIURA fluxus_get(parts, i)
+    SI CONIURA compare(*part, valor) != 0
+      CONIURA fluxus_push(kept, part)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA join(kept, "\n")
+  CONIURA fluxus_free(kept)
+  CONIURA fluxus_free(parts)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fake_redis_purge_key(SPECULUM FakeRedisState state, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM NIHIL expiry_opt AD CONIURA fake_redis_map_get_int((*state).expiries_ms, chave)
+  SI CONIURA option_is_none GENUS(REX)(expiry_opt)
+    CONIURA option_free GENUS(REX)(expiry_opt)
+    REDDE
+  FIN SI
+  EVOCA REX expiry_ms AD CONIURA option_unwrap GENUS(REX)(expiry_opt)
+  CONIURA option_free GENUS(REX)(expiry_opt)
+  SI expiry_ms > CONIURA now_ms()
+    REDDE
+  FIN SI
+  CONIURA fake_redis_map_remove_text((*state).strings, chave)
+  CONIURA fake_redis_map_remove_text((*state).sets, chave)
+  CONIURA fake_redis_map_remove_int((*state).expiries_ms, chave)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fake_redis_exists(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERUM
+  CONIURA fake_redis_purge_key(state, chave)
+  REDDE CONIURA fake_redis_map_has_text((*state).strings, chave) VEL CONIURA fake_redis_map_has_text((*state).sets, chave)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_simple(VERBUM texto) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat("+", texto), CONIURA fake_redis_crlf())
+EXPLICIT RITUALE
+
+RITUALE fake_redis_error(VERBUM texto) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat("-ERR ", texto), CONIURA fake_redis_crlf())
+EXPLICIT RITUALE
+
+RITUALE fake_redis_int(REX valor) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat(":", CONIURA stringify_int(valor)), CONIURA fake_redis_crlf())
+EXPLICIT RITUALE
+
+RITUALE fake_redis_null() REDDE VERBUM
+  REDDE CONIURA concat("$-1", CONIURA fake_redis_crlf())
+EXPLICIT RITUALE
+
+RITUALE fake_redis_bulk(VERBUM texto) REDDE VERBUM
+  EVOCA VERBUM out AD "$"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(CONIURA len(texto)))
+  VINCIRE out AD CONIURA concat(out, CONIURA fake_redis_crlf())
+  VINCIRE out AD CONIURA concat(out, texto)
+  VINCIRE out AD CONIURA concat(out, CONIURA fake_redis_crlf())
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fake_redis_array(SPECULUM NIHIL items) REDDE VERBUM
+  EVOCA VERBUM out AD "*"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(CONIURA fluxus_len(items)))
+  VINCIRE out AD CONIURA concat(out, CONIURA fake_redis_crlf())
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item AD CONIURA fluxus_get(items, i)
+    VINCIRE out AD CONIURA concat(out, CONIURA fake_redis_bulk(*item))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fake_redis_send(SPECULUM NIHIL sock, VERBUM payload) REDDE NIHIL
+  SI CONIURA sock_send(sock, payload) != CONIURA len(payload)
+    IACE "fake redis envio incompleto"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fake_redis_parse_count(VERBUM line, MILES prefix) REDDE REX
+  SI CONIURA len(line) < 3
+    IACE "fake redis RESP truncado"
+  FIN SI
+  SI CONIURA char_at(line, 0) != prefix
+    IACE "fake redis RESP invalido"
+  FIN SI
+  REDDE CONIURA parse_int(CONIURA substring(line, 1, CONIURA len(line) - 2))
+EXPLICIT RITUALE
+
+RITUALE fake_redis_read_command(SPECULUM NIHIL sock) REDDE FakeRedisCommand
+  EVOCA FakeRedisCommand cmd
+  VINCIRE cmd.parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE cmd.eof AD FALSUM
+  VINCIRE cmd.valid AD VERUM
+
+  EVOCA VERBUM header AD CONIURA net_read_until(sock, CONIURA fake_redis_crlf())
+  SI CONIURA len(header) == 0
+    VINCIRE cmd.eof AD VERUM
+    REDDE cmd
+  FIN SI
+
+  TEMPTA
+    EVOCA REX count AD CONIURA fake_redis_parse_count(header, 42)
+    EVOCA REX i AD 0
+    DUM i < count
+      EVOCA VERBUM bulk_header AD CONIURA net_read_until(sock, CONIURA fake_redis_crlf())
+      EVOCA REX bulk_len AD CONIURA fake_redis_parse_count(bulk_header, 36)
+      EVOCA VERBUM payload AD CONIURA net_read_exact(sock, bulk_len)
+      CONIURA net_read_exact(sock, 2)
+      CONIURA fluxus_push(cmd.parts, SPECULUM payload)
+      VINCIRE i AD i + 1
+    FIN DUM
+    REDDE cmd
+  CAPE FRACTUM erro
+    VINCIRE cmd.valid AD FALSUM
+    REDDE cmd
+  FIN TEMPTA
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_get(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA fake_redis_map_get_text((*state).strings, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE CONIURA fake_redis_null()
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE CONIURA fake_redis_bulk(value)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_setex(SPECULUM FakeRedisState state, VERBUM chave, REX ttl_seconds, VERBUM valor) REDDE VERBUM
+  CONIURA fake_redis_map_put_text((*state).strings, chave, valor)
+  CONIURA fake_redis_map_remove_text((*state).sets, chave)
+  CONIURA fake_redis_map_put_int((*state).expiries_ms, chave, CONIURA now_ms() + (ttl_seconds * 1000))
+  REDDE CONIURA fake_redis_simple("OK")
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_set(SPECULUM FakeRedisState state, VERBUM chave, VERBUM valor) REDDE VERBUM
+  CONIURA fake_redis_map_put_text((*state).strings, chave, valor)
+  CONIURA fake_redis_map_remove_text((*state).sets, chave)
+  CONIURA fake_redis_map_remove_int((*state).expiries_ms, chave)
+  REDDE CONIURA fake_redis_simple("OK")
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_del(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA VERUM removed AD FALSUM
+  SI CONIURA fake_redis_map_remove_text((*state).strings, chave)
+    VINCIRE removed AD VERUM
+  FIN SI
+  SI CONIURA fake_redis_map_remove_text((*state).sets, chave)
+    VINCIRE removed AD VERUM
+  FIN SI
+  CONIURA fake_redis_map_remove_int((*state).expiries_ms, chave)
+  SI removed
+    REDDE CONIURA fake_redis_int(1)
+  FIN SI
+  REDDE CONIURA fake_redis_int(0)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_exists(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  SI CONIURA fake_redis_exists(state, chave)
+    REDDE CONIURA fake_redis_int(1)
+  FIN SI
+  REDDE CONIURA fake_redis_int(0)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_expire(SPECULUM FakeRedisState state, VERBUM chave, REX ttl_seconds) REDDE VERBUM
+  SI NON CONIURA fake_redis_exists(state, chave)
+    REDDE CONIURA fake_redis_int(0)
+  FIN SI
+  CONIURA fake_redis_map_put_int((*state).expiries_ms, chave, CONIURA now_ms() + (ttl_seconds * 1000))
+  REDDE CONIURA fake_redis_int(1)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_ttl(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  SI NON CONIURA fake_redis_exists(state, chave)
+    REDDE CONIURA fake_redis_int(-2)
+  FIN SI
+  EVOCA SPECULUM NIHIL expiry_opt AD CONIURA fake_redis_map_get_int((*state).expiries_ms, chave)
+  SI CONIURA option_is_none GENUS(REX)(expiry_opt)
+    CONIURA option_free GENUS(REX)(expiry_opt)
+    REDDE CONIURA fake_redis_int(-1)
+  FIN SI
+  EVOCA REX expiry_ms AD CONIURA option_unwrap GENUS(REX)(expiry_opt)
+  CONIURA option_free GENUS(REX)(expiry_opt)
+  EVOCA REX remaining_ms AD expiry_ms - CONIURA now_ms()
+  SI remaining_ms <= 0
+    CONIURA fake_redis_purge_key(state, chave)
+    REDDE CONIURA fake_redis_int(-2)
+  FIN SI
+  REDDE CONIURA fake_redis_int((remaining_ms + 999) / 1000)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_incr(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA SPECULUM NIHIL current_opt AD CONIURA fake_redis_map_get_text((*state).strings, chave)
+  EVOCA REX current AD 0
+  SI CONIURA option_is_some GENUS(VERBUM)(current_opt)
+    VINCIRE current AD CONIURA parse_int(CONIURA option_unwrap GENUS(VERBUM)(current_opt))
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(current_opt)
+  VINCIRE current AD current + 1
+  CONIURA fake_redis_map_put_text((*state).strings, chave, CONIURA stringify_int(current))
+  CONIURA fake_redis_map_remove_text((*state).sets, chave)
+  REDDE CONIURA fake_redis_int(current)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_sadd(SPECULUM FakeRedisState state, VERBUM chave, VERBUM valor) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA SPECULUM NIHIL current_opt AD CONIURA fake_redis_map_get_text((*state).sets, chave)
+  EVOCA VERBUM current AD ""
+  SI CONIURA option_is_some GENUS(VERBUM)(current_opt)
+    VINCIRE current AD CONIURA option_unwrap GENUS(VERBUM)(current_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(current_opt)
+  SI CONIURA fake_redis_set_contains(current, valor)
+    REDDE CONIURA fake_redis_int(0)
+  FIN SI
+  CONIURA fake_redis_map_put_text((*state).sets, chave, CONIURA fake_redis_set_add(current, valor))
+  CONIURA fake_redis_map_remove_text((*state).strings, chave)
+  REDDE CONIURA fake_redis_int(1)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_srem(SPECULUM FakeRedisState state, VERBUM chave, VERBUM valor) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA SPECULUM NIHIL current_opt AD CONIURA fake_redis_map_get_text((*state).sets, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(current_opt)
+    CONIURA option_free GENUS(VERBUM)(current_opt)
+    REDDE CONIURA fake_redis_int(0)
+  FIN SI
+  EVOCA VERBUM current AD CONIURA option_unwrap GENUS(VERBUM)(current_opt)
+  CONIURA option_free GENUS(VERBUM)(current_opt)
+  SI NON CONIURA fake_redis_set_contains(current, valor)
+    REDDE CONIURA fake_redis_int(0)
+  FIN SI
+  EVOCA VERBUM updated AD CONIURA fake_redis_set_remove(current, valor)
+  SI CONIURA len(updated) == 0
+    CONIURA fake_redis_map_remove_text((*state).sets, chave)
+    CONIURA fake_redis_map_remove_int((*state).expiries_ms, chave)
+  ALITER
+    CONIURA fake_redis_map_put_text((*state).sets, chave, updated)
+  FIN SI
+  REDDE CONIURA fake_redis_int(1)
+EXPLICIT RITUALE
+
+RITUALE fake_redis_handle_smembers(SPECULUM FakeRedisState state, VERBUM chave) REDDE VERBUM
+  CONIURA fake_redis_purge_key(state, chave)
+  EVOCA SPECULUM NIHIL current_opt AD CONIURA fake_redis_map_get_text((*state).sets, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(current_opt)
+    EVOCA SPECULUM NIHIL empty AD CONIURA fluxus_init(MENSURA(VERBUM))
+    EVOCA VERBUM out AD CONIURA fake_redis_array(empty)
+    CONIURA fluxus_free(empty)
+    CONIURA option_free GENUS(VERBUM)(current_opt)
+    REDDE out
+  FIN SI
+  EVOCA VERBUM current AD CONIURA option_unwrap GENUS(VERBUM)(current_opt)
+  CONIURA option_free GENUS(VERBUM)(current_opt)
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(current, "\n")
+  CONIURA fluxus_sort_verbum(parts)
+  EVOCA VERBUM out AD CONIURA fake_redis_array(parts)
+  CONIURA fluxus_free(parts)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fake_redis_dispatch(SPECULUM FakeRedisState state, SPECULUM NIHIL parts) REDDE VERBUM
+  SI CONIURA fluxus_len(parts) == 0
+    REDDE CONIURA fake_redis_error("empty request")
+  FIN SI
+  EVOCA SPECULUM VERBUM cmd_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA VERBUM cmd AD CONIURA to_upper(*cmd_ptr)
+  SI CONIURA compare(cmd, "AUTH") == 0 VEL CONIURA compare(cmd, "SELECT") == 0
+    REDDE CONIURA fake_redis_simple("OK")
+  FIN SI
+  SI CONIURA compare(cmd, "GET") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_get(state, *key_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "SETEX") == 0 ET CONIURA fluxus_len(parts) == 4
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    EVOCA SPECULUM VERBUM ttl_ptr AD CONIURA fluxus_get(parts, 2)
+    EVOCA SPECULUM VERBUM value_ptr AD CONIURA fluxus_get(parts, 3)
+    REDDE CONIURA fake_redis_handle_setex(state, *key_ptr, CONIURA parse_int(*ttl_ptr), *value_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "SET") == 0 ET CONIURA fluxus_len(parts) == 3
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    EVOCA SPECULUM VERBUM value_ptr AD CONIURA fluxus_get(parts, 2)
+    REDDE CONIURA fake_redis_handle_set(state, *key_ptr, *value_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "DEL") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_del(state, *key_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "EXISTS") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_exists(state, *key_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "EXPIRE") == 0 ET CONIURA fluxus_len(parts) == 3
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    EVOCA SPECULUM VERBUM ttl_ptr AD CONIURA fluxus_get(parts, 2)
+    REDDE CONIURA fake_redis_handle_expire(state, *key_ptr, CONIURA parse_int(*ttl_ptr))
+  FIN SI
+  SI CONIURA compare(cmd, "TTL") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_ttl(state, *key_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "INCR") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_incr(state, *key_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "SADD") == 0 ET CONIURA fluxus_len(parts) == 3
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    EVOCA SPECULUM VERBUM value_ptr AD CONIURA fluxus_get(parts, 2)
+    REDDE CONIURA fake_redis_handle_sadd(state, *key_ptr, *value_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "SREM") == 0 ET CONIURA fluxus_len(parts) == 3
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    EVOCA SPECULUM VERBUM value_ptr AD CONIURA fluxus_get(parts, 2)
+    REDDE CONIURA fake_redis_handle_srem(state, *key_ptr, *value_ptr)
+  FIN SI
+  SI CONIURA compare(cmd, "SMEMBERS") == 0 ET CONIURA fluxus_len(parts) == 2
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(parts, 1)
+    REDDE CONIURA fake_redis_handle_smembers(state, *key_ptr)
+  FIN SI
+  REDDE CONIURA fake_redis_error("unsupported command")
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM ready_file AD CONIURA getenv("CIVITAS_FAKE_REDIS_READY_FILE")
+  SI CONIURA len(ready_file) == 0
+    REDDE 2
+  FIN SI
+
+  TEMPTA
+    EVOCA SPECULUM NIHIL listener AD CONIURA tcp_listen("127.0.0.1", 0)
+    EVOCA VERBUM local_addr AD CONIURA sock_local_addr(listener)
+    EVOCA SPECULUM NIHIL addr_opt AD CONIURA net_parse_addr(local_addr)
+    SI CONIURA option_is_none GENUS(NetAddr)(addr_opt)
+      CONIURA option_free GENUS(NetAddr)(addr_opt)
+      CONIURA net_close(listener)
+      REDDE 3
+    FIN SI
+    EVOCA NetAddr addr AD CONIURA option_unwrap GENUS(NetAddr)(addr_opt)
+    CONIURA option_free GENUS(NetAddr)(addr_opt)
+    ELIGE addr
+      CASUS Addr(_, port):
+        CONIURA write_all(ready_file, CONIURA stringify_int(port))
+    FIN ELIGE
+
+    EVOCA FakeRedisState state AD CONIURA fake_redis_state_new()
+    EVOCA SPECULUM NIHIL client AD CONIURA tcp_accept(listener)
+
+    DUM VERUM
+      EVOCA FakeRedisCommand cmd AD CONIURA fake_redis_read_command(client)
+      SI cmd.eof
+        CONIURA fluxus_free(cmd.parts)
+        FRANGE
+      FIN SI
+      SI NON cmd.valid
+        CONIURA fake_redis_send(client, CONIURA fake_redis_error("invalid request"))
+        CONIURA fluxus_free(cmd.parts)
+        FRANGE
+      FIN SI
+      CONIURA fake_redis_send(client, CONIURA fake_redis_dispatch(SPECULUM state, cmd.parts))
+      CONIURA fluxus_free(cmd.parts)
+    FIN DUM
+
+    CONIURA net_close(client)
+    CONIURA net_close(listener)
+    REDDE 0
+  CAPE FRACTUM erro
+    REDDE 90
+  FIN TEMPTA
+  REDDE 91
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,384 @@
+INCIPIT grimoire "civitas_trace_render"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceRenderConfig
+  width: REX
+  label_col_width: REX
+  row_height: REX
+  row_gap: REX
+  header_height: REX
+  legend_height: REX
+  font_size: REX
+  animate: VERUM
+  dark_mode: VERUM
+  min_bar_width: REX
+  animation_loop: VERUM
+  hide_timeline: VERUM
+  strict: VERUM
+  sigil_path: VERBUM
+  sigil_view: VERBUM
+  cct_bin: VERBUM
+  work_dir: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TraceRenderResult
+  svg: VERBUM
+  width: REX
+  height: REX
+  span_count: REX
+  duration_ms: REX
+FIN SIGILLUM
+
+RITUALE trace_render_default_config() REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg
+  VINCIRE cfg.width AD 1200
+  VINCIRE cfg.label_col_width AD 220
+  VINCIRE cfg.row_height AD 24
+  VINCIRE cfg.row_gap AD 4
+  VINCIRE cfg.header_height AD 56
+  VINCIRE cfg.legend_height AD 36
+  VINCIRE cfg.font_size AD 11
+  VINCIRE cfg.animate AD VERUM
+  VINCIRE cfg.dark_mode AD VERUM
+  VINCIRE cfg.min_bar_width AD 2
+  VINCIRE cfg.animation_loop AD VERUM
+  VINCIRE cfg.hide_timeline AD VERUM
+  VINCIRE cfg.strict AD FALSUM
+  VINCIRE cfg.sigil_path AD "src/main.sigil"
+  VINCIRE cfg.sigil_view AD "routes"
+  VINCIRE cfg.cct_bin AD ""
+  VINCIRE cfg.work_dir AD ".civitas_trace_render"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE trace_render_shell_quote(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD "'"
+  VINCIRE out AD CONIURA concat(out, CONIURA replace_all(raw, "'", "'\"'\"'"))
+  VINCIRE out AD CONIURA concat(out, "'")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_render_exists_or_empty(VERBUM path_value) REDDE VERBUM
+  SI CONIURA len(path_value) == 0
+    REDDE ""
+  FIN SI
+  SI CONIURA exists(path_value)
+    REDDE path_value
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE trace_render_resolve_cct_bin(TraceRenderConfig cfg) REDDE VERBUM
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM env_bin AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(env_bin) > 0
+      REDDE env_bin
+    FIN SI
+  FIN SI
+  SI CONIURA len(CONIURA trim(cfg.cct_bin)) > 0
+    REDDE cfg.cct_bin
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+RITUALE trace_render_resolve_sigil_path(TraceRenderConfig cfg) REDDE VERBUM
+  EVOCA VERBUM direct AD CONIURA trace_render_exists_or_empty(cfg.sigil_path)
+  SI CONIURA len(direct) > 0
+    REDDE direct
+  FIN SI
+  SI CONIURA exists("src/main.sigil")
+    REDDE "src/main.sigil"
+  FIN SI
+  SI CONIURA exists("main.sigil")
+    REDDE "main.sigil"
+  FIN SI
+  SI CONIURA exists("tests/integration/fase_22/22b/fase22_22b_render_html_includes_real_sigilo.test.sigil")
+    REDDE "tests/integration/fase_22/22b/fase22_22b_render_html_includes_real_sigilo.test.sigil"
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE trace_render_work_dir(TraceRenderConfig cfg) REDDE VERBUM
+  SI CONIURA len(cfg.work_dir) > 0
+    REDDE cfg.work_dir
+  FIN SI
+  REDDE ".civitas_trace_render"
+EXPLICIT RITUALE
+
+RITUALE trace_render_trace_start(Trace trace) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA trace_span_count(trace)
+  EVOCA REX min_ms AD 9223372036854775807
+  DUM i < n
+    EVOCA Span sp AD CONIURA trace_get_span(trace, i)
+    SI sp.start_time_ms < min_ms
+      VINCIRE min_ms AD sp.start_time_ms
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI min_ms == 9223372036854775807
+    REDDE 0
+  FIN SI
+  REDDE min_ms
+EXPLICIT RITUALE
+
+RITUALE trace_render_trace_end(Trace trace) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA trace_span_count(trace)
+  EVOCA REX max_ms AD 0
+  DUM i < n
+    EVOCA Span sp AD CONIURA trace_get_span(trace, i)
+    EVOCA REX end_ms AD sp.end_time_ms
+    SI end_ms <= sp.start_time_ms
+      VINCIRE end_ms AD sp.start_time_ms + 1
+    FIN SI
+    SI end_ms > max_ms
+      VINCIRE max_ms AD end_ms
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE max_ms
+EXPLICIT RITUALE
+
+RITUALE trace_render_trace_duration(Trace trace) REDDE REX
+  EVOCA REX duration_ms AD CONIURA trace_render_trace_end(trace) - CONIURA trace_render_trace_start(trace)
+  SI duration_ms <= 0
+    REDDE 1
+  FIN SI
+  REDDE duration_ms
+EXPLICIT RITUALE
+
+RITUALE trace_render_svg_width(VERBUM svg) REDDE REX
+  EVOCA REX start AD CONIURA find(svg, "width=\"")
+  SI start == -1
+    REDDE 0
+  FIN SI
+  VINCIRE start AD start + 7
+  EVOCA REX finish AD CONIURA find(CONIURA substring(svg, start, CONIURA len(svg)), "\"")
+  SI finish == -1
+    REDDE 0
+  FIN SI
+  REDDE CONIURA fmt_parse_int(CONIURA substring(svg, start, start + finish))
+EXPLICIT RITUALE
+
+RITUALE trace_render_svg_height(VERBUM svg) REDDE REX
+  EVOCA REX start AD CONIURA find(svg, "height=\"")
+  SI start == -1
+    REDDE 0
+  FIN SI
+  VINCIRE start AD start + 8
+  EVOCA REX finish AD CONIURA find(CONIURA substring(svg, start, CONIURA len(svg)), "\"")
+  SI finish == -1
+    REDDE 0
+  FIN SI
+  REDDE CONIURA fmt_parse_int(CONIURA substring(svg, start, start + finish))
+EXPLICIT RITUALE
+
+RITUALE trace_render_error_svg(VERBUM title, VERBUM detail) REDDE VERBUM
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"960\" height=\"240\" viewBox=\"0 0 960 240\" role=\"img\" aria-label=\"trace render error\">"
+  VINCIRE out AD CONIURA concat(out, "<rect x=\"0\" y=\"0\" width=\"960\" height=\"240\" fill=\"#09090b\"/>")
+  VINCIRE out AD CONIURA concat(out, "<text x=\"24\" y=\"44\" fill=\"#f8fafc\" font-family=\"monospace\" font-size=\"22\">")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(title))
+  VINCIRE out AD CONIURA concat(out, "</text><text x=\"24\" y=\"84\" fill=\"#fca5a5\" font-family=\"monospace\" font-size=\"13\">")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(detail))
+  VINCIRE out AD CONIURA concat(out, "</text></svg>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_render_temp_slug(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD raw
+  VINCIRE out AD CONIURA replace_all(out, "/", "_")
+  VINCIRE out AD CONIURA replace_all(out, ":", "_")
+  VINCIRE out AD CONIURA replace_all(out, " ", "_")
+  VINCIRE out AD CONIURA replace_all(out, "{", "_")
+  VINCIRE out AD CONIURA replace_all(out, "}", "_")
+  VINCIRE out AD CONIURA replace_all(out, "?", "_")
+  VINCIRE out AD CONIURA replace_all(out, "&", "_")
+  VINCIRE out AD CONIURA replace_all(out, "=", "_")
+  SI CONIURA len(out) == 0
+    REDDE "trace"
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_render_temp_base(TraceRenderConfig cfg, VERBUM hint) REDDE VERBUM
+  EVOCA VERBUM work_dir AD CONIURA trace_render_work_dir(cfg)
+  CONIURA mkdir_all(work_dir)
+  EVOCA VERBUM base AD CONIURA trace_render_temp_slug(hint)
+  VINCIRE base AD CONIURA concat(base, "_")
+  VINCIRE base AD CONIURA concat(base, CONIURA stringify_int(CONIURA now_ms()))
+  REDDE CONIURA path_join(work_dir, base)
+EXPLICIT RITUALE
+
+RITUALE trace_render_build_render_cmd(VERBUM cct_bin, VERBUM trace_path, VERBUM sigil_path, VERBUM sigil_view, VERBUM out_path, VERUM animate, VERUM loop, VERUM hide_timeline, VERUM strict) REDDE VERBUM
+  EVOCA VERBUM cmd AD CONIURA trace_render_shell_quote(cct_bin)
+  VINCIRE cmd AD CONIURA concat(cmd, " sigilo trace render --trace ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(trace_path))
+  SI CONIURA len(sigil_path) > 0
+    VINCIRE cmd AD CONIURA concat(cmd, " --sigil ")
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(sigil_path))
+  FIN SI
+  SI CONIURA len(sigil_view) > 0
+    VINCIRE cmd AD CONIURA concat(cmd, " --sigil-view ")
+    VINCIRE cmd AD CONIURA concat(cmd, sigil_view)
+  FIN SI
+  SI animate
+    VINCIRE cmd AD CONIURA concat(cmd, " --animated")
+  ALITER
+    VINCIRE cmd AD CONIURA concat(cmd, " --static")
+  FIN SI
+  SI loop
+    VINCIRE cmd AD CONIURA concat(cmd, " --loop")
+  FIN SI
+  SI hide_timeline
+    VINCIRE cmd AD CONIURA concat(cmd, " --hide-timeline")
+  FIN SI
+  SI strict
+    VINCIRE cmd AD CONIURA concat(cmd, " --strict")
+  FIN SI
+  VINCIRE cmd AD CONIURA concat(cmd, " --output ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(out_path))
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE trace_render_build_compare_cmd(VERBUM cct_bin, VERBUM trace_a_path, VERBUM trace_b_path, VERBUM sigil_path, VERBUM sigil_view, VERBUM out_path, VERUM strict) REDDE VERBUM
+  EVOCA VERBUM cmd AD CONIURA trace_render_shell_quote(cct_bin)
+  VINCIRE cmd AD CONIURA concat(cmd, " sigilo trace compare ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(trace_a_path))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(trace_b_path))
+  SI CONIURA len(sigil_path) > 0
+    VINCIRE cmd AD CONIURA concat(cmd, " --sigil ")
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(sigil_path))
+  FIN SI
+  SI CONIURA len(sigil_view) > 0
+    VINCIRE cmd AD CONIURA concat(cmd, " --sigil-view ")
+    VINCIRE cmd AD CONIURA concat(cmd, sigil_view)
+  FIN SI
+  SI strict
+    VINCIRE cmd AD CONIURA concat(cmd, " --strict")
+  FIN SI
+  VINCIRE cmd AD CONIURA concat(cmd, " --output ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trace_render_shell_quote(out_path))
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE trace_render_run_command(VERBUM cmd) REDDE SPECULUM NIHIL
+  EVOCA REX rc AD CONIURA run(cmd)
+  SI rc == 0
+    REDDE CONIURA Ok GENUS(REX, VERBUM)(rc)
+  FIN SI
+  REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA concat("trace render command failed: ", cmd))
+EXPLICIT RITUALE
+
+RITUALE trace_render_result_from_svg(VERBUM svg, Trace trace) REDDE TraceRenderResult
+  EVOCA TraceRenderResult out
+  VINCIRE out.svg AD svg
+  VINCIRE out.width AD CONIURA trace_render_svg_width(svg)
+  VINCIRE out.height AD CONIURA trace_render_svg_height(svg)
+  VINCIRE out.span_count AD CONIURA trace_span_count(trace)
+  VINCIRE out.duration_ms AD CONIURA trace_render_trace_duration(trace)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_render_svg(Trace trace, TraceRenderConfig cfg) REDDE TraceRenderResult
+  EVOCA VERBUM base AD CONIURA trace_render_temp_base(cfg, trace.trace_id)
+  EVOCA VERBUM trace_path AD CONIURA concat(base, ".ctrace")
+  EVOCA VERBUM out_path AD CONIURA concat(base, ".svg")
+  EVOCA VERBUM cct_bin AD CONIURA trace_render_resolve_cct_bin(cfg)
+  EVOCA VERBUM sigil_path AD CONIURA trace_render_resolve_sigil_path(cfg)
+  CONIURA trace_write_file(trace, trace_path)
+  EVOCA VERBUM cmd AD CONIURA trace_render_build_render_cmd(cct_bin, trace_path, sigil_path, cfg.sigil_view, out_path, cfg.animate, cfg.animation_loop, cfg.hide_timeline, cfg.strict)
+  EVOCA SPECULUM NIHIL run_res AD CONIURA trace_render_run_command(cmd)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(run_res)
+    REDDE CONIURA trace_render_result_from_svg(CONIURA trace_render_error_svg("cct sigilo trace render failed", CONIURA result_unwrap_err GENUS(REX, VERBUM)(run_res)), trace)
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    REDDE CONIURA trace_render_result_from_svg(CONIURA trace_render_error_svg("cct sigilo trace render failed", "output svg was not generated"), trace)
+  FIN SI
+  REDDE CONIURA trace_render_result_from_svg(CONIURA read_all(out_path), trace)
+EXPLICIT RITUALE
+
+RITUALE trace_render_file(VERBUM ctrace_path, TraceRenderConfig cfg) REDDE SPECULUM NIHIL
+  SI NON CONIURA exists(ctrace_path)
+    REDDE CONIURA Err GENUS(TraceRenderResult, VERBUM)("ctrace file not found")
+  FIN SI
+  EVOCA SPECULUM NIHIL trace_res AD CONIURA trace_read_file(ctrace_path)
+  SI CONIURA result_is_err GENUS(Trace, TraceError)(trace_res)
+    REDDE CONIURA Err GENUS(TraceRenderResult, VERBUM)("unable to read ctrace file")
+  FIN SI
+  EVOCA Trace trace AD CONIURA result_unwrap GENUS(Trace, TraceError)(trace_res)
+  EVOCA VERBUM base AD CONIURA trace_render_temp_base(cfg, trace.trace_id)
+  EVOCA VERBUM out_path AD CONIURA concat(base, ".svg")
+  EVOCA VERBUM cct_bin AD CONIURA trace_render_resolve_cct_bin(cfg)
+  EVOCA VERBUM sigil_path AD CONIURA trace_render_resolve_sigil_path(cfg)
+  EVOCA VERBUM cmd AD CONIURA trace_render_build_render_cmd(cct_bin, ctrace_path, sigil_path, cfg.sigil_view, out_path, cfg.animate, cfg.animation_loop, cfg.hide_timeline, cfg.strict)
+  EVOCA SPECULUM NIHIL run_res AD CONIURA trace_render_run_command(cmd)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(run_res)
+    CONIURA trace_free(SPECULUM trace)
+    REDDE CONIURA Err GENUS(TraceRenderResult, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(run_res))
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    CONIURA trace_free(SPECULUM trace)
+    REDDE CONIURA Err GENUS(TraceRenderResult, VERBUM)("output svg was not generated")
+  FIN SI
+  EVOCA TraceRenderResult rendered AD CONIURA trace_render_result_from_svg(CONIURA read_all(out_path), trace)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE CONIURA Ok GENUS(TraceRenderResult, VERBUM)(rendered)
+EXPLICIT RITUALE
+
+RITUALE trace_render_to_file(Trace trace, TraceRenderConfig cfg, VERBUM out_path) REDDE SPECULUM NIHIL
+  EVOCA VERBUM base AD CONIURA trace_render_temp_base(cfg, trace.trace_id)
+  EVOCA VERBUM trace_path AD CONIURA concat(base, ".ctrace")
+  EVOCA VERBUM cct_bin AD CONIURA trace_render_resolve_cct_bin(cfg)
+  EVOCA VERBUM sigil_path AD CONIURA trace_render_resolve_sigil_path(cfg)
+  CONIURA mkdir_all(CONIURA path_dirname(out_path))
+  CONIURA trace_write_file(trace, trace_path)
+  EVOCA VERBUM cmd AD CONIURA trace_render_build_render_cmd(cct_bin, trace_path, sigil_path, cfg.sigil_view, out_path, cfg.animate, cfg.animation_loop, cfg.hide_timeline, cfg.strict)
+  EVOCA SPECULUM NIHIL run_res AD CONIURA trace_render_run_command(cmd)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(run_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(run_res))
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    REDDE CONIURA Err GENUS(REX, VERBUM)("output svg was not generated")
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(CONIURA len(CONIURA read_all(out_path)))
+EXPLICIT RITUALE
+
+RITUALE trace_render_compare(Trace trace_a, Trace trace_b, TraceRenderConfig cfg) REDDE VERBUM
+  EVOCA VERBUM base AD CONIURA trace_render_temp_base(cfg, CONIURA concat(trace_a.trace_id, "_compare"))
+  EVOCA VERBUM left_path AD CONIURA concat(base, ".left.ctrace")
+  EVOCA VERBUM right_path AD CONIURA concat(base, ".right.ctrace")
+  EVOCA VERBUM out_path AD CONIURA concat(base, ".svg")
+  EVOCA VERBUM cct_bin AD CONIURA trace_render_resolve_cct_bin(cfg)
+  EVOCA VERBUM sigil_path AD CONIURA trace_render_resolve_sigil_path(cfg)
+  CONIURA trace_write_file(trace_a, left_path)
+  CONIURA trace_write_file(trace_b, right_path)
+  EVOCA VERBUM cmd AD CONIURA trace_render_build_compare_cmd(cct_bin, left_path, right_path, sigil_path, cfg.sigil_view, out_path, cfg.strict)
+  EVOCA SPECULUM NIHIL run_res AD CONIURA trace_render_run_command(cmd)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(run_res)
+    REDDE CONIURA trace_render_error_svg("cct sigilo trace compare failed", CONIURA result_unwrap_err GENUS(REX, VERBUM)(run_res))
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    REDDE CONIURA trace_render_error_svg("cct sigilo trace compare failed", "output svg was not generated")
+  FIN SI
+  REDDE CONIURA read_all(out_path)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

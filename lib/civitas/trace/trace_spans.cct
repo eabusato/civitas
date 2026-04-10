@@ -1,0 +1,40 @@
+INCIPIT grimoire "civitas_trace_spans"
+
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE civitas_span_router(VERBUM method, VERBUM path) REDDE REX
+  EVOCA VERBUM name AD "router:"
+  VINCIRE name AD CONIURA concat(name, method)
+  VINCIRE name AD CONIURA concat(name, " ")
+  VINCIRE name AD CONIURA concat(name, path)
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_HTTP), name)
+  CONIURA instrument_span_attr(span_id, "civitas.layer", "router")
+  CONIURA instrument_span_attr(span_id, "http.method", method)
+  CONIURA instrument_span_attr(span_id, "http.route", path)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE civitas_span_middleware(VERBUM name) REDDE REX
+  EVOCA VERBUM span_name AD "middleware:"
+  VINCIRE span_name AD CONIURA concat(span_name, name)
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CALL), span_name)
+  CONIURA instrument_span_attr(span_id, "civitas.layer", "middleware")
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE civitas_span_handler(VERBUM name) REDDE REX
+  EVOCA VERBUM span_name AD "handler:"
+  VINCIRE span_name AD CONIURA concat(span_name, name)
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_HTTP), span_name)
+  CONIURA instrument_span_attr(span_id, "civitas.layer", "handler")
+  CONIURA instrument_span_attr(span_id, "civitas.view", name)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE civitas_span_end(REX span_id) REDDE NIHIL
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

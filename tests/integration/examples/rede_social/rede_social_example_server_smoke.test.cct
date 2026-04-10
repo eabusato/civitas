@@ -1,0 +1,587 @@
+INCIPIT grimoire "rede_social_example_server_smoke_test"
+
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_smoke_root() REDDE VERBUM
+  REDDE "tests/tmp/examples/rede_social/server_smoke"
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_file(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA rede_smoke_root(), name)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_project_root() REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA rede_smoke_root(), "project_root")
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_pick_port() REDDE REX
+  REDDE 26000 + (CONIURA now_ms() % 3000)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_status_line(VERBUM raw_response) REDDE VERBUM
+  EVOCA REX crlf_idx AD CONIURA find(raw_response, CONIURA crlf())
+  SI crlf_idx == -1
+    REDDE raw_response
+  FIN SI
+  REDDE CONIURA substring(raw_response, 0, crlf_idx)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_extract_cookie_value(VERBUM raw_response, VERBUM cookie_name) REDDE VERBUM
+  EVOCA VERBUM marker AD CONIURA concat("set-cookie: ", CONIURA concat(cookie_name, "="))
+  EVOCA VERBUM lower_raw AD CONIURA to_lower(raw_response)
+  EVOCA REX idx AD CONIURA find(lower_raw, CONIURA to_lower(marker))
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  EVOCA REX start AD idx + CONIURA len(marker)
+  EVOCA REX semi AD CONIURA find(CONIURA substring(raw_response, start, CONIURA len(raw_response)), ";")
+  SI semi == -1
+    REDDE CONIURA substring(raw_response, start, CONIURA len(raw_response))
+  FIN SI
+  REDDE CONIURA substring(raw_response, start, start + semi)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_session_id_from_cookie(VERBUM cookie_value) REDDE VERBUM
+  EVOCA REX dot_idx AD CONIURA find(cookie_value, ".")
+  SI dot_idx == -1
+    REDDE cookie_value
+  FIN SI
+  REDDE CONIURA substring(cookie_value, 0, dot_idx)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_extract_csrf_token(VERBUM raw_response) REDDE VERBUM
+  EVOCA VERBUM marker AD "name=\"csrf_token\" value=\""
+  EVOCA REX idx AD CONIURA find(raw_response, marker)
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  EVOCA REX start AD idx + CONIURA len(marker)
+  EVOCA REX rest_end AD CONIURA find(CONIURA substring(raw_response, start, CONIURA len(raw_response)), "\"")
+  SI rest_end == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(raw_response, start, start + rest_end)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_raw_http(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  REDDE CONIURA http_read_response_raw(sock)
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_read_headers_only(SPECULUM NIHIL sock) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  DUM VERUM
+    EVOCA VERBUM chunk AD CONIURA sock_recv(sock, 512)
+    SI CONIURA len(chunk) == 0
+      REDDE out
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, chunk)
+    SI CONIURA find(out, CONIURA concat(CONIURA crlf(), CONIURA crlf())) != -1
+      REDDE out
+    FIN SI
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_raw_http_headers(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  EVOCA VERBUM raw_headers AD CONIURA rede_smoke_read_headers_only(sock)
+  CONIURA sock_close(sock)
+  REDDE raw_headers
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_get_request(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA concat("GET ", path)
+  VINCIRE out AD CONIURA concat(out, " HTTP/1.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Host: 127.0.0.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Connection: close")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_get_request_with_cookies(VERBUM path, VERBUM session_cookie, VERBUM csrf_cookie) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA concat("GET ", path)
+  VINCIRE out AD CONIURA concat(out, " HTTP/1.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Host: 127.0.0.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Connection: close")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Cookie: rede_social_session=")
+  VINCIRE out AD CONIURA concat(out, session_cookie)
+  VINCIRE out AD CONIURA concat(out, "; rede_social_csrf=")
+  VINCIRE out AD CONIURA concat(out, csrf_cookie)
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_login_post(VERBUM session_cookie, VERBUM csrf_cookie, VERBUM csrf_token) REDDE VERBUM
+  EVOCA VERBUM body AD "email=luna%40rede.social&password=abc123&csrf_token="
+  VINCIRE body AD CONIURA concat(body, CONIURA url_encode(csrf_token))
+  EVOCA VERBUM out AD "POST /entrar HTTP/1.1"
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Host: 127.0.0.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Connection: close")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Type: application/x-www-form-urlencoded")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Length: ")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(CONIURA len(body)))
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Cookie: rede_social_session=")
+  VINCIRE out AD CONIURA concat(out, session_cookie)
+  VINCIRE out AD CONIURA concat(out, "; rede_social_csrf=")
+  VINCIRE out AD CONIURA concat(out, csrf_cookie)
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, body)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_ops_login_post(VERBUM session_cookie, VERBUM csrf_cookie, VERBUM csrf_token) REDDE VERBUM
+  EVOCA VERBUM body AD "username=admin&password=change-me-rede-social-admin&csrf_token="
+  VINCIRE body AD CONIURA concat(body, CONIURA url_encode(csrf_token))
+  EVOCA VERBUM out AD "POST /ops/login HTTP/1.1"
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Host: 127.0.0.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Connection: close")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Type: application/x-www-form-urlencoded")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Length: ")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(CONIURA len(body)))
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Cookie: rede_social_session=")
+  VINCIRE out AD CONIURA concat(out, session_cookie)
+  VINCIRE out AD CONIURA concat(out, "; rede_social_csrf=")
+  VINCIRE out AD CONIURA concat(out, csrf_cookie)
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, body)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_post_with_csrf(VERBUM path, VERBUM session_cookie, VERBUM csrf_cookie, VERBUM csrf_token) REDDE VERBUM
+  EVOCA VERBUM body AD "csrf_token="
+  VINCIRE body AD CONIURA concat(body, CONIURA url_encode(csrf_token))
+  EVOCA VERBUM out AD CONIURA concat("POST ", path)
+  VINCIRE out AD CONIURA concat(out, " HTTP/1.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Host: 127.0.0.1")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Connection: close")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Type: application/x-www-form-urlencoded")
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Content-Length: ")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(CONIURA len(body)))
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, "Cookie: rede_social_session=")
+  VINCIRE out AD CONIURA concat(out, session_cookie)
+  VINCIRE out AD CONIURA concat(out, "; rede_social_csrf=")
+  VINCIRE out AD CONIURA concat(out, csrf_cookie)
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, CONIURA crlf())
+  VINCIRE out AD CONIURA concat(out, body)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_compile_or_fail(VERBUM source_path, VERBUM log_name) REDDE NIHIL
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, "--sigilo-out ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_file(CONIURA concat(log_name, "_sigilo")))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, source_path)
+  SI CONIURA run_to_log(cmd, CONIURA rede_smoke_file(log_name)) != 0
+    IACE CONIURA concat("compile failed: ", source_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_build_templates_or_fail() REDDE NIHIL
+  EVOCA VERBUM cmd AD "cd examples/rede_social && ./build_templates"
+  VINCIRE cmd AD CONIURA concat(cmd, " > ../../")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_file("build_templates_run.log"))
+  VINCIRE cmd AD CONIURA concat(cmd, " 2>&1")
+  SI CONIURA run(cmd) != 0
+    IACE "rede_social template generation failed"
+  FIN SI
+  SI NON CONIURA exists("examples/rede_social/gen/home.cct")
+    IACE "rede_social generated home template should exist"
+  FIN SI
+  SI NON CONIURA exists("examples/rede_social/gen/partials/post_card.cct")
+    IACE "rede_social generated post card template should exist"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_curl_svg_headers_or_fail(REX port, VERBUM path, VERBUM session_cookie, VERBUM csrf_cookie, VERBUM output_file) REDDE NIHIL
+  EVOCA VERBUM cmd AD "curl -sS -D "
+  VINCIRE cmd AD CONIURA concat(cmd, output_file)
+  VINCIRE cmd AD CONIURA concat(cmd, " -o /dev/null -H 'Connection: close' -H 'Cookie: rede_social_session=")
+  VINCIRE cmd AD CONIURA concat(cmd, session_cookie)
+  VINCIRE cmd AD CONIURA concat(cmd, "; rede_social_csrf=")
+  VINCIRE cmd AD CONIURA concat(cmd, csrf_cookie)
+  VINCIRE cmd AD CONIURA concat(cmd, "' http://127.0.0.1:")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, path)
+  SI CONIURA run(cmd) != 0
+    IACE "curl svg header probe failed"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_curl_get_or_fail(REX port, VERBUM path, VERBUM session_cookie, VERBUM csrf_cookie, VERBUM output_file) REDDE NIHIL
+  EVOCA VERBUM cmd AD "curl -sS -i -H 'Connection: close' -H 'Cookie: rede_social_session="
+  VINCIRE cmd AD CONIURA concat(cmd, session_cookie)
+  VINCIRE cmd AD CONIURA concat(cmd, "; rede_social_csrf=")
+  VINCIRE cmd AD CONIURA concat(cmd, csrf_cookie)
+  VINCIRE cmd AD CONIURA concat(cmd, "' http://127.0.0.1:")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, path)
+  VINCIRE cmd AD CONIURA concat(cmd, " > ")
+  VINCIRE cmd AD CONIURA concat(cmd, output_file)
+  VINCIRE cmd AD CONIURA concat(cmd, " 2>&1")
+  SI CONIURA run(cmd) != 0
+    IACE "curl get probe failed"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_prepare_root() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA rede_smoke_project_root()
+  CONIURA run(CONIURA concat("rm -rf ", CONIURA rede_smoke_root()))
+  CONIURA mkdir_all(CONIURA rede_smoke_root())
+  CONIURA mkdir_all(root)
+  CONIURA mkdir_all(CONIURA path_join(root, "project"))
+  CONIURA mkdir_all(CONIURA path_join(root, "static"))
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/civitas.toml ", CONIURA path_join(root, "civitas.toml"))) != 0
+    IACE "failed to copy civitas.toml"
+  FIN SI
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/static/app.css ", CONIURA path_join(root, "static/app.css"))) != 0
+    IACE "failed to copy app.css"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_copy_codegen_artifacts() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA rede_smoke_project_root()
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/project/main.svg ", CONIURA path_join(root, "project/main.svg"))) != 0
+    IACE "failed to copy main.svg"
+  FIN SI
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/project/main.sigil ", CONIURA path_join(root, "project/main.sigil"))) != 0
+    IACE "failed to copy main.sigil"
+  FIN SI
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/project/main.system.svg ", CONIURA path_join(root, "project/main.system.svg"))) != 0
+    IACE "failed to copy main.system.svg"
+  FIN SI
+  SI CONIURA run(CONIURA concat("cp examples/rede_social/project/main.system.sigil ", CONIURA path_join(root, "project/main.system.sigil"))) != 0
+    IACE "failed to copy main.system.sigil"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_bootstrap_db() REDDE NIHIL
+  EVOCA VERBUM cmd AD "REDE_SOCIAL_PROJECT_ROOT="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_project_root())
+  VINCIRE cmd AD CONIURA concat(cmd, " ./examples/rede_social/bootstrap_db >")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_file("bootstrap_run.log"))
+  VINCIRE cmd AD CONIURA concat(cmd, " 2>&1")
+  SI CONIURA run(cmd) != 0
+    IACE "rede_social bootstrap_db failed"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_start_server(REX port) REDDE NIHIL
+  EVOCA VERBUM cmd AD "REDE_SOCIAL_PROJECT_ROOT="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_project_root())
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__HOST=127.0.0.1")
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__PORT=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, " REDE_SOCIAL_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_file("ready.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " REDE_SOCIAL_DONE_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA rede_smoke_file("done.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " ./examples/rede_social/project/main")
+  SI CONIURA spawn_to_log_with_pid(cmd, CONIURA rede_smoke_file("server.log"), CONIURA rede_smoke_file("pid.txt")) != 0
+    IACE "failed to start rede_social server"
+  FIN SI
+  SI NON CONIURA wait_for_file(CONIURA rede_smoke_file("ready.txt"), 4000)
+    IACE "rede_social server did not become ready"
+  FIN SI
+  CONIURA sleep_ms(150)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_wait_process_exit(VERBUM pid, REX timeout_ms) REDDE VERUM
+  EVOCA REX waited AD 0
+  EVOCA VERBUM probe_cmd AD CONIURA concat("kill -0 ", pid)
+  VINCIRE probe_cmd AD CONIURA concat(probe_cmd, " >/dev/null 2>&1")
+  DUM waited < timeout_ms
+    SI CONIURA run(probe_cmd) != 0
+      REDDE VERUM
+    FIN SI
+    CONIURA sleep_ms(100)
+    VINCIRE waited AD waited + 100
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE rede_smoke_stop_server() REDDE NIHIL
+  EVOCA VERBUM pid_path AD CONIURA rede_smoke_file("pid.txt")
+  EVOCA VERBUM int_cmd AD ""
+  EVOCA VERBUM probe_cmd AD ""
+  EVOCA VERBUM kill9_cmd AD ""
+  SI NON CONIURA exists(pid_path)
+    IACE "server pid file should exist"
+  FIN SI
+  EVOCA VERBUM pid AD CONIURA trim(CONIURA read_all(pid_path))
+  SI CONIURA len(pid) == 0
+    IACE "server pid should not be empty"
+  FIN SI
+  VINCIRE int_cmd AD CONIURA concat("kill -INT ", pid)
+  VINCIRE int_cmd AD CONIURA concat(int_cmd, " >/dev/null 2>&1")
+  VINCIRE probe_cmd AD CONIURA concat("kill -0 ", pid)
+  VINCIRE probe_cmd AD CONIURA concat(probe_cmd, " >/dev/null 2>&1")
+  VINCIRE kill9_cmd AD CONIURA concat("kill -9 ", pid)
+  VINCIRE kill9_cmd AD CONIURA concat(kill9_cmd, " >/dev/null 2>&1")
+  SI CONIURA run(int_cmd) != 0
+    SI CONIURA run(probe_cmd) == 0
+      IACE "failed to interrupt rede_social server"
+    FIN SI
+    REDDE
+  FIN SI
+  SI NON CONIURA wait_for_file(CONIURA rede_smoke_file("done.txt"), 4000)
+    SI NON CONIURA rede_smoke_wait_process_exit(pid, 4000)
+      CONIURA run(kill9_cmd)
+      IACE "rede_social server should stop after SIGINT"
+    FIN SI
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA REX port AD CONIURA rede_smoke_pick_port()
+  EVOCA VERBUM session_cookie AD ""
+  EVOCA VERBUM csrf_cookie AD ""
+  EVOCA VERBUM csrf_token AD ""
+  EVOCA VERBUM raw_ops_login_page AD ""
+  EVOCA VERBUM raw_ops_login_post AD ""
+  EVOCA VERBUM raw_home AD ""
+  EVOCA VERBUM raw_sigilos_page AD ""
+  EVOCA VERBUM raw_generate AD ""
+  EVOCA VERBUM raw_sigilo_detail AD ""
+  EVOCA VERBUM raw_sigilo_svg AD ""
+  EVOCA VERBUM raw_sigilo_viewer AD ""
+  EVOCA VERBUM embed_svg_path AD ""
+  EVOCA VERBUM embed_svg_saved AD ""
+  EVOCA VERBUM full_svg_path AD ""
+  EVOCA VERBUM full_svg_saved AD ""
+  EVOCA VERBUM raw_home_after_generate AD ""
+
+  CONIURA rede_smoke_prepare_root()
+  CONIURA rede_smoke_cleanup_file(CONIURA rede_smoke_file("ready.txt"))
+  CONIURA rede_smoke_cleanup_file(CONIURA rede_smoke_file("done.txt"))
+  CONIURA rede_smoke_cleanup_file(CONIURA rede_smoke_file("pid.txt"))
+  CONIURA rede_smoke_compile_or_fail("examples/rede_social/build_templates.cct", "build_templates_build.log")
+  CONIURA rede_smoke_build_templates_or_fail()
+  CONIURA rede_smoke_compile_or_fail("examples/rede_social/bootstrap_db.cct", "bootstrap_build.log")
+  CONIURA rede_smoke_compile_or_fail("examples/rede_social/project/main.cct", "main_build.log")
+  CONIURA rede_smoke_copy_codegen_artifacts()
+  CONIURA rede_smoke_bootstrap_db()
+
+  SI NON CONIURA exists(CONIURA path_join(CONIURA rede_smoke_project_root(), "project/main.svg"))
+    IACE "smoke root should contain project main.svg"
+  FIN SI
+  SI CONIURA find(CONIURA read_all(CONIURA path_join(CONIURA rede_smoke_project_root(), "project/main.svg")), "<svg") == -1
+    IACE "project main.svg should contain svg markup"
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(CONIURA rede_smoke_project_root(), "data/media/processed/avatar-luna.svg"))
+    IACE "bootstrap should seed processed media avatars"
+  FIN SI
+
+  CONIURA rede_smoke_start_server(port)
+
+  VINCIRE raw_ops_login_page AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_get_request("/ops/login"))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_ops_login_page.txt"), raw_ops_login_page)
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_ops_login_page), "HTTP/1.1 200 OK") != 0
+    IACE "GET /ops/login should return 200 OK"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_ops_login_page), "set-cookie: rede_social_session=") == -1
+    IACE "GET /ops/login should issue session cookie"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_ops_login_page), "set-cookie: rede_social_csrf=") == -1
+    IACE "GET /ops/login should issue csrf cookie"
+  FIN SI
+  VINCIRE session_cookie AD CONIURA rede_smoke_extract_cookie_value(raw_ops_login_page, "rede_social_session")
+  VINCIRE csrf_cookie AD CONIURA rede_smoke_extract_cookie_value(raw_ops_login_page, "rede_social_csrf")
+  VINCIRE csrf_token AD CONIURA rede_smoke_extract_csrf_token(raw_ops_login_page)
+  SI CONIURA len(session_cookie) == 0
+    IACE "GET /ops/login should extract session cookie"
+  FIN SI
+  SI CONIURA len(csrf_cookie) == 0
+    IACE "GET /ops/login should extract csrf cookie"
+  FIN SI
+  SI CONIURA len(csrf_token) == 0
+    IACE "GET /ops/login should expose csrf token"
+  FIN SI
+
+  VINCIRE raw_ops_login_post AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_ops_login_post(session_cookie, csrf_cookie, csrf_token))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_ops_login_post.txt"), raw_ops_login_post)
+  SI NON CONIURA starts_with(CONIURA rede_smoke_status_line(raw_ops_login_post), "HTTP/1.1 302")
+    IACE "POST /ops/login should redirect after valid csrf login"
+  FIN SI
+  EVOCA VERBUM maybe_new_session AD CONIURA rede_smoke_extract_cookie_value(raw_ops_login_post, "rede_social_session")
+  SI CONIURA len(maybe_new_session) > 0
+    VINCIRE session_cookie AD maybe_new_session
+  FIN SI
+
+  VINCIRE raw_home AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_get_request_with_cookies("/", session_cookie, csrf_cookie))
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_home), "HTTP/1.1 200 OK") != 0
+    IACE "GET / should still work after ops login"
+  FIN SI
+  VINCIRE maybe_new_session AD CONIURA rede_smoke_extract_cookie_value(raw_home, "rede_social_session")
+  SI CONIURA len(maybe_new_session) > 0
+    VINCIRE session_cookie AD maybe_new_session
+  FIN SI
+
+  VINCIRE raw_sigilos_page AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_get_request_with_cookies("/sigilos-vivos", session_cookie, csrf_cookie))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_sigilos_page.txt"), raw_sigilos_page)
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_sigilos_page), "HTTP/1.1 200 OK") != 0
+    IACE "GET /sigilos-vivos should return 200 OK"
+  FIN SI
+  VINCIRE maybe_new_session AD CONIURA rede_smoke_extract_cookie_value(raw_sigilos_page, "rede_social_session")
+  SI CONIURA len(maybe_new_session) > 0
+    VINCIRE session_cookie AD maybe_new_session
+  FIN SI
+  VINCIRE csrf_token AD CONIURA rede_smoke_extract_csrf_token(raw_sigilos_page)
+  SI CONIURA len(csrf_token) == 0
+    IACE "GET /sigilos-vivos should expose csrf token"
+  FIN SI
+
+  VINCIRE raw_generate AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_post_with_csrf("/sigilos-vivos/app/generate", session_cookie, csrf_cookie, csrf_token))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_generate.txt"), raw_generate)
+  SI NON CONIURA starts_with(CONIURA rede_smoke_status_line(raw_generate), "HTTP/1.1 302")
+    IACE "POST /sigilos-vivos/app/generate should redirect"
+  FIN SI
+  VINCIRE maybe_new_session AD CONIURA rede_smoke_extract_cookie_value(raw_generate, "rede_social_session")
+  SI CONIURA len(maybe_new_session) > 0
+    VINCIRE session_cookie AD maybe_new_session
+  FIN SI
+
+  VINCIRE raw_sigilo_detail AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_get_request_with_cookies("/sigilos-vivos/app", session_cookie, csrf_cookie))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_sigilo_detail.txt"), raw_sigilo_detail)
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_sigilo_detail), "HTTP/1.1 200 OK") != 0
+    IACE "GET /sigilos-vivos/app should return 200 OK after generate"
+  FIN SI
+  VINCIRE maybe_new_session AD CONIURA rede_smoke_extract_cookie_value(raw_sigilo_detail, "rede_social_session")
+  SI CONIURA len(maybe_new_session) > 0
+    VINCIRE session_cookie AD maybe_new_session
+  FIN SI
+  SI CONIURA find(raw_sigilo_detail, "/sigilos-vivos/app/viewer") == -1
+    IACE "sigilo detail page should link to the dedicated viewer page"
+  FIN SI
+
+  CONIURA rede_smoke_curl_svg_headers_or_fail(port, "/sigilos-vivos/app/svg", session_cookie, csrf_cookie, CONIURA rede_smoke_file("raw_sigilo_svg.txt"))
+  VINCIRE raw_sigilo_svg AD CONIURA read_all(CONIURA rede_smoke_file("raw_sigilo_svg.txt"))
+  CONIURA rede_smoke_curl_get_or_fail(port, "/sigilos-vivos/app/viewer", session_cookie, csrf_cookie, CONIURA rede_smoke_file("raw_sigilo_viewer.txt"))
+  VINCIRE raw_sigilo_viewer AD CONIURA read_all(CONIURA rede_smoke_file("raw_sigilo_viewer.txt"))
+  CONIURA write_all(CONIURA rede_smoke_file("raw_sigilo_svg.txt"), raw_sigilo_svg)
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_sigilo_svg), "HTTP/1.1 200 OK") != 0
+    IACE "GET /sigilos-vivos/app/svg should return 200 OK"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_sigilo_svg), "content-type: image/svg+xml") == -1
+    IACE "download svg should be served as image/svg+xml"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_sigilo_svg), "content-disposition: attachment;") == -1
+    IACE "download svg should be served as attachment"
+  FIN SI
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_sigilo_viewer), "HTTP/1.1 200 OK") != 0
+    IACE "GET /sigilos-vivos/app/viewer should return 200 OK"
+  FIN SI
+  SI CONIURA find(raw_sigilo_viewer, "sigilo-large") == -1
+    IACE "viewer page should render the sigil preview image"
+  FIN SI
+  SI CONIURA find(raw_sigilo_viewer, "/sigilos-vivos/app/preview") == -1
+    IACE "viewer page should point to the preview endpoint"
+  FIN SI
+
+  VINCIRE embed_svg_path AD CONIURA path_join(
+    CONIURA path_join(CONIURA rede_smoke_project_root(), ".civitas/trace_render/svg"),
+    CONIURA concat(CONIURA concat("journey_", CONIURA rede_smoke_session_id_from_cookie(session_cookie)), ".embed.v2.svg")
+  )
+  VINCIRE full_svg_path AD CONIURA path_join(
+    CONIURA path_join(CONIURA rede_smoke_project_root(), ".civitas/trace_render/svg"),
+    CONIURA concat(CONIURA concat("journey_", CONIURA rede_smoke_session_id_from_cookie(session_cookie)), ".v3.svg")
+  )
+  SI NON CONIURA exists(embed_svg_path)
+    IACE "generate should persist the embed svg on disk"
+  FIN SI
+  SI NON CONIURA exists(full_svg_path)
+    IACE "generate should persist the full svg on disk"
+  FIN SI
+  VINCIRE embed_svg_saved AD CONIURA read_all(embed_svg_path)
+  VINCIRE full_svg_saved AD CONIURA read_all(full_svg_path)
+  CONIURA write_all(CONIURA rede_smoke_file("saved_sigilo_embed.svg"), embed_svg_saved)
+  SI CONIURA find(embed_svg_saved, "<svg") == -1
+    IACE "saved embed svg should contain svg markup"
+  FIN SI
+  SI CONIURA find(full_svg_saved, "<svg") == -1
+    IACE "saved full svg should contain svg markup"
+  FIN SI
+  SI CONIURA find(embed_svg_saved, "<g id=\"trace-caption-wrap\"") != -1
+    IACE "saved embed svg should not contain trace caption overlay"
+  FIN SI
+  SI CONIURA find(embed_svg_saved, "<g id=\"trace-summary-wrap\"") != -1
+    IACE "saved embed svg should not contain trace summary overlay"
+  FIN SI
+  SI CONIURA find(embed_svg_saved, "<g class=\"trace-legend-wrap\"") != -1
+    IACE "saved embed svg should not contain trace legend overlay"
+  FIN SI
+  SI CONIURA find(embed_svg_saved, "<g id=\"trace-anim-controls\"") != -1
+    IACE "saved embed svg should not contain animation controls"
+  FIN SI
+  SI CONIURA find(embed_svg_saved, "<script><![CDATA[") != -1
+    IACE "saved embed svg should not keep interactive script blocks"
+  FIN SI
+
+  VINCIRE raw_home_after_generate AD CONIURA rede_smoke_raw_http(port, CONIURA rede_smoke_get_request_with_cookies("/", session_cookie, csrf_cookie))
+  SI CONIURA compare(CONIURA rede_smoke_status_line(raw_home_after_generate), "HTTP/1.1 200 OK") != 0
+    IACE "server should still answer GET / after sigil generation and svg download"
+  FIN SI
+
+  CONIURA rede_smoke_stop_server()
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,79 @@
+INCIPIT grimoire "civitas_cache_invalidation"
+
+ADVOCARE "cct/fluxus.cct"
+
+ORDO InvalidationScopeKind
+  IskChave,
+  IskTag,
+  IskModelo,
+  IskRota,
+  IskLocale
+FIN ORDO
+
+SIGILLUM InvalidationScope
+  kind: InvalidationScopeKind
+  valor: VERBUM
+FIN SIGILLUM
+
+SIGILLUM InvalidationResult
+  total_escopos: REX
+  chaves_removidas: REX
+  erros: SPECULUM NIHIL
+  ok: VERUM
+FIN SIGILLUM
+
+SIGILLUM InvalidationCoord
+  cache_handle: SPECULUM NIHIL
+  cache_view_handle: SPECULUM NIHIL
+  cache_query_handle: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+  registered_models: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE invalidation_coord_new(
+  SPECULUM NIHIL cache_handle,
+  SPECULUM NIHIL cache_view_handle,
+  SPECULUM NIHIL cache_query_handle,
+  SPECULUM NIHIL logger
+) REDDE InvalidationCoord
+  EVOCA InvalidationCoord coord
+  VINCIRE coord.cache_handle AD cache_handle
+  VINCIRE coord.cache_view_handle AD cache_view_handle
+  VINCIRE coord.cache_query_handle AD cache_query_handle
+  VINCIRE coord.logger AD logger
+  VINCIRE coord.registered_models AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE coord
+EXPLICIT RITUALE
+
+RITUALE invalidation_result_new() REDDE InvalidationResult
+  EVOCA InvalidationResult out
+  VINCIRE out.total_escopos AD 0
+  VINCIRE out.chaves_removidas AD 0
+  VINCIRE out.erros AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE out.ok AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE invalidation_result_add_error(SPECULUM InvalidationResult out, VERBUM message) REDDE NIHIL
+  VINCIRE (*out).ok AD FALSUM
+  CONIURA fluxus_push((*out).erros, SPECULUM message)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE invalidation_result_merge(SPECULUM InvalidationResult out, InvalidationResult child) REDDE NIHIL
+  VINCIRE (*out).total_escopos AD (*out).total_escopos + child.total_escopos
+  VINCIRE (*out).chaves_removidas AD (*out).chaves_removidas + child.chaves_removidas
+  SI NON child.ok
+    VINCIRE (*out).ok AD FALSUM
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(child.erros)
+  DUM i < n
+    EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(child.erros, i)
+    CONIURA fluxus_push((*out).erros, SPECULUM *msg_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

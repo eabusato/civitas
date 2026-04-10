@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase15_15c_object_permission_and_cleanup"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_db.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_object.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_permissions_db_open("15c_object_permission_and_cleanup")
+  CONIURA perm_registrar(db, "posts.editar", "Editar posts")
+  CONIURA obj_perm_conceder(db, "user-1", "posts.editar", "posts", "42")
+  SI NON CONIURA usuario_tem_permissao_em(db, "user-1", "posts.editar", "posts", "42")
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA usuario_tem_permissao_em(db, "user-1", "posts.editar", "posts", "43")
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA obj_perm_revogar_objeto(db, "posts", "42")
+  SI CONIURA usuario_tem_permissao_em(db, "user-1", "posts.editar", "posts", "42")
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

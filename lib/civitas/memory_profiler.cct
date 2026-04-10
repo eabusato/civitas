@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_memory_profiler_root"
+
+ADVOCARE "memory_profiler/memory_profiler.cct"
+
+EXPLICIT grimoire

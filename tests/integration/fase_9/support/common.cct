@@ -1,0 +1,193 @@
+INCIPIT grimoire "fase9_support_common"
+
+ADVOCARE "../../fase_3/support/common.cct"
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload_types.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase9_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_9/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase9_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase3_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase9_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE phase9_request(VERBUM method, VERBUM target, SPECULUM NIHIL headers, VERBUM body) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    method,
+    target,
+    "HTTP/1.1",
+    headers,
+    body,
+    "127.0.0.1",
+    "http",
+    "example.test",
+    "req-phase9",
+    "",
+    "127.0.0.1:50000",
+    "127.0.0.1:8080"
+  )
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE CONIURA result_unwrap_err GENUS(WebRequest, VERBUM)(req_res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase9_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE phase9_quote() REDDE VERBUM
+  REDDE CONIURA from_char(34)
+EXPLICIT RITUALE
+
+RITUALE phase9_bytes3(REX a, REX b, REX c) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA from_char(cast GENUS(MILES)(a))
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(b))
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(c))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase9_fake_jpeg() REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA phase9_bytes3(255, 216, 255)
+  VINCIRE out AD CONIURA concat(out, "FAKEJPEGDATA")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase9_fake_png() REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(137))
+  VINCIRE out AD CONIURA concat(out, "PNG")
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(13))
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(10))
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(26))
+  VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(10))
+  VINCIRE out AD CONIURA concat(out, "FAKEPNGDATA")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase9_text_part(VERBUM name, VERBUM value) REDDE VERBUM
+  EVOCA VERBUM part AD "Content-Disposition: form-data; name="
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, name)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  VINCIRE part AD CONIURA concat(part, value)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  REDDE part
+EXPLICIT RITUALE
+
+RITUALE phase9_file_part(VERBUM name, VERBUM filename, VERBUM content_type, VERBUM data) REDDE VERBUM
+  EVOCA VERBUM part AD "Content-Disposition: form-data; name="
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, name)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, "; filename=")
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, filename)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_quote())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  VINCIRE part AD CONIURA concat(part, "Content-Type: ")
+  VINCIRE part AD CONIURA concat(part, content_type)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  VINCIRE part AD CONIURA concat(part, data)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase9_crlf())
+  REDDE part
+EXPLICIT RITUALE
+
+RITUALE phase9_multipart_body(VERBUM boundary, SPECULUM NIHIL parts) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    VINCIRE out AD CONIURA concat(out, "--")
+    VINCIRE out AD CONIURA concat(out, boundary)
+    VINCIRE out AD CONIURA concat(out, CONIURA phase9_crlf())
+    VINCIRE out AD CONIURA concat(out, *part_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "--")
+  VINCIRE out AD CONIURA concat(out, boundary)
+  VINCIRE out AD CONIURA concat(out, "--")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase9_upload_config(VERBUM root) REDDE UploadConfig
+  EVOCA UploadConfig cfg AD CONIURA upload_config_new(root)
+  VINCIRE cfg.max_tamanho_campo AD 1048576
+  VINCIRE cfg.max_tamanho_total AD 2097152
+  VINCIRE cfg.tamanho_bloco AD 32
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase9_9a_fixture_source() REDDE VERBUM
+  REDDE "tests/integration/fase_9/9a/fixtures/upload_stream_probe.cct"
+EXPLICIT RITUALE
+
+RITUALE phase9_9a_fixture_binary() REDDE VERBUM
+  REDDE "tests/integration/fase_9/9a/fixtures/upload_stream_probe"
+EXPLICIT RITUALE
+
+RITUALE phase9_9a_build_fixture(VERBUM root) REDDE REX
+  EVOCA VERBUM log AD CONIURA path_join(root, "build.log")
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase9_9a_fixture_source())
+  REDDE CONIURA run_to_log(cmd, log)
+EXPLICIT RITUALE
+
+RITUALE phase9_9a_start_fixture(VERBUM root, REX port) REDDE REX
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  EVOCA VERBUM result AD CONIURA path_join(root, "result.txt")
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  EVOCA VERBUM log AD CONIURA path_join(root, "server.log")
+  EVOCA VERBUM upload_dir AD CONIURA path_join(root, "uploads")
+  CONIURA mkdir_all(upload_dir)
+  SI CONIURA phase9_9a_build_fixture(root) != 0
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM cmd AD "CIVITAS_STREAM_PORT="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, ready)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_RESULT_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, result)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_UPLOAD_DIR=")
+  VINCIRE cmd AD CONIURA concat(cmd, upload_dir)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase9_9a_fixture_binary())
+  REDDE CONIURA spawn_to_log_with_pid(cmd, log, pid_file)
+EXPLICIT RITUALE
+
+RITUALE phase9_9a_stop_fixture(VERBUM root) REDDE NIHIL
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  SI CONIURA exists(pid_file)
+    EVOCA VERBUM cmd AD "kill -TERM "
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_file)))
+    VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1")
+    CONIURA run(cmd)
+    CONIURA sleep_ms(50)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

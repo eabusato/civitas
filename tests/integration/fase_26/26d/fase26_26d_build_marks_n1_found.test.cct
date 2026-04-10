@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase26_26d_build_marks_n1_found"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PerfReport report AD CONIURA phase26_26d_report(VERUM, 0)
+  SI NON report.n1_found
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(report.profiles) != 1
+    REDDE 2
+  FIN SI
+  CONIURA fluxus_free(report.mem_report.deltas)
+  CONIURA fluxus_free(report.profiles)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

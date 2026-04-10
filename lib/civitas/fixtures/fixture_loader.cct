@@ -1,0 +1,150 @@
+INCIPIT grimoire "civitas_fixture_loader"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "fixture.cct"
+
+RITUALE fixture_json_scalar_as_text(Json value) REDDE VERBUM
+  QUANDO value
+    CASO JsonStr(v):
+      REDDE v
+    CASO JsonNum(v):
+      SI cast GENUS(REX)(v) == v
+        REDDE CONIURA stringify_int(cast GENUS(REX)(v))
+      FIN SI
+      REDDE CONIURA stringify_real(v)
+    CASO JsonBool(v):
+      SI v
+        REDDE "1"
+      FIN SI
+      REDDE "0"
+    CASO JsonNull:
+      REDDE ""
+    CASO JsonArr(h):
+      IACE "fixture json field arrays are not supported"
+    CASO JsonObj(h):
+      IACE "fixture json field objects are not supported"
+  FIN QUANDO
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE fixture_parse_json_entry(Json item) REDDE FixtureEntry
+  EVOCA VERBUM modelo AD CONIURA json_expect_str(CONIURA json_get_key(item, "model"))
+  EVOCA Json pk_json AD CONIURA json_get_key(item, "pk")
+  EVOCA VERBUM pk AD CONIURA fixture_json_scalar_as_text(pk_json)
+  EVOCA Json fields_j AD CONIURA json_get_key(item, "fields")
+  EVOCA FixtureEntry e
+  CONIURA fixture_entry_fill(SPECULUM e, modelo, pk)
+
+  EVOCA REX nf AD CONIURA json_obj_len(fields_j)
+  EVOCA REX fi AD 0
+  DUM fi < nf
+    EVOCA VERBUM fname AD CONIURA json_obj_key_at(fields_j, fi)
+    EVOCA Json fval AD CONIURA json_obj_value_at(fields_j, fi)
+    SI CONIURA json_is_null(fval)
+      CONIURA fixture_entry_add_field(SPECULUM e, fname, "", VERUM)
+    ALITER
+      CONIURA fixture_entry_add_field(SPECULUM e, fname, CONIURA fixture_json_scalar_as_text(fval), FALSUM)
+    FIN SI
+    VINCIRE fi AD fi + 1
+  FIN DUM
+
+  REDDE e
+EXPLICIT RITUALE
+
+RITUALE fixture_load_json(VERBUM caminho, FixtureKind kind) REDDE FixtureSuite
+  EVOCA VERBUM conteudo AD CONIURA read_all(caminho)
+  EVOCA Json j AD CONIURA json_parse(conteudo)
+  EVOCA FixtureSuite suite AD CONIURA fixture_suite_new(caminho, kind)
+
+  SI NON CONIURA json_is_arr(j)
+    IACE "fixture_load_json: file must be a json array"
+  FIN SI
+
+  EVOCA REX n AD CONIURA json_arr_len(j)
+  EVOCA REX i AD 0
+  DUM i < n
+    CONIURA fixture_suite_add_entry(SPECULUM suite, CONIURA fixture_parse_json_entry(CONIURA json_arr_get(j, i)))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE suite
+EXPLICIT RITUALE
+
+RITUALE fixture_toml_strip_quotes(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM trimmed AD CONIURA trim(raw)
+  SI CONIURA len(trimmed) >= 2 ET CONIURA char_at(trimmed, 0) == 34 ET CONIURA char_at(trimmed, CONIURA len(trimmed) - 1) == 34
+    REDDE CONIURA substring(trimmed, 1, CONIURA len(trimmed) - 1)
+  FIN SI
+  SI CONIURA len(trimmed) >= 2 ET CONIURA char_at(trimmed, 0) == 39 ET CONIURA char_at(trimmed, CONIURA len(trimmed) - 1) == 39
+    REDDE CONIURA substring(trimmed, 1, CONIURA len(trimmed) - 1)
+  FIN SI
+  REDDE trimmed
+EXPLICIT RITUALE
+
+RITUALE fixture_toml_add_line_field(SPECULUM FixtureEntry current, VERBUM line) REDDE NIHIL
+  EVOCA REX eq AD CONIURA find(line, "=")
+  SI eq == -1
+    REDDE
+  FIN SI
+  EVOCA VERBUM key AD CONIURA trim(CONIURA substring(line, 0, eq))
+  EVOCA VERBUM raw_value AD CONIURA trim(CONIURA substring(line, eq + 1, CONIURA len(line)))
+  SI CONIURA compare(key, "pk") == 0
+    VINCIRE (*current).pk AD CONIURA fixture_toml_strip_quotes(raw_value)
+    REDDE
+  FIN SI
+  SI CONIURA compare(CONIURA to_lower(raw_value), "null") == 0
+    CONIURA fixture_entry_add_field(current, key, "", VERUM)
+    REDDE
+  FIN SI
+  CONIURA fixture_entry_add_field(current, key, CONIURA fixture_toml_strip_quotes(raw_value), FALSUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_load_toml(VERBUM caminho, FixtureKind kind) REDDE FixtureSuite
+  EVOCA TomlDocument doc AD CONIURA toml_parse_file(caminho)
+  SI NON CONIURA toml_is_valid(doc)
+    IACE CONIURA toml_last_error()
+  FIN SI
+
+  EVOCA SPECULUM NIHIL lines AD CONIURA read_lines(caminho)
+  EVOCA FixtureSuite suite AD CONIURA fixture_suite_new(caminho, kind)
+  EVOCA FixtureEntry current
+  CONIURA fixture_entry_fill(SPECULUM current, "", "")
+  EVOCA VERUM has_current AD FALSUM
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD CONIURA trim(*line_ptr)
+    SI CONIURA len(line) == 0 VEL CONIURA starts_with(line, "#")
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA starts_with(line, "[[") ET CONIURA ends_with(line, "]]")
+      SI has_current
+        CONIURA fixture_suite_add_entry(SPECULUM suite, current)
+      FIN SI
+      EVOCA VERBUM modelo AD CONIURA trim(CONIURA substring(line, 2, CONIURA len(line) - 2))
+      CONIURA fixture_entry_fill(SPECULUM current, modelo, "")
+      VINCIRE has_current AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI has_current
+      CONIURA fixture_toml_add_line_field(SPECULUM current, line)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI has_current
+    CONIURA fixture_suite_add_entry(SPECULUM suite, current)
+  FIN SI
+
+  REDDE suite
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

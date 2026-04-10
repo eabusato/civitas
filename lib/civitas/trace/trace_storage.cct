@@ -1,0 +1,42 @@
+INCIPIT grimoire "civitas_trace_storage"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE trace_storage_write(VERBUM dest_path, VERBUM content, VERBUM kind) REDDE NIHIL
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_STORAGE), CONIURA concat("write:", kind))
+  CONIURA instrument_span_attr(span_id, "storage.path", dest_path)
+  CONIURA instrument_span_attr(span_id, "storage.kind", kind)
+  CONIURA instrument_span_attr(span_id, "storage.bytes", CONIURA stringify_int(CONIURA len(content)))
+  CONIURA write_all(dest_path, content)
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_storage_delete(VERBUM path, VERBUM kind) REDDE NIHIL
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_STORAGE), CONIURA concat("delete:", kind))
+  CONIURA instrument_span_attr(span_id, "storage.path", path)
+  CONIURA instrument_span_attr(span_id, "storage.kind", kind)
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_storage_exists(VERBUM path) REDDE VERUM
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_STORAGE), "exists")
+  CONIURA instrument_span_attr(span_id, "storage.path", path)
+  EVOCA VERUM found AD CONIURA exists(path)
+  SI found
+    CONIURA instrument_span_attr(span_id, "storage.found", "1")
+  ALITER
+    CONIURA instrument_span_attr(span_id, "storage.found", "0")
+  FIN SI
+  CONIURA instrument_span_end(span_id)
+  REDDE found
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

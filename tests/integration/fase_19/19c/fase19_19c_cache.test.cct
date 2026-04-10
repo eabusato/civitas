@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase19_19c_cache"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/openapi/openapi.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_cache_roundtrip() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19c_cache")
+  CONIURA openapi_cache_schema_up(stack.db)
+  CONIURA openapi_cache_save(stack.db, "default", "{\"x\":1}")
+  EVOCA VERBUM cached AD CONIURA openapi_cache_load(stack.db, "default", 300)
+  SI CONIURA compare(cached, "{\"x\":1}") != 0
+    IACE "cache load mismatch"
+  FIN SI
+  EVOCA VERBUM expired AD CONIURA openapi_cache_load(stack.db, "default", -1)
+  SI CONIURA len(expired) != 0
+    IACE "expired cache should be empty"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_cache_roundtrip()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

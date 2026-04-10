@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase11_11b_pool_reacquire_same_handle"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+
+RITUALE main() REDDE REX
+  CONIURA phase11_reset_dir(CONIURA phase11_tmp_dir("11b_pool_reacquire_same_handle"))
+  EVOCA SPECULUM NIHIL pool AD CONIURA pool_new_sqlite(CONIURA phase11_db_path("11b_pool_reacquire_same_handle"), NIHIL)
+  EVOCA SPECULUM NIHIL first AD CONIURA pool_acquire(pool)
+  CONIURA pool_release(pool, first)
+  EVOCA SPECULUM NIHIL second AD CONIURA pool_acquire(pool)
+  SI first != second
+    REDDE 1
+  FIN SI
+  CONIURA pool_release(pool, second)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,535 @@
+INCIPIT grimoire "civitas_template_codegen"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "ast.cct"
+ADVOCARE "checker.cct"
+
+SIGILLUM CodegenScope
+  context_expr: VERBUM
+  context_type: VERBUM
+  loop_item_name: VERBUM
+  loop_item_expr: VERBUM
+  loop_item_type: VERBUM
+  loop_ctx_expr: VERBUM
+FIN SIGILLUM
+
+RITUALE template_generate(SPECULUM TemplateNode root, TemplateCompileUnit unit) REDDE SPECULUM NIHIL
+  REDDE CONIURA template_generate_with_project(root, unit, ".")
+EXPLICIT RITUALE
+
+RITUALE template_generate_to_file_with_project(SPECULUM TemplateNode root, TemplateCompileUnit unit, VERBUM project_root, VERBUM output_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA template_generate_with_project(root, unit, project_root)
+  SI CONIURA result_is_err GENUS(VERBUM, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(*err)
+  FIN SI
+  CONIURA mkdir_all(CONIURA path_dirname(output_path))
+  CONIURA write_all(output_path, CONIURA result_unwrap GENUS(VERBUM, TemplateCompileError)(res))
+  REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(0)
+EXPLICIT RITUALE
+
+RITUALE template_generate_with_project(SPECULUM TemplateNode root, TemplateCompileUnit unit, VERBUM project_root) REDDE SPECULUM NIHIL
+  EVOCA TemplateCheckerState schema AD CONIURA template_checker_state_new(unit.template_path)
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA CodegenScope scope
+
+  VINCIRE scope.context_expr AD "ctx"
+  VINCIRE scope.context_type AD unit.context_sigillum
+  VINCIRE scope.loop_item_name AD ""
+  VINCIRE scope.loop_item_expr AD ""
+  VINCIRE scope.loop_item_type AD ""
+  VINCIRE scope.loop_ctx_expr AD ""
+
+  CONIURA template_schema_scan_dir(SPECULUM schema, project_root)
+  VINCIRE schema.current_context AD unit.context_sigillum
+  CONIURA codegen_header(b, unit)
+  CONIURA codegen_imports(b, root, unit, project_root)
+  CONIURA builder_append(b, "\n")
+  CONIURA builder_append(b, "RITUALE render_")
+  CONIURA builder_append(b, unit.template_name)
+  CONIURA builder_append(b, "(")
+  CONIURA builder_append(b, unit.context_sigillum)
+  CONIURA builder_append(b, " ctx) REDDE VERBUM\n")
+  CONIURA builder_append(b, "  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()\n")
+  CONIURA codegen_children(root, (*root).children, b, "  ", SPECULUM scope, SPECULUM schema, unit)
+  CONIURA builder_append(b, "  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)\n")
+  CONIURA builder_append(b, "  CONIURA builder_free(b)\n")
+  CONIURA builder_append(b, "  REDDE out\n")
+  CONIURA builder_append(b, "EXPLICIT RITUALE\n\n")
+  CONIURA builder_append(b, "EXPLICIT grimoire\n")
+
+  REDDE CONIURA Ok GENUS(VERBUM, TemplateCompileError)(CONIURA builder_to_verbum(b))
+EXPLICIT RITUALE
+
+RITUALE codegen_header(SPECULUM NIHIL b, TemplateCompileUnit unit) REDDE NIHIL
+  CONIURA builder_append(b, "-- Generated from ")
+  CONIURA builder_append(b, unit.template_path)
+  CONIURA builder_append(b, ". Rebuild via template compiler.\n\n")
+  CONIURA builder_append(b, "INCIPIT grimoire \"templates_gen_")
+  CONIURA builder_append(b, unit.template_name)
+  CONIURA builder_append(b, "\"\n\n")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_imports(SPECULUM NIHIL b, SPECULUM TemplateNode root, TemplateCompileUnit unit, VERBUM project_root) REDDE NIHIL
+  EVOCA VERBUM out_dir AD CONIURA normalize(CONIURA path_join(CONIURA cwd(), CONIURA path_dirname(unit.output_path)))
+  EVOCA VERBUM civitas_root AD CONIURA cwd()
+  EVOCA VERBUM context_import AD unit.context_import
+  SI CONIURA is_relative(context_import)
+    VINCIRE context_import AD CONIURA normalize(CONIURA path_join(civitas_root, context_import))
+  FIN SI
+  CONIURA codegen_import(b, "cct/verbum_builder.cct")
+  CONIURA codegen_import(b, "cct/encoding.cct")
+  CONIURA codegen_import(b, "cct/fmt.cct")
+  CONIURA codegen_import(b, "cct/fluxus.cct")
+  CONIURA codegen_import(b, CONIURA relative_to(CONIURA path_join(civitas_root, "lib/civitas/template/context.cct"), out_dir))
+  CONIURA codegen_import(b, CONIURA relative_to(CONIURA path_join(civitas_root, "lib/civitas/template/filters.cct"), out_dir))
+  CONIURA codegen_import(b, CONIURA relative_to(CONIURA path_join(civitas_root, "lib/civitas/template/integration.cct"), out_dir))
+  SI CONIURA codegen_needs_flash(root)
+    CONIURA codegen_import(b, CONIURA relative_to(CONIURA path_join(civitas_root, "lib/civitas/flash/flash_render.cct"), out_dir))
+  FIN SI
+  CONIURA codegen_import(b, CONIURA relative_to(context_import, out_dir))
+  CONIURA codegen_include_imports((*root).children, b, unit, out_dir)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_needs_flash(SPECULUM TemplateNode node) REDDE VERUM
+  SI (*node).kind == TnFlash
+    REDDE VERUM
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*node).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef child_ref AD CONIURA fluxus_get((*node).children, i)
+    SI CONIURA codegen_needs_flash((*child_ref).ptr)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len((*node).else_children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef child_ref AD CONIURA fluxus_get((*node).else_children, i)
+    SI CONIURA codegen_needs_flash((*child_ref).ptr)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE codegen_import(SPECULUM NIHIL b, VERBUM import_path) REDDE NIHIL
+  CONIURA builder_append(b, "ADVOCARE \"")
+  CONIURA builder_append(b, import_path)
+  CONIURA builder_append(b, "\"\n")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_include_imports(SPECULUM NIHIL children, SPECULUM NIHIL b, TemplateCompileUnit unit, VERBUM out_dir) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get(children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnInclude
+      EVOCA VERBUM include_out AD CONIURA with_ext(CONIURA normalize(CONIURA path_join(CONIURA cwd(), CONIURA path_join(CONIURA path_dirname(unit.output_path), (*node_ptr).include_path))), ".cct")
+      CONIURA codegen_import(b, CONIURA relative_to(include_out, out_dir))
+    FIN SI
+    CONIURA codegen_include_imports((*node_ptr).children, b, unit, out_dir)
+    CONIURA codegen_include_imports((*node_ptr).else_children, b, unit, out_dir)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_children(
+  SPECULUM TemplateNode root,
+  SPECULUM NIHIL children,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema,
+  TemplateCompileUnit unit
+) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef child_ref AD CONIURA fluxus_get(children, i)
+    EVOCA SPECULUM TemplateNode child AD (*child_ref).ptr
+    CONIURA codegen_node(root, child, b, indent, scope, schema, unit)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_node(
+  SPECULUM TemplateNode root,
+  SPECULUM TemplateNode node,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema,
+  TemplateCompileUnit unit
+) REDDE NIHIL
+  ELIGE (*node).kind
+    CASUS TnText:
+      CONIURA builder_append(b, indent)
+      CONIURA builder_append(b, "CONIURA builder_append(b, ")
+      CONIURA builder_append(b, CONIURA codegen_string_literal((*node).text))
+      CONIURA builder_append(b, ")\n")
+    CASUS TnExpression:
+      CONIURA codegen_expression(node, b, indent, scope, schema)
+    CASUS TnIf:
+      CONIURA codegen_if(root, node, b, indent, scope, schema, unit)
+    CASUS TnFor:
+      CONIURA codegen_for(root, node, b, indent, scope, schema, unit)
+    CASUS TnBlock:
+      CONIURA codegen_children(root, (*node).children, b, indent, scope, schema, unit)
+    CASUS TnCsrfInput:
+      CONIURA builder_append(b, indent)
+      CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA tpl_csrf_input())\n")
+    CASUS TnFlash:
+      CONIURA builder_append(b, indent)
+      CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA flash_render_from_session(SPECULUM ctx.session))\n")
+    CASUS TnStaticUrl:
+      CONIURA builder_append(b, indent)
+      CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA tpl_static_url(")
+      CONIURA builder_append(b, CONIURA codegen_string_literal((*node).text))
+      CONIURA builder_append(b, "))\n")
+    CASUS TnNonce:
+      CONIURA builder_append(b, indent)
+      CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA tpl_nonce_attr())\n")
+    CASUS TnInclude:
+      CONIURA codegen_include(node, b, indent, scope, schema)
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_expression(
+  SPECULUM TemplateNode node,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema
+) REDDE NIHIL
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(schema, SPECULUM (*node).expr, (*node).line, (*node).column)
+  EVOCA VERBUM access AD CONIURA codegen_expr_access(SPECULUM (*node).expr, scope, schema)
+  EVOCA VERBUM expr_out AD access
+  EVOCA VERUM uses_safe AD FALSUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*node).expr.filters)
+  DUM i < n
+    EVOCA SPECULUM TemplateFilter filter_ptr AD CONIURA fluxus_get((*node).expr.filters, i)
+    SI CONIURA compare((*filter_ptr).name, "safe") == 0
+      VINCIRE uses_safe AD VERUM
+    ALITER
+      VINCIRE expr_out AD CONIURA codegen_filter(expr_out, SPECULUM spec, *filter_ptr)
+      VINCIRE spec AD CONIURA template_filter_apply_or_error(schema, spec, *filter_ptr, (*node).line, (*node).column)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE expr_out AD CONIURA codegen_value_to_verbum(expr_out, spec)
+  CONIURA builder_append(b, indent)
+  SI uses_safe
+    CONIURA builder_append(b, "CONIURA builder_append(b, ")
+    CONIURA builder_append(b, expr_out)
+    CONIURA builder_append(b, ")\n")
+  ALITER
+    CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA html_encode(")
+    CONIURA builder_append(b, expr_out)
+    CONIURA builder_append(b, "))\n")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_if(
+  SPECULUM TemplateNode root,
+  SPECULUM TemplateNode node,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema,
+  TemplateCompileUnit unit
+) REDDE NIHIL
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "SI ")
+  CONIURA builder_append(b, CONIURA codegen_condition_expr(SPECULUM (*node).condition, scope, schema))
+  CONIURA builder_append(b, "\n")
+  CONIURA codegen_children(root, (*node).children, b, CONIURA concat(indent, "  "), scope, schema, unit)
+  SI CONIURA fluxus_len((*node).else_children) != 0
+    CONIURA builder_append(b, indent)
+    CONIURA builder_append(b, "ALITER\n")
+    CONIURA codegen_children(root, (*node).else_children, b, CONIURA concat(indent, "  "), scope, schema, unit)
+  FIN SI
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "FIN SI\n")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_for(
+  SPECULUM TemplateNode root,
+  SPECULUM TemplateNode node,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema,
+  TemplateCompileUnit unit
+) REDDE NIHIL
+  EVOCA TemplateExpr iter_expr AD CONIURA template_expr_from_path((*node).iter_field)
+  EVOCA TemplateFieldSpec iter_spec AD CONIURA template_resolve_expr_or_empty(schema, SPECULUM iter_expr, (*node).line, (*node).column)
+  EVOCA CodegenScope inner AD *scope
+  EVOCA VERBUM iter_access AD CONIURA codegen_expr_access(SPECULUM iter_expr, scope, schema)
+  EVOCA VERBUM idx_var AD CONIURA concat("i_", (*node).iter_var)
+  EVOCA VERBUM len_var AD CONIURA concat("n_", (*node).iter_var)
+  EVOCA VERBUM item_var AD CONIURA concat("item_", (*node).iter_var)
+  EVOCA VERBUM loop_var AD CONIURA concat("loop_", (*node).iter_var)
+  EVOCA VERBUM item_type AD iter_spec.loop_item_name
+  EVOCA VERBUM saved_loop_item AD (*schema).current_loop_item
+  EVOCA VERBUM saved_loop_type AD (*schema).current_loop_item_type
+  SI CONIURA len(item_type) == 0
+    VINCIRE item_type AD "VERBUM"
+  FIN SI
+
+  VINCIRE inner.loop_item_name AD (*node).iter_var
+  VINCIRE inner.loop_item_type AD item_type
+  VINCIRE inner.loop_item_expr AD item_var
+  VINCIRE inner.loop_ctx_expr AD loop_var
+  VINCIRE (*schema).current_loop_item AD (*node).iter_var
+  VINCIRE (*schema).current_loop_item_type AD item_type
+
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "EVOCA REX ")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, " AD 0\n")
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "EVOCA REX ")
+  CONIURA builder_append(b, len_var)
+  CONIURA builder_append(b, " AD CONIURA fluxus_len(")
+  CONIURA builder_append(b, iter_access)
+  CONIURA builder_append(b, ")\n")
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "DUM ")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, " < ")
+  CONIURA builder_append(b, len_var)
+  CONIURA builder_append(b, "\n")
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "  EVOCA SPECULUM ")
+  CONIURA builder_append(b, item_type)
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, item_var)
+  CONIURA builder_append(b, " AD CONIURA fluxus_get(")
+  CONIURA builder_append(b, iter_access)
+  CONIURA builder_append(b, ", ")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, ")\n")
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "  EVOCA LoopContext ")
+  CONIURA builder_append(b, loop_var)
+  CONIURA builder_append(b, " AD CONIURA tpl_loop_context(")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, ", ")
+  CONIURA builder_append(b, len_var)
+  CONIURA builder_append(b, ")\n")
+  CONIURA codegen_children(root, (*node).children, b, CONIURA concat(indent, "  "), SPECULUM inner, schema, unit)
+  VINCIRE (*schema).current_loop_item AD saved_loop_item
+  VINCIRE (*schema).current_loop_item_type AD saved_loop_type
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "  VINCIRE ")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, " AD ")
+  CONIURA builder_append(b, idx_var)
+  CONIURA builder_append(b, " + 1\n")
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "FIN DUM\n")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_include(
+  SPECULUM TemplateNode node,
+  SPECULUM NIHIL b,
+  VERBUM indent,
+  SPECULUM CodegenScope scope,
+  SPECULUM TemplateCheckerState schema
+) REDDE NIHIL
+  EVOCA VERBUM fn_name AD CONIURA codegen_template_name_from_path((*node).include_path)
+  EVOCA VERBUM arg_expr AD (*scope).context_expr
+  SI CONIURA len((*node).include_with) != 0
+    EVOCA TemplateExpr include_expr AD CONIURA template_expr_from_path((*node).include_with)
+    EVOCA TemplateFieldSpec include_spec
+    VINCIRE arg_expr AD CONIURA codegen_expr_access(SPECULUM include_expr, scope, schema)
+    VINCIRE include_spec AD CONIURA template_resolve_expr_or_empty(schema, SPECULUM include_expr, (*node).line, (*node).column)
+    SI CONIURA compare(include_spec.kind, "ptr") == 0
+      VINCIRE arg_expr AD CONIURA concat("*", arg_expr)
+    FIN SI
+  FIN SI
+  CONIURA builder_append(b, indent)
+  CONIURA builder_append(b, "CONIURA builder_append(b, CONIURA render_")
+  CONIURA builder_append(b, fn_name)
+  CONIURA builder_append(b, "(")
+  CONIURA builder_append(b, arg_expr)
+  CONIURA builder_append(b, "))\n")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE codegen_condition_expr(SPECULUM TemplateCondition cond, SPECULUM CodegenScope scope, SPECULUM TemplateCheckerState schema) REDDE VERBUM
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(schema, SPECULUM (*cond).expr, 0, 0)
+  EVOCA VERBUM access AD CONIURA codegen_expr_access(SPECULUM (*cond).expr, scope, schema)
+  EVOCA VERBUM out AD access
+  SI CONIURA len((*cond).op) != 0
+    VINCIRE out AD CONIURA concat(CONIURA concat(access, " "), (*cond).op)
+    VINCIRE out AD CONIURA concat(out, " ")
+    SI CONIURA compare((*cond).rhs_kind, "int") == 0
+      VINCIRE out AD CONIURA concat(out, CONIURA stringify_int((*cond).rhs_int))
+    ALITER
+      VINCIRE out AD CONIURA concat(out, CONIURA codegen_string_literal((*cond).rhs_verbum))
+    FIN SI
+  FIN SI
+  SI (*cond).is_negated
+    REDDE CONIURA concat("NON ", out)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE codegen_expr_access(SPECULUM TemplateExpr expr, SPECULUM CodegenScope scope, SPECULUM TemplateCheckerState schema) REDDE VERBUM
+  EVOCA REX n AD CONIURA fluxus_len((*expr).path)
+  EVOCA REX i AD 0
+  EVOCA VERBUM access AD ""
+  EVOCA VERUM current_is_ptr AD FALSUM
+  EVOCA VERBUM current_sigillum AD ""
+  EVOCA SPECULUM VERBUM first_ptr AD CONIURA fluxus_get((*expr).path, 0)
+
+  SI CONIURA compare(*first_ptr, "loop") == 0
+    REDDE CONIURA concat((*scope).loop_ctx_expr, CONIURA concat(".", CONIURA template_resolve_loop_name(expr, 1)))
+  FIN SI
+
+  SI CONIURA len((*scope).loop_item_name) != 0 ET CONIURA compare(*first_ptr, (*scope).loop_item_name) == 0
+    SI CONIURA compare((*scope).loop_item_type, "VERBUM") == 0
+      SI n == 1
+        REDDE CONIURA concat("*", (*scope).loop_item_expr)
+      FIN SI
+      REDDE ""
+    FIN SI
+    VINCIRE access AD (*scope).loop_item_expr
+    VINCIRE current_is_ptr AD VERUM
+    VINCIRE current_sigillum AD (*scope).loop_item_type
+    VINCIRE i AD 1
+  ALITER
+    VINCIRE access AD (*scope).context_expr
+    VINCIRE current_sigillum AD (*scope).context_type
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM seg_ptr AD CONIURA fluxus_get((*expr).path, i)
+    EVOCA TemplateFieldSpec field AD CONIURA template_lookup_sigillum_field_or_empty((*schema).sigilla, current_sigillum, *seg_ptr)
+    SI current_is_ptr
+      VINCIRE access AD CONIURA concat("(*", CONIURA concat(access, ")."))
+    ALITER
+      VINCIRE access AD CONIURA concat(access, ".")
+    FIN SI
+    VINCIRE access AD CONIURA concat(access, *seg_ptr)
+    VINCIRE current_is_ptr AD FALSUM
+    SI CONIURA compare(field.kind, "ptr") == 0
+      VINCIRE current_sigillum AD field.pointee_name
+      VINCIRE current_is_ptr AD VERUM
+    ALITER
+      SI CONIURA compare(field.kind, "sigillum") == 0
+        VINCIRE current_sigillum AD field.type_name
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE access
+EXPLICIT RITUALE
+
+RITUALE codegen_filter(VERBUM expr_out, SPECULUM TemplateFieldSpec spec, TemplateFilter filter) REDDE VERBUM
+  SI CONIURA compare(filter.name, "upper") == 0
+    REDDE CONIURA concat("CONIURA tpl_filter_upper(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  SI CONIURA compare(filter.name, "lower") == 0
+    REDDE CONIURA concat("CONIURA tpl_filter_lower(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  SI CONIURA compare(filter.name, "truncate") == 0
+    REDDE CONIURA concat("CONIURA tpl_filter_truncate(", CONIURA concat(CONIURA concat(expr_out, ", "), CONIURA concat(filter.arg, ")")))
+  FIN SI
+  SI CONIURA compare(filter.name, "default") == 0
+    REDDE CONIURA concat("CONIURA tpl_filter_default(", CONIURA concat(CONIURA concat(expr_out, ", "), CONIURA concat(CONIURA codegen_string_literal(filter.arg), ")")))
+  FIN SI
+  SI CONIURA compare(filter.name, "format") == 0
+    SI CONIURA compare((*spec).kind, "int") == 0
+      REDDE CONIURA concat("CONIURA tpl_filter_format_int(", CONIURA concat(CONIURA concat(expr_out, ", "), CONIURA concat(CONIURA codegen_string_literal(filter.arg), ")")))
+    FIN SI
+    REDDE CONIURA concat("CONIURA tpl_filter_format_real(", CONIURA concat(CONIURA concat(expr_out, ", "), CONIURA concat(CONIURA codegen_string_literal(filter.arg), ")")))
+  FIN SI
+  SI CONIURA compare(filter.name, "length") == 0
+    REDDE CONIURA concat("CONIURA tpl_filter_length(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  SI CONIURA compare(filter.name, "abs") == 0
+    SI CONIURA compare((*spec).kind, "int") == 0
+      REDDE CONIURA concat("CONIURA tpl_filter_abs_int(", CONIURA concat(expr_out, ")"))
+    FIN SI
+    REDDE CONIURA concat("CONIURA tpl_filter_abs_real(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  REDDE expr_out
+EXPLICIT RITUALE
+
+RITUALE codegen_value_to_verbum(VERBUM expr_out, TemplateFieldSpec spec) REDDE VERBUM
+  SI CONIURA compare(spec.kind, "int") == 0
+    REDDE CONIURA concat("CONIURA stringify_int(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  SI CONIURA compare(spec.kind, "real") == 0
+    REDDE CONIURA concat("CONIURA stringify_real(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  SI CONIURA compare(spec.kind, "bool") == 0
+    REDDE CONIURA concat("CONIURA stringify_bool(", CONIURA concat(expr_out, ")"))
+  FIN SI
+  REDDE expr_out
+EXPLICIT RITUALE
+
+RITUALE codegen_string_literal(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD "\""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(raw)
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(raw, i)
+    SI c == 34
+      VINCIRE out AD CONIURA concat(out, "\\\"")
+    ALITER
+      SI c == 92
+        VINCIRE out AD CONIURA concat(out, "\\\\")
+      ALITER
+        SI c == 10
+          VINCIRE out AD CONIURA concat(out, "\\n")
+        ALITER
+          SI c == 13
+            VINCIRE out AD CONIURA concat(out, "\\r")
+          ALITER
+            VINCIRE out AD CONIURA concat(out, CONIURA from_char(c))
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA concat(out, "\"")
+EXPLICIT RITUALE
+
+RITUALE codegen_template_name_from_path(VERBUM template_path) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA without_ext(template_path)
+  VINCIRE out AD CONIURA replace_all(out, "/", "_")
+  VINCIRE out AD CONIURA replace_all(out, "\\", "_")
+  VINCIRE out AD CONIURA replace_all(out, "-", "_")
+  VINCIRE out AD CONIURA replace_all(out, ".", "_")
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

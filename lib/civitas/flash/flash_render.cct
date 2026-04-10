@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_flash_render"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "../session/session.cct"
+ADVOCARE "flash.cct"
+
+RITUALE flash_level_to_class(FlashLevel level) REDDE VERBUM
+  ELIGE level
+    CASUS FlSuccess:
+      REDDE "flash-success"
+    CASUS FlInfo:
+      REDDE "flash-info"
+    CASUS FlWarning:
+      REDDE "flash-warning"
+    CASUS FlError:
+      REDDE "flash-error"
+  FIN ELIGE
+  REDDE "flash-info"
+EXPLICIT RITUALE
+
+RITUALE flash_render(SPECULUM NIHIL msgs) REDDE VERBUM
+  SI CONIURA fluxus_len(msgs) == 0
+    REDDE ""
+  FIN SI
+
+  EVOCA SPECULUM NIHIL container AD CONIURA html_tag("div")
+  CONIURA html_attr(container, "class", "flash-messages")
+  CONIURA html_attr(container, "role", "status")
+  CONIURA html_attr(container, "aria-live", "polite")
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(msgs)
+  DUM i < n
+    EVOCA SPECULUM FlashMessage msg_ptr AD CONIURA fluxus_get(msgs, i)
+    EVOCA FlashMessage msg AD *msg_ptr
+    EVOCA SPECULUM NIHIL alert AD CONIURA html_tag("div")
+    CONIURA html_attr(alert, "class", CONIURA concat("flash-message ", CONIURA flash_level_to_class(msg.level)))
+    CONIURA html_attr(alert, "role", "alert")
+    CONIURA html_text(alert, msg.texto)
+    CONIURA html_append_child(container, alert)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA html_render_free(container)
+EXPLICIT RITUALE
+
+RITUALE flash_render_from_session(SPECULUM Session sess) REDDE VERBUM
+  EVOCA SPECULUM NIHIL msgs AD CONIURA flash_get_all(sess)
+  EVOCA VERBUM html AD CONIURA flash_render(msgs)
+  CONIURA fluxus_free(msgs)
+  REDDE html
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

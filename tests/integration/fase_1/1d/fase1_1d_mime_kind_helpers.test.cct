@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase1_1d_mime_kind_helpers_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA mime_is_text("text/plain; charset=utf-8")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA mime_is_json("application/json")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA mime_is_binary("application/octet-stream")
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

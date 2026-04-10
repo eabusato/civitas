@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase15_15b_issue_and_verify_success"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_issue.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_verify.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_token_db_open("15b_issue_and_verify_success")
+  EVOCA TokenConfig cfg AD CONIURA token_config_new("segredo_hmac_32bytes_min_123456789", 3600, 86400)
+  EVOCA VERBUM token AD CONIURA token_issue(cfg, "user-123", "posts.read posts.write")
+  SI CONIURA find(token, ".") == -1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL verified AD CONIURA token_verify(db, cfg, token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(verified)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA TokenPayload p AD CONIURA result_unwrap GENUS(TokenPayload, TokenError)(verified)
+  SI CONIURA compare(p.user_id, "user-123") != 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA token_tem_escopo(p, "posts.read")
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  SI CONIURA token_tem_escopo(p, "admin.delete")
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

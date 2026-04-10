@@ -1,0 +1,392 @@
+INCIPIT grimoire "civitas_openapi"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../api/api.cct"
+ADVOCARE "../api_views/api_views.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+
+RITUALE openapi_field_kind_to_type(ApiFieldKind kind) REDDE VERBUM
+  SI kind == API_FIELD_INT
+    REDDE "integer"
+  FIN SI
+  SI kind == API_FIELD_REAL
+    REDDE "number"
+  FIN SI
+  SI kind == API_FIELD_BOOL
+    REDDE "boolean"
+  FIN SI
+  SI kind == API_FIELD_JSON
+    REDDE "object"
+  FIN SI
+  REDDE "string"
+EXPLICIT RITUALE
+
+RITUALE openapi_field_kind_to_format(ApiFieldKind kind) REDDE VERBUM
+  SI kind == API_FIELD_DATE
+    REDDE "date"
+  FIN SI
+  SI kind == API_FIELD_DATETIME
+    REDDE "date-time"
+  FIN SI
+  SI kind == API_FIELD_INT
+    REDDE "int64"
+  FIN SI
+  SI kind == API_FIELD_REAL
+    REDDE "double"
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE openapi_schema_ref(VERBUM name) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "$ref", CONIURA json_str(CONIURA concat("#/components/schemas/", name)))
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE openapi_serializer_to_schema(SPECULUM ApiSerializerRegistry serializers, SerializerConfig config, VERUM for_write) REDDE Json
+  EVOCA Json out AD CONIURA json_obj()
+  EVOCA Json props AD CONIURA json_obj()
+  EVOCA Json required AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(config.fields)
+
+  CONIURA json_obj_push(out, "type", CONIURA json_str("object"))
+
+  DUM i < n
+    EVOCA SPECULUM SerializerField field_ptr AD CONIURA fluxus_get(config.fields, i)
+    EVOCA VERUM include_field AD VERUM
+    SI for_write ET (*field_ptr).read_only
+      VINCIRE include_field AD FALSUM
+    FIN SI
+    SI NON for_write ET (*field_ptr).write_only
+      VINCIRE include_field AD FALSUM
+    FIN SI
+
+    SI include_field
+      EVOCA Json field_schema AD CONIURA json_obj()
+      SI (*field_ptr).kind == API_FIELD_NESTED
+        EVOCA VERBUM nested_name AD (*field_ptr).nested_serializer
+        SI for_write
+          VINCIRE field_schema AD CONIURA openapi_schema_ref(CONIURA concat(nested_name, "Input"))
+        ALITER
+          VINCIRE field_schema AD CONIURA openapi_schema_ref(nested_name)
+        FIN SI
+      ALITER
+        CONIURA json_obj_push(field_schema, "type", CONIURA json_str(CONIURA openapi_field_kind_to_type((*field_ptr).kind)))
+        EVOCA VERBUM format AD CONIURA openapi_field_kind_to_format((*field_ptr).kind)
+        SI CONIURA len(format) > 0
+          CONIURA json_obj_push(field_schema, "format", CONIURA json_str(format))
+        FIN SI
+      FIN SI
+      CONIURA json_obj_push(props, (*field_ptr).name, field_schema)
+      SI for_write ET (*field_ptr).required ET NON (*field_ptr).read_only
+        CONIURA json_arr_push(required, CONIURA json_str((*field_ptr).name))
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA json_obj_push(out, "properties", props)
+  SI for_write ET CONIURA json_arr_len(required) > 0
+    CONIURA json_obj_push(out, "required", required)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE openapi_security_scheme_bearer() REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "type", CONIURA json_str("http"))
+  CONIURA json_obj_push(obj, "scheme", CONIURA json_str("bearer"))
+  CONIURA json_obj_push(obj, "bearerFormat", CONIURA json_str("JWT"))
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE openapi_param_query(VERBUM name, VERBUM schema_type) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA Json schema AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "name", CONIURA json_str(name))
+  CONIURA json_obj_push(obj, "in", CONIURA json_str("query"))
+  CONIURA json_obj_push(obj, "required", CONIURA json_bool(FALSUM))
+  CONIURA json_obj_push(schema, "type", CONIURA json_str(schema_type))
+  CONIURA json_obj_push(obj, "schema", schema)
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE openapi_param_path(VERBUM name) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA Json schema AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "name", CONIURA json_str(name))
+  CONIURA json_obj_push(obj, "in", CONIURA json_str("path"))
+  CONIURA json_obj_push(obj, "required", CONIURA json_bool(VERUM))
+  CONIURA json_obj_push(schema, "type", CONIURA json_str("string"))
+  CONIURA json_obj_push(obj, "schema", schema)
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE openapi_security_requirement() REDDE Json
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "bearerAuth", arr)
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE openapi_response_json_schema(REX status, Json schema) REDDE Json
+  EVOCA Json responses AD CONIURA json_obj()
+  EVOCA Json ok_obj AD CONIURA json_obj()
+  EVOCA Json content AD CONIURA json_obj()
+  EVOCA Json media AD CONIURA json_obj()
+  CONIURA json_obj_push(media, "schema", schema)
+  CONIURA json_obj_push(content, "application/json", media)
+  CONIURA json_obj_push(ok_obj, "description", CONIURA json_str("response"))
+  CONIURA json_obj_push(ok_obj, "content", content)
+  CONIURA json_obj_push(responses, CONIURA stringify_int(status), ok_obj)
+  REDDE responses
+EXPLICIT RITUALE
+
+RITUALE openapi_operation_list(ViewSetConfig viewset, ApiViewConfig cfg) REDDE Json
+  EVOCA Json op AD CONIURA json_obj()
+  EVOCA Json params AD CONIURA json_arr()
+  EVOCA Json tags AD CONIURA json_arr()
+  EVOCA Json response_schema AD CONIURA json_obj()
+  EVOCA Json items AD CONIURA openapi_schema_ref(cfg.serializer_name)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.filter_fields)
+
+  CONIURA json_obj_push(response_schema, "type", CONIURA json_str("array"))
+  CONIURA json_obj_push(response_schema, "items", items)
+  CONIURA json_arr_push(tags, CONIURA json_str(viewset.name))
+  CONIURA json_obj_push(op, "operationId", CONIURA json_str(CONIURA concat(viewset.name, "_list")))
+  CONIURA json_obj_push(op, "summary", CONIURA json_str(CONIURA concat("List ", viewset.name)))
+  CONIURA json_obj_push(op, "tags", tags)
+  CONIURA json_arr_push(params, CONIURA openapi_param_query("page", "integer"))
+  CONIURA json_arr_push(params, CONIURA openapi_param_query("page_size", "integer"))
+  CONIURA json_arr_push(params, CONIURA openapi_param_query("order", "string"))
+  DUM i < n
+    EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.filter_fields, i)
+    CONIURA json_arr_push(params, CONIURA openapi_param_query(*field_ptr, "string"))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_obj_push(op, "parameters", params)
+  CONIURA json_obj_push(op, "responses", CONIURA openapi_response_json_schema(200, response_schema))
+  SI cfg.auth_required
+    EVOCA Json security AD CONIURA json_arr()
+    CONIURA json_arr_push(security, CONIURA openapi_security_requirement())
+    CONIURA json_obj_push(op, "security", security)
+  FIN SI
+  REDDE op
+EXPLICIT RITUALE
+
+RITUALE openapi_operation_detail(ViewSetConfig viewset, ApiViewConfig cfg) REDDE Json
+  EVOCA Json op AD CONIURA json_obj()
+  EVOCA Json params AD CONIURA json_arr()
+  EVOCA Json tags AD CONIURA json_arr()
+  CONIURA json_arr_push(tags, CONIURA json_str(viewset.name))
+  CONIURA json_arr_push(params, CONIURA openapi_param_path("pk"))
+  CONIURA json_obj_push(op, "operationId", CONIURA json_str(CONIURA concat(viewset.name, "_detail")))
+  CONIURA json_obj_push(op, "summary", CONIURA json_str(CONIURA concat("Retrieve ", viewset.name)))
+  CONIURA json_obj_push(op, "tags", tags)
+  CONIURA json_obj_push(op, "parameters", params)
+  CONIURA json_obj_push(op, "responses", CONIURA openapi_response_json_schema(200, CONIURA openapi_schema_ref(cfg.serializer_name)))
+  SI cfg.auth_required
+    EVOCA Json security AD CONIURA json_arr()
+    CONIURA json_arr_push(security, CONIURA openapi_security_requirement())
+    CONIURA json_obj_push(op, "security", security)
+  FIN SI
+  REDDE op
+EXPLICIT RITUALE
+
+RITUALE openapi_operation_create(ViewSetConfig viewset, ApiViewConfig cfg) REDDE Json
+  EVOCA Json op AD CONIURA json_obj()
+  EVOCA Json tags AD CONIURA json_arr()
+  EVOCA Json request_body AD CONIURA json_obj()
+  EVOCA Json content AD CONIURA json_obj()
+  EVOCA Json media AD CONIURA json_obj()
+  CONIURA json_arr_push(tags, CONIURA json_str(viewset.name))
+  CONIURA json_obj_push(media, "schema", CONIURA openapi_schema_ref(CONIURA concat(cfg.serializer_name, "Input")))
+  CONIURA json_obj_push(content, "application/json", media)
+  CONIURA json_obj_push(request_body, "required", CONIURA json_bool(VERUM))
+  CONIURA json_obj_push(request_body, "content", content)
+  CONIURA json_obj_push(op, "operationId", CONIURA json_str(CONIURA concat(viewset.name, "_create")))
+  CONIURA json_obj_push(op, "summary", CONIURA json_str(CONIURA concat("Create ", viewset.name)))
+  CONIURA json_obj_push(op, "tags", tags)
+  CONIURA json_obj_push(op, "requestBody", request_body)
+  CONIURA json_obj_push(op, "responses", CONIURA openapi_response_json_schema(201, CONIURA openapi_schema_ref(cfg.serializer_name)))
+  SI cfg.auth_required
+    EVOCA Json security AD CONIURA json_arr()
+    CONIURA json_arr_push(security, CONIURA openapi_security_requirement())
+    CONIURA json_obj_push(op, "security", security)
+  FIN SI
+  REDDE op
+EXPLICIT RITUALE
+
+RITUALE openapi_operation_update(ViewSetConfig viewset, ApiViewConfig cfg) REDDE Json
+  EVOCA Json op AD CONIURA openapi_operation_create(viewset, cfg)
+  EVOCA Json params AD CONIURA json_arr()
+  CONIURA json_arr_push(params, CONIURA openapi_param_path("pk"))
+  CONIURA json_set_key(op, "operationId", CONIURA json_str(CONIURA concat(viewset.name, "_update")))
+  CONIURA json_set_key(op, "summary", CONIURA json_str(CONIURA concat("Update ", viewset.name)))
+  CONIURA json_obj_push(op, "parameters", params)
+  CONIURA json_set_key(op, "responses", CONIURA openapi_response_json_schema(200, CONIURA openapi_schema_ref(cfg.serializer_name)))
+  REDDE op
+EXPLICIT RITUALE
+
+RITUALE openapi_operation_delete(ViewSetConfig viewset, ApiViewConfig cfg) REDDE Json
+  EVOCA Json op AD CONIURA json_obj()
+  EVOCA Json params AD CONIURA json_arr()
+  EVOCA Json tags AD CONIURA json_arr()
+  EVOCA Json schema AD CONIURA json_obj()
+  CONIURA json_arr_push(tags, CONIURA json_str(viewset.name))
+  CONIURA json_arr_push(params, CONIURA openapi_param_path("pk"))
+  CONIURA json_obj_push(schema, "type", CONIURA json_str("object"))
+  CONIURA json_obj_push(op, "operationId", CONIURA json_str(CONIURA concat(viewset.name, "_delete")))
+  CONIURA json_obj_push(op, "summary", CONIURA json_str(CONIURA concat("Delete ", viewset.name)))
+  CONIURA json_obj_push(op, "tags", tags)
+  CONIURA json_obj_push(op, "parameters", params)
+  CONIURA json_obj_push(op, "responses", CONIURA openapi_response_json_schema(204, schema))
+  SI cfg.auth_required
+    EVOCA Json security AD CONIURA json_arr()
+    CONIURA json_arr_push(security, CONIURA openapi_security_requirement())
+    CONIURA json_obj_push(op, "security", security)
+  FIN SI
+  REDDE op
+EXPLICIT RITUALE
+
+RITUALE openapi_path_item_from_viewset(ViewSetConfig viewset) REDDE Json
+  EVOCA Json item AD CONIURA json_obj()
+  EVOCA SPECULUM ApiViewConfig cfg_ptr AD viewset.view_config
+  SI CONIURA api_method_allowed(*cfg_ptr, "GET")
+    CONIURA json_obj_push(item, "get", CONIURA openapi_operation_list(viewset, *cfg_ptr))
+  FIN SI
+  SI CONIURA api_method_allowed(*cfg_ptr, "POST")
+    CONIURA json_obj_push(item, "post", CONIURA openapi_operation_create(viewset, *cfg_ptr))
+  FIN SI
+  REDDE item
+EXPLICIT RITUALE
+
+RITUALE openapi_path_item_detail_from_viewset(ViewSetConfig viewset) REDDE Json
+  EVOCA Json item AD CONIURA json_obj()
+  EVOCA SPECULUM ApiViewConfig cfg_ptr AD viewset.view_config
+  SI CONIURA api_method_allowed(*cfg_ptr, "GET")
+    CONIURA json_obj_push(item, "get", CONIURA openapi_operation_detail(viewset, *cfg_ptr))
+  FIN SI
+  SI CONIURA api_method_allowed(*cfg_ptr, "PUT")
+    CONIURA json_obj_push(item, "put", CONIURA openapi_operation_update(viewset, *cfg_ptr))
+  FIN SI
+  SI CONIURA api_method_allowed(*cfg_ptr, "DELETE")
+    CONIURA json_obj_push(item, "delete", CONIURA openapi_operation_delete(viewset, *cfg_ptr))
+  FIN SI
+  REDDE item
+EXPLICIT RITUALE
+
+RITUALE openapi_build_components_from_viewsets(SPECULUM ApiSerializerRegistry serializers, SPECULUM ApiViewSetRegistry viewsets) REDDE Json
+  EVOCA Json components AD CONIURA json_obj()
+  EVOCA Json schemas AD CONIURA json_obj()
+  EVOCA Json security_schemes AD CONIURA json_obj()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA api_serializer_registry_len(serializers)
+
+  DUM i < n
+    EVOCA SPECULUM SerializerConfig ser_ptr AD CONIURA api_serializer_registry_get_at(serializers, i)
+    CONIURA json_obj_push(schemas, (*ser_ptr).name, CONIURA openapi_serializer_to_schema(serializers, *ser_ptr, FALSUM))
+    CONIURA json_obj_push(schemas, CONIURA concat((*ser_ptr).name, "Input"), CONIURA openapi_serializer_to_schema(serializers, *ser_ptr, VERUM))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA json_obj_push(security_schemes, "bearerAuth", CONIURA openapi_security_scheme_bearer())
+  CONIURA json_obj_push(components, "schemas", schemas)
+  CONIURA json_obj_push(components, "securitySchemes", security_schemes)
+  REDDE components
+EXPLICIT RITUALE
+
+RITUALE openapi_build_paths(SPECULUM ApiViewSetRegistry viewsets) REDDE Json
+  EVOCA Json paths AD CONIURA json_obj()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*viewsets).items)
+  DUM i < n
+    EVOCA SPECULUM ViewSetConfig viewset_ptr AD CONIURA fluxus_get((*viewsets).items, i)
+    EVOCA VERBUM collection_path AD (*viewset_ptr).path_prefix
+    EVOCA VERBUM detail_path AD CONIURA concat(collection_path, "/{pk}")
+    CONIURA json_obj_push(paths, collection_path, CONIURA openapi_path_item_from_viewset(*viewset_ptr))
+    CONIURA json_obj_push(paths, detail_path, CONIURA openapi_path_item_detail_from_viewset(*viewset_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE paths
+EXPLICIT RITUALE
+
+RITUALE openapi_spec_build_json(SPECULUM ApiSerializerRegistry serializers, SPECULUM ApiViewSetRegistry viewsets, VERBUM title, VERBUM version, VERBUM base_url) REDDE Json
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json info AD CONIURA json_obj()
+  EVOCA Json servers AD CONIURA json_arr()
+  EVOCA Json server AD CONIURA json_obj()
+  CONIURA json_obj_push(root, "openapi", CONIURA json_str("3.1.0"))
+  CONIURA json_obj_push(info, "title", CONIURA json_str(title))
+  CONIURA json_obj_push(info, "version", CONIURA json_str(version))
+  CONIURA json_obj_push(root, "info", info)
+  CONIURA json_obj_push(server, "url", CONIURA json_str(base_url))
+  CONIURA json_arr_push(servers, server)
+  CONIURA json_obj_push(root, "servers", servers)
+  CONIURA json_obj_push(root, "paths", CONIURA openapi_build_paths(viewsets))
+  CONIURA json_obj_push(root, "components", CONIURA openapi_build_components_from_viewsets(serializers, viewsets))
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE openapi_spec_to_json(SPECULUM ApiSerializerRegistry serializers, SPECULUM ApiViewSetRegistry viewsets, VERBUM title, VERBUM version, VERBUM base_url) REDDE VERBUM
+  REDDE CONIURA json_stringify_pretty(CONIURA openapi_spec_build_json(serializers, viewsets, title, version, base_url))
+EXPLICIT RITUALE
+
+RITUALE openapi_cache_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS openapi_cache (cache_key TEXT PRIMARY KEY, json_text TEXT NOT NULL, created_at_unix INTEGER NOT NULL)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE openapi_cache_save(SPECULUM NIHIL db, VERBUM cache_key, VERBUM json_text) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO openapi_cache (cache_key, json_text, created_at_unix) VALUES (?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, cache_key)
+  CONIURA stmt_bind_text(stmt, 2, json_text)
+  CONIURA stmt_bind_int(stmt, 3, now_unix)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE openapi_cache_load(SPECULUM NIHIL db, VERBUM cache_key, REX max_age_seconds) REDDE VERBUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT json_text, created_at_unix FROM openapi_cache WHERE cache_key = ? LIMIT 1")
+  EVOCA VERBUM out AD ""
+  CONIURA stmt_bind_text(stmt, 1, cache_key)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    EVOCA REX created_at AD CONIURA stmt_get_int(stmt, 1)
+    EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+    SI created_at + max_age_seconds >= now_unix
+      VINCIRE out AD CONIURA stmt_get_text(stmt, 0)
+    FIN SI
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE openapi_handler(SPECULUM NIHIL db, SPECULUM ApiSerializerRegistry serializers, SPECULUM ApiViewSetRegistry viewsets, WebRequest req, VERBUM title, VERBUM version, VERBUM base_url) REDDE WebResponse
+  SI CONIURA compare(req.method, "GET") != 0
+    EVOCA SPECULUM NIHIL allow AD CONIURA fluxus_init(MENSURA(VERBUM))
+    EVOCA VERBUM get_text AD "GET"
+    CONIURA fluxus_push(allow, SPECULUM get_text)
+    REDDE CONIURA response_method_not_allowed(allow)
+  FIN SI
+  CONIURA openapi_cache_schema_up(db)
+  EVOCA VERBUM cached AD CONIURA openapi_cache_load(db, "default", 300)
+  SI CONIURA len(cached) == 0
+    VINCIRE cached AD CONIURA openapi_spec_to_json(serializers, viewsets, title, version, base_url)
+    CONIURA openapi_cache_save(db, "default", cached)
+  FIN SI
+  EVOCA WebResponse res AD CONIURA response_json_text(cached)
+  CONIURA response_set_header(SPECULUM res, "content-type", "application/json; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

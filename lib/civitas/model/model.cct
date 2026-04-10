@@ -1,0 +1,155 @@
+INCIPIT grimoire "civitas_model"
+
+ADVOCARE "cct/fluxus.cct"
+
+ORDO FieldKind
+  FkInt,
+  FkText,
+  FkReal,
+  FkBool,
+  FkDate,
+  FkDateTime,
+  FkUUID,
+  FkBlob
+FIN ORDO
+
+SIGILLUM FieldDef
+  nome: VERBUM
+  kind: FieldKind
+  required: VERUM
+  unique: VERUM
+  pk: VERUM
+  auto_increment: VERUM
+  fk_tabela: VERBUM
+  fk_col: VERBUM
+  default_texto: VERBUM
+  default_int: REX
+  tem_default: VERUM
+FIN SIGILLUM
+
+SIGILLUM IndexDef
+  campos: VERBUM
+  unico: VERUM
+FIN SIGILLUM
+
+SIGILLUM ModelDef
+  tabela: VERBUM
+  campos: SPECULUM NIHIL
+  indices: SPECULUM NIHIL
+  hook_before_save: VERBUM
+  hook_after_save: VERBUM
+  hook_before_delete: VERBUM
+  hook_after_delete: VERBUM
+  storage_policy: VERBUM
+FIN SIGILLUM
+
+RITUALE model_def_new(VERBUM tabela) REDDE ModelDef
+  EVOCA ModelDef def
+  VINCIRE def.tabela AD tabela
+  VINCIRE def.campos AD CONIURA fluxus_init(MENSURA(FieldDef))
+  VINCIRE def.indices AD CONIURA fluxus_init(MENSURA(IndexDef))
+  VINCIRE def.hook_before_save AD ""
+  VINCIRE def.hook_after_save AD ""
+  VINCIRE def.hook_before_delete AD ""
+  VINCIRE def.hook_after_delete AD ""
+  VINCIRE def.storage_policy AD ""
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE model_field_base(VERBUM nome, FieldKind kind, VERUM required, VERUM unique, VERUM pk, VERUM auto_increment) REDDE FieldDef
+  EVOCA FieldDef f
+  VINCIRE f.nome AD nome
+  VINCIRE f.kind AD kind
+  VINCIRE f.required AD required
+  VINCIRE f.unique AD unique
+  VINCIRE f.pk AD pk
+  VINCIRE f.auto_increment AD auto_increment
+  VINCIRE f.fk_tabela AD ""
+  VINCIRE f.fk_col AD ""
+  VINCIRE f.default_texto AD ""
+  VINCIRE f.default_int AD 0
+  VINCIRE f.tem_default AD FALSUM
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE model_def_add_field(ModelDef def, FieldDef field) REDDE NIHIL
+  CONIURA fluxus_push(def.campos, SPECULUM field)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_int(ModelDef def, VERBUM nome, VERUM required, VERUM pk, VERUM auto_inc) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkInt, required, FALSUM, pk, auto_inc)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_text(ModelDef def, VERBUM nome, VERUM required, VERUM unique) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkText, required, unique, FALSUM, FALSUM)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_real(ModelDef def, VERBUM nome, VERUM required) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkReal, required, FALSUM, FALSUM, FALSUM)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_bool(ModelDef def, VERBUM nome, VERUM default_val) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkBool, VERUM, FALSUM, FALSUM, FALSUM)
+  SI default_val
+    VINCIRE f.default_int AD 1
+  ALITER
+    VINCIRE f.default_int AD 0
+  FIN SI
+  VINCIRE f.tem_default AD VERUM
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_date(ModelDef def, VERBUM nome, VERUM required) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkDate, required, FALSUM, FALSUM, FALSUM)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_datetime(ModelDef def, VERBUM nome, VERUM required, VERUM auto_now) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkDateTime, required, FALSUM, FALSUM, auto_now)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_uuid(ModelDef def, VERBUM nome, VERUM pk) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkUUID, VERUM, VERUM, pk, FALSUM)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_blob(ModelDef def, VERBUM nome, VERUM required) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkBlob, required, FALSUM, FALSUM, FALSUM)
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_fk(ModelDef def, VERBUM nome, VERBUM tabela_ref, VERBUM col_ref, VERUM required) REDDE NIHIL
+  EVOCA FieldDef f AD CONIURA model_field_base(nome, FkInt, required, FALSUM, FALSUM, FALSUM)
+  VINCIRE f.fk_tabela AD tabela_ref
+  VINCIRE f.fk_col AD col_ref
+  CONIURA model_def_add_field(def, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_add_index(ModelDef def, VERBUM campos, VERUM unico) REDDE NIHIL
+  EVOCA IndexDef idx
+  VINCIRE idx.campos AD campos
+  VINCIRE idx.unico AD unico
+  CONIURA fluxus_push(def.indices, SPECULUM idx)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_set_storage_policy(SPECULUM ModelDef def, VERBUM storage_policy) REDDE NIHIL
+  VINCIRE (*def).storage_policy AD storage_policy
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

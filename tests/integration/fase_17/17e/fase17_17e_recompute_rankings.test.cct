@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase17_17e_recompute_rankings"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17e_recompute_rankings")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  CONIURA social_ensure_schema(stack.db)
+  CONIURA phase17_insert_view_counter(stack.db, "page", 1, 50)
+  CONIURA phase17_insert_view_counter(stack.db, "page", 2, 10)
+  CONIURA editorial_enqueue_rankings(stack.dbh, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "editorial-worker")
+  SI CONIURA db_scalar_int(stack.db, "SELECT score FROM editorial_rankings WHERE resource_name = 'page:1'") != 50
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

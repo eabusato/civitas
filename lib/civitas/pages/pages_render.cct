@@ -1,0 +1,12 @@
+INCIPIT grimoire "civitas_pages_render"
+
+ADVOCARE "pages.cct"
+
+RITUALE page_public_title(Page page) REDDE VERBUM
+  SI CONIURA len(page.seo_title) > 0
+    REDDE page.seo_title
+  FIN SI
+  REDDE page.title
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

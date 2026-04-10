@@ -1,0 +1,58 @@
+INCIPIT grimoire "fase9_9f_handler_expired_and_not_found"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_url.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9f_root("handler_errors")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaStore store AD CONIURA phase9_9f_open_store(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9f_private_artifact(root, "private.txt", "secret-data")
+  EVOCA SPECULUM NIHIL registry_ref AD CONIURA phase9_9f_registry()
+  EVOCA SignedUrlConfig url_cfg AD CONIURA phase9_9f_signed_cfg()
+
+  EVOCA SignedUrl expired_link AD CONIURA storage_sign_url(url_cfg, "tmp-secret-active", artifact, 100)
+  EVOCA WebRequest expired_req AD CONIURA phase9_9f_request_with_path_artifact(
+    CONIURA concat("/media/private/", CONIURA concat(artifact.artifact_id, CONIURA concat("?token=", CONIURA concat(expired_link.token, CONIURA concat("&expires=", CONIURA stringify_int(expired_link.expires_unix)))))),
+    artifact.artifact_id
+  )
+  EVOCA WebResponse expired_res AD CONIURA delivery_handler(
+    expired_req,
+    CONIURA phase9_9f_direct_cfg(),
+    store,
+    registry_ref,
+    url_cfg,
+    101
+  )
+  SI expired_res.status != 403
+    IACE "expired token should return 403"
+  FIN SI
+
+  EVOCA MediaArtifact missing_artifact AD CONIURA media_store_artifact("missing-id", MEDIA_ZONE_PRIVATE, "missing-id.txt", "text/plain", 10, "", "", "")
+  EVOCA SignedUrl missing_link AD CONIURA storage_sign_url(url_cfg, "tmp-secret-active", missing_artifact, 1000)
+  EVOCA WebRequest missing_req AD CONIURA phase9_9f_request_with_path_artifact(
+    CONIURA concat("/media/private/missing-id?token=", CONIURA concat(missing_link.token, CONIURA concat("&expires=", CONIURA stringify_int(missing_link.expires_unix)))),
+    "missing-id"
+  )
+  EVOCA WebResponse missing_res AD CONIURA delivery_handler(
+    missing_req,
+    CONIURA phase9_9f_direct_cfg(),
+    store,
+    registry_ref,
+    url_cfg,
+    999
+  )
+  SI missing_res.status != 404
+    IACE "missing artifact should return 404"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

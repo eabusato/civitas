@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase8_8a_expired_session_returns_new_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SessionConfig cfg AD CONIURA phase8_session_config("expired-secret-8a")
+  EVOCA SessionStore store AD CONIURA session_store_mem_init()
+  EVOCA Session sess AD CONIURA session_new()
+
+  VINCIRE cfg.max_age_segundos AD 1
+  VINCIRE sess.criado_em AD sess.criado_em - 5000
+  VINCIRE sess.acessado_em AD sess.acessado_em - 5000
+  CONIURA session_set(SPECULUM sess, "user_id", "99")
+  CONIURA session_backend_save(store, SPECULUM sess, cfg)
+
+  EVOCA WebRequest req AD CONIURA phase8_request_with_cookie(cfg.cookie_nome, CONIURA session_cookie_sign(sess.id, cfg.segredo))
+  EVOCA Session loaded AD CONIURA session_load(req, store, cfg)
+  SI NON loaded.novo
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(loaded.id, sess.id) == 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

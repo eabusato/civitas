@@ -1,0 +1,10 @@
+INCIPIT grimoire "civitas_l10n_fmt"
+
+ADVOCARE "l10n_fmt/l10n_fmt.cct"
+ADVOCARE "l10n_fmt/l10n_fmt_rules.cct"
+ADVOCARE "l10n_fmt/l10n_fmt_reltime.cct"
+ADVOCARE "l10n_fmt/l10n_fmt_date_long.cct"
+ADVOCARE "l10n_fmt/l10n_fmt_ordinal.cct"
+ADVOCARE "l10n_fmt/l10n_fmt_list.cct"
+
+EXPLICIT grimoire

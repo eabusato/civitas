@@ -1,0 +1,25 @@
+INCIPIT grimoire "civitas_permissions_schema"
+
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE permissions_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS permissions (id INTEGER PRIMARY KEY AUTOINCREMENT, codigo TEXT NOT NULL UNIQUE, descricao TEXT NOT NULL DEFAULT '')")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL UNIQUE)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS user_permissions (user_id TEXT NOT NULL, permissao TEXT NOT NULL, PRIMARY KEY (user_id, permissao))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS group_permissions (group_id INTEGER NOT NULL, permissao TEXT NOT NULL, PRIMARY KEY (group_id, permissao))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS user_groups (user_id TEXT NOT NULL, group_id INTEGER NOT NULL, PRIMARY KEY (user_id, group_id))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS object_permissions (user_id TEXT NOT NULL, permissao TEXT NOT NULL, modelo TEXT NOT NULL, objeto_id TEXT NOT NULL, PRIMARY KEY (user_id, permissao, modelo, objeto_id))")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE permissions_schema_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS object_permissions")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS user_groups")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS group_permissions")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS user_permissions")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS groups")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS permissions")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

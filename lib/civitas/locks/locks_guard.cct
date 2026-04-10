@@ -1,0 +1,46 @@
+INCIPIT grimoire "civitas_locks_guard"
+
+ADVOCARE "cct/db_postgres.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "locks.cct"
+
+RITUALE lock_guard_acquire(Db db, PgLockKey key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_lock(db, key)
+  SI CONIURA result_is_err GENUS(PgLockHandle, VERBUM)(result)
+    REDDE CONIURA Err GENUS(LockGuard, VERBUM)(CONIURA result_unwrap_err GENUS(PgLockHandle, VERBUM)(result))
+  FIN SI
+  REDDE CONIURA Ok GENUS(LockGuard, VERBUM)(CONIURA lock_guard_new(CONIURA result_unwrap GENUS(PgLockHandle, VERBUM)(result)))
+EXPLICIT RITUALE
+
+RITUALE lock_guard_try_acquire(Db db, PgLockKey key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_try_lock(db, key)
+  SI CONIURA result_is_err GENUS(PgLockAttempt, VERBUM)(result)
+    REDDE CONIURA Err GENUS(LockGuard, VERBUM)(CONIURA result_unwrap_err GENUS(PgLockAttempt, VERBUM)(result))
+  FIN SI
+  EVOCA PgLockAttempt attempt AD CONIURA result_unwrap GENUS(PgLockAttempt, VERBUM)(result)
+  REDDE CONIURA Ok GENUS(LockGuard, VERBUM)(CONIURA lock_guard_new(attempt.handle))
+EXPLICIT RITUALE
+
+RITUALE lock_guard_release(Db db, SPECULUM LockGuard guard) REDDE SPECULUM NIHIL
+  SI (*guard).released
+    REDDE CONIURA Ok GENUS(VERUM, VERBUM)(VERUM)
+  FIN SI
+  EVOCA SPECULUM PgLockHandle handle_ptr AD (*guard).handle
+  SI handle_ptr == NIHIL
+    VINCIRE (*guard).released AD VERUM
+    REDDE CONIURA Ok GENUS(VERUM, VERBUM)(VERUM)
+  FIN SI
+  SI NON (*handle_ptr).acquired
+    VINCIRE (*guard).released AD VERUM
+    REDDE CONIURA Ok GENUS(VERUM, VERBUM)(VERUM)
+  FIN SI
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_unlock(db, *handle_ptr)
+  SI CONIURA result_is_err GENUS(VERUM, VERBUM)(result)
+    REDDE CONIURA Err GENUS(VERUM, VERBUM)(CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(result))
+  FIN SI
+  VINCIRE (*guard).released AD VERUM
+  REDDE CONIURA Ok GENUS(VERUM, VERBUM)(VERUM)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase9_9c_gc_keeps_referenced_and_config_from_settings"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_gc.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9c_root("gc_keep_and_settings")
+  EVOCA Settings settings AD CONIURA phase9_9c_load_settings(
+    root,
+    "[app]\nname = \"f9\"\nallowed_hosts = [\"example.test\"]\n\n[media]\nroot_dir = \"var/media\"\npublic_base_url = \"/cdn\"\nprivate_base_url = \"/dl/private\"\ntmp_max_age_minutes = 15\ncreate_missing_dirs = true\n"
+  )
+  EVOCA SPECULUM NIHIL cfg_res AD CONIURA storage_config_from_settings(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(StorageConfig, VERBUM)(cfg_res)
+    IACE CONIURA result_unwrap_err GENUS(StorageConfig, VERBUM)(cfg_res)
+  FIN SI
+  EVOCA StorageConfig cfg AD CONIURA result_unwrap GENUS(StorageConfig, VERBUM)(cfg_res)
+  EVOCA MediaStore store AD CONIURA phase9_9c_open_store(root)
+  EVOCA StorageConfig local_cfg AD CONIURA phase9_9c_config(root)
+  EVOCA VERBUM keep_path AD CONIURA path_join(CONIURA path_join(local_cfg.root_dir, "tmp"), "keep-me.txt")
+  CONIURA write_all(keep_path, "keep")
+
+  SI CONIURA compare(cfg.url_base_public, "/cdn") != 0
+    IACE "settings should override public base url"
+  FIN SI
+  SI CONIURA compare(cfg.url_base_private, "/dl/private") != 0
+    IACE "settings should override private base url"
+  FIN SI
+  SI cfg.tmp_max_age_minutos != 15
+    IACE "settings should override tmp max age"
+  FIN SI
+
+  EVOCA StorageGcReport report AD CONIURA storage_gc_tmp(store, local_cfg, phase9_9c_gc_checker_keep_marked, 4102444800)
+  SI report.orfaos_removidos != 0
+    IACE "referenced file should be preserved"
+  FIN SI
+  SI NON CONIURA exists(keep_path)
+    IACE "referenced tmp file should still exist"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,171 @@
+INCIPIT grimoire "civitas_cache_stampede"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../cache/cache_api.cct"
+
+ORDO StampedeStatus
+  SsClaimed,
+  SsHit,
+  SsWaiting,
+  SsTimeout
+FIN ORDO
+
+ORDO StampedeBackendKind
+  SbkMem,
+  SbkRedisClaim
+FIN ORDO
+
+SIGILLUM StampedeResult
+  status: StampedeStatus
+  valor: VERBUM
+FIN SIGILLUM
+
+SIGILLUM StampedeHandle
+  cache_handle: SPECULUM NIHIL
+  backend_kind: StampedeBackendKind
+  inflight: SPECULUM NIHIL
+  redis: SPECULUM NIHIL
+  poll_interval_ms: REX
+  max_polls: REX
+  claim_ttl_seconds: REX
+  namespace: VERBUM
+FIN SIGILLUM
+
+RITUALE stampede_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE stampede_result_new(StampedeStatus status, VERBUM valor) REDDE StampedeResult
+  EVOCA StampedeResult sr
+  VINCIRE sr.status AD status
+  VINCIRE sr.valor AD valor
+  REDDE sr
+EXPLICIT RITUALE
+
+RITUALE stampede_handle_mem(SPECULUM NIHIL cache_handle, VERBUM namespace) REDDE StampedeHandle
+  EVOCA StampedeHandle sh
+  VINCIRE sh.cache_handle AD cache_handle
+  VINCIRE sh.backend_kind AD SbkMem
+  VINCIRE sh.inflight AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE sh.redis AD NIHIL
+  VINCIRE sh.poll_interval_ms AD 50
+  VINCIRE sh.max_polls AD 20
+  VINCIRE sh.claim_ttl_seconds AD 30
+  VINCIRE sh.namespace AD namespace
+  REDDE sh
+EXPLICIT RITUALE
+
+RITUALE stampede_handle_redis(SPECULUM NIHIL cache_handle, SPECULUM NIHIL redis, VERBUM namespace) REDDE StampedeHandle
+  EVOCA StampedeHandle sh AD CONIURA stampede_handle_mem(cache_handle, namespace)
+  VINCIRE sh.backend_kind AD SbkRedisClaim
+  VINCIRE sh.redis AD redis
+  REDDE sh
+EXPLICIT RITUALE
+
+RITUALE stampede_inflight_contains(SPECULUM NIHIL inflight, VERBUM key) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(inflight)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(inflight, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE stampede_inflight_add(SPECULUM NIHIL inflight, VERBUM key) REDDE NIHIL
+  SI NON CONIURA stampede_inflight_contains(inflight, key)
+    CONIURA fluxus_push(inflight, SPECULUM key)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE stampede_inflight_remove(SPECULUM NIHIL inflight, VERBUM key) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(inflight)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(inflight, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      CONIURA fluxus_remove(inflight, i)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE stampede_claim_key(StampedeHandle sh, VERBUM key) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat(sh.namespace, ":"), key)
+EXPLICIT RITUALE
+
+RITUALE stampede_poll(StampedeHandle sh, VERBUM key) REDDE StampedeResult
+  EVOCA SPECULUM CacheHandle ch AD sh.cache_handle
+  EVOCA REX polls AD 0
+  DUM polls < sh.max_polls
+    CONIURA sleep_ms(sh.poll_interval_ms)
+    EVOCA CacheMaybeText maybe AD CONIURA cache_get(ch, key)
+    SI maybe.found
+      REDDE CONIURA stampede_result_new(SsHit, maybe.valor)
+    FIN SI
+    VINCIRE polls AD polls + 1
+  FIN DUM
+  REDDE CONIURA stampede_result_new(SsTimeout, "")
+EXPLICIT RITUALE
+
+RITUALE stampede_try(StampedeHandle sh, VERBUM key) REDDE StampedeResult
+  EVOCA SPECULUM CacheHandle ch AD sh.cache_handle
+  EVOCA CacheMaybeText maybe AD CONIURA cache_get(ch, key)
+  SI maybe.found
+    REDDE CONIURA stampede_result_new(SsHit, maybe.valor)
+  FIN SI
+
+  SI sh.backend_kind == SbkMem
+    SI NON CONIURA stampede_inflight_contains(sh.inflight, key)
+      CONIURA stampede_inflight_add(sh.inflight, key)
+      REDDE CONIURA stampede_result_new(SsClaimed, "")
+    FIN SI
+    REDDE CONIURA stampede_poll(sh, key)
+  FIN SI
+
+  EVOCA SPECULUM Redis redis_ptr AD sh.redis
+  EVOCA SPECULUM NIHIL incr_res AD CONIURA redis_incr(*redis_ptr, CONIURA stampede_claim_key(sh, key))
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(incr_res)
+    REDDE CONIURA stampede_result_new(SsClaimed, "")
+  FIN SI
+  SI CONIURA result_unwrap GENUS(REX, VERBUM)(incr_res) == 1
+    CONIURA redis_expire(*redis_ptr, CONIURA stampede_claim_key(sh, key), sh.claim_ttl_seconds)
+    REDDE CONIURA stampede_result_new(SsClaimed, "")
+  FIN SI
+  REDDE CONIURA stampede_poll(sh, key)
+EXPLICIT RITUALE
+
+RITUALE stampede_release(StampedeHandle sh, VERBUM key, VERBUM valor, REX ttl_seconds) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CacheHandle ch AD sh.cache_handle
+  CONIURA cache_set(ch, key, valor, ttl_seconds)
+  SI sh.backend_kind == SbkMem
+    CONIURA stampede_inflight_remove(sh.inflight, key)
+    REDDE CONIURA stampede_ok()
+  FIN SI
+  EVOCA SPECULUM Redis redis_ptr AD sh.redis
+  CONIURA redis_del(*redis_ptr, CONIURA stampede_claim_key(sh, key))
+  REDDE CONIURA stampede_ok()
+EXPLICIT RITUALE
+
+RITUALE stampede_abort(StampedeHandle sh, VERBUM key) REDDE NIHIL
+  SI sh.backend_kind == SbkMem
+    CONIURA stampede_inflight_remove(sh.inflight, key)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM Redis redis_ptr AD sh.redis
+  CONIURA redis_del(*redis_ptr, CONIURA stampede_claim_key(sh, key))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

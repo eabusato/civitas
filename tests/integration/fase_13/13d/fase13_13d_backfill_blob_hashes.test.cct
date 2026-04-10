@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase13_13d_backfill_blob_hashes"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_io.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_backfill.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13d_backfill_blob_hashes")
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "test.db"))
+  CONIURA phase13_13d_seed_asset_schema(db)
+  EVOCA VERBUM file_path AD CONIURA path_join(root, "file.txt")
+  CONIURA write_all(file_path, "hello")
+  EVOCA UploadDescriptor d AD CONIURA upload_descriptor_new(file_path, "", 5, "text/plain", "file.txt")
+  EVOCA VERBUM payload AD CONIURA replace_all(CONIURA upload_descriptor_to_json(d), "'", "''")
+  EVOCA VERBUM sql_insert AD CONIURA concat("INSERT INTO assets (arquivo) VALUES ('", payload)
+  VINCIRE sql_insert AD CONIURA concat(sql_insert, "')")
+  CONIURA db_exec(db, sql_insert)
+  EVOCA DataIoResult r AD CONIURA data_backfill_blob_hashes(db, "assets", "arquivo")
+  EVOCA UploadDescriptor updated AD CONIURA upload_descriptor_from_json(CONIURA db_scalar_text(db, "SELECT arquivo FROM assets WHERE id = 1"))
+  SI r.ok != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA len(updated.hash) != 64
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,71 @@
+-- Generated from partials/post_card.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_partials_post_card"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../../lib/civitas/template/integration.cct"
+ADVOCARE "../../apps/shared/template_contexts.cct"
+ADVOCARE "../../apps/shared/types.cct"
+
+RITUALE render_partials_post_card(RedePostCardContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<article class=\"card post-card\">\n  <div class=\"post-head\">\n    <img class=\"avatar\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.author_avatar_url))
+  CONIURA builder_append(b, "\" alt=\"\">\n    <div>\n      <a class=\"author\" href=\"/perfil/")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.author_handle))
+  CONIURA builder_append(b, "\">@")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.author_handle))
+  CONIURA builder_append(b, "</a>\n      <div class=\"muted\">")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.author_name))
+  CONIURA builder_append(b, " &middot; ")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.created_at))
+  CONIURA builder_append(b, "</div>\n    </div>\n  </div>\n  <h2><a href=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.slug))
+  CONIURA builder_append(b, "\">")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.title))
+  CONIURA builder_append(b, "</a></h2>\n  <p>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.body))
+  CONIURA builder_append(b, "</p>\n  ")
+  SI ctx.has_video
+    CONIURA builder_append(b, "\n    <video class=\"media\" controls preload=\"metadata\" src=\"")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.media_url))
+    CONIURA builder_append(b, "\"></video>\n  ")
+  FIN SI
+  CONIURA builder_append(b, "\n  ")
+  SI ctx.has_image
+    CONIURA builder_append(b, "\n    <img class=\"media\" alt=\"post media\" src=\"")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.media_url))
+    CONIURA builder_append(b, "\">\n  ")
+  FIN SI
+  CONIURA builder_append(b, "\n  <div class=\"post-actions\">\n    <span>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.likes_count)))
+  CONIURA builder_append(b, " likes</span>\n    <span>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.comments_count)))
+  CONIURA builder_append(b, " comments</span>\n    ")
+  SI ctx.can_interact
+    CONIURA builder_append(b, "\n      <form method=\"POST\" action=\"/posts/")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.slug))
+    CONIURA builder_append(b, "/like\" class=\"inline-form\">\n        ")
+    CONIURA builder_append(b, ctx.csrf_html)
+    CONIURA builder_append(b, "\n        <input type=\"hidden\" name=\"next\" value=\"")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.return_path))
+    CONIURA builder_append(b, "\">\n        ")
+    SI ctx.liked
+      CONIURA builder_append(b, "\n          <button type=\"submit\" class=\"secondary\">Liked</button>\n        ")
+    ALITER
+      CONIURA builder_append(b, "\n          <button type=\"submit\">Like</button>\n        ")
+    FIN SI
+    CONIURA builder_append(b, "\n      </form>\n    ")
+  FIN SI
+  CONIURA builder_append(b, "\n  </div>\n</article>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

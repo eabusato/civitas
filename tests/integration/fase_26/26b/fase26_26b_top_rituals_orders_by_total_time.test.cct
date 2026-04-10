@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase26_26b_top_rituals_orders_by_total_time"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(NIHIL, 4)
+  CONIURA profiler_enable(SPECULUM state)
+  CONIURA instrument_buffer_clear()
+  EVOCA REX root_span AD CONIURA instrument_http_span("GET", "/profiled")
+  EVOCA REX slow_span AD CONIURA instrument_span_begin("call", "ritual.slow")
+  CONIURA sleep_ms(3)
+  CONIURA instrument_span_end(slow_span)
+  EVOCA REX fast_span AD CONIURA instrument_span_begin("call", "ritual.fast")
+  CONIURA sleep_ms(1)
+  CONIURA instrument_span_end(fast_span)
+  CONIURA instrument_span_end(root_span)
+  EVOCA SPECULUM NIHIL spans AD CONIURA instrument_buffer_drain()
+  EVOCA RequestProfile profile AD CONIURA profiler_analyze(SPECULUM state, spans, "trace-26b-top", "req-26b-top", "/profiled", "GET", 10)
+  EVOCA SPECULUM NIHIL top AD CONIURA profiler_top_rituals(profile, 2)
+  EVOCA SPECULUM RitualStat first_ptr AD CONIURA fluxus_get(top, 0)
+  EVOCA SPECULUM RitualStat second_ptr AD CONIURA fluxus_get(top, 1)
+  SI CONIURA compare((*first_ptr).name, "GET /profiled") != 0
+    CONIURA fluxus_free(top)
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*second_ptr).name, "ritual.slow") != 0
+    CONIURA fluxus_free(top)
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    REDDE 2
+  FIN SI
+  CONIURA fluxus_free(top)
+  CONIURA profiler_request_profile_free(SPECULUM profile)
+  CONIURA instrument_spans_free(spans)
+  CONIURA profiler_disable(SPECULUM state)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

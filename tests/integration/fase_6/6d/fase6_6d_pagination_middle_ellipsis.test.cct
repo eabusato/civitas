@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase6_6d_pagination_middle_ellipsis_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/pagination.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PaginationConfig cfg AD CONIURA pagination_config_default("/posts?tag=civitas", 5, 10)
+  EVOCA VERBUM html AD CONIURA pagination_html(cfg)
+
+  SI CONIURA find(html, "pagination-ellipsis") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "/posts?page=1&amp;tag=civitas") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "/posts?page=10&amp;tag=civitas") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "/posts?page=4&amp;tag=civitas") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(html, "/posts?page=6&amp;tag=civitas") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,16 @@
+INCIPIT grimoire "fase8_8d_same_content_true_same_hash_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor_helpers.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor a AD CONIURA upload_descriptor_new("uploads/a.jpg", "samehash", 10, "image/jpeg", "a.jpg")
+  EVOCA UploadDescriptor b AD CONIURA upload_descriptor_new("uploads/b.jpg", "samehash", 99, "image/jpeg", "b.jpg")
+  SI NON CONIURA upload_descriptor_same_content(a, b)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

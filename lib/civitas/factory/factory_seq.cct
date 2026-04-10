@@ -1,0 +1,58 @@
+INCIPIT grimoire "civitas_factory_seq"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE factory_seq_root() REDDE VERBUM
+  REDDE "tests/tmp/fase_13/factory_seq"
+EXPLICIT RITUALE
+
+RITUALE factory_seq_key_path(VERBUM nome) REDDE VERBUM
+  EVOCA VERBUM safe AD CONIURA replace_all(nome, ".", "__")
+  REDDE CONIURA path_join(CONIURA factory_seq_root(), CONIURA concat(safe, ".seq"))
+EXPLICIT RITUALE
+
+RITUALE factory_seq_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_dir(path)
+    EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+    EVOCA REX n AD CONIURA fluxus_len(entries)
+    EVOCA REX i AD 0
+    DUM i < n
+      EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+      CONIURA factory_seq_delete_tree(CONIURA path_join(path, *name_ptr))
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA delete_dir(path)
+    REDDE
+  FIN SI
+  CONIURA delete_file(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_seq_next(VERBUM nome) REDDE REX
+  CONIURA mkdir_all(CONIURA factory_seq_root())
+  EVOCA VERBUM path AD CONIURA factory_seq_key_path(nome)
+  EVOCA REX current AD 0
+  SI CONIURA exists(path)
+    VINCIRE current AD CONIURA fmt_parse_int(CONIURA read_all(path))
+  FIN SI
+  VINCIRE current AD current + 1
+  CONIURA write_all(path, CONIURA stringify_int(current))
+  REDDE current
+EXPLICIT RITUALE
+
+RITUALE factory_seq_reset() REDDE NIHIL
+  SI CONIURA exists(CONIURA factory_seq_root())
+    CONIURA factory_seq_delete_tree(CONIURA factory_seq_root())
+  FIN SI
+  CONIURA mkdir_all(CONIURA factory_seq_root())
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

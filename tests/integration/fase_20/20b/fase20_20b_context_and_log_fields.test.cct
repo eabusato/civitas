@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase20_20b_context_and_log_fields"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_collector/trace_collector.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/instrument.cct"
+
+RITUALE main() REDDE REX
+  EVOCA RequestContext ctx AD CONIURA phase20_context()
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  EVOCA TraceRequestContext tctx AD CONIURA trace_collector_begin(CONIURA trace_collector_config_default(), CONIURA phase20_request("GET", "/ctx"), 1)
+  CONIURA trace_collector_bind_request_context(SPECULUM ctx, SPECULUM tctx)
+  SI CONIURA len(CONIURA trace_collector_context_trace_id(ctx)) == 0
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM fields AD CONIURA trace_collector_fields_json(tctx.trace_id, "{\"status\":\"ok\"}")
+  SI CONIURA find(fields, "\"trace_id\":\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(fields, "\"status\":\"ok\"") == -1
+    CONIURA instrument_disable()
+    REDDE 3
+  FIN SI
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

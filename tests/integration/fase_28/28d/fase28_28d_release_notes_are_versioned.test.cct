@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase28_28d_release_notes_are_versioned"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/release.cct"
+ADVOCARE "../../../../lib/civitas/release/release.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28d_release_notes")
+  EVOCA ReleaseConfig cfg AD CONIURA release_config_default(root, "1.0.0")
+  EVOCA VERBUM path AD CONIURA release_build_notes(cfg)
+  SI NON CONIURA exists(path)
+    REDDE 1
+  FIN SI
+  SI CONIURA find(CONIURA read_all(path), "Civitas 1.0.0") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,306 @@
+INCIPIT grimoire "civitas_settings_schema"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO SettingsSource
+  SETTINGS_SOURCE_DEFAULT,
+  SETTINGS_SOURCE_FILE_BASE,
+  SETTINGS_SOURCE_FILE_ENVIRONMENT,
+  SETTINGS_SOURCE_ENV,
+  SETTINGS_SOURCE_TEST_OVERRIDE
+FIN ORDO
+
+ORDO SettingsValueKind
+  SETTINGS_VALUE_VERBUM,
+  SETTINGS_VALUE_BOOL,
+  SETTINGS_VALUE_REX,
+  SETTINGS_VALUE_UMBRA,
+  SETTINGS_VALUE_LIST_VERBUM,
+  SETTINGS_VALUE_LIST_REX,
+  SETTINGS_VALUE_LIST_BOOL
+FIN ORDO
+
+SIGILLUM SettingsValue
+  key: VERBUM
+  kind: SettingsValueKind
+  serialized: VERBUM
+  source: SettingsSource
+  sensitive: VERUM
+FIN SIGILLUM
+
+SIGILLUM SettingSpec
+  key: VERBUM
+  kind: SettingsValueKind
+  required: VERUM
+  sensitive: VERUM
+  has_default: VERUM
+  default_serialized: VERBUM
+  env_name: VERBUM
+  normalize_path: VERUM
+  condition_key: VERBUM
+  condition_expected_serialized: VERBUM
+  allow_empty: VERUM
+FIN SIGILLUM
+
+SIGILLUM SettingsError
+  key: VERBUM
+  expected_type: VERBUM
+  received_value_safe: VERBUM
+  origin: SettingsSource
+  environment: VERBUM
+  message: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SettingsDiagnostic
+  level: VERBUM
+  key: VERBUM
+  message: VERBUM
+  source: SettingsSource
+FIN SIGILLUM
+
+SIGILLUM Settings
+  project_root: VERBUM
+  environment: VERBUM
+  strict_mode: VERUM
+  values: SPECULUM NIHIL
+  diagnostics: SPECULUM NIHIL
+  schema: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE settings_source_name(SettingsSource source) REDDE VERBUM
+  ELIGE source
+    CASUS SETTINGS_SOURCE_DEFAULT:
+      REDDE "default"
+    CASUS SETTINGS_SOURCE_FILE_BASE:
+      REDDE "file_base"
+    CASUS SETTINGS_SOURCE_FILE_ENVIRONMENT:
+      REDDE "file_environment"
+    CASUS SETTINGS_SOURCE_ENV:
+      REDDE "env"
+    ALIOQUIN:
+      REDDE "test_override"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE settings_value_kind_name(SettingsValueKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS SETTINGS_VALUE_VERBUM:
+      REDDE "VERBUM"
+    CASUS SETTINGS_VALUE_BOOL:
+      REDDE "VERUM"
+    CASUS SETTINGS_VALUE_REX:
+      REDDE "REX"
+    CASUS SETTINGS_VALUE_UMBRA:
+      REDDE "UMBRA"
+    CASUS SETTINGS_VALUE_LIST_VERBUM:
+      REDDE "LIST<VERBUM>"
+    CASUS SETTINGS_VALUE_LIST_REX:
+      REDDE "LIST<REX>"
+    ALIOQUIN:
+      REDDE "LIST<VERUM>"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE settings_value_make(VERBUM key, SettingsValueKind kind, VERBUM serialized, SettingsSource source, VERUM sensitive) REDDE SettingsValue
+  EVOCA SettingsValue value
+  VINCIRE value.key AD key
+  VINCIRE value.kind AD kind
+  VINCIRE value.serialized AD serialized
+  VINCIRE value.source AD source
+  VINCIRE value.sensitive AD sensitive
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE settings_spec_make(
+  VERBUM key,
+  SettingsValueKind kind,
+  VERUM required,
+  VERUM sensitive,
+  VERUM has_default,
+  VERBUM default_serialized,
+  VERBUM env_name,
+  VERUM normalize_path,
+  VERBUM condition_key,
+  VERBUM condition_expected_serialized,
+  VERUM allow_empty
+) REDDE SettingSpec
+  EVOCA SettingSpec spec
+  VINCIRE spec.key AD key
+  VINCIRE spec.kind AD kind
+  VINCIRE spec.required AD required
+  VINCIRE spec.sensitive AD sensitive
+  VINCIRE spec.has_default AD has_default
+  VINCIRE spec.default_serialized AD default_serialized
+  VINCIRE spec.env_name AD env_name
+  VINCIRE spec.normalize_path AD normalize_path
+  VINCIRE spec.condition_key AD condition_key
+  VINCIRE spec.condition_expected_serialized AD condition_expected_serialized
+  VINCIRE spec.allow_empty AD allow_empty
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE settings_error_make(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SettingsError
+  EVOCA SettingsError err
+  VINCIRE err.key AD key
+  VINCIRE err.expected_type AD expected_type
+  VINCIRE err.received_value_safe AD received_value_safe
+  VINCIRE err.origin AD origin
+  VINCIRE err.environment AD environment
+  VINCIRE err.message AD message
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE settings_error_message(SettingsError err) REDDE VERBUM
+  REDDE err.message
+EXPLICIT RITUALE
+
+RITUALE settings_diagnostic_make(VERBUM level, VERBUM key, VERBUM message, SettingsSource source) REDDE SettingsDiagnostic
+  EVOCA SettingsDiagnostic diag
+  VINCIRE diag.level AD level
+  VINCIRE diag.key AD key
+  VINCIRE diag.message AD message
+  VINCIRE diag.source AD source
+  REDDE diag
+EXPLICIT RITUALE
+
+RITUALE settings_schema_push(SPECULUM NIHIL specs, SettingSpec spec) REDDE NIHIL
+  CONIURA fluxus_push(specs, SPECULUM spec)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_schema_specs() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL specs AD CONIURA fluxus_init(MENSURA(SettingSpec))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("app.name", SETTINGS_VALUE_VERBUM, VERUM, FALSUM, FALSUM, "", "CIVITAS_APP__NAME", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("app.version", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "0.1.0", "CIVITAS_APP__VERSION", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("app.environment", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "development", "CIVITAS_APP__ENVIRONMENT", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("app.debug", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_APP__DEBUG", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("app.allowed_hosts", SETTINGS_VALUE_LIST_VERBUM, VERUM, FALSUM, FALSUM, "", "CIVITAS_APP__ALLOWED_HOSTS", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("http.host", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "127.0.0.1", "CIVITAS_HTTP__HOST", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("http.port", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "8080", "CIVITAS_HTTP__PORT", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("http.trusted_proxies", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_HTTP__TRUSTED_PROXIES", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("http.trust_forwarded_proto", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_HTTP__TRUST_FORWARDED_PROTO", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("http.trust_forwarded_for", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_HTTP__TRUST_FORWARDED_FOR", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.hsts_max_age_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "31536000", "CIVITAS_SECURITY__HSTS_MAX_AGE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.hsts_include_subdomains", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SECURITY__HSTS_INCLUDE_SUBDOMAINS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.hsts_preload", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SECURITY__HSTS_PRELOAD", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.default_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self'", "CIVITAS_SECURITY__CSP__DEFAULT_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.script_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self'", "CIVITAS_SECURITY__CSP__SCRIPT_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.style_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self'", "CIVITAS_SECURITY__CSP__STYLE_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.img_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self' data:", "CIVITAS_SECURITY__CSP__IMG_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.font_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self'", "CIVITAS_SECURITY__CSP__FONT_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.connect_src", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'self'", "CIVITAS_SECURITY__CSP__CONNECT_SRC", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.frame_ancestors", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "'none'", "CIVITAS_SECURITY__CSP__FRAME_ANCESTORS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.csp.use_nonces", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECURITY__CSP__USE_NONCES", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.x_frame_options", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "DENY", "CIVITAS_SECURITY__X_FRAME_OPTIONS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.x_content_type_options", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECURITY__X_CONTENT_TYPE_OPTIONS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.referrer_policy", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "strict-origin-when-cross-origin", "CIVITAS_SECURITY__REFERRER_POLICY", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.enforce_https", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SECURITY__ENFORCE_HTTPS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.rate_limit_enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SECURITY__RATE_LIMIT_ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.rate_limit_max_rps", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "5", "CIVITAS_SECURITY__RATE_LIMIT_MAX_RPS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("security.rate_limit_burst", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "10", "CIVITAS_SECURITY__RATE_LIMIT_BURST", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("csrf.cookie_name", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "civitas_csrf_binding", "CIVITAS_CSRF__COOKIE_NAME", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("csrf.field_name", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "civitas_csrf_token", "CIVITAS_CSRF__FIELD_NAME", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("csrf.header_name", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "X-CSRF-Token", "CIVITAS_CSRF__HEADER_NAME", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("csrf.exclude_bearer", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_CSRF__EXCLUDE_BEARER", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("database.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_DATABASE__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("database.url", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_DATABASE__URL", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("database.pool_min", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "1", "CIVITAS_DATABASE__POOL_MIN", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("database.pool_max", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "8", "CIVITAS_DATABASE__POOL_MAX", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("observability.log_level", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "INFO", "CIVITAS_OBSERVABILITY__LOG_LEVEL", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("observability.enable_trace", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_OBSERVABILITY__ENABLE_TRACE", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.root_dir", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MEDIA__ROOT_DIR", VERUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.public_base_url", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "/media", "CIVITAS_MEDIA__PUBLIC_BASE_URL", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.private_base_url", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "/media/private", "CIVITAS_MEDIA__PRIVATE_BASE_URL", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.tmp_max_age_minutes", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "60", "CIVITAS_MEDIA__TMP_MAX_AGE_MINUTES", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.create_missing_dirs", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_MEDIA__CREATE_MISSING_DIRS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.object_storage_enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_MEDIA__OBJECT_STORAGE_ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.ffmpeg_path", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MEDIA__FFMPEG_PATH", VERUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.ffprobe_path", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MEDIA__FFPROBE_PATH", VERUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.ffmpeg_required", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_MEDIA__FFMPEG_REQUIRED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("media.ffprobe_required", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_MEDIA__FFPROBE_REQUIRED", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("redis.url", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_REDIS__URL", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("redis.namespace", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_REDIS__NAMESPACE", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("redis.connect_timeout_ms", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "1000", "CIVITAS_REDIS__CONNECT_TIMEOUT_MS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("redis.read_timeout_ms", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "1000", "CIVITAS_REDIS__READ_TIMEOUT_MS", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.backend", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MAIL__BACKEND", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.host", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MAIL__HOST", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.port", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "25", "CIVITAS_MAIL__PORT", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.username", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_MAIL__USERNAME", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.password", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_MAIL__PASSWORD", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.default_from", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MAIL__DEFAULT_FROM", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.out_dir", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_MAIL__OUT_DIR", VERUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.use_starttls", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_MAIL__USE_STARTTLS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("mail.use_smtps", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_MAIL__USE_SMTPS", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_OBJECT_STORAGE__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.endpoint", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_OBJECT_STORAGE__ENDPOINT", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.bucket", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_OBJECT_STORAGE__BUCKET", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.access_key", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_OBJECT_STORAGE__ACCESS_KEY", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.secret_key", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_OBJECT_STORAGE__SECRET_KEY", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.region", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, VERUM, "us-east-1", "CIVITAS_OBJECT_STORAGE__REGION", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("object_storage.use_tls", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_OBJECT_STORAGE__USE_TLS", FALSUM, "", "", FALSUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("search.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SEARCH__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("search.backend", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SEARCH__BACKEND", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("search.url", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SEARCH__URL", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("search.index_prefix", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SEARCH__INDEX_PREFIX", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.legacy_global_key_enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "false", "CIVITAS_SECRETS__LEGACY_GLOBAL_KEY_ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.legacy_global_key_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__LEGACY_GLOBAL_KEY_MATERIAL_ENV", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECRETS__SESSION__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.active_key_id", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SECRETS__SESSION__ACTIVE_KEY_ID", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.accepted_previous_key_ids", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_SECRETS__SESSION__ACCEPTED_PREVIOUS_KEY_IDS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.grace_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "0", "CIVITAS_SECRETS__SESSION__GRACE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.active_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__SESSION__ACTIVE_MATERIAL_ENV", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.session.previous_material_envs", SETTINGS_VALUE_LIST_VERBUM, FALSUM, VERUM, VERUM, "", "CIVITAS_SECRETS__SESSION__PREVIOUS_MATERIAL_ENVS", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECRETS__CSRF__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.active_key_id", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SECRETS__CSRF__ACTIVE_KEY_ID", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.accepted_previous_key_ids", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_SECRETS__CSRF__ACCEPTED_PREVIOUS_KEY_IDS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.grace_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "0", "CIVITAS_SECRETS__CSRF__GRACE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.active_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__CSRF__ACTIVE_MATERIAL_ENV", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.csrf.previous_material_envs", SETTINGS_VALUE_LIST_VERBUM, FALSUM, VERUM, VERUM, "", "CIVITAS_SECRETS__CSRF__PREVIOUS_MATERIAL_ENVS", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECRETS__SIGNED_COOKIE__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.active_key_id", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SECRETS__SIGNED_COOKIE__ACTIVE_KEY_ID", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.accepted_previous_key_ids", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_SECRETS__SIGNED_COOKIE__ACCEPTED_PREVIOUS_KEY_IDS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.grace_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "0", "CIVITAS_SECRETS__SIGNED_COOKIE__GRACE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.active_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__SIGNED_COOKIE__ACTIVE_MATERIAL_ENV", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.signed_cookie.previous_material_envs", SETTINGS_VALUE_LIST_VERBUM, FALSUM, VERUM, VERUM, "", "CIVITAS_SECRETS__SIGNED_COOKIE__PREVIOUS_MATERIAL_ENVS", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECRETS__TOKEN__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.active_key_id", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SECRETS__TOKEN__ACTIVE_KEY_ID", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.accepted_previous_key_ids", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_SECRETS__TOKEN__ACCEPTED_PREVIOUS_KEY_IDS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.grace_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "0", "CIVITAS_SECRETS__TOKEN__GRACE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.active_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__TOKEN__ACTIVE_MATERIAL_ENV", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.token.previous_material_envs", SETTINGS_VALUE_LIST_VERBUM, FALSUM, VERUM, VERUM, "", "CIVITAS_SECRETS__TOKEN__PREVIOUS_MATERIAL_ENVS", FALSUM, "", "", VERUM))
+
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.enabled", SETTINGS_VALUE_BOOL, FALSUM, FALSUM, VERUM, "true", "CIVITAS_SECRETS__TEMPORARY_LINK__ENABLED", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.active_key_id", SETTINGS_VALUE_VERBUM, FALSUM, FALSUM, FALSUM, "", "CIVITAS_SECRETS__TEMPORARY_LINK__ACTIVE_KEY_ID", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.accepted_previous_key_ids", SETTINGS_VALUE_LIST_VERBUM, FALSUM, FALSUM, VERUM, "", "CIVITAS_SECRETS__TEMPORARY_LINK__ACCEPTED_PREVIOUS_KEY_IDS", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.grace_seconds", SETTINGS_VALUE_REX, FALSUM, FALSUM, VERUM, "0", "CIVITAS_SECRETS__TEMPORARY_LINK__GRACE_SECONDS", FALSUM, "", "", FALSUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.active_material_env", SETTINGS_VALUE_VERBUM, FALSUM, VERUM, FALSUM, "", "CIVITAS_SECRETS__TEMPORARY_LINK__ACTIVE_MATERIAL_ENV", FALSUM, "", "", VERUM))
+  CONIURA settings_schema_push(specs, CONIURA settings_spec_make("secrets.temporary_link.previous_material_envs", SETTINGS_VALUE_LIST_VERBUM, FALSUM, VERUM, VERUM, "", "CIVITAS_SECRETS__TEMPORARY_LINK__PREVIOUS_MATERIAL_ENVS", FALSUM, "", "", VERUM))
+
+  REDDE specs
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

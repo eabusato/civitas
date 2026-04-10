@@ -1,0 +1,968 @@
+INCIPIT grimoire "mural_expandido_repository"
+
+ADVOCARE "../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../lib/civitas/auth/auth_hash.cct"
+ADVOCARE "../../../lib/civitas/social/social.cct"
+ADVOCARE "../../../lib/civitas/social/social_comment.cct"
+ADVOCARE "../../../lib/civitas/social/social_counter.cct"
+ADVOCARE "../../../lib/civitas/social/social_reaction.cct"
+ADVOCARE "../../../lib/civitas/validate/sanitize.cct"
+ADVOCARE "../../../lib/civitas/sanitize/text.cct"
+ADVOCARE "config.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MuralExpandidoUser
+  id: REX
+  handle: VERBUM
+  display_name: VERBUM
+  email: VERBUM
+  password_hash: VERBUM
+  bio: VERBUM
+  avatar_url: VERBUM
+  locale: VERBUM
+  is_admin: VERUM
+  created_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoUserLookup
+  found: VERUM
+  user: MuralExpandidoUser
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoPost
+  id: REX
+  author_id: REX
+  author_handle: VERBUM
+  author_display_name: VERBUM
+  author_avatar_url: VERBUM
+  slug: VERBUM
+  title: VERBUM
+  excerpt: VERBUM
+  body: VERBUM
+  cover_url: VERBUM
+  video_url: VERBUM
+  locale: VERBUM
+  tags_csv: VERBUM
+  published_at_unix: REX
+  created_at_unix: REX
+  updated_at_unix: REX
+  comment_count: REX
+  like_count: REX
+  love_count: REX
+  bookmark_count: REX
+  view_count: REX
+  viewer_liked: VERUM
+  viewer_loved: VERUM
+  viewer_bookmarked: VERUM
+  viewer_follows_author: VERUM
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoPostLookup
+  found: VERUM
+  post: MuralExpandidoPost
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoCommentItem
+  id: REX
+  object_id: REX
+  post_slug: VERBUM
+  post_title: VERBUM
+  author_name: VERBUM
+  author_email: VERBUM
+  body: VERBUM
+  state: CommentState
+  created_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoProfile
+  user_id: REX
+  handle: VERBUM
+  display_name: VERBUM
+  bio: VERBUM
+  avatar_url: VERBUM
+  locale: VERBUM
+  post_count: REX
+  follower_count: REX
+  following_count: REX
+  viewer_follows: VERUM
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoProfileLookup
+  found: VERUM
+  profile: MuralExpandidoProfile
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoStats
+  user_count: REX
+  post_count: REX
+  pending_comment_count: REX
+  approved_comment_count: REX
+  trace_count: REX
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoSigil
+  trace_id: VERBUM
+  path: VERBUM
+  method: VERBUM
+  status: REX
+  duration_ms: REX
+  span_count: REX
+  user_id: VERBUM
+  file_path: VERBUM
+  created_at: REX
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoSigilLookup
+  found: VERUM
+  sigil: MuralExpandidoSigil
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoCreateUser
+  handle: VERBUM
+  display_name: VERBUM
+  email: VERBUM
+  password: VERBUM
+  bio: VERBUM
+  avatar_url: VERBUM
+  locale: VERBUM
+  is_admin: VERUM
+FIN SIGILLUM
+
+SIGILLUM MuralExpandidoCreatePost
+  author_id: REX
+  title: VERBUM
+  excerpt: VERBUM
+  body: VERBUM
+  cover_url: VERBUM
+  video_url: VERBUM
+  locale: VERBUM
+  tags_csv: VERBUM
+FIN SIGILLUM
+
+RITUALE muralx_repository_auth_config() REDDE AuthConfig
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  VINCIRE cfg.iteracoes AD 100000
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE muralx_db_open(MuralExpandidoConfig cfg) REDDE SPECULUM NIHIL
+  CONIURA mkdir_all(CONIURA path_dirname(cfg.database_path))
+  REDDE CONIURA db_open(cfg.database_path)
+EXPLICIT RITUALE
+
+RITUALE muralx_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE muralx_user_empty() REDDE MuralExpandidoUser
+  EVOCA MuralExpandidoUser out
+  VINCIRE out.id AD 0
+  VINCIRE out.handle AD ""
+  VINCIRE out.display_name AD ""
+  VINCIRE out.email AD ""
+  VINCIRE out.password_hash AD ""
+  VINCIRE out.bio AD ""
+  VINCIRE out.avatar_url AD ""
+  VINCIRE out.locale AD "pt-BR"
+  VINCIRE out.is_admin AD FALSUM
+  VINCIRE out.created_at_unix AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_user_lookup_empty() REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.user AD CONIURA muralx_user_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_post_empty() REDDE MuralExpandidoPost
+  EVOCA MuralExpandidoPost out
+  VINCIRE out.id AD 0
+  VINCIRE out.author_id AD 0
+  VINCIRE out.author_handle AD ""
+  VINCIRE out.author_display_name AD ""
+  VINCIRE out.author_avatar_url AD ""
+  VINCIRE out.slug AD ""
+  VINCIRE out.title AD ""
+  VINCIRE out.excerpt AD ""
+  VINCIRE out.body AD ""
+  VINCIRE out.cover_url AD ""
+  VINCIRE out.video_url AD ""
+  VINCIRE out.locale AD "pt-BR"
+  VINCIRE out.tags_csv AD ""
+  VINCIRE out.published_at_unix AD 0
+  VINCIRE out.created_at_unix AD 0
+  VINCIRE out.updated_at_unix AD 0
+  VINCIRE out.comment_count AD 0
+  VINCIRE out.like_count AD 0
+  VINCIRE out.love_count AD 0
+  VINCIRE out.bookmark_count AD 0
+  VINCIRE out.view_count AD 0
+  VINCIRE out.viewer_liked AD FALSUM
+  VINCIRE out.viewer_loved AD FALSUM
+  VINCIRE out.viewer_bookmarked AD FALSUM
+  VINCIRE out.viewer_follows_author AD FALSUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_post_lookup_empty() REDDE MuralExpandidoPostLookup
+  EVOCA MuralExpandidoPostLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.post AD CONIURA muralx_post_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_profile_empty() REDDE MuralExpandidoProfile
+  EVOCA MuralExpandidoProfile out
+  VINCIRE out.user_id AD 0
+  VINCIRE out.handle AD ""
+  VINCIRE out.display_name AD ""
+  VINCIRE out.bio AD ""
+  VINCIRE out.avatar_url AD ""
+  VINCIRE out.locale AD "pt-BR"
+  VINCIRE out.post_count AD 0
+  VINCIRE out.follower_count AD 0
+  VINCIRE out.following_count AD 0
+  VINCIRE out.viewer_follows AD FALSUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_profile_lookup_empty() REDDE MuralExpandidoProfileLookup
+  EVOCA MuralExpandidoProfileLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.profile AD CONIURA muralx_profile_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_comment_item_empty() REDDE MuralExpandidoCommentItem
+  EVOCA MuralExpandidoCommentItem out
+  VINCIRE out.id AD 0
+  VINCIRE out.object_id AD 0
+  VINCIRE out.post_slug AD ""
+  VINCIRE out.post_title AD ""
+  VINCIRE out.author_name AD ""
+  VINCIRE out.author_email AD ""
+  VINCIRE out.body AD ""
+  VINCIRE out.state AD CsPending
+  VINCIRE out.created_at_unix AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_stats_empty() REDDE MuralExpandidoStats
+  EVOCA MuralExpandidoStats out
+  VINCIRE out.user_count AD 0
+  VINCIRE out.post_count AD 0
+  VINCIRE out.pending_comment_count AD 0
+  VINCIRE out.approved_comment_count AD 0
+  VINCIRE out.trace_count AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_sigil_empty() REDDE MuralExpandidoSigil
+  EVOCA MuralExpandidoSigil out
+  VINCIRE out.trace_id AD ""
+  VINCIRE out.path AD ""
+  VINCIRE out.method AD ""
+  VINCIRE out.status AD 0
+  VINCIRE out.duration_ms AD 0
+  VINCIRE out.span_count AD 0
+  VINCIRE out.user_id AD ""
+  VINCIRE out.file_path AD ""
+  VINCIRE out.created_at AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_sigil_lookup_empty() REDDE MuralExpandidoSigilLookup
+  EVOCA MuralExpandidoSigilLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.sigil AD CONIURA muralx_sigil_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_clean_text(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA sanitize_strip_tags(value)
+  VINCIRE out AD CONIURA normalize_whitespace(out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_clean_line(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA muralx_clean_text(value)
+  VINCIRE out AD CONIURA sanitize_normalize_spaces(out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_slugify(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM lowered AD CONIURA to_lower(CONIURA muralx_clean_line(value))
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(lowered)
+  EVOCA VERUM previous_dash AD FALSUM
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(lowered, i)
+    SI (ch >= 97 ET ch <= 122) VEL (ch >= 48 ET ch <= 57)
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(ch))
+      VINCIRE previous_dash AD FALSUM
+    ALITER
+      SI NON previous_dash
+        VINCIRE out AD CONIURA concat(out, "-")
+        VINCIRE previous_dash AD VERUM
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  DUM CONIURA starts_with(out, "-")
+    VINCIRE out AD CONIURA substring(out, 1, CONIURA len(out))
+  FIN DUM
+  DUM CONIURA ends_with(out, "-")
+    VINCIRE out AD CONIURA substring(out, 0, CONIURA len(out) - 1)
+  FIN DUM
+  SI CONIURA len(out) == 0
+    REDDE "post"
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_reaction_kind_from_name(VERBUM name) REDDE ReactionKind
+  SI CONIURA compare(name, "love") == 0
+    REDDE RkLove
+  FIN SI
+  SI CONIURA compare(name, "bookmark") == 0
+    REDDE RkBookmark
+  FIN SI
+  REDDE RkLike
+EXPLICIT RITUALE
+
+RITUALE muralx_post_count_comments(SPECULUM NIHIL db, REX post_id) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM civitas_comments WHERE object_type = ? AND object_id = ? AND state = ?")
+  CONIURA stmt_bind_text(stmt, 1, "post")
+  CONIURA stmt_bind_int(stmt, 2, post_id)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA comment_state_to_int(CsApproved))
+  EVOCA REX count AD 0
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE muralx_sigil_from_stmt(SPECULUM NIHIL stmt) REDDE MuralExpandidoSigil
+  EVOCA MuralExpandidoSigil out AD CONIURA muralx_sigil_empty()
+  VINCIRE out.trace_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 0))
+  VINCIRE out.path AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+  VINCIRE out.method AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE out.status AD CONIURA stmt_get_int(stmt, 3)
+  VINCIRE out.duration_ms AD CONIURA stmt_get_int(stmt, 4)
+  VINCIRE out.span_count AD CONIURA stmt_get_int(stmt, 5)
+  VINCIRE out.user_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  VINCIRE out.file_path AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+  VINCIRE out.created_at AD CONIURA stmt_get_int(stmt, 8)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_follow_count(SPECULUM NIHIL db, VERBUM column_name, REX user_id) REDDE REX
+  EVOCA VERBUM sql AD "SELECT COUNT(*) FROM follows WHERE "
+  VINCIRE sql AD CONIURA concat(sql, column_name)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  EVOCA REX count AD 0
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE muralx_follow_exists(SPECULUM NIHIL db, REX follower_user_id, REX followed_user_id) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM follows WHERE follower_user_id = ? AND followed_user_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, follower_user_id)
+  CONIURA stmt_bind_int(stmt, 2, followed_user_id)
+  EVOCA VERUM found AD FALSUM
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE found AD CONIURA stmt_get_int(stmt, 0) > 0
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE found
+EXPLICIT RITUALE
+
+RITUALE muralx_user_from_stmt(SPECULUM NIHIL stmt) REDDE MuralExpandidoUser
+  EVOCA MuralExpandidoUser out AD CONIURA muralx_user_empty()
+  VINCIRE out.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE out.handle AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+  VINCIRE out.display_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE out.email AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+  VINCIRE out.password_hash AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+  VINCIRE out.bio AD CONIURA concat("", CONIURA stmt_get_text(stmt, 5))
+  VINCIRE out.avatar_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  VINCIRE out.locale AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+  VINCIRE out.is_admin AD CONIURA stmt_get_int(stmt, 8) != 0
+  VINCIRE out.created_at_unix AD CONIURA stmt_get_int(stmt, 9)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_post_base_from_stmt(SPECULUM NIHIL stmt) REDDE MuralExpandidoPost
+  EVOCA MuralExpandidoPost out AD CONIURA muralx_post_empty()
+  VINCIRE out.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE out.author_id AD CONIURA stmt_get_int(stmt, 1)
+  VINCIRE out.author_handle AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE out.author_display_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+  VINCIRE out.author_avatar_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+  VINCIRE out.slug AD CONIURA concat("", CONIURA stmt_get_text(stmt, 5))
+  VINCIRE out.title AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  VINCIRE out.excerpt AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+  VINCIRE out.body AD CONIURA concat("", CONIURA stmt_get_text(stmt, 8))
+  VINCIRE out.cover_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 9))
+  VINCIRE out.video_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 10))
+  VINCIRE out.locale AD CONIURA concat("", CONIURA stmt_get_text(stmt, 11))
+  VINCIRE out.tags_csv AD CONIURA concat("", CONIURA stmt_get_text(stmt, 12))
+  VINCIRE out.published_at_unix AD CONIURA stmt_get_int(stmt, 13)
+  VINCIRE out.created_at_unix AD CONIURA stmt_get_int(stmt, 14)
+  VINCIRE out.updated_at_unix AD CONIURA stmt_get_int(stmt, 15)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_fill_post_metrics(SPECULUM NIHIL db, SPECULUM MuralExpandidoPost post_ptr, VERBUM actor_id, REX viewer_user_id) REDDE NIHIL
+  EVOCA ViewCounter views AD CONIURA view_counter_get(db, "post", (*post_ptr).id)
+  VINCIRE (*post_ptr).comment_count AD CONIURA muralx_post_count_comments(db, (*post_ptr).id)
+  VINCIRE (*post_ptr).like_count AD CONIURA reaction_count(db, "post", (*post_ptr).id, RkLike)
+  VINCIRE (*post_ptr).love_count AD CONIURA reaction_count(db, "post", (*post_ptr).id, RkLove)
+  VINCIRE (*post_ptr).bookmark_count AD CONIURA reaction_count(db, "post", (*post_ptr).id, RkBookmark)
+  VINCIRE (*post_ptr).view_count AD views.total
+  SI CONIURA len(actor_id) > 0
+    VINCIRE (*post_ptr).viewer_liked AD CONIURA reaction_has(db, "post", (*post_ptr).id, actor_id, RkLike)
+    VINCIRE (*post_ptr).viewer_loved AD CONIURA reaction_has(db, "post", (*post_ptr).id, actor_id, RkLove)
+    VINCIRE (*post_ptr).viewer_bookmarked AD CONIURA reaction_has(db, "post", (*post_ptr).id, actor_id, RkBookmark)
+  FIN SI
+  SI viewer_user_id > 0
+    VINCIRE (*post_ptr).viewer_follows_author AD CONIURA muralx_follow_exists(db, viewer_user_id, (*post_ptr).author_id)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_init_schema(MuralExpandidoConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, handle TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, bio TEXT NOT NULL DEFAULT '', avatar_url TEXT NOT NULL DEFAULT '', locale TEXT NOT NULL DEFAULT 'pt-BR', is_admin INTEGER NOT NULL DEFAULT 0, created_at_unix INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, excerpt TEXT NOT NULL DEFAULT '', body TEXT NOT NULL, cover_url TEXT NOT NULL DEFAULT '', video_url TEXT NOT NULL DEFAULT '', locale TEXT NOT NULL DEFAULT 'pt-BR', tags_csv TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT 'published', published_at_unix INTEGER NOT NULL, created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS follows (follower_user_id INTEGER NOT NULL, followed_user_id INTEGER NOT NULL, created_at_unix INTEGER NOT NULL, PRIMARY KEY (follower_user_id, followed_user_id))")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published_at_unix DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id, published_at_unix DESC)")
+  CONIURA social_ensure_schema(db)
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_user_by_email(MuralExpandidoConfig cfg, VERBUM email) REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup out AD CONIURA muralx_user_lookup_empty()
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url, locale, is_admin, created_at_unix FROM users WHERE email = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, CONIURA sanitize_normalize_email(email))
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.user AD CONIURA muralx_user_from_stmt(stmt)
+    CONIURA stmt_finalize(stmt)
+    CONIURA db_close(db)
+    REDDE out
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_user_by_handle(MuralExpandidoConfig cfg, VERBUM handle) REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup out AD CONIURA muralx_user_lookup_empty()
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url, locale, is_admin, created_at_unix FROM users WHERE handle = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, CONIURA to_lower(CONIURA trim(handle)))
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.user AD CONIURA muralx_user_from_stmt(stmt)
+    CONIURA stmt_finalize(stmt)
+    CONIURA db_close(db)
+    REDDE out
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_user_by_id(MuralExpandidoConfig cfg, REX user_id) REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup out AD CONIURA muralx_user_lookup_empty()
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url, locale, is_admin, created_at_unix FROM users WHERE id = ? LIMIT 1")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.user AD CONIURA muralx_user_from_stmt(stmt)
+    CONIURA stmt_finalize(stmt)
+    CONIURA db_close(db)
+    REDDE out
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_create_user(MuralExpandidoConfig cfg, MuralExpandidoCreateUser input) REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup existing AD CONIURA muralx_repository_user_by_email(cfg, input.email)
+  SI existing.found
+    REDDE existing
+  FIN SI
+  EVOCA MuralExpandidoUserLookup handle_lookup AD CONIURA muralx_repository_user_by_handle(cfg, input.handle)
+  SI handle_lookup.found
+    REDDE handle_lookup
+  FIN SI
+
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA AuthConfig acfg AD CONIURA muralx_repository_auth_config()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO users (handle, display_name, email, password_hash, bio, avatar_url, locale, is_admin, created_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  EVOCA VERBUM clean_handle AD CONIURA to_lower(CONIURA muralx_clean_line(input.handle))
+  EVOCA VERBUM clean_email AD CONIURA sanitize_normalize_email(input.email)
+  EVOCA VERBUM clean_display AD CONIURA muralx_clean_line(input.display_name)
+  EVOCA VERBUM clean_bio AD CONIURA muralx_clean_text(input.bio)
+  EVOCA VERBUM clean_avatar AD CONIURA trim(input.avatar_url)
+  EVOCA VERBUM password_hash AD CONIURA auth_hash_senha(acfg, input.password)
+  EVOCA REX now AD CONIURA muralx_now_unix()
+  EVOCA REX is_admin_int AD 0
+  SI input.is_admin
+    VINCIRE is_admin_int AD 1
+  FIN SI
+  CONIURA stmt_bind_text(stmt, 1, clean_handle)
+  CONIURA stmt_bind_text(stmt, 2, clean_display)
+  CONIURA stmt_bind_text(stmt, 3, clean_email)
+  CONIURA stmt_bind_text(stmt, 4, password_hash)
+  CONIURA stmt_bind_text(stmt, 5, clean_bio)
+  CONIURA stmt_bind_text(stmt, 6, clean_avatar)
+  CONIURA stmt_bind_text(stmt, 7, input.locale)
+  CONIURA stmt_bind_int(stmt, 8, is_admin_int)
+  CONIURA stmt_bind_int(stmt, 9, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE CONIURA muralx_repository_user_by_email(cfg, clean_email)
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_authenticate(MuralExpandidoConfig cfg, VERBUM email, VERBUM password) REDDE MuralExpandidoUserLookup
+  EVOCA MuralExpandidoUserLookup lookup AD CONIURA muralx_repository_user_by_email(cfg, email)
+  SI NON lookup.found
+    REDDE lookup
+  FIN SI
+  SI NON CONIURA auth_verificar_senha(password, lookup.user.password_hash)
+    VINCIRE lookup.found AD FALSUM
+  FIN SI
+  REDDE lookup
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_slug_exists_db(SPECULUM NIHIL db, VERBUM slug) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM posts WHERE slug = ?")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  EVOCA VERUM exists_slug AD FALSUM
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE exists_slug AD CONIURA stmt_get_int(stmt, 0) > 0
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE exists_slug
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_unique_slug_db(SPECULUM NIHIL db, VERBUM title) REDDE VERBUM
+  EVOCA VERBUM base AD CONIURA muralx_slugify(title)
+  EVOCA VERBUM slug AD base
+  EVOCA REX i AD 2
+  DUM CONIURA muralx_repository_slug_exists_db(db, slug)
+    VINCIRE slug AD CONIURA concat(base, CONIURA concat("-", CONIURA stringify_int(i)))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE slug
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_create_post(MuralExpandidoConfig cfg, MuralExpandidoCreatePost input) REDDE VERBUM
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA VERBUM slug AD CONIURA muralx_repository_unique_slug_db(db, input.title)
+  EVOCA REX now AD CONIURA muralx_now_unix()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO posts (author_id, slug, title, excerpt, body, cover_url, video_url, locale, tags_csv, state, published_at_unix, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?, ?)")
+  CONIURA stmt_bind_int(stmt, 1, input.author_id)
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, CONIURA muralx_clean_line(input.title))
+  CONIURA stmt_bind_text(stmt, 4, CONIURA muralx_clean_text(input.excerpt))
+  CONIURA stmt_bind_text(stmt, 5, CONIURA muralx_clean_text(input.body))
+  CONIURA stmt_bind_text(stmt, 6, CONIURA trim(input.cover_url))
+  CONIURA stmt_bind_text(stmt, 7, CONIURA trim(input.video_url))
+  CONIURA stmt_bind_text(stmt, 8, input.locale)
+  CONIURA stmt_bind_text(stmt, 9, CONIURA muralx_clean_line(input.tags_csv))
+  CONIURA stmt_bind_int(stmt, 10, now)
+  CONIURA stmt_bind_int(stmt, 11, now)
+  CONIURA stmt_bind_int(stmt, 12, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE slug
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_post_lookup_from_stmt(
+  SPECULUM NIHIL db,
+  SPECULUM NIHIL stmt,
+  VERBUM actor_id,
+  REX viewer_user_id
+) REDDE MuralExpandidoPostLookup
+  EVOCA MuralExpandidoPostLookup out AD CONIURA muralx_post_lookup_empty()
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.post AD CONIURA muralx_post_base_from_stmt(stmt)
+    CONIURA muralx_fill_post_metrics(db, SPECULUM out.post, actor_id, viewer_user_id)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_recent_posts(MuralExpandidoConfig cfg, REX limit_count, VERBUM actor_id, REX viewer_user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoPost))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, p.author_id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.excerpt, p.body, p.cover_url, p.video_url, p.locale, p.tags_csv, p.published_at_unix, p.created_at_unix, p.updated_at_unix FROM posts p INNER JOIN users u ON u.id = p.author_id WHERE p.state = 'published' ORDER BY p.published_at_unix DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA MuralExpandidoPost post AD CONIURA muralx_post_base_from_stmt(stmt)
+    CONIURA muralx_fill_post_metrics(db, SPECULUM post, actor_id, viewer_user_id)
+    CONIURA fluxus_push(out, SPECULUM post)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_posts_by_author(MuralExpandidoConfig cfg, REX author_id, REX limit_count, VERBUM actor_id, REX viewer_user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoPost))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, p.author_id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.excerpt, p.body, p.cover_url, p.video_url, p.locale, p.tags_csv, p.published_at_unix, p.created_at_unix, p.updated_at_unix FROM posts p INNER JOIN users u ON u.id = p.author_id WHERE p.state = 'published' AND p.author_id = ? ORDER BY p.published_at_unix DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, author_id)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA MuralExpandidoPost post AD CONIURA muralx_post_base_from_stmt(stmt)
+    CONIURA muralx_fill_post_metrics(db, SPECULUM post, actor_id, viewer_user_id)
+    CONIURA fluxus_push(out, SPECULUM post)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_post_by_slug(MuralExpandidoConfig cfg, VERBUM slug, VERBUM actor_id, REX viewer_user_id) REDDE MuralExpandidoPostLookup
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, p.author_id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.excerpt, p.body, p.cover_url, p.video_url, p.locale, p.tags_csv, p.published_at_unix, p.created_at_unix, p.updated_at_unix FROM posts p INNER JOIN users u ON u.id = p.author_id WHERE p.slug = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  EVOCA MuralExpandidoPostLookup out AD CONIURA muralx_post_lookup_empty()
+  SI CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out.found AD VERUM
+      VINCIRE out.post AD CONIURA muralx_post_base_from_stmt(stmt)
+      CONIURA muralx_fill_post_metrics(db, SPECULUM out.post, actor_id, viewer_user_id)
+    FIN SI
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_increment_post_view(MuralExpandidoConfig cfg, VERBUM slug) REDDE NIHIL
+  EVOCA MuralExpandidoPostLookup lookup AD CONIURA muralx_repository_post_by_slug(cfg, slug, "", 0)
+  SI NON lookup.found
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  CONIURA view_counter_increment(db, "post", lookup.post.id)
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_profile_by_handle(MuralExpandidoConfig cfg, VERBUM handle, REX viewer_user_id) REDDE MuralExpandidoProfileLookup
+  EVOCA MuralExpandidoProfileLookup out AD CONIURA muralx_profile_lookup_empty()
+  EVOCA MuralExpandidoUserLookup user_lookup AD CONIURA muralx_repository_user_by_handle(cfg, handle)
+  SI NON user_lookup.found
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  VINCIRE out.found AD VERUM
+  VINCIRE out.profile.user_id AD user_lookup.user.id
+  VINCIRE out.profile.handle AD user_lookup.user.handle
+  VINCIRE out.profile.display_name AD user_lookup.user.display_name
+  VINCIRE out.profile.bio AD user_lookup.user.bio
+  VINCIRE out.profile.avatar_url AD user_lookup.user.avatar_url
+  VINCIRE out.profile.locale AD user_lookup.user.locale
+  VINCIRE out.profile.post_count AD CONIURA db_scalar_int(db, CONIURA concat("SELECT COUNT(*) FROM posts WHERE author_id = ", CONIURA stringify_int(user_lookup.user.id)))
+  VINCIRE out.profile.follower_count AD CONIURA muralx_follow_count(db, "followed_user_id", user_lookup.user.id)
+  VINCIRE out.profile.following_count AD CONIURA muralx_follow_count(db, "follower_user_id", user_lookup.user.id)
+  SI viewer_user_id > 0
+    VINCIRE out.profile.viewer_follows AD CONIURA muralx_follow_exists(db, viewer_user_id, user_lookup.user.id)
+  FIN SI
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_toggle_follow(MuralExpandidoConfig cfg, REX follower_user_id, REX followed_user_id) REDDE VERUM
+  SI follower_user_id <= 0 VEL followed_user_id <= 0 VEL follower_user_id == followed_user_id
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  SI CONIURA muralx_follow_exists(db, follower_user_id, followed_user_id)
+    EVOCA SPECULUM NIHIL stmt_del AD CONIURA db_prepare(db, "DELETE FROM follows WHERE follower_user_id = ? AND followed_user_id = ?")
+    CONIURA stmt_bind_int(stmt_del, 1, follower_user_id)
+    CONIURA stmt_bind_int(stmt_del, 2, followed_user_id)
+    CONIURA stmt_step(stmt_del)
+    CONIURA stmt_finalize(stmt_del)
+    CONIURA db_close(db)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt_ins AD CONIURA db_prepare(db, "INSERT INTO follows (follower_user_id, followed_user_id, created_at_unix) VALUES (?, ?, ?)")
+  CONIURA stmt_bind_int(stmt_ins, 1, follower_user_id)
+  CONIURA stmt_bind_int(stmt_ins, 2, followed_user_id)
+  CONIURA stmt_bind_int(stmt_ins, 3, CONIURA muralx_now_unix())
+  CONIURA stmt_step(stmt_ins)
+  CONIURA stmt_finalize(stmt_ins)
+  CONIURA db_close(db)
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_toggle_reaction(MuralExpandidoConfig cfg, VERBUM slug, VERBUM actor_id, ReactionKind kind) REDDE VERUM
+  EVOCA MuralExpandidoPostLookup lookup AD CONIURA muralx_repository_post_by_slug(cfg, slug, actor_id, 0)
+  SI NON lookup.found
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA VERUM active AD CONIURA reaction_toggle(db, "post", lookup.post.id, actor_id, kind)
+  CONIURA db_close(db)
+  REDDE active
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_add_comment(MuralExpandidoConfig cfg, VERBUM slug, VERBUM author_name, VERBUM author_email, VERBUM body) REDDE REX
+  EVOCA MuralExpandidoPostLookup lookup AD CONIURA muralx_repository_post_by_slug(cfg, slug, "", 0)
+  SI NON lookup.found
+    REDDE 0
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA Comment c AD CONIURA comment_create(
+    db,
+    "post",
+    lookup.post.id,
+    CONIURA muralx_clean_line(author_name),
+    CONIURA sanitize_normalize_email(author_email),
+    CONIURA muralx_clean_text(body)
+  )
+  CONIURA db_close(db)
+  REDDE c.id
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_list_approved_comments(MuralExpandidoConfig cfg, REX post_id, VERBUM post_slug, VERBUM post_title) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL comments AD CONIURA comment_list_approved(db, "post", post_id)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoCommentItem))
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(comments)
+    EVOCA SPECULUM Comment ptr AD CONIURA fluxus_get(comments, i)
+    EVOCA MuralExpandidoCommentItem item AD CONIURA muralx_comment_item_empty()
+    VINCIRE item.id AD (*ptr).id
+    VINCIRE item.object_id AD (*ptr).object_id
+    VINCIRE item.post_slug AD post_slug
+    VINCIRE item.post_title AD post_title
+    VINCIRE item.author_name AD (*ptr).author_name
+    VINCIRE item.author_email AD (*ptr).author_email
+    VINCIRE item.body AD (*ptr).body
+    VINCIRE item.state AD (*ptr).state
+    VINCIRE item.created_at_unix AD (*ptr).created_at
+    CONIURA fluxus_push(out, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_list_pending_comments(MuralExpandidoConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoCommentItem))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT c.id, c.object_id, c.author_name, c.author_email, c.body, c.state, c.created_at, p.slug, p.title FROM civitas_comments c INNER JOIN posts p ON p.id = c.object_id WHERE c.object_type = 'post' AND c.state = ? ORDER BY c.created_at ASC")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA comment_state_to_int(CsPending))
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA MuralExpandidoCommentItem item AD CONIURA muralx_comment_item_empty()
+    VINCIRE item.id AD CONIURA stmt_get_int(stmt, 0)
+    VINCIRE item.object_id AD CONIURA stmt_get_int(stmt, 1)
+    VINCIRE item.author_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+    VINCIRE item.author_email AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+    VINCIRE item.body AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+    VINCIRE item.state AD CONIURA comment_state_from_int(CONIURA stmt_get_int(stmt, 5))
+    VINCIRE item.created_at_unix AD CONIURA stmt_get_int(stmt, 6)
+    VINCIRE item.post_slug AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+    VINCIRE item.post_title AD CONIURA concat("", CONIURA stmt_get_text(stmt, 8))
+    CONIURA fluxus_push(out, SPECULUM item)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_admin_approve_comment(MuralExpandidoConfig cfg, REX comment_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  CONIURA comment_approve(db, comment_id)
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_admin_reject_comment(MuralExpandidoConfig cfg, REX comment_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  CONIURA comment_reject(db, comment_id)
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_stats(MuralExpandidoConfig cfg) REDDE MuralExpandidoStats
+  EVOCA MuralExpandidoStats out AD CONIURA muralx_repository_stats_empty()
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  VINCIRE out.user_count AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM users")
+  VINCIRE out.post_count AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM posts")
+  VINCIRE out.pending_comment_count AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM civitas_comments WHERE state = 0")
+  VINCIRE out.approved_comment_count AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM civitas_comments WHERE state = 1")
+  VINCIRE out.trace_count AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM trace_index")
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_seed_demo(MuralExpandidoConfig cfg) REDDE NIHIL
+  CONIURA muralx_repository_init_schema(cfg)
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM users") > 0
+    CONIURA db_close(db)
+    REDDE
+  FIN SI
+  CONIURA db_close(db)
+
+  EVOCA MuralExpandidoCreateUser admin
+  VINCIRE admin.handle AD "civitas_admin"
+  VINCIRE admin.display_name AD "Civitas Admin"
+  VINCIRE admin.email AD "admin@mural.expandido"
+  VINCIRE admin.password AD "abc123"
+  VINCIRE admin.bio AD "Runs the expanded mural and curates the network."
+  VINCIRE admin.avatar_url AD "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80"
+  VINCIRE admin.locale AD "pt-BR"
+  VINCIRE admin.is_admin AD VERUM
+  EVOCA MuralExpandidoCreateUser luna
+  VINCIRE luna.handle AD "luna_pixels"
+  VINCIRE luna.display_name AD "Luna Pixels"
+  VINCIRE luna.email AD "luna@mural.expandido"
+  VINCIRE luna.password AD "abc123"
+  VINCIRE luna.bio AD "Visual storyteller posting urban stills and looping clips."
+  VINCIRE luna.avatar_url AD "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80"
+  VINCIRE luna.locale AD "en-US"
+  VINCIRE luna.is_admin AD FALSUM
+  EVOCA MuralExpandidoCreateUser teo
+  VINCIRE teo.handle AD "teo_sound"
+  VINCIRE teo.display_name AD "Teo Sound"
+  VINCIRE teo.email AD "teo@mural.expandido"
+  VINCIRE teo.password AD "abc123"
+  VINCIRE teo.bio AD "Builds audio-reactive visuals and backstage dev notes."
+  VINCIRE teo.avatar_url AD "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80"
+  VINCIRE teo.locale AD "pt-BR"
+  VINCIRE teo.is_admin AD FALSUM
+
+  EVOCA MuralExpandidoUserLookup admin_lookup AD CONIURA muralx_repository_create_user(cfg, admin)
+  EVOCA MuralExpandidoUserLookup luna_lookup AD CONIURA muralx_repository_create_user(cfg, luna)
+  EVOCA MuralExpandidoUserLookup teo_lookup AD CONIURA muralx_repository_create_user(cfg, teo)
+
+  EVOCA MuralExpandidoCreatePost p1
+  VINCIRE p1.author_id AD luna_lookup.user.id
+  VINCIRE p1.title AD "Neon bridge session"
+  VINCIRE p1.excerpt AD "Night photography, looping traffic and a tiny making-of video."
+  VINCIRE p1.body AD "Shot this under the old steel bridge with a pocket camera and a lightweight stabilizer. The clip below is the backstage cut. The images came out sharper than expected, and the city noise became part of the composition."
+  VINCIRE p1.cover_url AD "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+  VINCIRE p1.video_url AD "https://www.youtube.com/watch?v=ScMzIvxBSi4"
+  VINCIRE p1.locale AD "en-US"
+  VINCIRE p1.tags_csv AD "photo,video,night"
+  EVOCA MuralExpandidoCreatePost p2
+  VINCIRE p2.author_id AD teo_lookup.user.id
+  VINCIRE p2.title AD "Modular synth rehearsal for the launch stream"
+  VINCIRE p2.excerpt AD "A rehearsal post mixing patch notes, still frames and social counters."
+  VINCIRE p2.body AD "Spent the afternoon mapping reactions to synth layers. Like adds shimmer, love adds bass warmth, bookmark stores the patch sheet for later. This post is also the testbed for comments and view counters."
+  VINCIRE p2.cover_url AD "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80"
+  VINCIRE p2.video_url AD "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+  VINCIRE p2.locale AD "pt-BR"
+  VINCIRE p2.tags_csv AD "music,live,coding"
+  EVOCA MuralExpandidoCreatePost p3
+  VINCIRE p3.author_id AD admin_lookup.user.id
+  VINCIRE p3.title AD "Community call for remix threads"
+  VINCIRE p3.excerpt AD "The official board invites creators to publish image sets, short clips and translation-ready captions."
+  VINCIRE p3.body AD "Use the expanded mural as a social notebook: post an image cover, attach a video link, publish in your preferred locale and let the public API expose the latest stories. Admin-lite keeps moderation lightweight, and traces let operators inspect the request path."
+  VINCIRE p3.cover_url AD "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80"
+  VINCIRE p3.video_url AD ""
+  VINCIRE p3.locale AD "pt-BR"
+  VINCIRE p3.tags_csv AD "community,api,ops"
+
+  EVOCA VERBUM slug1 AD CONIURA muralx_repository_create_post(cfg, p1)
+  EVOCA VERBUM slug2 AD CONIURA muralx_repository_create_post(cfg, p2)
+  EVOCA VERBUM slug3 AD CONIURA muralx_repository_create_post(cfg, p3)
+
+  CONIURA muralx_repository_toggle_follow(cfg, admin_lookup.user.id, luna_lookup.user.id)
+  CONIURA muralx_repository_toggle_follow(cfg, admin_lookup.user.id, teo_lookup.user.id)
+  CONIURA muralx_repository_toggle_follow(cfg, luna_lookup.user.id, teo_lookup.user.id)
+
+  CONIURA muralx_repository_toggle_reaction(cfg, slug1, CONIURA concat("user:", CONIURA stringify_int(admin_lookup.user.id)), RkLove)
+  CONIURA muralx_repository_toggle_reaction(cfg, slug1, CONIURA concat("user:", CONIURA stringify_int(teo_lookup.user.id)), RkLike)
+  CONIURA muralx_repository_toggle_reaction(cfg, slug2, CONIURA concat("user:", CONIURA stringify_int(admin_lookup.user.id)), RkBookmark)
+  CONIURA muralx_repository_toggle_reaction(cfg, slug2, CONIURA concat("user:", CONIURA stringify_int(luna_lookup.user.id)), RkLove)
+
+  CONIURA muralx_repository_increment_post_view(cfg, slug1)
+  CONIURA muralx_repository_increment_post_view(cfg, slug1)
+  CONIURA muralx_repository_increment_post_view(cfg, slug2)
+  CONIURA muralx_repository_increment_post_view(cfg, slug3)
+
+  EVOCA REX c1 AD CONIURA muralx_repository_add_comment(cfg, slug2, "Mika Trace", "mika@example.com", "This is the first post where the social counters feel like part of the artwork.")
+  EVOCA REX c2 AD CONIURA muralx_repository_add_comment(cfg, slug3, "Ari Cache", "ari@example.com", "Love that the API and the HTML surface the same editorial flow.")
+  CONIURA muralx_repository_admin_approve_comment(cfg, c1)
+  CONIURA muralx_repository_admin_approve_comment(cfg, c2)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_recent_sigils(MuralExpandidoConfig cfg, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoSigil))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index ORDER BY created_at DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA MuralExpandidoSigil sigil AD CONIURA muralx_sigil_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM sigil)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_repository_sigil_by_id(MuralExpandidoConfig cfg, VERBUM trace_id) REDDE MuralExpandidoSigilLookup
+  EVOCA MuralExpandidoSigilLookup out AD CONIURA muralx_sigil_lookup_empty()
+  EVOCA SPECULUM NIHIL db AD CONIURA muralx_db_open(cfg)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE trace_id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, trace_id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.sigil AD CONIURA muralx_sigil_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA db_close(db)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

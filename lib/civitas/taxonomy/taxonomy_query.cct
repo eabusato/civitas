@@ -1,0 +1,37 @@
+INCIPIT grimoire "civitas_taxonomy_query"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "taxonomy.cct"
+
+RITUALE category_list(SPECULUM NIHIL db, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Category))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, slug, title, description, locale, parent_id, created_at, updated_at FROM civitas_categories WHERE locale = ? ORDER BY title")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Category cat AD CONIURA category_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM cat)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE tag_list(SPECULUM NIHIL db, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Tag))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, slug, label, locale, created_at FROM civitas_tags WHERE locale = ? ORDER BY label")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Tag tag AD CONIURA tag_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM tag)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase0_0b_manifest_min_version_test"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM manifest AD CONIURA read_all("cct.toml")
+  SI NON CONIURA contains(manifest, "name = \"civitas\"")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(manifest, "version = \"0.1.0\"")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA contains(manifest, "cct_min_version = \"0.40.0\"")
+    REDDE 3
+  FIN SI
+  SI NON CONIURA contains(manifest, "cct = \">=0.40.0\"")
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase25_25b_frame_decode_masked_text"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/websocket/websocket.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase25SocketPair pair AD CONIURA phase25_open_socket_pair(19526)
+  EVOCA VERBUM payload AD "hi"
+  EVOCA VERBUM mask AD CONIURA concat(CONIURA from_char(1), CONIURA concat(CONIURA from_char(2), CONIURA concat(CONIURA from_char(3), CONIURA from_char(4))))
+  EVOCA VERBUM masked AD ""
+  VINCIRE masked AD CONIURA concat(masked, CONIURA from_char(CONIURA verbum_byte_value(payload, 0) XOR 1))
+  VINCIRE masked AD CONIURA concat(masked, CONIURA from_char(CONIURA verbum_byte_value(payload, 1) XOR 2))
+
+  EVOCA VERBUM raw AD ""
+  VINCIRE raw AD CONIURA concat(raw, CONIURA from_char(129))
+  VINCIRE raw AD CONIURA concat(raw, CONIURA from_char(128 VEL_BIT 2))
+  VINCIRE raw AD CONIURA concat(raw, mask)
+  VINCIRE raw AD CONIURA concat(raw, masked)
+
+  SI CONIURA sock_send(pair.client, raw) != CONIURA len(raw)
+    CONIURA phase25_close_socket_pair(pair)
+    REDDE 1
+  FIN SI
+
+  EVOCA WsFrame frame AD CONIURA ws_frame_decode(pair.server)
+  CONIURA phase25_close_socket_pair(pair)
+
+  SI frame.opcode != WS_TEXT
+    REDDE 1
+  FIN SI
+  SI NON frame.fin
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(frame.payload, "hi") != 0
+    REDDE 1
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

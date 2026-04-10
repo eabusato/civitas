@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase2_2c_context_write_and_read_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE writer(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM RequestContext ctx
+  VINCIRE ctx AD ctx_ref
+  EVOCA VERBUM marker AD "ctx-ready"
+  CONIURA middleware_context_set(ctx, "marker", SPECULUM marker)
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE reader(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+  SI CONIURA middleware_context_has(*ctx, "marker")
+    CONIURA response_set_header(out, "x-context-pre", "ok")
+  FIN SI
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "writer", writer)
+  CONIURA middleware_bindings_push(middlewares, "reader", reader)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/ctx"), terminal)
+  SI CONIURA compare(CONIURA response_header_or(out, "x-context-pre", ""), "ok") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

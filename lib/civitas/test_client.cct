@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_test_client_root"
+
+ADVOCARE "test_client/test_client.cct"
+
+EXPLICIT grimoire

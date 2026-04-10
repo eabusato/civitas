@@ -1,0 +1,58 @@
+INCIPIT grimoire "fase16_16d_verify_email_flow_helper"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_assert.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_flow.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_email.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  EVOCA User user AD CONIURA fase16_create_user(tdb, "bruno@test.local", "pass-1234")
+  EVOCA Mailer m AD CONIURA mailer_test_open()
+  EVOCA FlowConfig flow_cfg AD CONIURA fase16_flow_cfg()
+  EVOCA MailerConfig mailer_cfg AD CONIURA mailer_test_config()
+  EVOCA SPECULUM NIHIL tok_res AD CONIURA mail_test_verificar_email_e_extrair(tdb.db, SPECULUM m, flow_cfg, mailer_cfg, user.id, user.email, "Bruno", "https://app.test/verify")
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(tok_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM token AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(tok_res)
+  SI NON CONIURA mail_test_assert_enviado_para(m, user.email)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL conf_res AD CONIURA auth_flow_verificar_email_confirmar(tdb.db, flow_cfg, token)
+  SI CONIURA result_is_err GENUS(VERBUM, FlowError)(conf_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_buscar_por_id(tdb.db, user.id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  EVOCA User refreshed AD CONIURA option_unwrap GENUS(User)(user_opt)
+  CONIURA option_free GENUS(User)(user_opt)
+  CONIURA mailer_test_close(SPECULUM m)
+  CONIURA test_db_close(tdb)
+  SI NON refreshed.email_verificado
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

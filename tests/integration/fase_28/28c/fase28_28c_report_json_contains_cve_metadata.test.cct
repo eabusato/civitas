@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase28_28c_report_json_contains_cve_metadata"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/dep_review.cct"
+ADVOCARE "../../../../lib/civitas/dep_review/dep_review.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28c_report_json")
+  EVOCA VERBUM db_path AD CONIURA path_join(root, "known_cves.json")
+  CONIURA write_all(db_path, "{\"deps\":[{\"name\":\"libsqlite3\",\"cves\":[{\"id\":\"CVE-JSON-28C\",\"severity\":\"medium\",\"description\":\"test\",\"affected\":\"< 3.45.0\",\"fixed\":\"3.45.0\",\"source\":\"local\"}]}]}")
+  EVOCA SPECULUM NIHIL deps AD CONIURA fluxus_init(MENSURA(DepInfo))
+  EVOCA DepInfo dep AD CONIURA dep_review_new_dep("libsqlite3", DEP_SYSTEM_LIB, "3.44.0", "3.38.0", "cct/db_sqlite", "SQLite surface")
+  CONIURA fluxus_push(deps, SPECULUM dep)
+  EVOCA DepReport report AD CONIURA dep_review_apply_db(deps, db_path)
+  EVOCA VERBUM payload AD CONIURA dep_review_report_json(report)
+  SI CONIURA find(payload, "CVE-JSON-28C") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(payload, "cct/db_sqlite") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase12_12d_invalidation_key_scope_only_raw"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_api.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation_scope.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle raw_h AD CONIURA phase12_12c_mem_cache("12d-raw-only")
+  CONIURA cache_set(SPECULUM raw_h, "raw:key", "value", 60)
+  EVOCA InvalidationCoord coord AD CONIURA invalidation_coord_new(SPECULUM raw_h, NIHIL, NIHIL, NIHIL)
+  EVOCA InvalidationResult result AD CONIURA invalidation_exec_one(coord, CONIURA invalidation_scope_chave("raw:key"))
+  SI result.chaves_removidas != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA cache_exists(SPECULUM raw_h, "raw:key")
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

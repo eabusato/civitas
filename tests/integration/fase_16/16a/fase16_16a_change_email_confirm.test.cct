@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase16_16a_change_email_confirm"
+
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_email.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  EVOCA User user AD CONIURA fase16_create_user(tdb, "ana@test.example", "abcd")
+  EVOCA FlowConfig cfg AD CONIURA fase16_flow_cfg()
+  EVOCA SPECULUM NIHIL req_res AD CONIURA auth_flow_alterar_email_solicitar(tdb.db, cfg, user.id, "novo@test.example")
+  SI CONIURA result_is_err GENUS(FlowTokenResult, FlowError)(req_res)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA FlowTokenResult issued AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(req_res)
+  EVOCA SPECULUM NIHIL conf_res AD CONIURA auth_flow_alterar_email_confirmar(tdb.db, cfg, issued.token_claro)
+  SI CONIURA result_is_err GENUS(VERBUM, FlowError)(conf_res)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_buscar_por_id(tdb.db, user.id)
+  EVOCA User loaded AD CONIURA option_unwrap GENUS(User)(user_opt)
+  CONIURA option_free GENUS(User)(user_opt)
+  SI CONIURA compare(loaded.email, "novo@test.example") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  SI loaded.email_verificado
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  SI CONIURA len(loaded.email_verificacao_pendente) != 0
+    CONIURA test_db_close(tdb)
+    REDDE 5
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

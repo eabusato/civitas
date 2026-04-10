@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase15_15c_list_permissions_dedup_and_any"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_db.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_assign.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_check.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE has_code(SPECULUM NIHIL lista, VERBUM code) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lista)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(lista, i)
+    SI CONIURA compare(*ptr, code) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_permissions_db_open("15c_list_permissions_dedup_and_any")
+  CONIURA perm_registrar(db, "posts.editar", "Editar posts")
+  CONIURA perm_registrar(db, "posts.publicar", "Publicar posts")
+  EVOCA REX gid AD CONIURA group_criar(db, "editores")
+  CONIURA group_adicionar_permissao(db, gid, "posts.editar")
+  CONIURA group_adicionar_permissao(db, gid, "posts.publicar")
+  CONIURA user_group_adicionar(db, "user-1", gid)
+  CONIURA user_perm_conceder(db, "user-1", "posts.editar")
+  EVOCA SPECULUM NIHIL lista AD CONIURA usuario_listar_permissoes(db, "user-1")
+  SI CONIURA fluxus_len(lista) != 2
+    CONIURA fluxus_free(lista)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA has_code(lista, "posts.editar") VEL NON CONIURA has_code(lista, "posts.publicar")
+    CONIURA fluxus_free(lista)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL wanted AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM a AD "posts.publicar"
+  EVOCA VERBUM b AD "admin.delete"
+  CONIURA fluxus_push(wanted, SPECULUM a)
+  CONIURA fluxus_push(wanted, SPECULUM b)
+  SI NON CONIURA usuario_tem_qualquer_permissao(db, "user-1", wanted)
+    CONIURA fluxus_free(wanted)
+    CONIURA fluxus_free(lista)
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  CONIURA fluxus_free(wanted)
+  CONIURA fluxus_free(lista)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

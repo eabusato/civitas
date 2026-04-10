@@ -1,0 +1,54 @@
+INCIPIT grimoire "fase9_9d_process_pipeline_record_defaults"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("process_pipeline")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaStore store AD CONIURA phase9_9d_open_store(root)
+  EVOCA VERBUM source_path AD CONIURA phase9_9d_make_image(root, "input.jpg", "yellow", 320, 240)
+  EVOCA SPECULUM NIHIL proc_res AD CONIURA image_process(
+    source_path,
+    "input.jpg",
+    "user-1",
+    CONIURA phase9_9d_process_config(),
+    store
+  )
+  SI CONIURA result_is_err GENUS(ImageRecord, VERBUM)(proc_res)
+    IACE CONIURA result_unwrap_err GENUS(ImageRecord, VERBUM)(proc_res)
+  FIN SI
+
+  EVOCA ImageRecord record AD CONIURA result_unwrap GENUS(ImageRecord, VERBUM)(proc_res)
+  EVOCA VERBUM quarantine_dir AD CONIURA media_store_zone_dir(store, MEDIA_ZONE_QUARANTINE)
+  EVOCA VERBUM processed_dir AD CONIURA media_store_zone_dir(store, MEDIA_ZONE_PROCESSED)
+
+  SI record.active
+    IACE "processed image should start inactive"
+  FIN SI
+  SI record.moderation_state != ImsPending
+    IACE "processed image should start pending moderation"
+  FIN SI
+  SI record.zone != MEDIA_ZONE_QUARANTINE
+    IACE "original image should be promoted to quarantine"
+  FIN SI
+  SI record.width != 320 VEL record.height != 240
+    IACE "record dimensions should match original image"
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(quarantine_dir, CONIURA concat(record.artifact_id, ".jpg")))
+    IACE "quarantine original should exist"
+  FIN SI
+  SI CONIURA fluxus_len(CONIURA list_dir(processed_dir)) < 2
+    IACE "two processed derivatives should exist"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

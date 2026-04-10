@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase16_16a_wrong_type"
+
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_email.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_reset.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  EVOCA User user AD CONIURA fase16_create_user(tdb, "ana@test.example", "abcd")
+  EVOCA FlowConfig cfg AD CONIURA fase16_flow_cfg()
+  EVOCA SPECULUM NIHIL req_res AD CONIURA auth_flow_verificar_email_solicitar(tdb.db, cfg, user.id)
+  EVOCA FlowTokenResult issued AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(req_res)
+  EVOCA SPECULUM NIHIL val_res AD CONIURA auth_flow_reset_validar(tdb.db, cfg, issued.token_claro)
+  SI NON CONIURA result_is_err GENUS(FlowToken, FlowError)(val_res)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA auth_flow_error_name(CONIURA result_unwrap_err GENUS(FlowToken, FlowError)(val_res)), "FlowTokenTipoErrado") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase26_26a_run_inprocess_collects_percentiles"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA phase26_bench_router()
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/slow", "GET")
+  CONIURA bench_config_set_n(SPECULUM cfg, 4)
+  CONIURA bench_config_set_warmup(SPECULUM cfg, 1)
+  EVOCA BenchResult result AD CONIURA bench_run_inprocess(SPECULUM router, cfg)
+  SI result.n_requests != 4
+    REDDE 1
+  FIN SI
+  SI result.n_success != 4
+    REDDE 2
+  FIN SI
+  SI result.n_error != 0
+    REDDE 3
+  FIN SI
+  SI result.p50_ms <= 0 VEL result.p95_ms <= 0 VEL result.p99_ms <= 0
+    REDDE 4
+  FIN SI
+  SI result.max_ms < result.min_ms
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

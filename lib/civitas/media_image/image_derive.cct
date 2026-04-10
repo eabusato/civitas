@@ -1,0 +1,240 @@
+INCIPIT grimoire "civitas_media_image_derive"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/math.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "image_types.cct"
+
+RITUALE image_format_extension(ImageFormat format) REDDE VERBUM
+  ELIGE format
+    CASUS ImgJPEG:
+      REDDE ".jpg"
+    CASUS ImgPNG:
+      REDDE ".png"
+    CASUS ImgGIF:
+      REDDE ".gif"
+    CASUS ImgBMP:
+      REDDE ".bmp"
+    CASUS ImgWebP:
+      REDDE ".webp"
+    ALIOQUIN:
+      REDDE ".bin"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE image_ok_dims(ImageDimensions dims) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(ImageDimensions, VERBUM)(dims)
+EXPLICIT RITUALE
+
+RITUALE image_err_dims(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(ImageDimensions, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE image_ok_derivatives(SPECULUM NIHIL items) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(SPECULUM NIHIL, VERBUM)(items)
+EXPLICIT RITUALE
+
+RITUALE image_err_derivatives(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(SPECULUM NIHIL, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE image_derive_one(VERBUM source_path, ImageDerivativeSpec spec, VERBUM dest_path) REDDE SPECULUM NIHIL
+  EVOCA Image source AD CONIURA image_load(source_path)
+  SI NON CONIURA image_is_valid(source)
+    CONIURA image_free(source)
+    REDDE CONIURA image_err_dims("source image is invalid or corrupted")
+  FIN SI
+
+  EVOCA ImageDimensions dims AD CONIURA image_get_dimensions(source)
+  EVOCA REX work_width AD dims.width
+  EVOCA REX work_height AD dims.height
+  SI spec.crop_square
+    EVOCA REX side AD CONIURA min(work_width, work_height)
+    EVOCA REX origin_x AD (work_width - side) / 2
+    EVOCA REX origin_y AD (work_height - side) / 2
+    EVOCA Image cropped AD CONIURA image_crop(source, origin_x, origin_y, side, side)
+    CONIURA image_free(source)
+    SI NON CONIURA image_is_valid(cropped)
+      CONIURA image_free(cropped)
+      REDDE CONIURA image_err_dims("square crop failed")
+    FIN SI
+    VINCIRE dims AD CONIURA image_get_dimensions(cropped)
+    VINCIRE work_width AD dims.width
+    VINCIRE work_height AD dims.height
+    EVOCA UMBRA scale_w_crop AD cast GENUS(UMBRA)(spec.max_width) / cast GENUS(UMBRA)(work_width)
+    EVOCA UMBRA scale_h_crop AD cast GENUS(UMBRA)(spec.max_height) / cast GENUS(UMBRA)(work_height)
+    EVOCA UMBRA scale_crop AD CONIURA min_real(scale_w_crop, scale_h_crop)
+    SI scale_crop > 1.0
+      VINCIRE scale_crop AD 1.0
+    FIN SI
+    EVOCA REX target_w_crop AD CONIURA max(1, CONIURA round_real(cast GENUS(UMBRA)(work_width) * scale_crop))
+    EVOCA REX target_h_crop AD CONIURA max(1, CONIURA round_real(cast GENUS(UMBRA)(work_height) * scale_crop))
+    EVOCA Image resized_crop AD CONIURA image_resize(cropped, target_w_crop, target_h_crop, Lanczos)
+    CONIURA image_free(cropped)
+    SI NON CONIURA image_is_valid(resized_crop)
+      CONIURA image_free(resized_crop)
+      REDDE CONIURA image_err_dims("resize failed")
+    FIN SI
+
+    SI spec.format != ImgUnknown ET spec.format != resized_crop.formato
+      EVOCA Image converted_crop AD CONIURA image_convert_format(resized_crop, spec.format)
+      CONIURA image_free(resized_crop)
+      SI NON CONIURA image_is_valid(converted_crop)
+        CONIURA image_free(converted_crop)
+        REDDE CONIURA image_err_dims("format conversion failed")
+      FIN SI
+      EVOCA SaveOptions converted_opts AD CONIURA image_default_save_options()
+      VINCIRE converted_opts.quality AD spec.quality
+      SI NON CONIURA image_save(converted_crop, dest_path, converted_opts)
+        EVOCA VERBUM converted_err AD CONIURA image_last_error()
+        CONIURA image_free(converted_crop)
+        SI CONIURA len(converted_err) == 0
+          REDDE CONIURA image_err_dims("image save failed")
+        FIN SI
+        REDDE CONIURA image_err_dims(CONIURA concat("image save failed: ", converted_err))
+      FIN SI
+      EVOCA ImageDimensions converted_dims AD CONIURA image_get_dimensions(converted_crop)
+      CONIURA image_free(converted_crop)
+      REDDE CONIURA image_ok_dims(converted_dims)
+    FIN SI
+
+    EVOCA SaveOptions cropped_opts AD CONIURA image_default_save_options()
+    VINCIRE cropped_opts.quality AD spec.quality
+    SI NON CONIURA image_save(resized_crop, dest_path, cropped_opts)
+      EVOCA VERBUM cropped_err AD CONIURA image_last_error()
+      CONIURA image_free(resized_crop)
+      SI CONIURA len(cropped_err) == 0
+        REDDE CONIURA image_err_dims("image save failed")
+      FIN SI
+      REDDE CONIURA image_err_dims(CONIURA concat("image save failed: ", cropped_err))
+    FIN SI
+    EVOCA ImageDimensions cropped_dims AD CONIURA image_get_dimensions(resized_crop)
+    CONIURA image_free(resized_crop)
+    REDDE CONIURA image_ok_dims(cropped_dims)
+  FIN SI
+
+  EVOCA UMBRA scale_w AD cast GENUS(UMBRA)(spec.max_width) / cast GENUS(UMBRA)(work_width)
+  EVOCA UMBRA scale_h AD cast GENUS(UMBRA)(spec.max_height) / cast GENUS(UMBRA)(work_height)
+  EVOCA UMBRA scale AD CONIURA min_real(scale_w, scale_h)
+  SI scale > 1.0
+    VINCIRE scale AD 1.0
+  FIN SI
+
+  EVOCA REX target_w AD CONIURA max(1, CONIURA round_real(cast GENUS(UMBRA)(work_width) * scale))
+  EVOCA REX target_h AD CONIURA max(1, CONIURA round_real(cast GENUS(UMBRA)(work_height) * scale))
+  EVOCA Image resized AD CONIURA image_resize(source, target_w, target_h, Lanczos)
+  CONIURA image_free(source)
+  SI NON CONIURA image_is_valid(resized)
+    CONIURA image_free(resized)
+    REDDE CONIURA image_err_dims("resize failed")
+  FIN SI
+
+  SI spec.format != ImgUnknown ET spec.format != resized.formato
+    EVOCA Image converted AD CONIURA image_convert_format(resized, spec.format)
+    CONIURA image_free(resized)
+    SI NON CONIURA image_is_valid(converted)
+      CONIURA image_free(converted)
+      REDDE CONIURA image_err_dims("format conversion failed")
+    FIN SI
+    EVOCA SaveOptions converted_opts AD CONIURA image_default_save_options()
+    VINCIRE converted_opts.quality AD spec.quality
+    SI NON CONIURA image_save(converted, dest_path, converted_opts)
+      EVOCA VERBUM converted_err AD CONIURA image_last_error()
+      CONIURA image_free(converted)
+      SI CONIURA len(converted_err) == 0
+        REDDE CONIURA image_err_dims("image save failed")
+      FIN SI
+      REDDE CONIURA image_err_dims(CONIURA concat("image save failed: ", converted_err))
+    FIN SI
+    EVOCA ImageDimensions converted_dims AD CONIURA image_get_dimensions(converted)
+    CONIURA image_free(converted)
+    REDDE CONIURA image_ok_dims(converted_dims)
+  FIN SI
+
+  EVOCA SaveOptions opts AD CONIURA image_default_save_options()
+  VINCIRE opts.quality AD spec.quality
+  SI NON CONIURA image_save(resized, dest_path, opts)
+    EVOCA VERBUM err AD CONIURA image_last_error()
+    CONIURA image_free(resized)
+    SI CONIURA len(err) == 0
+      REDDE CONIURA image_err_dims("image save failed")
+    FIN SI
+    REDDE CONIURA image_err_dims(CONIURA concat("image save failed: ", err))
+  FIN SI
+
+  EVOCA ImageDimensions final_dims AD CONIURA image_get_dimensions(resized)
+  CONIURA image_free(resized)
+  REDDE CONIURA image_ok_dims(final_dims)
+EXPLICIT RITUALE
+
+RITUALE image_derive_cleanup(MediaStore store, SPECULUM NIHIL artifacts) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(artifacts)
+  DUM i < n
+    EVOCA SPECULUM MediaArtifact artifact_ptr AD CONIURA fluxus_get(artifacts, i)
+    CONIURA media_store_delete(store, *artifact_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE image_derive_all(VERBUM source_path, ImageProcessConfig cfg, MediaStore store) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL derivatives AD CONIURA fluxus_init(MENSURA(ImageDerivative))
+  EVOCA SPECULUM NIHIL created_artifacts AD CONIURA fluxus_init(MENSURA(MediaArtifact))
+  EVOCA REX i AD 0
+  EVOCA REX total AD 0
+
+  SI cfg.specs != NIHIL
+    VINCIRE total AD CONIURA fluxus_len(cfg.specs)
+  FIN SI
+
+  DUM i < total
+    EVOCA SPECULUM ImageDerivativeSpec spec_ptr AD CONIURA fluxus_get(cfg.specs, i)
+    EVOCA ImageDerivativeSpec spec AD *spec_ptr
+    EVOCA VERBUM tmp_name AD CONIURA concat(
+      CONIURA uuid_to_string(CONIURA uuid_v4()),
+      CONIURA image_format_extension(spec.format)
+    )
+    EVOCA VERBUM tmp_path AD CONIURA path_join(CONIURA media_store_zone_dir(store, MEDIA_ZONE_TMP), tmp_name)
+    EVOCA SPECULUM NIHIL derive_res AD CONIURA image_derive_one(source_path, spec, tmp_path)
+
+    SI CONIURA result_is_err GENUS(ImageDimensions, VERBUM)(derive_res)
+      SI CONIURA exists(tmp_path)
+        CONIURA delete_file(tmp_path)
+      FIN SI
+      CONIURA image_derive_cleanup(store, created_artifacts)
+      REDDE CONIURA image_err_derivatives(CONIURA result_unwrap_err GENUS(ImageDimensions, VERBUM)(derive_res))
+    FIN SI
+
+    EVOCA ImageDimensions derived_dims AD CONIURA result_unwrap GENUS(ImageDimensions, VERBUM)(derive_res)
+    EVOCA SPECULUM NIHIL put_res AD CONIURA media_store_put_file(store, MEDIA_ZONE_PROCESSED, tmp_path, CONIURA concat(spec.name, CONIURA image_format_extension(spec.format)))
+    SI CONIURA exists(tmp_path)
+      CONIURA delete_file(tmp_path)
+    FIN SI
+    SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(put_res)
+      CONIURA image_derive_cleanup(store, created_artifacts)
+      REDDE CONIURA image_err_derivatives(CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(put_res))
+    FIN SI
+
+    EVOCA MediaArtifact artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(put_res)
+    EVOCA ImageDerivative derivative
+    VINCIRE derivative.spec_name AD spec.name
+    VINCIRE derivative.artifact AD artifact
+    VINCIRE derivative.width AD derived_dims.width
+    VINCIRE derivative.height AD derived_dims.height
+    CONIURA fluxus_push(derivatives, SPECULUM derivative)
+    CONIURA fluxus_push(created_artifacts, SPECULUM artifact)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA image_ok_derivatives(derivatives)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

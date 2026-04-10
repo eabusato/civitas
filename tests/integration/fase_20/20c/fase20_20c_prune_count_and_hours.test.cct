@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase20_20c_prune_count_and_hours"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase20_reset_root("20c_prune")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase20_trace_db_path("20c_prune"), trace_dir, 2, 1)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-old", "/a", "GET", 200, 10, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-old", "old"), 1)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-mid", "/b", "GET", 200, 10, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-mid", "mid"), 2)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-new", "/c", "GET", 200, 10, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-new", "new"), 9999999999)
+  SI CONIURA trace_store_prune_by_count(SPECULUM store) != 1
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 1
+  FIN SI
+  SI CONIURA trace_store_count(SPECULUM store) != 2
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 2
+  FIN SI
+  SI CONIURA trace_store_prune_by_hours(SPECULUM store) < 1
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 3
+  FIN SI
+  CONIURA trace_store_close(SPECULUM store)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase15_15g_schema_and_configs"
+
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA auth_test_schema_up(tdb)
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'") != 1
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'refresh_tokens'") != 1
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'auth_attempts'") != 1
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  CONIURA auth_test_schema_down(tdb)
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

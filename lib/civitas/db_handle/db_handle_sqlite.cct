@@ -1,0 +1,163 @@
+INCIPIT grimoire "civitas_db_handle_sqlite"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "db_handle.cct"
+
+RITUALE dbh_sqlite_bind_params(SPECULUM NIHIL stmt, DbParams params) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX idx AD 1
+  DUM i < params.n
+    EVOCA SPECULUM DbParam value AD CONIURA fluxus_get(params.valores, i)
+    ELIGE (*value).kind
+      CASUS DpkInt:
+        CONIURA stmt_bind_int(stmt, idx, (*value).int_value)
+      CASUS DpkReal:
+        CONIURA stmt_bind_real(stmt, idx, (*value).real_value)
+      CASUS DpkBool:
+        SI (*value).bool_value
+          CONIURA stmt_bind_int(stmt, idx, 1)
+        ALITER
+          CONIURA stmt_bind_int(stmt, idx, 0)
+        FIN SI
+      CASUS DpkNull:
+        CONIURA stmt_bind_text(stmt, idx, "")
+      ALIOQUIN:
+        CONIURA stmt_bind_text(stmt, idx, (*value).text_value)
+    FIN ELIGE
+    VINCIRE idx AD idx + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_exec(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(raw_conn, sql)
+  CONIURA dbh_sqlite_bind_params(stmt, params)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_next(SPECULUM NIHIL raw_rows) REDDE VERUM
+  SI NON CONIURA stmt_step(raw_rows)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA stmt_has_row(raw_rows)
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_get_text(SPECULUM NIHIL raw_rows, REX col) REDDE DbTextValue
+  EVOCA DbTextValue out
+  VINCIRE out.value AD CONIURA stmt_get_text(raw_rows, col)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_get_int(SPECULUM NIHIL raw_rows, REX col) REDDE REX
+  REDDE CONIURA stmt_get_int(raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_get_real(SPECULUM NIHIL raw_rows, REX col) REDDE UMBRA
+  REDDE CONIURA stmt_get_real(raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_get_bool(SPECULUM NIHIL raw_rows, REX col) REDDE VERUM
+  REDDE CONIURA stmt_get_int(raw_rows, col) != 0
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_is_null(SPECULUM NIHIL raw_rows, REX col) REDDE VERUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rows_close(SPECULUM NIHIL raw_rows) REDDE NIHIL
+  CONIURA stmt_finalize(raw_rows)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_query(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE DbRows
+  EVOCA DbRows rows AD CONIURA dbrows_empty(PbkSqlite)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(raw_conn, sql)
+  CONIURA dbh_sqlite_bind_params(stmt, params)
+  VINCIRE rows.raw_rows AD stmt
+  VINCIRE rows.sqlite_rows AD stmt
+  VINCIRE rows.next_fn AD dbh_sqlite_rows_next
+  VINCIRE rows.get_text_fn AD dbh_sqlite_rows_get_text
+  VINCIRE rows.get_int_fn AD dbh_sqlite_rows_get_int
+  VINCIRE rows.get_real_fn AD dbh_sqlite_rows_get_real
+  VINCIRE rows.get_bool_fn AD dbh_sqlite_rows_get_bool
+  VINCIRE rows.is_null_fn AD dbh_sqlite_rows_is_null
+  VINCIRE rows.close_fn AD dbh_sqlite_rows_close
+  REDDE rows
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_scalar_int(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(raw_conn, sql)
+  CONIURA dbh_sqlite_bind_params(stmt, params)
+  EVOCA REX total AD 0
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE total AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_begin(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  CONIURA db_begin(raw_conn)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_commit(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  CONIURA db_commit(raw_conn)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rollback(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  CONIURA db_rollback(raw_conn)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_savepoint(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  CONIURA db_exec(raw_conn, CONIURA concat("SAVEPOINT ", name))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_rollback_to(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  CONIURA db_exec(raw_conn, CONIURA concat("ROLLBACK TO SAVEPOINT ", name))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_release_savepoint(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  CONIURA db_exec(raw_conn, CONIURA concat("RELEASE SAVEPOINT ", name))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_is_alive(SPECULUM NIHIL raw_conn) REDDE VERUM
+  REDDE raw_conn != NIHIL
+EXPLICIT RITUALE
+
+RITUALE dbh_sqlite_close(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  SI raw_conn != NIHIL
+    CONIURA db_close(raw_conn)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_from_sqlite(SPECULUM NIHIL sqlite_db) REDDE DbHandle
+  EVOCA DbHandle h AD CONIURA dbh_empty()
+  VINCIRE h.kind AD PbkSqlite
+  VINCIRE h.sqlite_conn AD sqlite_db
+  VINCIRE h.exec_fn AD dbh_sqlite_exec
+  VINCIRE h.query_fn AD dbh_sqlite_query
+  VINCIRE h.scalar_int_fn AD dbh_sqlite_scalar_int
+  VINCIRE h.begin_fn AD dbh_sqlite_begin
+  VINCIRE h.commit_fn AD dbh_sqlite_commit
+  VINCIRE h.rollback_fn AD dbh_sqlite_rollback
+  VINCIRE h.savepoint_fn AD dbh_sqlite_savepoint
+  VINCIRE h.rollback_to_fn AD dbh_sqlite_rollback_to
+  VINCIRE h.release_savepoint_fn AD dbh_sqlite_release_savepoint
+  VINCIRE h.is_alive_fn AD dbh_sqlite_is_alive
+  VINCIRE h.close_fn AD dbh_sqlite_close
+  REDDE h
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

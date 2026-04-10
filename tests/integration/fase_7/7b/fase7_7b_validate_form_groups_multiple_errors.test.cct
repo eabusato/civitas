@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase7_7b_validate_form_groups_multiple_errors_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormSchema schema AD CONIURA form_schema_new()
+  EVOCA FieldSchema nome_fs AD CONIURA field_schema_new("nome")
+  EVOCA FieldSchema email_fs AD CONIURA field_schema_new("email")
+  EVOCA FormData fd AD CONIURA phase7_validation_fd()
+
+  CONIURA field_schema_add_rule(SPECULUM nome_fs, CONIURA rule_required())
+  CONIURA field_schema_add_rule(SPECULUM nome_fs, CONIURA rule_min_len(3))
+  CONIURA field_schema_add_rule(SPECULUM email_fs, CONIURA rule_required())
+  CONIURA field_schema_add_rule(SPECULUM email_fs, CONIURA rule_email())
+  CONIURA form_schema_add_field(SPECULUM schema, nome_fs)
+  CONIURA form_schema_add_field(SPECULUM schema, email_fs)
+
+  CONIURA phase7_validation_put(SPECULUM fd, "nome", "ab")
+  CONIURA phase7_validation_put(SPECULUM fd, "email", "")
+  EVOCA ValidationResult vr AD CONIURA validate_form(schema, fd)
+
+  SI vr.valido
+    REDDE 1
+  FIN SI
+  SI NON CONIURA validation_has_error(vr, "nome")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA validation_has_error(vr, "email")
+    REDDE 3
+  FIN SI
+  SI CONIURA phase7_validation_error_count(vr, "nome") != 1
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA validation_first_error(vr, "nome"), "Minimo de 3 caracteres.") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA validation_first_error(vr, "email"), "Este campo e obrigatorio.") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

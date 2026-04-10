@@ -1,0 +1,316 @@
+INCIPIT grimoire "civitas_core_services"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "external_tools.cct"
+ADVOCARE "settings.cct"
+ADVOCARE "settings_schema.cct"
+ADVOCARE "storage_settings.cct"
+
+SIGILLUM RedisSettings
+  enabled: VERUM
+  configured: VERUM
+  namespace: VERBUM
+  host: VERBUM
+  port: REX
+  password: VERBUM
+  db_index: REX
+  connect_timeout_ms: REX
+  read_timeout_ms: REX
+FIN SIGILLUM
+
+SIGILLUM MailSettings
+  enabled: VERUM
+  configured: VERUM
+  backend_name: VERBUM
+  default_from: VERBUM
+  host: VERBUM
+  port: REX
+  username: VERBUM
+  password: VERBUM
+  auth_kind: VERBUM
+  use_starttls: VERUM
+  use_smtps: VERUM
+  out_dir: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SearchSettings
+  enabled: VERUM
+  configured: VERUM
+  backend: VERBUM
+  url: VERBUM
+  index_prefix: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ProxySettings
+  trusted_proxies_csv: VERBUM
+  trusted_proxies_count: REX
+  trust_forwarded_proto: VERUM
+  trust_forwarded_for: VERUM
+FIN SIGILLUM
+
+RITUALE redis_settings_ok(RedisSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(RedisSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE redis_settings_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(RedisSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE mail_settings_ok(MailSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MailSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE mail_settings_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MailSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE search_settings_ok(SearchSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(SearchSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE search_settings_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(SearchSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE proxy_settings_ok(ProxySettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(ProxySettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE proxy_settings_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(ProxySettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE services_environment(SPECULUM Settings settings) REDDE VERBUM
+  REDDE CONIURA settings_environment(settings)
+EXPLICIT RITUALE
+
+RITUALE services_get_verbum_or_empty(SPECULUM Settings settings, VERBUM key) REDDE VERBUM
+  SI NON CONIURA settings_has(settings, key)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, key))
+EXPLICIT RITUALE
+
+RITUALE settings_redis(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA RedisSettings out
+  EVOCA RedisOptions options AD CONIURA redis_default_options()
+  EVOCA VERBUM url AD CONIURA services_get_verbum_or_empty(settings, "redis.url")
+  VINCIRE out.enabled AD CONIURA len(url) != 0
+  VINCIRE out.namespace AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "redis.namespace"))
+  VINCIRE out.connect_timeout_ms AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "redis.connect_timeout_ms"))
+  VINCIRE out.read_timeout_ms AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "redis.read_timeout_ms"))
+  VINCIRE options.connect_timeout_ms AD out.connect_timeout_ms
+  VINCIRE options.read_timeout_ms AD out.read_timeout_ms
+  VINCIRE out.configured AD out.enabled
+  VINCIRE out.host AD options.host
+  VINCIRE out.port AD options.port
+  VINCIRE out.password AD options.password
+  VINCIRE out.db_index AD options.db_index
+
+  SI NON out.enabled
+    REDDE CONIURA redis_settings_ok(out)
+  FIN SI
+  EVOCA VERBUM err AD CONIURA redis_parse_dsn_fill(url, SPECULUM options)
+  SI CONIURA len(err) != 0
+    REDDE CONIURA redis_settings_err(err)
+  FIN SI
+  VINCIRE options.connect_timeout_ms AD out.connect_timeout_ms
+  VINCIRE options.read_timeout_ms AD out.read_timeout_ms
+  VINCIRE out.host AD options.host
+  VINCIRE out.port AD options.port
+  VINCIRE out.password AD options.password
+  VINCIRE out.db_index AD options.db_index
+  VINCIRE out.connect_timeout_ms AD options.connect_timeout_ms
+  VINCIRE out.read_timeout_ms AD options.read_timeout_ms
+  REDDE CONIURA redis_settings_ok(out)
+EXPLICIT RITUALE
+
+RITUALE mail_backend_name_valid_for_env(VERBUM env_name, VERBUM backend_name) REDDE SPECULUM NIHIL
+  SI CONIURA compare(backend_name, "memory") == 0 ET CONIURA compare(env_name, "test") != 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("mail.memory permitido apenas em test")
+  FIN SI
+  SI CONIURA compare(backend_name, "file") == 0 ET CONIURA compare(env_name, "production") == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("mail.file nao deve ser usado em production")
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_mail(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA MailSettings out
+  EVOCA VERBUM env_name AD CONIURA services_environment(settings)
+  EVOCA VERBUM backend_name AD CONIURA to_lower(CONIURA services_get_verbum_or_empty(settings, "mail.backend"))
+  EVOCA VERBUM host AD CONIURA services_get_verbum_or_empty(settings, "mail.host")
+  EVOCA REX port AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "mail.port"))
+  EVOCA VERBUM username AD CONIURA services_get_verbum_or_empty(settings, "mail.username")
+  EVOCA VERBUM password AD CONIURA services_get_verbum_or_empty(settings, "mail.password")
+  EVOCA VERBUM default_from AD CONIURA services_get_verbum_or_empty(settings, "mail.default_from")
+  EVOCA VERBUM out_dir AD CONIURA services_get_verbum_or_empty(settings, "mail.out_dir")
+  EVOCA VERUM use_starttls AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "mail.use_starttls"))
+  EVOCA VERUM use_smtps AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "mail.use_smtps"))
+  EVOCA VERBUM auth_kind AD "login"
+
+  VINCIRE out.enabled AD CONIURA len(backend_name) != 0
+  VINCIRE out.backend_name AD backend_name
+  VINCIRE out.default_from AD default_from
+  VINCIRE out.configured AD out.enabled
+  VINCIRE out.host AD host
+  VINCIRE out.port AD port
+  VINCIRE out.username AD username
+  VINCIRE out.password AD password
+  VINCIRE out.auth_kind AD auth_kind
+  VINCIRE out.use_starttls AD use_starttls
+  VINCIRE out.use_smtps AD use_smtps
+  VINCIRE out.out_dir AD out_dir
+
+  SI NON out.enabled
+    REDDE CONIURA mail_settings_ok(out)
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA mail_backend_name_valid_for_env(env_name, backend_name))
+    REDDE CONIURA mail_settings_err(CONIURA result_unwrap_err GENUS(REX, VERBUM)(CONIURA mail_backend_name_valid_for_env(env_name, backend_name)))
+  FIN SI
+
+  SI CONIURA compare(backend_name, "smtp") == 0
+    SI CONIURA len(host) == 0
+      REDDE CONIURA mail_settings_err("mail.smtp requer host")
+    FIN SI
+    SI port <= 0
+      REDDE CONIURA mail_settings_err("mail.smtp requer port valida")
+    FIN SI
+    SI CONIURA len(default_from) == 0
+      REDDE CONIURA mail_settings_err("mail.default_from obrigatorio para smtp")
+    FIN SI
+    SI CONIURA len(username) == 0 ET CONIURA len(password) == 0
+      VINCIRE auth_kind AD "none"
+    FIN SI
+    VINCIRE out.auth_kind AD auth_kind
+    REDDE CONIURA mail_settings_ok(out)
+  FIN SI
+
+  SI CONIURA compare(backend_name, "file") == 0
+    SI CONIURA len(out_dir) == 0
+      REDDE CONIURA mail_settings_err("mail.file requer out_dir")
+    FIN SI
+    REDDE CONIURA mail_settings_ok(out)
+  FIN SI
+
+  SI CONIURA compare(backend_name, "memory") == 0
+    REDDE CONIURA mail_settings_ok(out)
+  FIN SI
+
+  REDDE CONIURA mail_settings_err("mail.backend invalido")
+EXPLICIT RITUALE
+
+RITUALE redis_settings_options(RedisSettings settings) REDDE RedisOptions
+  EVOCA RedisOptions options AD CONIURA redis_default_options()
+  VINCIRE options.host AD settings.host
+  VINCIRE options.port AD settings.port
+  VINCIRE options.password AD settings.password
+  VINCIRE options.db_index AD settings.db_index
+  VINCIRE options.connect_timeout_ms AD settings.connect_timeout_ms
+  VINCIRE options.read_timeout_ms AD settings.read_timeout_ms
+  REDDE options
+EXPLICIT RITUALE
+
+RITUALE mail_settings_options(MailSettings settings) REDDE MailBackendOptions
+  SI CONIURA compare(settings.backend_name, "smtp") == 0
+    EVOCA MailAuthKind auth_kind AD MAIL_AUTH_LOGIN
+    SI CONIURA compare(settings.auth_kind, "none") == 0
+      VINCIRE auth_kind AD MAIL_AUTH_NONE
+    FIN SI
+    SI CONIURA compare(settings.auth_kind, "plain") == 0
+      VINCIRE auth_kind AD MAIL_AUTH_PLAIN
+    FIN SI
+    SI CONIURA compare(settings.auth_kind, "xoauth2") == 0
+      VINCIRE auth_kind AD MAIL_AUTH_XOAUTH2
+    FIN SI
+    EVOCA MailBackendOptions smtp_opts AD CONIURA mail_backend_smtp(
+      settings.host,
+      settings.port,
+      settings.username,
+      settings.password,
+      auth_kind,
+      settings.use_starttls
+    )
+    VINCIRE smtp_opts.use_smtps AD settings.use_smtps
+    REDDE smtp_opts
+  FIN SI
+  SI CONIURA compare(settings.backend_name, "file") == 0
+    REDDE CONIURA mail_backend_file(settings.out_dir)
+  FIN SI
+  REDDE CONIURA mail_backend_memory()
+EXPLICIT RITUALE
+
+RITUALE mail_settings_open(MailSettings settings) REDDE SPECULUM NIHIL
+  REDDE CONIURA mail_client_open(CONIURA mail_settings_options(settings))
+EXPLICIT RITUALE
+
+RITUALE settings_search(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA SearchSettings out
+  VINCIRE out.enabled AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "search.enabled"))
+  VINCIRE out.backend AD CONIURA services_get_verbum_or_empty(settings, "search.backend")
+  VINCIRE out.url AD CONIURA services_get_verbum_or_empty(settings, "search.url")
+  VINCIRE out.index_prefix AD CONIURA services_get_verbum_or_empty(settings, "search.index_prefix")
+  VINCIRE out.configured AD out.enabled
+
+  SI NON out.enabled
+    REDDE CONIURA search_settings_ok(out)
+  FIN SI
+  SI CONIURA len(out.backend) == 0
+    REDDE CONIURA search_settings_err("search.enabled requer backend")
+  FIN SI
+  SI CONIURA len(out.url) == 0
+    REDDE CONIURA search_settings_err("search.enabled requer url")
+  FIN SI
+  SI NON CONIURA starts_with(out.url, "http://") ET NON CONIURA starts_with(out.url, "https://")
+    REDDE CONIURA search_settings_err("search.url invalida")
+  FIN SI
+  REDDE CONIURA search_settings_ok(out)
+EXPLICIT RITUALE
+
+RITUALE settings_proxy(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA ProxySettings out
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, "http.trusted_proxies")
+  EVOCA SettingsValue trusted_value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  EVOCA SPECULUM NIHIL trusted_proxies AD CONIURA settings_deserialize_string_list(trusted_value.serialized)
+  EVOCA VERBUM env_name AD CONIURA services_environment(settings)
+  VINCIRE out.trusted_proxies_csv AD CONIURA join(trusted_proxies, ",")
+  VINCIRE out.trusted_proxies_count AD CONIURA fluxus_len(trusted_proxies)
+  VINCIRE out.trust_forwarded_proto AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "http.trust_forwarded_proto"))
+  VINCIRE out.trust_forwarded_for AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "http.trust_forwarded_for"))
+
+  SI CONIURA compare(env_name, "production") == 0 ET (out.trust_forwarded_proto VEL out.trust_forwarded_for) ET out.trusted_proxies_count == 0
+    REDDE CONIURA proxy_settings_err("trusted proxies implicitos nao sao aceitos em production")
+  FIN SI
+  REDDE CONIURA proxy_settings_ok(out)
+EXPLICIT RITUALE
+
+RITUALE app_service_storage_key() REDDE VERBUM
+  REDDE "civitas.service.storage"
+EXPLICIT RITUALE
+
+RITUALE app_service_redis_key() REDDE VERBUM
+  REDDE "civitas.service.redis"
+EXPLICIT RITUALE
+
+RITUALE app_service_mail_key() REDDE VERBUM
+  REDDE "civitas.service.mail"
+EXPLICIT RITUALE
+
+RITUALE app_service_search_key() REDDE VERBUM
+  REDDE "civitas.service.search"
+EXPLICIT RITUALE
+
+RITUALE app_service_media_tools_key() REDDE VERBUM
+  REDDE "civitas.service.media_tools"
+EXPLICIT RITUALE
+
+RITUALE app_service_proxy_key() REDDE VERBUM
+  REDDE "civitas.service.proxy"
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

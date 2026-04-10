@@ -1,0 +1,60 @@
+-- Generated from lounge.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_lounge"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../apps/shared/template_contexts.cct"
+ADVOCARE "../apps/shared/types.cct"
+
+RITUALE render_lounge(RedeLoungePageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"/static/app.css\">\n</head>\n<body>\n  <header class=\"topbar\">\n    <div class=\"brand\"><a href=\"/\">rede_social</a></div>\n    <nav>\n      <a href=\"/\">Feed</a>\n      <a href=\"/lounge\">Lounge</a>\n      <a href=\"/api/feed\">API</a>\n      <a href=\"/sigilos-vivos\">Sigilos</a>\n      <a href=\"/ops\">Ops</a>\n      ")
+  SI ctx.has_user
+    CONIURA builder_append(b, "\n        <span class=\"chip\">@")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.current_user))
+    CONIURA builder_append(b, "</span>\n        <form method=\"POST\" action=\"/sair\" class=\"inline-form\">\n          <button type=\"submit\">Logout</button>\n        </form>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <a href=\"/entrar\">Login</a>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </nav>\n  </header>\n  <main class=\"shell\">\n    ")
+  CONIURA builder_append(b, "\n<section class=\"hero\">\n  <div>\n    <p class=\"eyebrow\">Lounge</p>\n    <h1>Room log built on ws_room</h1>\n    <p>This example keeps phase 25 visible with room membership and event logs, even though the public HTTP server still does not hand the accepted socket to userland routes.</p>\n  </div>\n</section>\n<section class=\"grid-main\">\n  <div class=\"card\">\n    ")
+  SI ctx.has_user
+    CONIURA builder_append(b, "\n      <form method=\"POST\" action=\"/lounge/send\" class=\"stack-form\">\n        ")
+    CONIURA builder_append(b, ctx.csrf_html)
+    CONIURA builder_append(b, "\n        <label>Message<textarea name=\"body\" rows=\"3\" placeholder=\"Broadcast a note to the lounge log\"></textarea></label>\n        <button type=\"submit\">Send to room log</button>\n      </form>\n    ")
+  FIN SI
+  CONIURA builder_append(b, "\n  </div>\n  <div class=\"card\">\n    <h3>Recent room events</h3>\n    ")
+  EVOCA REX i_row AD 0
+  EVOCA REX n_row AD CONIURA fluxus_len(ctx.events)
+  DUM i_row < n_row
+    EVOCA SPECULUM RedeRoomEventView item_row AD CONIURA fluxus_get(ctx.events, i_row)
+    EVOCA LoopContext loop_row AD CONIURA tpl_loop_context(i_row, n_row)
+    CONIURA builder_append(b, "\n      <div class=\"activity-item\">\n        <strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*item_row).kind))
+    CONIURA builder_append(b, "</strong>\n        <p>")
+    CONIURA builder_append(b, CONIURA html_encode((*item_row).payload))
+    CONIURA builder_append(b, "</p>\n        <span class=\"muted\">user ")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int((*item_row).user_id)))
+    CONIURA builder_append(b, " &middot; actor ")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int((*item_row).actor_id)))
+    CONIURA builder_append(b, " &middot; ")
+    CONIURA builder_append(b, CONIURA html_encode((*item_row).created_at))
+    CONIURA builder_append(b, "</span>\n      </div>\n    ")
+    VINCIRE i_row AD i_row + 1
+  FIN DUM
+  CONIURA builder_append(b, "\n  </div>\n</section>\n")
+  CONIURA builder_append(b, "\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

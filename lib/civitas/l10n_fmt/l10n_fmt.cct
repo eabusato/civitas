@@ -1,0 +1,71 @@
+INCIPIT grimoire "civitas_l10n_fmt_types"
+
+SIGILLUM RelTimeRules
+  agora: VERBUM
+  seg_singular: VERBUM
+  seg_plural: VERBUM
+  min_singular: VERBUM
+  min_plural: VERBUM
+  hora_singular: VERBUM
+  hora_plural: VERBUM
+  dia_singular: VERBUM
+  dia_plural: VERBUM
+  semana_singular: VERBUM
+  semana_plural: VERBUM
+  mes_singular: VERBUM
+  mes_plural: VERBUM
+  ano_singular: VERBUM
+  ano_plural: VERBUM
+  futuro_seg_singular: VERBUM
+  futuro_seg_plural: VERBUM
+  futuro_min_singular: VERBUM
+  futuro_min_plural: VERBUM
+  futuro_hora_singular: VERBUM
+  futuro_hora_plural: VERBUM
+  futuro_dia_singular: VERBUM
+  futuro_dia_plural: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MonthNames
+  completos: SPECULUM NIHIL
+  abreviados: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM DayNames
+  completos: SPECULUM NIHIL
+  abreviados: SPECULUM NIHIL
+  inicio_semana: REX
+FIN SIGILLUM
+
+SIGILLUM OrdinalRules
+  sufixo_masc: VERBUM
+  sufixo_fem: VERBUM
+  sufixo_1: VERBUM
+  sufixo_2: VERBUM
+  sufixo_3: VERBUM
+  sufixo_resto: VERBUM
+  usa_sufixo_irregular: VERUM
+FIN SIGILLUM
+
+SIGILLUM ListRules
+  sep: VERBUM
+  conj: VERBUM
+  conj_oxford: VERUM
+FIN SIGILLUM
+
+SIGILLUM L10nFmtRules
+  locale: VERBUM
+  reltime: RelTimeRules
+  meses: MonthNames
+  dias: DayNames
+  ordinal: OrdinalRules
+  lista: ListRules
+  formato_data_longa: VERBUM
+FIN SIGILLUM
+
+SIGILLUM L10nFmtRegistry
+  regras: SPECULUM NIHIL
+  padrao: VERBUM
+FIN SIGILLUM
+
+EXPLICIT grimoire

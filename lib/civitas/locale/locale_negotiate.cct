@@ -1,0 +1,46 @@
+INCIPIT grimoire "civitas_locale_negotiate"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "locale.cct"
+ADVOCARE "locale_accept.cct"
+
+RITUALE locale_negotiate(SPECULUM NIHIL prefs, SPECULUM NIHIL suportados, Locale padrao) REDDE Locale
+  EVOCA REX np AD CONIURA fluxus_len(prefs)
+  EVOCA REX ns AD CONIURA fluxus_len(suportados)
+  EVOCA REX pi AD 0
+  DUM pi < np
+    EVOCA SPECULUM AcceptLangEntry ep AD CONIURA fluxus_get(prefs, pi)
+    EVOCA REX si AD 0
+    DUM si < ns
+      EVOCA SPECULUM Locale lp AD CONIURA fluxus_get(suportados, si)
+      SI CONIURA locale_equals((*ep).locale, *lp)
+        REDDE *lp
+      FIN SI
+      VINCIRE si AD si + 1
+    FIN DUM
+    VINCIRE pi AD pi + 1
+  FIN DUM
+
+  VINCIRE pi AD 0
+  DUM pi < np
+    EVOCA SPECULUM AcceptLangEntry ep AD CONIURA fluxus_get(prefs, pi)
+    EVOCA REX si AD 0
+    DUM si < ns
+      EVOCA SPECULUM Locale lp AD CONIURA fluxus_get(suportados, si)
+      SI CONIURA locale_matches_lang((*ep).locale, *lp)
+        REDDE *lp
+      FIN SI
+      VINCIRE si AD si + 1
+    FIN DUM
+    VINCIRE pi AD pi + 1
+  FIN DUM
+
+  REDDE padrao
+EXPLICIT RITUALE
+
+RITUALE locale_negotiate_from_header(VERBUM accept_lang_header, SPECULUM NIHIL suportados, Locale padrao) REDDE Locale
+  EVOCA SPECULUM NIHIL prefs AD CONIURA locale_parse_accept_language(accept_lang_header)
+  REDDE CONIURA locale_negotiate(prefs, suportados, padrao)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

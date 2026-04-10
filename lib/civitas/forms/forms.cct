@@ -1,0 +1,406 @@
+INCIPIT grimoire "civitas_forms"
+
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "multipart.cct"
+
+ORDO FormParseError
+  FpeNilBody,
+  FpeMissingBoundary,
+  FpeMalformedBoundary,
+  FpeFileTooLarge,
+  FpeTotalSizeTooLarge,
+  FpeInvalidEncoding,
+  FpeUnsupportedContentType
+FIN ORDO
+
+SIGILLUM UploadedFile
+  filename: VERBUM
+  content_type: VERBUM
+  data: SPECULUM NIHIL
+  size: REX
+FIN SIGILLUM
+
+SIGILLUM FormData
+  raw_fields: SPECULUM NIHIL
+  multi_fields: SPECULUM NIHIL
+  files: SPECULUM NIHIL
+  content_type: VERBUM
+FIN SIGILLUM
+
+SIGILLUM FormParseConfig
+  max_file_size: REX
+  max_total_size: REX
+  max_fields: REX
+FIN SIGILLUM
+
+RITUALE form_parse_config_default() REDDE FormParseConfig
+  EVOCA FormParseConfig cfg
+  VINCIRE cfg.max_file_size AD 10485760
+  VINCIRE cfg.max_total_size AD 52428800
+  VINCIRE cfg.max_fields AD 100
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE form_data_new() REDDE FormData
+  EVOCA FormData fd
+  VINCIRE fd.raw_fields AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE fd.multi_fields AD CONIURA map_init GENUS(VERBUM, FormValues)()
+  VINCIRE fd.files AD CONIURA map_init GENUS(VERBUM, UploadedFile)()
+  VINCIRE fd.content_type AD ""
+  REDDE fd
+EXPLICIT RITUALE
+
+RITUALE form_parse_error_message(FormParseError err) REDDE VERBUM
+  ELIGE err
+    CASUS FpeNilBody:
+      REDDE "body de formulario ausente"
+    CASUS FpeMissingBoundary:
+      REDDE "boundary multipart ausente"
+    CASUS FpeMalformedBoundary:
+      REDDE "multipart malformado"
+    CASUS FpeFileTooLarge:
+      REDDE "arquivo excede limite"
+    CASUS FpeTotalSizeTooLarge:
+      REDDE "formulario excede limite"
+    CASUS FpeInvalidEncoding:
+      REDDE "encoding de formulario invalido"
+    ALIOQUIN:
+      REDDE "content-type nao suportado"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE uploaded_file_text(UploadedFile file) REDDE VERBUM
+  EVOCA SPECULUM VERBUM text_ptr AD file.data
+  REDDE *text_ptr
+EXPLICIT RITUALE
+
+RITUALE form_data_raw_key(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(fd.raw_fields)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE form_data_multi_key(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, FormValues)(fd.multi_fields)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE form_data_file_key(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, UploadedFile)(fd.files)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE form_data_put_text(SPECULUM FormData fd, VERBUM key, VERBUM value) REDDE NIHIL
+  EVOCA SPECULUM NIHIL raw_key_opt AD CONIURA form_data_raw_key(*fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(raw_key_opt)
+    CONIURA map_insert GENUS(VERBUM, VERBUM)((*fd).raw_fields, key, value)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(raw_key_opt)
+
+  EVOCA SPECULUM NIHIL multi_key_opt AD CONIURA form_data_multi_key(*fd, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(multi_key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(multi_key_opt)
+    EVOCA SPECULUM NIHIL values_opt AD CONIURA map_get GENUS(VERBUM, FormValues)((*fd).multi_fields, stored_key)
+    SI CONIURA option_is_some GENUS(FormValues)(values_opt)
+      EVOCA FormValues values AD CONIURA option_unwrap GENUS(FormValues)(values_opt)
+      CONIURA fluxus_push(values.items, SPECULUM value)
+    FIN SI
+    CONIURA option_free GENUS(FormValues)(values_opt)
+    CONIURA option_free GENUS(VERBUM)(multi_key_opt)
+    REDDE
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(multi_key_opt)
+  EVOCA FormValues values
+  VINCIRE values.items AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(values.items, SPECULUM value)
+  CONIURA map_insert GENUS(VERBUM, FormValues)((*fd).multi_fields, key, values)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_data_put_file(SPECULUM FormData fd, VERBUM key, UploadedFile file) REDDE NIHIL
+  EVOCA SPECULUM NIHIL file_key_opt AD CONIURA form_data_file_key(*fd, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(file_key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(file_key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, UploadedFile)((*fd).files, stored_key, file)
+    CONIURA option_free GENUS(VERBUM)(file_key_opt)
+    REDDE
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(file_key_opt)
+  CONIURA map_insert GENUS(VERBUM, UploadedFile)((*fd).files, key, file)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_parse_part(
+  VERBUM part,
+  SPECULUM FormData fd,
+  FormParseConfig cfg,
+  SPECULUM REX field_count
+) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sep_marker AD CONIURA concat(CONIURA multipart_crlf(), CONIURA multipart_crlf())
+  EVOCA REX sep AD CONIURA find(part, sep_marker)
+  SI sep == -1
+    REDDE CONIURA Err GENUS(REX, FormParseError)(FpeMalformedBoundary)
+  FIN SI
+
+  EVOCA VERBUM headers AD CONIURA substring(part, 0, sep)
+  EVOCA VERBUM body_part AD CONIURA substring(part, sep + 4, CONIURA len(part))
+  EVOCA VERBUM disposition AD CONIURA multipart_header_value(headers, "Content-Disposition:")
+  SI CONIURA len(disposition) == 0
+    REDDE CONIURA Err GENUS(REX, FormParseError)(FpeMalformedBoundary)
+  FIN SI
+
+  EVOCA VERBUM name AD CONIURA multipart_disposition_param(disposition, "name")
+  SI CONIURA len(name) == 0
+    REDDE CONIURA Err GENUS(REX, FormParseError)(FpeMalformedBoundary)
+  FIN SI
+
+  EVOCA VERBUM filename AD CONIURA multipart_disposition_param(disposition, "filename")
+  SI CONIURA len(filename) > 0
+    EVOCA REX file_size AD CONIURA len(body_part)
+    SI file_size > cfg.max_file_size
+      REDDE CONIURA Err GENUS(REX, FormParseError)(FpeFileTooLarge)
+    FIN SI
+
+    EVOCA UploadedFile file
+    EVOCA SPECULUM VERBUM data_ptr AD OBSECRO mem_alloc(MENSURA(VERBUM))
+    EVOCA VERBUM part_ct AD CONIURA multipart_header_value(headers, "Content-Type:")
+    SI CONIURA len(part_ct) == 0
+      VINCIRE part_ct AD "application/octet-stream"
+    FIN SI
+    VINCIRE *data_ptr AD body_part
+    VINCIRE file.filename AD filename
+    VINCIRE file.content_type AD part_ct
+    VINCIRE file.data AD data_ptr
+    VINCIRE file.size AD file_size
+    CONIURA form_data_put_file(fd, name, file)
+    REDDE CONIURA Ok GENUS(REX, FormParseError)(0)
+  FIN SI
+
+  SI (*field_count) >= cfg.max_fields
+    REDDE CONIURA Err GENUS(REX, FormParseError)(FpeTotalSizeTooLarge)
+  FIN SI
+
+  CONIURA form_data_put_text(fd, name, body_part)
+  VINCIRE *field_count AD *field_count + 1
+  REDDE CONIURA Ok GENUS(REX, FormParseError)(0)
+EXPLICIT RITUALE
+
+RITUALE form_parse_urlencoded(SPECULUM WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA VERBUM body AD (*req).body
+  SI CONIURA len(body) == 0
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeNilBody)
+  FIN SI
+
+  EVOCA FormData fd AD CONIURA form_data_new()
+  VINCIRE fd.content_type AD "urlencoded"
+  VINCIRE fd.raw_fields AD CONIURA form_decode(body)
+  VINCIRE fd.multi_fields AD CONIURA form_decode_multi(body)
+  REDDE CONIURA Ok GENUS(FormData, FormParseError)(fd)
+EXPLICIT RITUALE
+
+RITUALE form_parse_multipart(SPECULUM WebRequest req, FormParseConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM content_type AD CONIURA request_content_type(*req)
+  SI CONIURA len(content_type) == 0
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeUnsupportedContentType)
+  FIN SI
+
+  EVOCA VERBUM boundary AD CONIURA multipart_extract_boundary(content_type)
+  SI CONIURA len(boundary) == 0
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeMissingBoundary)
+  FIN SI
+
+  EVOCA VERBUM body AD (*req).body
+  SI CONIURA len(body) == 0
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeNilBody)
+  FIN SI
+  SI CONIURA len(body) > cfg.max_total_size
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeTotalSizeTooLarge)
+  FIN SI
+
+  EVOCA FormData fd AD CONIURA form_data_new()
+  EVOCA SPECULUM NIHIL parts AD CONIURA multipart_split_parts(body, boundary)
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA REX i AD 0
+  EVOCA REX field_count AD 0
+  VINCIRE fd.content_type AD "multipart"
+
+  SI n == 0
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeMalformedBoundary)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA SPECULUM NIHIL part_res AD CONIURA form_parse_part(*part_ptr, SPECULUM fd, cfg, SPECULUM field_count)
+    SI CONIURA result_is_err GENUS(REX, FormParseError)(part_res)
+      EVOCA FormParseError err AD CONIURA result_unwrap_err GENUS(REX, FormParseError)(part_res)
+      CONIURA fluxus_free(parts)
+      REDDE CONIURA Err GENUS(FormData, FormParseError)(err)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA fluxus_free(parts)
+  REDDE CONIURA Ok GENUS(FormData, FormParseError)(fd)
+EXPLICIT RITUALE
+
+RITUALE form_parse(SPECULUM WebRequest req, FormParseConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM content_type AD CONIURA to_lower(CONIURA request_content_type(*req))
+
+  SI CONIURA contains(content_type, "application/x-www-form-urlencoded")
+    REDDE CONIURA form_parse_urlencoded(req)
+  FIN SI
+  SI CONIURA contains(content_type, "multipart/form-data")
+    REDDE CONIURA form_parse_multipart(req, cfg)
+  FIN SI
+
+  REDDE CONIURA Err GENUS(FormData, FormParseError)(FpeUnsupportedContentType)
+EXPLICIT RITUALE
+
+RITUALE form_data_get(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA form_data_raw_key(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA map_get GENUS(VERBUM, VERBUM)(fd.raw_fields, stored_key)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE value_opt
+EXPLICIT RITUALE
+
+RITUALE form_data_get_or(FormData fd, VERBUM key, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA form_data_get(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE fallback
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE form_data_get_int(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA form_data_get(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE CONIURA try_int(value)
+EXPLICIT RITUALE
+
+RITUALE form_data_get_real(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA form_data_get(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE CONIURA None GENUS(UMBRA)()
+  FIN SI
+  EVOCA VERBUM value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE CONIURA try_real(value)
+EXPLICIT RITUALE
+
+RITUALE form_data_get_bool(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA form_data_get(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE CONIURA None GENUS(VERUM)()
+  FIN SI
+  EVOCA VERBUM value AD CONIURA to_lower(CONIURA trim(CONIURA option_unwrap GENUS(VERBUM)(value_opt)))
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+
+  SI CONIURA compare(value, "on") == 0 VEL CONIURA compare(value, "1") == 0 VEL CONIURA compare(value, "true") == 0
+    REDDE CONIURA Some GENUS(VERUM)(VERUM)
+  FIN SI
+  SI CONIURA compare(value, "off") == 0 VEL CONIURA compare(value, "0") == 0 VEL CONIURA compare(value, "false") == 0
+    REDDE CONIURA Some GENUS(VERUM)(FALSUM)
+  FIN SI
+  REDDE CONIURA try_bool(value)
+EXPLICIT RITUALE
+
+RITUALE form_data_get_multi(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA form_data_multi_key(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA None GENUS(FormValues)()
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL values_opt AD CONIURA map_get GENUS(VERBUM, FormValues)(fd.multi_fields, stored_key)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE values_opt
+EXPLICIT RITUALE
+
+RITUALE form_data_has(FormData fd, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA form_data_raw_key(fd, key)
+  EVOCA VERUM has_key AD CONIURA option_is_some GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE has_key
+EXPLICIT RITUALE
+
+RITUALE form_data_get_file(FormData fd, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA form_data_file_key(fd, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA None GENUS(UploadedFile)()
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA map_get GENUS(VERBUM, UploadedFile)(fd.files, stored_key)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE file_opt
+EXPLICIT RITUALE
+
+RITUALE form_data_has_file(FormData fd, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA form_data_file_key(fd, key)
+  EVOCA VERUM has_key AD CONIURA option_is_some GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE has_key
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

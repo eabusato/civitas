@@ -1,0 +1,234 @@
+INCIPIT grimoire "civitas_restore"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../backup/backup.cct"
+ADVOCARE "../storage/storage.cct"
+
+SIGILLUM RestoreConfig
+  topology: StorageTopology
+  app_name: VERBUM
+  stop_cmd: VERBUM
+  start_cmd: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RestoreResult
+  success: VERUM
+  message: VERBUM
+  duration_ms: REX
+  backup_used: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DeployState
+  app_dir: VERBUM
+  app_name: VERBUM
+  pid_file: VERBUM
+FIN SIGILLUM
+
+RITUALE restore_config_new(StorageTopology topology, VERBUM app_name, VERBUM stop_cmd, VERBUM start_cmd) REDDE RestoreConfig
+  EVOCA RestoreConfig cfg
+  VINCIRE cfg.topology AD topology
+  VINCIRE cfg.app_name AD app_name
+  VINCIRE cfg.stop_cmd AD stop_cmd
+  VINCIRE cfg.start_cmd AD start_cmd
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE restore_result_fail(VERBUM backup_used, VERBUM message) REDDE RestoreResult
+  EVOCA RestoreResult out
+  VINCIRE out.success AD FALSUM
+  VINCIRE out.message AD message
+  VINCIRE out.duration_ms AD 0
+  VINCIRE out.backup_used AD backup_used
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE restore_result_ok(VERBUM backup_used, VERBUM message, REX duration_ms) REDDE RestoreResult
+  EVOCA RestoreResult out
+  VINCIRE out.success AD VERUM
+  VINCIRE out.message AD message
+  VINCIRE out.duration_ms AD duration_ms
+  VINCIRE out.backup_used AD backup_used
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE restore_latest_sqlite_path(BackupConfig cfg, VERBUM db_name) REDDE VERBUM
+  REDDE CONIURA backup_latest_sqlite_path(cfg, db_name)
+EXPLICIT RITUALE
+
+RITUALE restore_sqlite(VERBUM backup_path, RestoreConfig cfg, VERBUM db_name) REDDE RestoreResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA VERBUM live_path AD CONIURA storage_topology_db_path(cfg.topology, db_name)
+  EVOCA VERBUM tmp_path AD CONIURA concat(live_path, ".restoring")
+  EVOCA VERBUM before_path AD CONIURA concat(live_path, ".pre-restore")
+
+  SI NON CONIURA exists(backup_path)
+    REDDE CONIURA restore_result_fail(backup_path, "backup path not found")
+  FIN SI
+  SI NON CONIURA backup_verify_sqlite(backup_path)
+    REDDE CONIURA restore_result_fail(backup_path, "backup integrity check failed")
+  FIN SI
+
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  SI CONIURA exists(tmp_path)
+    CONIURA delete_file(tmp_path)
+  FIN SI
+  CONIURA copy(backup_path, tmp_path)
+  SI NON CONIURA backup_verify_sqlite(tmp_path)
+    CONIURA delete_file(tmp_path)
+    REDDE CONIURA restore_result_fail(backup_path, "copied restore candidate failed integrity check")
+  FIN SI
+
+  SI CONIURA exists(before_path)
+    CONIURA delete_file(before_path)
+  FIN SI
+  SI CONIURA exists(live_path)
+    CONIURA copy(live_path, before_path)
+  FIN SI
+  SI CONIURA exists(live_path)
+    CONIURA delete_file(live_path)
+  FIN SI
+  CONIURA rename(tmp_path, live_path)
+
+  REDDE CONIURA restore_result_ok(backup_path, "sqlite restore completed", CONIURA now_ms() - started_ms)
+EXPLICIT RITUALE
+
+RITUALE restore_latest_media_snapshot(BackupConfig cfg, VERBUM subdir) REDDE VERBUM
+  REDDE CONIURA backup_latest_media_snapshot(cfg, subdir)
+EXPLICIT RITUALE
+
+RITUALE restore_media_snapshot(RestoreConfig cfg, VERBUM snapshot_dir, VERBUM subdir) REDDE RestoreResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA VERBUM target_dir AD CONIURA storage_topology_media_dir(cfg.topology, subdir)
+  EVOCA VERBUM tmp_dir AD CONIURA concat(target_dir, ".restoring")
+  EVOCA VERBUM before_dir AD CONIURA concat(target_dir, ".pre-restore")
+
+  SI NON CONIURA backup_media_dir_allowed(subdir)
+    REDDE CONIURA restore_result_fail(snapshot_dir, "media restore only supports processed/private")
+  FIN SI
+  SI NON CONIURA exists(snapshot_dir)
+    REDDE CONIURA restore_result_fail(snapshot_dir, "media snapshot not found")
+  FIN SI
+
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  SI CONIURA exists(tmp_dir)
+    CONIURA storage_delete_tree(tmp_dir)
+  FIN SI
+  CONIURA storage_copy_tree(snapshot_dir, tmp_dir)
+
+  SI CONIURA exists(before_dir)
+    CONIURA storage_delete_tree(before_dir)
+  FIN SI
+  SI CONIURA exists(target_dir)
+    CONIURA rename(target_dir, before_dir)
+  FIN SI
+  CONIURA rename(tmp_dir, target_dir)
+
+  REDDE CONIURA restore_result_ok(snapshot_dir, "media restore completed", CONIURA now_ms() - started_ms)
+EXPLICIT RITUALE
+
+RITUALE restore_media_latest(RestoreConfig cfg, BackupConfig backup_cfg, VERBUM subdir) REDDE RestoreResult
+  EVOCA VERBUM snapshot_dir AD CONIURA restore_latest_media_snapshot(backup_cfg, subdir)
+  SI CONIURA len(snapshot_dir) == 0
+    REDDE CONIURA restore_result_fail("", "no media snapshot available")
+  FIN SI
+  REDDE CONIURA restore_media_snapshot(cfg, snapshot_dir, subdir)
+EXPLICIT RITUALE
+
+RITUALE restore_full(RestoreConfig cfg, BackupConfig backup_cfg, VERBUM sqlite_backup_path) REDDE RestoreResult
+  EVOCA VERBUM db_backup AD sqlite_backup_path
+  SI CONIURA len(db_backup) == 0
+    VINCIRE db_backup AD CONIURA restore_latest_sqlite_path(backup_cfg, "main")
+  FIN SI
+  SI CONIURA len(cfg.stop_cmd) > 0
+    CONIURA run(cfg.stop_cmd)
+  FIN SI
+  EVOCA RestoreResult db_res AD CONIURA restore_sqlite(db_backup, cfg, "main")
+  SI NON db_res.success
+    REDDE db_res
+  FIN SI
+  CONIURA restore_media_latest(cfg, backup_cfg, "processed")
+  CONIURA restore_media_latest(cfg, backup_cfg, "private")
+  SI CONIURA len(cfg.start_cmd) > 0
+    CONIURA run(cfg.start_cmd)
+  FIN SI
+  REDDE db_res
+EXPLICIT RITUALE
+
+RITUALE deploy_state_new(VERBUM app_dir, VERBUM app_name, VERBUM pid_file) REDDE DeployState
+  EVOCA DeployState ds
+  VINCIRE ds.app_dir AD app_dir
+  VINCIRE ds.app_name AD app_name
+  VINCIRE ds.pid_file AD pid_file
+  REDDE ds
+EXPLICIT RITUALE
+
+RITUALE deploy_promote_binary(DeployState ds, VERBUM new_binary_path) REDDE VERUM
+  EVOCA VERBUM active_path AD CONIURA path_join(ds.app_dir, "app")
+  EVOCA VERBUM prev_path AD CONIURA path_join(ds.app_dir, "app.prev")
+  EVOCA VERBUM new_path AD CONIURA path_join(ds.app_dir, "app.new")
+  CONIURA mkdir_all(ds.app_dir)
+  SI CONIURA exists(new_path)
+    CONIURA delete_file(new_path)
+  FIN SI
+  CONIURA copy(new_binary_path, new_path)
+  CONIURA chmod(new_path, 493)
+  SI CONIURA exists(prev_path)
+    CONIURA delete_file(prev_path)
+  FIN SI
+  SI CONIURA exists(active_path)
+    CONIURA rename(active_path, prev_path)
+  FIN SI
+  CONIURA rename(new_path, active_path)
+  REDDE CONIURA exists(active_path)
+EXPLICIT RITUALE
+
+RITUALE deploy_rollback(DeployState ds) REDDE VERUM
+  EVOCA VERBUM active_path AD CONIURA path_join(ds.app_dir, "app")
+  EVOCA VERBUM prev_path AD CONIURA path_join(ds.app_dir, "app.prev")
+  EVOCA VERBUM broken_path AD CONIURA path_join(ds.app_dir, "app.broken")
+  SI NON CONIURA exists(prev_path)
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA exists(broken_path)
+    CONIURA delete_file(broken_path)
+  FIN SI
+  SI CONIURA exists(active_path)
+    CONIURA rename(active_path, broken_path)
+  FIN SI
+  CONIURA rename(prev_path, active_path)
+  REDDE CONIURA exists(active_path)
+EXPLICIT RITUALE
+
+RITUALE deploy_signal_restart(DeployState ds) REDDE NIHIL
+  SI CONIURA exists(ds.pid_file)
+    EVOCA VERBUM raw_pid AD CONIURA trim(CONIURA read_all(ds.pid_file))
+    EVOCA SPECULUM NIHIL pid_opt AD CONIURA try_int(raw_pid)
+    SI CONIURA option_is_some GENUS(REX)(pid_opt)
+      CONIURA run(CONIURA concat("kill -TERM ", raw_pid))
+      REDDE
+    FIN SI
+  FIN SI
+  CONIURA run(CONIURA concat("systemctl restart civitas-", ds.app_name))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE deploy_wait_ready(VERBUM ready_url, REX max_wait_ms, REX poll_interval_ms) REDDE VERUM
+  EVOCA REX elapsed_ms AD 0
+  DUM elapsed_ms < max_wait_ms
+    EVOCA VERBUM raw AD CONIURA trim(CONIURA run_capture(CONIURA concat("curl -sf -o /dev/null -w '%{http_code}' ", ready_url)))
+    SI CONIURA compare(raw, "200") == 0
+      REDDE VERUM
+    FIN SI
+    CONIURA sleep_ms(poll_interval_ms)
+    VINCIRE elapsed_ms AD elapsed_ms + poll_interval_ms
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

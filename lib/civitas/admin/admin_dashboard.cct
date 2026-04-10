@@ -1,0 +1,66 @@
+INCIPIT grimoire "civitas_admin_dashboard"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_list.cct"
+
+ORDO AdminWidgetKind
+  WIDGET_COUNT
+  WIDGET_RECENT_LIST
+FIN ORDO
+
+SIGILLUM AdminWidget
+  id: VERBUM
+  kind: AdminWidgetKind
+  title: VERBUM
+  model_name: VERBUM
+  query_json: VERBUM
+  display_order: REX
+FIN SIGILLUM
+
+RITUALE admin_widgets_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_widgets (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, model_name TEXT NOT NULL, query_json TEXT NOT NULL DEFAULT '{}', display_order INTEGER NOT NULL DEFAULT 0)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_widget_kind_to_string(AdminWidgetKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS WIDGET_RECENT_LIST:
+      REDDE "recent_list"
+    ALIOQUIN:
+      REDDE "count"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE admin_widget_register(DbHandle dbh, AdminWidget widget) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, widget.id)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA admin_widget_kind_to_string(widget.kind))
+  CONIURA dbh_param_text(SPECULUM params, widget.title)
+  CONIURA dbh_param_text(SPECULUM params, widget.model_name)
+  CONIURA dbh_param_text(SPECULUM params, widget.query_json)
+  CONIURA dbh_param_int(SPECULUM params, widget.display_order)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO admin_widgets (id, kind, title, model_name, query_json, display_order) VALUES (?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_widget_count(AdminModelConfig cfg, DbHandle dbh) REDDE REX
+  EVOCA AdminListQuery q AD CONIURA admin_list_query_default()
+  REDDE CONIURA admin_list_count(cfg, dbh, q)
+EXPLICIT RITUALE
+
+RITUALE admin_widget_recent(AdminModelConfig cfg, DbHandle dbh, REX limit) REDDE VERBUM
+  EVOCA AdminListQuery q AD CONIURA admin_list_query_default()
+  VINCIRE q.page_size AD limit
+  EVOCA AdminListResult result AD CONIURA admin_list(cfg, dbh, q)
+  REDDE result.rows_json
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

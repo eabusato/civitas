@@ -1,0 +1,18 @@
+INCIPIT grimoire "rede_social_bootstrap"
+
+ADVOCARE "project/config.cct"
+ADVOCARE "apps/shared/repository.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/io.cct"
+
+RITUALE main() REDDE REX
+  EVOCA RedeConfig cfg AD CONIURA rede_config_load()
+  EVOCA SPECULUM NIHIL db AD CONIURA rede_db_open(cfg)
+  CONIURA rede_repository_schema_up(db)
+  CONIURA rede_repository_seed_if_empty(cfg, db)
+  CONIURA db_close(db)
+  CONIURA println("rede_social bootstrap complete")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

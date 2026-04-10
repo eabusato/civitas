@@ -1,0 +1,52 @@
+INCIPIT grimoire "fase25_25a_bus_emit_poll_order"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse/sse.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25a_bus_emit_poll_order")
+  EVOCA SPECULUM SseBus bus AD CONIURA sse_bus_new(db, "editorial")
+  CONIURA sse_bus_emit(bus, "published", "{\"id\":1}")
+  CONIURA sse_bus_emit(bus, "moderated", "{\"id\":2}")
+
+  EVOCA SPECULUM NIHIL eventos AD CONIURA sse_bus_poll(bus)
+  SI CONIURA fluxus_len(eventos) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM SseEvent first AD CONIURA fluxus_get(eventos, 0)
+  EVOCA SPECULUM SseEvent second AD CONIURA fluxus_get(eventos, 1)
+  SI CONIURA compare((*first).evento, "published") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*first).dados, "{\"id\":1}") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*second).evento, "moderated") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*second).dados, "{\"id\":2}") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*first).id, "1") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*second).id, "2") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

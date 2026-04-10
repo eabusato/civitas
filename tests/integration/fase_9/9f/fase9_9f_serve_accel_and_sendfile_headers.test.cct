@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase9_9f_serve_accel_and_sendfile_headers"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_accel.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9f_root("accel_sendfile")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaStore store AD CONIURA phase9_9f_open_store(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9f_private_artifact(root, "private.txt", "secret-data")
+  EVOCA SPECULUM NIHIL accel_res AD CONIURA delivery_serve_accel(artifact, artifact.content_type, CONIURA phase9_9f_accel_cfg())
+  SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(accel_res)
+    IACE "accel redirect should succeed"
+  FIN SI
+  EVOCA WebResponse accel_response AD CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(accel_res)
+  SI CONIURA compare(CONIURA response_header_or(accel_response, "x-accel-redirect", ""), CONIURA concat("/media-internal/", artifact.relative_path)) != 0
+    IACE "x-accel-redirect path is wrong"
+  FIN SI
+  SI CONIURA len(accel_response.body) != 0
+    IACE "accel redirect body must be empty"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL sendfile_res AD CONIURA delivery_serve_sendfile(CONIURA media_store_absolute_path(store, artifact), artifact.content_type, CONIURA phase9_9f_sendfile_cfg())
+  SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(sendfile_res)
+    IACE "sendfile should succeed"
+  FIN SI
+  EVOCA WebResponse sendfile_response AD CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(sendfile_res)
+  SI CONIURA len(CONIURA response_header_or(sendfile_response, "x-sendfile", "")) == 0
+    IACE "x-sendfile header must be present"
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(sendfile_response, "content-disposition", ""), "attachment") != 0
+    IACE "sendfile response should use configured disposition"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

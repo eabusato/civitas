@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase1_1a_bind_failure_returns_error_test"
+
+ADVOCARE "../../../../lib/civitas/http/server.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  EVOCA SPECULUM NIHIL first_res
+  EVOCA SPECULUM NIHIL second_res
+
+  VINCIRE opts.host AD "127.0.0.1"
+  VINCIRE opts.port AD 18107
+
+  VINCIRE first_res AD CONIURA http_server_create(opts)
+  SI CONIURA result_is_err GENUS(HttpServer, HttpServerError)(first_res)
+    EVOCA HttpServerError first_err AD CONIURA result_unwrap_err GENUS(HttpServer, HttpServerError)(first_res)
+    SI CONIURA compare(first_err.message, "sock_bind falhou") == 0
+      REDDE 0
+    FIN SI
+    REDDE 1
+  FIN SI
+
+  VINCIRE second_res AD CONIURA http_server_create(opts)
+  SI NON CONIURA result_is_err GENUS(HttpServer, HttpServerError)(second_res)
+    EVOCA HttpServer second_srv AD CONIURA result_unwrap GENUS(HttpServer, HttpServerError)(second_res)
+    CONIURA http_server_stop(second_srv)
+    REDDE 2
+  FIN SI
+
+  EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpServer, HttpServerError)(second_res)
+  CONIURA http_server_stop(CONIURA result_unwrap GENUS(HttpServer, HttpServerError)(first_res))
+  SI CONIURA compare(err.message, "sock_bind falhou") != 0
+    REDDE 3
+  FIN SI
+  SI err.status_code != 503
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

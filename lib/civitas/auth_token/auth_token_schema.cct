@@ -1,0 +1,19 @@
+INCIPIT grimoire "civitas_auth_token_schema"
+
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE auth_token_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS token_blacklist (jti TEXT PRIMARY KEY, revogado_em TEXT NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS refresh_tokens (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, emitido_em INTEGER NOT NULL, expira_em INTEGER NOT NULL, familia TEXT NOT NULL, revogado INTEGER NOT NULL DEFAULT 0)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_refresh_familia ON refresh_tokens(familia)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id, revogado)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_token_schema_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS token_blacklist")
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS refresh_tokens")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

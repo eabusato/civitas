@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase18_18a_bulk_actions"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_bulk.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_list.cct"
+
+RITUALE test_bulk_set_and_delete() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18a_bulk")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "One", "draft", "u1", 10)
+  CONIURA phase18_insert_post(stack.db, "Two", "draft", "u1", 20)
+  CONIURA phase18_insert_post(stack.db, "Three", "draft", "u2", 30)
+  EVOCA AdminBulkResult set_res AD CONIURA admin_bulk_action(*cfg_ptr, stack.dbh, "set:state", "[1,2]", "{\"value\":\"published\"}", "actor-1")
+  SI set_res.changed != 2
+    IACE "bulk set changed mismatch"
+  FIN SI
+  EVOCA AdminListQuery q AD CONIURA admin_list_query_default()
+  VINCIRE q.filters_json AD "{\"state\":\"published\"}"
+  EVOCA AdminListResult listed AD CONIURA admin_list(*cfg_ptr, stack.dbh, q)
+  SI listed.total_count != 2
+    IACE "bulk set did not affect rows"
+  FIN SI
+  EVOCA AdminBulkResult del_res AD CONIURA admin_bulk_action(*cfg_ptr, stack.dbh, "delete", "[2,3]", "{}", "actor-1")
+  SI del_res.changed != 2
+    IACE "bulk delete changed mismatch"
+  FIN SI
+  VINCIRE q.filters_json AD "{}"
+  VINCIRE listed AD CONIURA admin_list(*cfg_ptr, stack.dbh, q)
+  SI listed.total_count != 1
+    IACE "bulk delete remaining row mismatch"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_bulk_set_and_delete()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

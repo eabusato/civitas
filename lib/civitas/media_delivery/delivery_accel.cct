@@ -1,0 +1,38 @@
+INCIPIT grimoire "civitas_media_delivery_accel"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "delivery_range.cct"
+
+RITUALE delivery_accel_internal_path(DeliveryConfig cfg, MediaArtifact artifact) REDDE VERBUM
+  SI CONIURA len(cfg.accel_prefix) == 0
+    REDDE artifact.relative_path
+  FIN SI
+  SI CONIURA ends_with(cfg.accel_prefix, "/")
+    REDDE CONIURA concat(cfg.accel_prefix, artifact.relative_path)
+  FIN SI
+  REDDE CONIURA concat(cfg.accel_prefix, CONIURA concat("/", artifact.relative_path))
+EXPLICIT RITUALE
+
+RITUALE delivery_serve_accel(MediaArtifact artifact, VERBUM content_type, DeliveryConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA WebResponse res AD CONIURA response_ok()
+  CONIURA response_set_header(SPECULUM res, "x-accel-redirect", CONIURA delivery_accel_internal_path(cfg, artifact))
+  CONIURA response_set_header(SPECULUM res, "content-type", content_type)
+  CONIURA response_set_header(SPECULUM res, "content-disposition", cfg.content_disposition)
+  CONIURA response_set_header(SPECULUM res, "cache-control", "private, no-store")
+  CONIURA response_set_header(SPECULUM res, "accept-ranges", "bytes")
+  REDDE CONIURA delivery_response_ok(res)
+EXPLICIT RITUALE
+
+RITUALE delivery_serve_sendfile(VERBUM absolute_path, VERBUM content_type, DeliveryConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA WebResponse res AD CONIURA response_ok()
+  CONIURA response_set_header(SPECULUM res, "x-sendfile", absolute_path)
+  CONIURA response_set_header(SPECULUM res, "content-type", content_type)
+  CONIURA response_set_header(SPECULUM res, "content-disposition", cfg.content_disposition)
+  CONIURA response_set_header(SPECULUM res, "cache-control", "private, no-store")
+  CONIURA response_set_header(SPECULUM res, "accept-ranges", "bytes")
+  REDDE CONIURA delivery_response_ok(res)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

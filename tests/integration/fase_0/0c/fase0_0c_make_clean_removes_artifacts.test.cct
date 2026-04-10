@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase0_0c_make_clean_removes_artifacts_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM prebuild AD CONIURA tmp_file("fase0_0c_make_clean_prebuild.log")
+  EVOCA VERBUM cleanlog AD CONIURA tmp_file("fase0_0c_make_clean.log")
+  EVOCA VERBUM rebuild AD CONIURA tmp_file("fase0_0c_make_rebuild.log")
+
+  SI CONIURA run_to_log("make build", prebuild) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA run_to_log("make examples", prebuild) != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA run_to_log("make clean", cleanlog) != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA exists("dist/civitas")
+    REDDE 4
+  FIN SI
+  SI CONIURA exists("examples/salve_civitas/dist/salve_civitas")
+    REDDE 5
+  FIN SI
+  SI CONIURA run_to_log("make build", rebuild) != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

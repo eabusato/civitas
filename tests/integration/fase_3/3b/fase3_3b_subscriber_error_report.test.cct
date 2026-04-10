@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase3_3b_subscriber_error_report_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE ok_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bad_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  IACE "subscriber exploded"
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA EventBus bus
+  EVOCA EventEnvelope env
+  EVOCA EventDispatchReport report
+  EVOCA SPECULUM NIHIL attrs AD CONIURA event_attributes_new()
+
+  CONIURA event_bus_init(SPECULUM bus, "err-bus")
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "mail.delivery_requested", "ok_handler", ok_handler))
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "mail.delivery_requested", "bad_handler", bad_handler))
+  CONIURA event_envelope_init(SPECULUM env, "mail.delivery_requested", "req-3b-mail", "actor-mail", attrs, "{\"mail_id\":\"1\"}")
+  VINCIRE report AD CONIURA event_publish(bus, env)
+
+  SI report.delivered_count != 1
+    REDDE 1
+  FIN SI
+  SI report.failed_count != 1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(report.first_error, "subscriber exploded") == -1
+    REDDE 3
+  FIN SI
+  SI NON CONIURA event_bus_has_subscribers(bus, "mail.delivery_requested")
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

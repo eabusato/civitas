@@ -1,0 +1,10 @@
+INCIPIT grimoire "civitas_social_softdelete"
+
+ADVOCARE "social_comment.cct"
+
+RITUALE comment_delete(SPECULUM NIHIL db, REX id) REDDE NIHIL
+  CONIURA comment_soft_delete(db, id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase7_7b_optional_rules_skip_empty_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldSchema fs AD CONIURA field_schema_new("telefone")
+  CONIURA field_schema_add_rule(SPECULUM fs, CONIURA rule_min_len(5))
+  CONIURA field_schema_add_rule(SPECULUM fs, CONIURA rule_regex("^[0-9+\\-() ]+$"))
+  EVOCA SPECULUM NIHIL erros AD CONIURA validate_field(fs, "")
+
+  SI CONIURA fluxus_len(erros) != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

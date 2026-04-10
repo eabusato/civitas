@@ -1,0 +1,182 @@
+INCIPIT grimoire "civitas_core_keyring"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO SecretDomain
+  SECRET_DOMAIN_SESSION,
+  SECRET_DOMAIN_CSRF,
+  SECRET_DOMAIN_SIGNED_COOKIE,
+  SECRET_DOMAIN_TOKEN,
+  SECRET_DOMAIN_TEMPORARY_LINK
+FIN ORDO
+
+SIGILLUM SecretKey
+  key_id: VERBUM
+  material: VERBUM
+  material_source: VERBUM
+  created_at_iso: VERBUM
+  status: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SecretRotationPolicy
+  grace_seconds: REX
+  max_previous_keys: REX
+  legacy_global_enabled: VERUM
+  legacy_global_material_env: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SecretKeyRing
+  enabled: VERUM
+  domain: SecretDomain
+  active_key: SecretKey
+  verify_candidates: SPECULUM NIHIL
+  rotation_policy: SecretRotationPolicy
+  uses_legacy_global_key: VERUM
+FIN SIGILLUM
+
+SIGILLUM SecretRegistry
+  session: SecretKeyRing
+  csrf: SecretKeyRing
+  signed_cookie: SecretKeyRing
+  token: SecretKeyRing
+  temporary_link: SecretKeyRing
+  legacy_global_key_enabled: VERUM
+FIN SIGILLUM
+
+SIGILLUM SecretLookupResult
+  found: VERUM
+  key: SecretKey
+  message: VERBUM
+FIN SIGILLUM
+
+RITUALE secret_domain_name(SecretDomain domain) REDDE VERBUM
+  ELIGE domain
+    CASUS SECRET_DOMAIN_SESSION:
+      REDDE "session"
+    CASUS SECRET_DOMAIN_CSRF:
+      REDDE "csrf"
+    CASUS SECRET_DOMAIN_SIGNED_COOKIE:
+      REDDE "signed_cookie"
+    CASUS SECRET_DOMAIN_TOKEN:
+      REDDE "token"
+    CASUS SECRET_DOMAIN_TEMPORARY_LINK:
+      REDDE "temporary_link"
+  FIN ELIGE
+  REDDE "unknown"
+EXPLICIT RITUALE
+
+RITUALE secret_key_make(
+  VERBUM key_id,
+  VERBUM material,
+  VERBUM material_source,
+  VERBUM created_at_iso,
+  VERBUM status
+) REDDE SecretKey
+  EVOCA SecretKey key
+  VINCIRE key.key_id AD key_id
+  VINCIRE key.material AD material
+  VINCIRE key.material_source AD material_source
+  VINCIRE key.created_at_iso AD created_at_iso
+  VINCIRE key.status AD status
+  REDDE key
+EXPLICIT RITUALE
+
+RITUALE secret_rotation_policy_make(
+  REX grace_seconds,
+  REX max_previous_keys,
+  VERUM legacy_global_enabled,
+  VERBUM legacy_global_material_env
+) REDDE SecretRotationPolicy
+  EVOCA SecretRotationPolicy policy
+  VINCIRE policy.grace_seconds AD grace_seconds
+  VINCIRE policy.max_previous_keys AD max_previous_keys
+  VINCIRE policy.legacy_global_enabled AD legacy_global_enabled
+  VINCIRE policy.legacy_global_material_env AD legacy_global_material_env
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE secret_keyring_disabled(SecretDomain domain, VERUM legacy_global_enabled, VERBUM legacy_global_material_env) REDDE SecretKeyRing
+  EVOCA SecretKeyRing ring
+  VINCIRE ring.enabled AD FALSUM
+  VINCIRE ring.domain AD domain
+  VINCIRE ring.active_key AD CONIURA secret_key_make("", "", "", "", "disabled")
+  VINCIRE ring.verify_candidates AD CONIURA fluxus_init(MENSURA(SecretKey))
+  VINCIRE ring.rotation_policy AD CONIURA secret_rotation_policy_make(0, 0, legacy_global_enabled, legacy_global_material_env)
+  VINCIRE ring.uses_legacy_global_key AD FALSUM
+  REDDE ring
+EXPLICIT RITUALE
+
+RITUALE secret_lookup_not_found(VERBUM message) REDDE SecretLookupResult
+  EVOCA SecretLookupResult out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.key AD CONIURA secret_key_make("", "", "", "", "")
+  VINCIRE out.message AD message
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE secret_lookup_found(SecretKey key) REDDE SecretLookupResult
+  EVOCA SecretLookupResult out
+  VINCIRE out.found AD VERUM
+  VINCIRE out.key AD key
+  VINCIRE out.message AD ""
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE secret_key_fill(SPECULUM SecretKey dest, SecretKey src) REDDE NIHIL
+  VINCIRE (*dest).key_id AD src.key_id
+  VINCIRE (*dest).material AD src.material
+  VINCIRE (*dest).material_source AD src.material_source
+  VINCIRE (*dest).created_at_iso AD src.created_at_iso
+  VINCIRE (*dest).status AD src.status
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE secret_rotation_policy_fill(SPECULUM SecretRotationPolicy dest, SecretRotationPolicy src) REDDE NIHIL
+  VINCIRE (*dest).grace_seconds AD src.grace_seconds
+  VINCIRE (*dest).max_previous_keys AD src.max_previous_keys
+  VINCIRE (*dest).legacy_global_enabled AD src.legacy_global_enabled
+  VINCIRE (*dest).legacy_global_material_env AD src.legacy_global_material_env
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE secret_keyring_fill_from_ptr(SPECULUM SecretKeyRing dest, SPECULUM SecretKeyRing src) REDDE NIHIL
+  VINCIRE (*dest).enabled AD (*src).enabled
+  VINCIRE (*dest).domain AD (*src).domain
+  CONIURA secret_key_fill(SPECULUM (*dest).active_key, (*src).active_key)
+  VINCIRE (*dest).verify_candidates AD (*src).verify_candidates
+  CONIURA secret_rotation_policy_fill(SPECULUM (*dest).rotation_policy, (*src).rotation_policy)
+  VINCIRE (*dest).uses_legacy_global_key AD (*src).uses_legacy_global_key
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE secret_registry_fill_from_ptr(SPECULUM SecretRegistry dest, SPECULUM SecretRegistry src) REDDE NIHIL
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM (*dest).session, SPECULUM (*src).session)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM (*dest).csrf, SPECULUM (*src).csrf)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM (*dest).signed_cookie, SPECULUM (*src).signed_cookie)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM (*dest).token, SPECULUM (*src).token)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM (*dest).temporary_link, SPECULUM (*src).temporary_link)
+  VINCIRE (*dest).legacy_global_key_enabled AD (*src).legacy_global_key_enabled
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE secret_registry_fill_from_opaque(SPECULUM NIHIL dest_ref, SecretRegistry src) REDDE NIHIL
+  EVOCA SPECULUM SecretRegistry dest
+  VINCIRE dest AD dest_ref
+  CONIURA secret_registry_fill_from_ptr(dest, SPECULUM src)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE secret_registry_from_ptr(SPECULUM SecretRegistry src) REDDE SecretRegistry
+  EVOCA SecretRegistry out
+  CONIURA secret_registry_fill_from_ptr(SPECULUM out, src)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE secret_registry_from_opaque(SPECULUM NIHIL src_ref) REDDE SecretRegistry
+  EVOCA SPECULUM SecretRegistry src
+  VINCIRE src AD src_ref
+  REDDE CONIURA secret_registry_from_ptr(src)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

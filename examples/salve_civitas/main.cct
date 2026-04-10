@@ -1,0 +1,103 @@
+INCIPIT grimoire "salve_civitas"
+
+ADVOCARE "../../lib/civitas/http/server.cct"
+ADVOCARE "../../lib/civitas/core/version.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/signal.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    REDDE CONIURA getenv(name)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE env_or_int(VERBUM name, REX fallback) REDDE REX
+  SI CONIURA has_env(name)
+    REDDE CONIURA fmt_parse_int(CONIURA getenv(name))
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE maybe_write_marker(VERBUM path, VERBUM content) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE maybe_mark_skip(VERBUM ready_file, VERBUM done_file, VERBUM msg) REDDE VERUM
+  SI CONIURA compare(msg, "sock_bind falhou") == 0 VEL CONIURA compare(msg, "socket tcp create falhou") == 0
+    CONIURA maybe_write_marker(ready_file, "skip")
+    CONIURA maybe_write_marker(done_file, "skip")
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM host AD CONIURA env_or("CIVITAS_HOST", CONIURA http_server_default_host())
+  EVOCA REX port AD CONIURA env_or_int("CIVITAS_PORT", CONIURA http_server_default_port())
+  EVOCA REX max_requests AD CONIURA env_or_int("CIVITAS_MAX_REQUESTS", 0)
+  EVOCA VERBUM ready_file AD CONIURA env_or("CIVITAS_READY_FILE", "")
+  EVOCA VERBUM done_file AD CONIURA env_or("CIVITAS_DONE_FILE", "")
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  EVOCA SPECULUM NIHIL create_res
+  TEMPTA
+    VINCIRE opts.host AD host
+    VINCIRE opts.port AD port
+    VINCIRE opts.max_body_bytes AD 1048576
+    VINCIRE opts.max_request_bytes AD 1048576
+    VINCIRE opts.max_header_bytes AD 65536
+    VINCIRE opts.max_header_count AD 128
+
+    VINCIRE create_res AD CONIURA http_server_create(opts)
+    SI CONIURA result_is_err GENUS(HttpServer, HttpServerError)(create_res)
+      EVOCA HttpServerError create_err AD CONIURA result_unwrap_err GENUS(HttpServer, HttpServerError)(create_res)
+      SI CONIURA maybe_mark_skip(ready_file, done_file, create_err.message)
+        REDDE 0
+      FIN SI
+      IACE create_err.message
+    FIN SI
+
+    EVOCA HttpServer srv AD CONIURA result_unwrap GENUS(HttpServer, HttpServerError)(create_res)
+    CONIURA maybe_write_marker(ready_file, "ready")
+
+    EVOCA REX served AD 0
+    DUM (max_requests == 0 VEL served < max_requests) ET NON CONIURA http_server_should_shutdown(srv)
+      EVOCA SPECULUM NIHIL req_res AD CONIURA civitas_http_server_accept(srv)
+      SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        SI CONIURA compare(err.message, "server stopping") == 0
+          RECEDE
+        FIN SI
+        CONIURA http_server_respond(srv, CONIURA http_server_error_response(err))
+        RECEDE
+      FIN SI
+
+      EVOCA HttpRawRequest req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+      EVOCA HttpRawResponse resp AD CONIURA http_server_response_new(200, "Salve, Civitas")
+      CONIURA http_server_headers_set(resp.headers, "content-type", "text/plain; charset=utf-8")
+      CONIURA http_server_headers_set(resp.headers, "x-civitas-version", CONIURA civitas_version())
+      CONIURA http_server_respond(srv, resp)
+      VINCIRE served AD served + 1
+    FIN DUM
+
+    CONIURA maybe_write_marker(done_file, "ok")
+    REDDE 0
+  CAPE FRACTUM erro
+    EVOCA VERBUM msg AD OBSECRO fractum_to_verbum(erro)
+    SI CONIURA maybe_mark_skip(ready_file, done_file, msg)
+      REDDE 0
+    FIN SI
+    IACE msg
+  FIN TEMPTA
+  REDDE 91
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

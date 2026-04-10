@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase22_22a_parse_compile_error"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/dev_server/dev_server.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM raw AD "src/posts.cct:42:8: erro: type mismatch: expected REX, got VERBUM\nnote: extra context"
+  EVOCA CompileError err AD CONIURA dev_server_parse_compile_error(raw)
+  SI CONIURA compare(err.filename, "src/posts.cct") != 0
+    REDDE 1
+  FIN SI
+  SI err.line != 42
+    REDDE 2
+  FIN SI
+  SI err.column != 8
+    REDDE 3
+  FIN SI
+  SI CONIURA find(err.message, "type mismatch") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(err.raw_output, raw) != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

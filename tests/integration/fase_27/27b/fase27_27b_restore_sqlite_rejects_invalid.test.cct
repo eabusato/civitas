@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase27_27b_restore_sqlite_rejects_invalid"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/restore/restore.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE test_restore_sqlite_rejects_invalid_backup_file() REDDE NIHIL
+  EVOCA StorageTopology topo AD CONIURA phase27_topology("27b_restore_invalid")
+  EVOCA RestoreConfig rcfg AD CONIURA restore_config_new(topo, "phase27", "", "")
+  CONIURA storage_topology_ensure_dirs(topo)
+  EVOCA VERBUM invalid_path AD CONIURA path_join(topo.backups_db_dir, "broken.db")
+  CONIURA write_all(invalid_path, "not sqlite")
+
+  EVOCA RestoreResult restore_res AD CONIURA restore_sqlite(invalid_path, rcfg, "main")
+  SI restore_res.success
+    IACE "restore should reject invalid sqlite backup"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

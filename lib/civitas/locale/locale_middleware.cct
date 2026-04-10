@@ -1,0 +1,91 @@
+INCIPIT grimoire "civitas_locale_middleware"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request.cct"
+ADVOCARE "locale.cct"
+ADVOCARE "locale_cookie.cct"
+ADVOCARE "locale_negotiate.cct"
+
+SIGILLUM LocaleConfig
+  suportados: SPECULUM NIHIL
+  padrao: Locale
+  cookie_nome: VERBUM
+  url_prefix: VERUM
+FIN SIGILLUM
+
+RITUALE locale_config_new(Locale padrao) REDDE LocaleConfig
+  EVOCA LocaleConfig cfg
+  VINCIRE cfg.suportados AD CONIURA fluxus_init(MENSURA(Locale))
+  VINCIRE cfg.padrao AD padrao
+  VINCIRE cfg.cookie_nome AD ""
+  VINCIRE cfg.url_prefix AD FALSUM
+  CONIURA fluxus_push(cfg.suportados, SPECULUM padrao)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE locale_config_add(SPECULUM LocaleConfig cfg, Locale loc) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).suportados, SPECULUM loc)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE locale_supported_match(SPECULUM NIHIL suportados, Locale loc) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(suportados)
+  DUM i < n
+    EVOCA SPECULUM Locale lp AD CONIURA fluxus_get(suportados, i)
+    SI CONIURA locale_equals(*lp, loc)
+      REDDE CONIURA Some GENUS(Locale)(*lp)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(Locale)()
+EXPLICIT RITUALE
+
+RITUALE locale_resolve_for_request(LocaleConfig cfg, WebRequest req) REDDE Locale
+  SI CONIURA len(cfg.cookie_nome) != 0
+    EVOCA SPECULUM NIHIL cookie_opt AD CONIURA locale_from_cookie(req, cfg.cookie_nome)
+    SI CONIURA option_is_some GENUS(Locale)(cookie_opt)
+      EVOCA Locale cookie_loc AD CONIURA option_unwrap GENUS(Locale)(cookie_opt)
+      EVOCA SPECULUM NIHIL matched AD CONIURA locale_supported_match(cfg.suportados, cookie_loc)
+      SI CONIURA option_is_some GENUS(Locale)(matched)
+        REDDE CONIURA option_unwrap GENUS(Locale)(matched)
+      FIN SI
+    FIN SI
+  FIN SI
+
+  SI cfg.url_prefix
+    EVOCA VERBUM path AD req.path
+    SI CONIURA len(path) >= 6 ET CONIURA starts_with(path, "/")
+      EVOCA REX segunda_barra AD CONIURA find_from(path, "/", 1)
+      SI segunda_barra > 1
+        EVOCA VERBUM prefix_str AD CONIURA substring(path, 1, segunda_barra)
+        EVOCA Locale loc_url AD CONIURA locale_parse(prefix_str)
+        EVOCA SPECULUM NIHIL matched_url AD CONIURA locale_supported_match(cfg.suportados, loc_url)
+        SI CONIURA option_is_some GENUS(Locale)(matched_url)
+          REDDE CONIURA option_unwrap GENUS(Locale)(matched_url)
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN SI
+
+  EVOCA SPECULUM NIHIL hdr_opt AD CONIURA request_header(req, "Accept-Language")
+  SI CONIURA option_is_some GENUS(VERBUM)(hdr_opt)
+    EVOCA VERBUM hdr AD CONIURA option_unwrap GENUS(VERBUM)(hdr_opt)
+    SI CONIURA len(hdr) != 0
+      REDDE CONIURA locale_negotiate_from_header(hdr, cfg.suportados, cfg.padrao)
+    FIN SI
+  FIN SI
+
+  REDDE cfg.padrao
+EXPLICIT RITUALE
+
+RITUALE locale_middleware_apply(LocaleConfig cfg, WebRequest req, SPECULUM LocalContext ctx) REDDE NIHIL
+  EVOCA Locale loc AD CONIURA locale_resolve_for_request(cfg, req)
+  CONIURA local_context_set(ctx, CONIURA local_context_key_locale(), CONIURA locale_to_string(loc))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

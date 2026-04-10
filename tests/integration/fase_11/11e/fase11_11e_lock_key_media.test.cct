@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase11_11e_lock_key_media"
+
+ADVOCARE "../../../../lib/civitas/locks/locks_keys.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PgLockKey key AD CONIURA lock_key_media("upload-1")
+  SI CONIURA compare(key.raw_name, "media_process:upload-1") != 0
+    REDDE 1
+  FIN SI
+  SI NON key.has_pair
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,494 @@
+INCIPIT grimoire "civitas_media_video"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "video_thumb.cct"
+ADVOCARE "video_transcode.cct"
+ADVOCARE "video_types.cct"
+
+RITUALE video_ok_probe(VideoProbe probe) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VideoProbe, VERBUM)(probe)
+EXPLICIT RITUALE
+
+RITUALE video_err_probe(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VideoProbe, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE video_ok_record(VideoRecord record) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VideoRecord, VERBUM)(record)
+EXPLICIT RITUALE
+
+RITUALE video_err_record(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VideoRecord, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE video_now_iso() REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_now(), "%Y-%m-%dT%H:%M:%S%z")
+EXPLICIT RITUALE
+
+RITUALE video_text_byte(VERBUM text, REX index) REDDE REX
+  EVOCA REX raw AD cast GENUS(REX)(CONIURA char_at(text, index))
+  SI raw < 0
+    REDDE raw + 256
+  FIN SI
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE video_text_has(VERBUM text, REX offset, VERBUM expected) REDDE VERUM
+  EVOCA REX n AD CONIURA len(expected)
+  SI offset + n > CONIURA len(text)
+    REDDE FALSUM
+  FIN SI
+  EVOCA REX i AD 0
+  DUM i < n
+    SI CONIURA video_text_byte(text, offset + i) != CONIURA video_text_byte(expected, i)
+      REDDE FALSUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE video_detect_filetype_by_header(VERBUM path) REDDE FileType
+  SI NON OBSECRO fs_exists(path)
+    REDDE Unknown
+  FIN SI
+  EVOCA VERBUM payload AD OBSECRO fs_read_all(path)
+  EVOCA REX size_bytes AD CONIURA len(payload)
+  SI size_bytes >= 12 ET CONIURA video_text_has(payload, 4, "ftyp")
+    REDDE MP4
+  FIN SI
+  SI size_bytes >= 4 ET CONIURA video_text_byte(payload, 0) == 26 ET CONIURA video_text_byte(payload, 1) == 69 ET CONIURA video_text_byte(payload, 2) == 223 ET CONIURA video_text_byte(payload, 3) == 163
+    REDDE WebM
+  FIN SI
+  SI size_bytes >= 12 ET CONIURA video_text_has(payload, 0, "RIFF") ET CONIURA video_text_has(payload, 8, "AVI ")
+    REDDE AVI
+  FIN SI
+  REDDE Unknown
+EXPLICIT RITUALE
+
+RITUALE video_detect_filetype(VERBUM path) REDDE FileType
+  SI NON OBSECRO fs_exists(path)
+    REDDE Unknown
+  FIN SI
+  EVOCA VERBUM escaped AD CONIURA replace_all(path, "\\", "\\\\")
+  VINCIRE escaped AD CONIURA replace_all(escaped, "\"", "\\\"")
+  EVOCA VERBUM mime AD CONIURA to_lower(CONIURA trim(CONIURA run_capture(CONIURA concat(
+    CONIURA concat("file -b --mime-type \"", escaped),
+    "\" 2>/dev/null"
+  ))))
+
+  SI CONIURA compare(mime, "video/mp4") == 0
+    REDDE MP4
+  FIN SI
+  SI CONIURA compare(mime, "video/webm") == 0 VEL CONIURA compare(mime, "video/x-matroska") == 0
+    REDDE WebM
+  FIN SI
+  SI CONIURA compare(mime, "video/x-msvideo") == 0
+    REDDE AVI
+  FIN SI
+
+  EVOCA FileType fallback AD CONIURA video_detect_filetype_by_header(path)
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE video_process_config_new(
+  SPECULUM NIHIL specs,
+  UMBRA thumb_offset_seconds,
+  VERBUM watermark_path,
+  MediaZone auto_promote_zone,
+  UMBRA max_duration_seconds,
+  REX max_size_bytes,
+  REX transcode_timeout_ms
+) REDDE VideoProcessConfig
+  EVOCA VideoProcessConfig cfg
+  VINCIRE cfg.specs AD specs
+  VINCIRE cfg.thumb_offset_seconds AD thumb_offset_seconds
+  VINCIRE cfg.watermark_path AD watermark_path
+  VINCIRE cfg.auto_promote_zone AD auto_promote_zone
+  VINCIRE cfg.max_duration_seconds AD max_duration_seconds
+  VINCIRE cfg.max_size_bytes AD max_size_bytes
+  VINCIRE cfg.transcode_timeout_ms AD transcode_timeout_ms
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE video_probe_default(VERBUM path) REDDE VideoProbe
+  EVOCA VideoProbe probe
+  VINCIRE probe.valid AD FALSUM
+  VINCIRE probe.error_message AD ""
+  VINCIRE probe.format_name AD "unknown"
+  VINCIRE probe.video_codec AD "unknown"
+  VINCIRE probe.audio_codec AD "unknown"
+  SI CONIURA exists(path)
+    VINCIRE probe.size_bytes AD CONIURA size(path)
+  ALITER
+    VINCIRE probe.size_bytes AD 0
+  FIN SI
+  VINCIRE probe.duration_seconds AD 0.0
+  VINCIRE probe.has_video AD FALSUM
+  VINCIRE probe.has_audio AD FALSUM
+  VINCIRE probe.video_width AD 0
+  VINCIRE probe.video_height AD 0
+  VINCIRE probe.video_fps AD 0.0
+  REDDE probe
+EXPLICIT RITUALE
+
+RITUALE video_probe_string_or(Json obj, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI NON CONIURA json_has_key(obj, key)
+    REDDE fallback
+  FIN SI
+  EVOCA Json raw AD CONIURA json_get_key(obj, key)
+  SI CONIURA json_is_str(raw)
+    REDDE CONIURA json_expect_str(raw)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE video_probe_int_or(Json obj, VERBUM key, REX fallback) REDDE REX
+  SI NON CONIURA json_has_key(obj, key)
+    REDDE fallback
+  FIN SI
+  EVOCA Json raw AD CONIURA json_get_key(obj, key)
+  SI CONIURA json_is_num(raw)
+    REDDE cast GENUS(REX)(CONIURA json_expect_num(raw))
+  FIN SI
+  SI CONIURA json_is_str(raw)
+    EVOCA VERBUM text AD CONIURA json_expect_str(raw)
+    SI CONIURA is_int(text)
+      REDDE CONIURA parse_int(text)
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE video_probe_real_or(Json obj, VERBUM key, UMBRA fallback) REDDE UMBRA
+  SI NON CONIURA json_has_key(obj, key)
+    REDDE fallback
+  FIN SI
+  EVOCA Json raw AD CONIURA json_get_key(obj, key)
+  SI CONIURA json_is_num(raw)
+    REDDE CONIURA json_expect_num(raw)
+  FIN SI
+  SI CONIURA json_is_str(raw)
+    EVOCA VERBUM text AD CONIURA json_expect_str(raw)
+    SI CONIURA is_real(text)
+      REDDE CONIURA parse_real(text)
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE video_probe_ratio_or_zero(VERBUM raw) REDDE UMBRA
+  EVOCA REX slash AD CONIURA find(raw, "/")
+  SI slash < 0
+    SI CONIURA is_real(raw)
+      REDDE CONIURA parse_real(raw)
+    FIN SI
+    REDDE 0.0
+  FIN SI
+  EVOCA VERBUM left AD CONIURA substring(raw, 0, slash)
+  EVOCA VERBUM right AD CONIURA substring(raw, slash + 1, CONIURA len(raw))
+  SI NON CONIURA is_real(left) VEL NON CONIURA is_real(right)
+    REDDE 0.0
+  FIN SI
+  EVOCA UMBRA den AD CONIURA parse_real(right)
+  SI den == 0.0
+    REDDE 0.0
+  FIN SI
+  REDDE CONIURA parse_real(left) / den
+EXPLICIT RITUALE
+
+RITUALE video_probe_command(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM escaped AD CONIURA replace_all(path, "\\", "\\\\")
+  VINCIRE escaped AD CONIURA replace_all(escaped, "\"", "\\\"")
+  REDDE CONIURA concat(
+    CONIURA concat("ffprobe -v quiet -print_format json -show_format -show_streams \"", escaped),
+    "\" 2>&1"
+  )
+EXPLICIT RITUALE
+
+RITUALE video_probe(VERBUM path) REDDE VideoProbe
+  SI NON CONIURA exists(path)
+    EVOCA VideoProbe out_missing AD CONIURA video_probe_default(path)
+    VINCIRE out_missing.error_message AD "video file does not exist"
+    REDDE out_missing
+  FIN SI
+
+  EVOCA VERBUM output AD CONIURA run_capture(CONIURA video_probe_command(path))
+  SI CONIURA len(CONIURA trim(output)) == 0
+    EVOCA VideoProbe out_empty AD CONIURA video_probe_default(path)
+    VINCIRE out_empty.error_message AD "ffprobe returned empty output"
+    REDDE out_empty
+  FIN SI
+
+  TEMPTA
+    EVOCA Json root AD CONIURA json_parse(output)
+    SI NON CONIURA json_is_obj(root)
+      EVOCA VideoProbe out_root AD CONIURA video_probe_default(path)
+      VINCIRE out_root.error_message AD "ffprobe did not return a JSON object"
+      REDDE out_root
+    FIN SI
+
+    EVOCA VideoProbe probe AD CONIURA video_probe_default(path)
+
+    SI CONIURA json_has_key(root, "format")
+      EVOCA Json format_obj AD CONIURA json_get_key(root, "format")
+      SI CONIURA json_is_obj(format_obj)
+        VINCIRE probe.format_name AD CONIURA video_probe_string_or(format_obj, "format_name", probe.format_name)
+        VINCIRE probe.size_bytes AD CONIURA video_probe_int_or(format_obj, "size", probe.size_bytes)
+        VINCIRE probe.duration_seconds AD CONIURA video_probe_real_or(format_obj, "duration", probe.duration_seconds)
+      FIN SI
+    FIN SI
+
+    SI CONIURA json_has_key(root, "streams")
+      EVOCA Json streams AD CONIURA json_get_key(root, "streams")
+      SI CONIURA json_is_arr(streams)
+        EVOCA REX i AD 0
+        EVOCA REX n AD CONIURA json_arr_len(streams)
+        DUM i < n
+          EVOCA Json item AD CONIURA json_arr_get(streams, i)
+          SI CONIURA json_is_obj(item)
+            EVOCA VERBUM codec_type AD CONIURA video_probe_string_or(item, "codec_type", "")
+            SI CONIURA compare(codec_type, "video") == 0 ET NON probe.has_video
+              VINCIRE probe.has_video AD VERUM
+              VINCIRE probe.video_codec AD CONIURA video_probe_string_or(item, "codec_name", probe.video_codec)
+              VINCIRE probe.video_width AD CONIURA video_probe_int_or(item, "width", probe.video_width)
+              VINCIRE probe.video_height AD CONIURA video_probe_int_or(item, "height", probe.video_height)
+              VINCIRE probe.video_fps AD CONIURA video_probe_ratio_or_zero(CONIURA video_probe_string_or(item, "avg_frame_rate", "0/0"))
+            FIN SI
+            SI CONIURA compare(codec_type, "audio") == 0 ET NON probe.has_audio
+              VINCIRE probe.has_audio AD VERUM
+              VINCIRE probe.audio_codec AD CONIURA video_probe_string_or(item, "codec_name", probe.audio_codec)
+            FIN SI
+          FIN SI
+          VINCIRE i AD i + 1
+        FIN DUM
+      FIN SI
+    FIN SI
+
+    SI NON probe.has_video
+      VINCIRE probe.valid AD FALSUM
+      VINCIRE probe.error_message AD "file does not contain a video stream"
+      REDDE probe
+    FIN SI
+
+    VINCIRE probe.valid AD VERUM
+    VINCIRE probe.error_message AD ""
+    REDDE probe
+  CAPE FRACTUM error
+    EVOCA VideoProbe out_error AD CONIURA video_probe_default(path)
+    VINCIRE out_error.error_message AD CONIURA concat("ffprobe invalid output: ", OBSECRO fractum_to_verbum(error))
+    REDDE out_error
+  FIN TEMPTA
+
+  EVOCA VideoProbe fallback AD CONIURA video_probe_default(path)
+  VINCIRE fallback.error_message AD "ffprobe failed"
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE video_check_deps() REDDE SPECULUM NIHIL
+  EVOCA VERBUM ffmpeg_out AD CONIURA run_capture("ffmpeg -version 2>&1")
+  EVOCA VERBUM ffprobe_out AD CONIURA run_capture("ffprobe -version 2>&1")
+  SI CONIURA len(CONIURA trim(ffmpeg_out)) == 0 VEL CONIURA contains(CONIURA to_lower(ffmpeg_out), "not found")
+    REDDE CONIURA Err GENUS(REX, VERBUM)("ffmpeg is not available in PATH")
+  FIN SI
+  SI CONIURA len(CONIURA trim(ffprobe_out)) == 0 VEL CONIURA contains(CONIURA to_lower(ffprobe_out), "not found")
+    REDDE CONIURA Err GENUS(REX, VERBUM)("ffprobe is not available in PATH")
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE video_validate(VERBUM path, VideoProcessConfig cfg) REDDE SPECULUM NIHIL
+  SI NON CONIURA exists(path)
+    REDDE CONIURA video_err_probe("video file does not exist")
+  FIN SI
+
+  EVOCA FileType ft AD CONIURA video_detect_filetype(path)
+  SI ft == Unknown
+    REDDE CONIURA video_err_probe(CONIURA concat("file is not a valid video by magic bytes: ", CONIURA filetype_to_string(ft)))
+  FIN SI
+
+  SI cfg.max_size_bytes > 0 ET CONIURA size(path) > cfg.max_size_bytes
+    REDDE CONIURA video_err_probe("video exceeds maximum allowed size")
+  FIN SI
+
+  EVOCA VideoProbe probe AD CONIURA video_probe(path)
+  SI NON probe.valid
+    REDDE CONIURA video_err_probe(CONIURA concat("ffprobe could not inspect the file: ", probe.error_message))
+  FIN SI
+  SI NON probe.has_video
+    REDDE CONIURA video_err_probe("file does not contain a video stream")
+  FIN SI
+  SI cfg.max_duration_seconds > 0.0 ET probe.duration_seconds > cfg.max_duration_seconds
+    REDDE CONIURA video_err_probe("video exceeds maximum allowed duration")
+  FIN SI
+
+  REDDE CONIURA video_ok_probe(probe)
+EXPLICIT RITUALE
+
+RITUALE video_spec_sd() REDDE TranscodeSpec
+  EVOCA TranscodeSpec spec
+  VINCIRE spec.name AD "sd"
+  VINCIRE spec.video_codec AD "libx264"
+  VINCIRE spec.audio_codec AD "aac"
+  VINCIRE spec.max_width AD 854
+  VINCIRE spec.max_height AD 480
+  VINCIRE spec.bitrate_kbps AD 800
+  VINCIRE spec.audio_bitrate_kbps AD 128
+  VINCIRE spec.extension AD "mp4"
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE video_spec_hd() REDDE TranscodeSpec
+  EVOCA TranscodeSpec spec
+  VINCIRE spec.name AD "hd"
+  VINCIRE spec.video_codec AD "libx264"
+  VINCIRE spec.audio_codec AD "aac"
+  VINCIRE spec.max_width AD 1280
+  VINCIRE spec.max_height AD 720
+  VINCIRE spec.bitrate_kbps AD 2500
+  VINCIRE spec.audio_bitrate_kbps AD 192
+  VINCIRE spec.extension AD "mp4"
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE video_ingest(
+  VERBUM tmp_path,
+  VERBUM original_filename,
+  VERBUM owner_id,
+  VideoProcessConfig cfg,
+  MediaStore store
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL validate_res AD CONIURA video_validate(tmp_path, cfg)
+  SI CONIURA result_is_err GENUS(VideoProbe, VERBUM)(validate_res)
+    REDDE CONIURA video_err_record(CONIURA result_unwrap_err GENUS(VideoProbe, VERBUM)(validate_res))
+  FIN SI
+  EVOCA VideoProbe probe AD CONIURA result_unwrap GENUS(VideoProbe, VERBUM)(validate_res)
+  EVOCA FileType ft AD CONIURA video_detect_filetype(tmp_path)
+  EVOCA SPECULUM NIHIL put_res AD CONIURA media_store_put_file(store, MEDIA_ZONE_QUARANTINE, tmp_path, original_filename)
+  SI CONIURA exists(tmp_path)
+    CONIURA delete_file(tmp_path)
+  FIN SI
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(put_res)
+    REDDE CONIURA video_err_record(CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(put_res))
+  FIN SI
+
+  EVOCA MediaArtifact artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(put_res)
+  EVOCA VideoRecord record
+  EVOCA VERBUM now_iso AD CONIURA video_now_iso()
+  VINCIRE record.artifact_id AD artifact.artifact_id
+  VINCIRE record.owner_id AD owner_id
+  VINCIRE record.original_filename AD original_filename
+  VINCIRE record.content_type AD artifact.content_type
+  VINCIRE record.filetype AD ft
+  VINCIRE record.duration_seconds AD probe.duration_seconds
+  VINCIRE record.video_codec AD probe.video_codec
+  VINCIRE record.audio_codec AD probe.audio_codec
+  VINCIRE record.width AD probe.video_width
+  VINCIRE record.height AD probe.video_height
+  VINCIRE record.fps AD probe.video_fps
+  VINCIRE record.size_bytes AD artifact.size_bytes
+  VINCIRE record.checksum AD artifact.checksum
+  VINCIRE record.zone AD MEDIA_ZONE_QUARANTINE
+  VINCIRE record.process_state AD VpsPending
+  VINCIRE record.moderation_state AD VmsPending
+  VINCIRE record.active AD VERUM
+  VINCIRE record.deleted AD FALSUM
+  VINCIRE record.error_message AD ""
+  VINCIRE record.created_at_iso AD now_iso
+  VINCIRE record.updated_at_iso AD now_iso
+  REDDE CONIURA video_ok_record(record)
+EXPLICIT RITUALE
+
+RITUALE video_process_task(VERBUM artifact_id, VideoProcessConfig cfg, MediaStore store, SPECULUM VideoRecord record) REDDE SPECULUM NIHIL
+  VINCIRE (*record).process_state AD VpsProcessing
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+
+  EVOCA VERBUM original_name AD CONIURA concat(artifact_id, CONIURA filetype_extension((*record).filetype))
+  EVOCA MediaArtifact original_artifact AD CONIURA media_store_artifact(
+    artifact_id,
+    MEDIA_ZONE_QUARANTINE,
+    original_name,
+    (*record).content_type,
+    (*record).size_bytes,
+    (*record).checksum,
+    (*record).created_at_iso,
+    (*record).updated_at_iso
+  )
+  EVOCA VERBUM original_path AD CONIURA media_store_absolute_path(store, original_artifact)
+
+  EVOCA VERBUM thumb_path AD CONIURA path_join(
+    CONIURA media_store_zone_dir(store, MEDIA_ZONE_PROCESSED),
+    CONIURA concat(artifact_id, "_thumb.jpg")
+  )
+  EVOCA SPECULUM NIHIL thumb_res AD CONIURA video_extract_thumb(original_path, thumb_path, cfg.thumb_offset_seconds)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(thumb_res)
+    VINCIRE (*record).process_state AD VpsFailed
+    VINCIRE (*record).error_message AD CONIURA concat("thumbnail extraction failed: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(thumb_res))
+    VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+    REDDE CONIURA Err GENUS(REX, VERBUM)((*record).error_message)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL transcode_res AD CONIURA video_transcode_all(original_path, cfg, store, artifact_id)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(transcode_res)
+    VINCIRE (*record).process_state AD VpsFailed
+    VINCIRE (*record).error_message AD CONIURA concat("transcode failed: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(transcode_res))
+    VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+    REDDE CONIURA Err GENUS(REX, VERBUM)((*record).error_message)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL promote_res AD CONIURA media_store_promote(store, original_artifact, cfg.auto_promote_zone)
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(promote_res)
+    VINCIRE (*record).process_state AD VpsFailed
+    VINCIRE (*record).error_message AD CONIURA concat("promotion failed: ", CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(promote_res))
+    VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+    REDDE CONIURA Err GENUS(REX, VERBUM)((*record).error_message)
+  FIN SI
+
+  VINCIRE (*record).process_state AD VpsReady
+  VINCIRE (*record).zone AD cfg.auto_promote_zone
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE video_approve(SPECULUM VideoRecord record) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD VmsApproved
+  VINCIRE (*record).active AD VERUM
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE video_reject(SPECULUM VideoRecord record, VERBUM reason) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD VmsRejected
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).error_message AD reason
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE video_mark_unsafe(SPECULUM VideoRecord record, VERBUM reason) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD VmsUnsafe
+  VINCIRE (*record).process_state AD VpsUnsafe
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).error_message AD reason
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE video_soft_delete(SPECULUM VideoRecord record) REDDE NIHIL
+  VINCIRE (*record).deleted AD VERUM
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).updated_at_iso AD CONIURA video_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

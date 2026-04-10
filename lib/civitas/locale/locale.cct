@@ -1,0 +1,87 @@
+INCIPIT grimoire "civitas_locale_types"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Locale
+  lang: VERBUM
+  regiao: VERBUM
+  script: VERBUM
+FIN SIGILLUM
+
+RITUALE locale_new(VERBUM lang, VERBUM regiao) REDDE Locale
+  EVOCA Locale loc
+  VINCIRE loc.lang AD CONIURA to_lower(lang)
+  VINCIRE loc.regiao AD CONIURA to_upper(regiao)
+  VINCIRE loc.script AD ""
+  REDDE loc
+EXPLICIT RITUALE
+
+RITUALE locale_empty() REDDE Locale
+  EVOCA Locale loc
+  VINCIRE loc.lang AD ""
+  VINCIRE loc.regiao AD ""
+  VINCIRE loc.script AD ""
+  REDDE loc
+EXPLICIT RITUALE
+
+RITUALE locale_parse(VERBUM s) REDDE Locale
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(s, "-")
+  EVOCA REX np AD CONIURA fluxus_len(partes)
+  EVOCA Locale loc AD CONIURA locale_empty()
+  SI np == 0
+    REDDE loc
+  FIN SI
+
+  EVOCA SPECULUM VERBUM p0 AD CONIURA fluxus_get(partes, 0)
+  VINCIRE loc.lang AD CONIURA to_lower(*p0)
+  SI np == 1
+    REDDE loc
+  FIN SI
+
+  EVOCA SPECULUM VERBUM p1 AD CONIURA fluxus_get(partes, 1)
+  EVOCA VERBUM parte2 AD *p1
+  SI CONIURA len(parte2) == 4
+    VINCIRE loc.script AD parte2
+    SI np >= 3
+      EVOCA SPECULUM VERBUM p2 AD CONIURA fluxus_get(partes, 2)
+      VINCIRE loc.regiao AD CONIURA to_upper(*p2)
+    FIN SI
+    REDDE loc
+  FIN SI
+
+  VINCIRE loc.regiao AD CONIURA to_upper(parte2)
+  REDDE loc
+EXPLICIT RITUALE
+
+RITUALE locale_to_string(Locale loc) REDDE VERBUM
+  EVOCA VERBUM out AD loc.lang
+  SI CONIURA len(loc.script) != 0
+    VINCIRE out AD CONIURA concat(out, "-")
+    VINCIRE out AD CONIURA concat(out, loc.script)
+  FIN SI
+  SI CONIURA len(loc.regiao) != 0
+    VINCIRE out AD CONIURA concat(out, "-")
+    VINCIRE out AD CONIURA concat(out, loc.regiao)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE locale_equals(Locale a, Locale b) REDDE VERUM
+  SI CONIURA compare(a.lang, b.lang) != 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA compare(a.regiao, b.regiao) != 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA compare(a.script, b.script) != 0
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE locale_matches_lang(Locale a, Locale b) REDDE VERUM
+  REDDE CONIURA compare(a.lang, b.lang) == 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

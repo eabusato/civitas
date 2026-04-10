@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase17_17c_purge_tmp_dir_keeps_recent"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/retention/retention.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17c_purge_tmp_dir_keeps_recent")
+  EVOCA RetentionConfig cfg AD CONIURA retention_config_default()
+  EVOCA VERBUM old_path AD CONIURA phase17_write_file(stack.root, "tmp/old.txt", "old")
+  CONIURA sleep_ms(1200)
+  EVOCA VERBUM recent_path AD CONIURA phase17_write_file(stack.root, "tmp/recent.txt", "recent")
+  EVOCA REX now_unix AD CONIURA modified_time(old_path) + cfg.tmp_max_age_seconds + 1
+  EVOCA RetentionReport report AD CONIURA retention_purge_tmp_dir(CONIURA path_join(stack.root, "tmp"), cfg, now_unix)
+  SI report.deleted_count != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA exists(old_path)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(recent_path)
+    CONIURA phase17_stack_close(stack)
+    REDDE 3
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

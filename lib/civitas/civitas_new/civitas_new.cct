@@ -1,0 +1,746 @@
+INCIPIT grimoire "civitas_new"
+
+ADVOCARE "cct/args.cct"
+ADVOCARE "cct/code_writer.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO TemplateKind
+  TemplateMinimal,
+  TemplateWeb,
+  TemplateApi
+FIN ORDO
+
+ORDO ScaffoldStyle
+  StyleStarter,
+  StyleLayered,
+  StyleDomain
+FIN ORDO
+
+SIGILLUM CivitasNewConfig
+  name: VERBUM
+  template: TemplateKind
+  style: ScaffoldStyle
+  dest_dir: VERBUM
+  force: VERUM
+FIN SIGILLUM
+
+RITUALE civitas_new_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE civitas_new_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE civitas_new_kind_name(TemplateKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS TemplateWeb:
+      REDDE "web"
+    CASUS TemplateApi:
+      REDDE "api"
+    ALIOQUIN:
+      REDDE "minimal"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_style_name(ScaffoldStyle style) REDDE VERBUM
+  ELIGE style
+    CASUS StyleLayered:
+      REDDE "layered"
+    CASUS StyleDomain:
+      REDDE "domain"
+    ALIOQUIN:
+      REDDE "starter"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_parse_template(VERBUM raw) REDDE TemplateKind
+  EVOCA VERBUM value AD CONIURA to_lower(CONIURA trim(raw))
+  SI CONIURA compare(value, "web") == 0
+    REDDE TemplateWeb
+  FIN SI
+  SI CONIURA compare(value, "api") == 0
+    REDDE TemplateApi
+  FIN SI
+  REDDE TemplateMinimal
+EXPLICIT RITUALE
+
+RITUALE civitas_new_parse_style(VERBUM raw) REDDE ScaffoldStyle
+  EVOCA VERBUM value AD CONIURA to_lower(CONIURA trim(raw))
+  SI CONIURA compare(value, "layered") == 0
+    REDDE StyleLayered
+  FIN SI
+  SI CONIURA compare(value, "domain") == 0
+    REDDE StyleDomain
+  FIN SI
+  REDDE StyleStarter
+EXPLICIT RITUALE
+
+RITUALE civitas_new_cfg(VERBUM name, TemplateKind kind, VERBUM dest_dir, VERUM force) REDDE CivitasNewConfig
+  REDDE CONIURA civitas_new_cfg_with_style(name, kind, StyleStarter, dest_dir, force)
+EXPLICIT RITUALE
+
+RITUALE civitas_new_cfg_with_style(VERBUM name, TemplateKind kind, ScaffoldStyle style, VERBUM dest_dir, VERUM force) REDDE CivitasNewConfig
+  EVOCA CivitasNewConfig cfg
+  VINCIRE cfg.name AD name
+  VINCIRE cfg.template AD kind
+  VINCIRE cfg.style AD style
+  VINCIRE cfg.dest_dir AD dest_dir
+  VINCIRE cfg.force AD force
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE civitas_new_target_dir(CivitasNewConfig cfg) REDDE VERBUM
+  REDDE CONIURA path_join(cfg.dest_dir, cfg.name)
+EXPLICIT RITUALE
+
+RITUALE civitas_new_rel_path(VERBUM base, VERBUM rel) REDDE VERBUM
+  REDDE CONIURA path_join(base, rel)
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_file(VERBUM root, VERBUM rel, VERBUM content) REDDE NIHIL
+  EVOCA VERBUM full_path AD CONIURA civitas_new_rel_path(root, rel)
+  CONIURA mkdir_all(CONIURA path_dirname(full_path))
+  CONIURA write_all(full_path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_empty_keep() REDDE VERBUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE civitas_new_civitas_toml(CivitasNewConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "# Civitas project scaffold")
+  CONIURA writer_writeln(w, CONIURA concat("# Scaffold style: ", CONIURA civitas_new_style_name(cfg.style)))
+  CONIURA writer_writeln(w, "# User code lives in project/, apps/, templates/, static/ and tests/.")
+  CONIURA writer_writeln(w, "# Runtime/internal artifacts stay in data/ and .civitas/.")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[project]")
+  CONIURA writer_writeln(w, CONIURA concat("name = \"", CONIURA concat(cfg.name, "\"")))
+  CONIURA writer_writeln(w, "version = \"0.1.0\"")
+  CONIURA writer_writeln(w, "entry = \"project/main.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[server]")
+  CONIURA writer_writeln(w, "host = \"0.0.0.0\"")
+  CONIURA writer_writeln(w, "port = 8080")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[database]")
+  CONIURA writer_writeln(w, "driver = \"sqlite\"")
+  CONIURA writer_writeln(w, CONIURA concat("url = \"data/db/", CONIURA concat(cfg.name, ".db\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[dev]")
+  CONIURA writer_writeln(w, "src_dir = \".\"")
+  CONIURA writer_writeln(w, "poll_ms = 250")
+  CONIURA writer_writeln(w, "build_cmd = \"sh -c 'CCT_BIN=\\\"${CCT_BIN:-$(command -v cct-host || command -v cct)}\\\"; \\\"$CCT_BIN\\\" project/main.cct'\"")
+  CONIURA writer_writeln(w, "server_cmd = \"./project/main\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[static]")
+  CONIURA writer_writeln(w, "src_dir = \"static\"")
+  CONIURA writer_writeln(w, "out_dir = \"public/static\"")
+  CONIURA writer_writeln(w, "url_prefix = \"/static\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[admin]")
+  CONIURA writer_writeln(w, "prefix = \"/admin\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "[dirs]")
+  CONIURA writer_writeln(w, "migrations = \"migrations\"")
+  CONIURA writer_writeln(w, "templates = \"templates\"")
+  CONIURA writer_writeln(w, "tests = \"tests\"")
+  CONIURA writer_writeln(w, "models = \"apps/core/models\"")
+  CONIURA writer_writeln(w, "handlers = \"apps/core/views\"")
+  CONIURA writer_writeln(w, "serializers = \"apps/core/serializers\"")
+  CONIURA writer_writeln(w, "admin = \"apps/core/admin\"")
+  CONIURA writer_writeln(w, "routes = \"apps/core/routes\"")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_project_main(CivitasNewConfig cfg, VERBUM message) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"project_main\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE main() REDDE REX")
+  CONIURA writer_writeln(w, "  -- This is the bootstrap owned by the project.")
+  CONIURA writer_writeln(w, "  -- Add real Civitas app/router/server wiring here when the project is ready.")
+  CONIURA writer_writeln(w, "  CONIURA project_urls_register()")
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA println(\"", CONIURA concat(message, "\")")))
+  CONIURA writer_writeln(w, "  REDDE 0")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_project_urls() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"project_urls\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"../apps/core/urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE project_urls_register() REDDE NIHIL")
+  CONIURA writer_writeln(w, "  -- Mount app URL trees here in the order you want them resolved.")
+  CONIURA writer_writeln(w, "  CONIURA core_urls_register()")
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_project_urls_domain() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"project_urls\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"../apps/core/urls.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"../apps/public/urls.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"../apps/accounts/urls.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"../apps/backoffice/urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE project_urls_register() REDDE NIHIL")
+  CONIURA writer_writeln(w, "  -- Keep root wiring in the project and mount each app under its own prefix.")
+  CONIURA writer_writeln(w, "  CONIURA public_urls_register()")
+  CONIURA writer_writeln(w, "  CONIURA accounts_urls_register()")
+  CONIURA writer_writeln(w, "  CONIURA backoffice_urls_register()")
+  CONIURA writer_writeln(w, "  CONIURA core_urls_register()")
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_urls() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_urls\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"views/index.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE core_urls_register() REDDE NIHIL")
+  CONIURA writer_writeln(w, "  -- App-level URL tree. Keep the core app small and split new features into new apps.")
+  CONIURA writer_writeln(w, "  CONIURA core_views_register()")
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_views_index(CivitasNewConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_views\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE core_views_register() REDDE NIHIL")
+  CONIURA writer_writeln(w, "  -- Put HTTP handlers for the core app here or split them into files in views/.")
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA println(\"core app placeholder for ", CONIURA concat(cfg.name, "\")")))
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_models_index() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_models\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/verbum.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "-- Define shared domain SIGILLUMs here or split them into files in models/.")
+  CONIURA writer_writeln(w, "SIGILLUM CorePlaceholder")
+  CONIURA writer_writeln(w, "  message: VERBUM")
+  CONIURA writer_writeln(w, "FIN SIGILLUM")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE core_models_placeholder() REDDE CorePlaceholder")
+  CONIURA writer_writeln(w, "  EVOCA CorePlaceholder item")
+  CONIURA writer_writeln(w, "  VINCIRE item.message AD \"replace this placeholder with real domain models\"")
+  CONIURA writer_writeln(w, "  REDDE item")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_admin_index() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_admin\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE core_admin_register() REDDE NIHIL")
+  CONIURA writer_writeln(w, "  -- Register admin resources for the core app here.")
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_serializers_index() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_serializers\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/verbum.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE core_serialize_placeholder() REDDE VERBUM")
+  CONIURA writer_writeln(w, "  -- Convert domain values to JSON or public payloads here.")
+  CONIURA writer_writeln(w, "  REDDE \"{}\"")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_editorconfig() REDDE VERBUM
+  REDDE "root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\ninsert_final_newline = true\nindent_style = space\nindent_size = 2\ntrim_trailing_whitespace = true\n\n[*.cct]\nindent_size = 2\n\n[*.sql]\nindent_size = 2\n"
+EXPLICIT RITUALE
+
+RITUALE civitas_new_text_note(VERBUM title, VERBUM line_one, VERBUM line_two) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA concat("# ", CONIURA concat(title, "\n\n"))
+  VINCIRE out AD CONIURA concat(out, line_one)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, line_two)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_simple_module(VERBUM grimoire_name, VERBUM routine_name, VERBUM comment_line) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(grimoire_name, "\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("-- ", comment_line))
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(routine_name, "() REDDE NIHIL")))
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_app_urls(VERBUM app_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(app_name, "_urls\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "ADVOCARE \"views/index.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(app_name, "_urls_register() REDDE NIHIL")))
+  CONIURA writer_writeln(w, CONIURA concat("  -- Mount the `", CONIURA concat(app_name, "` app routes here.")))
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA ", CONIURA concat(app_name, "_views_register()")))
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_app_views_index(VERBUM app_name, VERBUM project_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  EVOCA VERBUM placeholder_line AD CONIURA concat(project_name, ": ")
+  VINCIRE placeholder_line AD CONIURA concat(placeholder_line, app_name)
+  VINCIRE placeholder_line AD CONIURA concat(placeholder_line, " app placeholder")
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(app_name, "_views\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"cct/io.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("RITUALE ", CONIURA concat(app_name, "_views_register() REDDE NIHIL")))
+  CONIURA writer_writeln(w, CONIURA concat("  -- Replace this placeholder with real handlers for the `", CONIURA concat(app_name, "` app.")))
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA println(\"", CONIURA concat(placeholder_line, "\")")))
+  CONIURA writer_writeln(w, "  REDDE")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_app_test(VERBUM app_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("INCIPIT grimoire \"", CONIURA concat(app_name, "_test\"")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"../urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE main() REDDE REX")
+  CONIURA writer_writeln(w, CONIURA concat("  CONIURA ", CONIURA concat(app_name, "_urls_register()")))
+  CONIURA writer_writeln(w, "  REDDE 0")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_settings_file(VERBUM env_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("# Settings notes for ", CONIURA concat(env_name, ".")))
+  CONIURA writer_writeln(w, "# Civitas currently reads civitas.toml as the canonical runtime config.")
+  CONIURA writer_writeln(w, "# Keep environment-specific values here if your project wants a split config strategy.")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("# Example: ", CONIURA concat(env_name, " overrides")))
+  CONIURA writer_writeln(w, "# server.port = 8080")
+  CONIURA writer_writeln(w, "# database.url = \"data/db/app.db\"")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_test_routes() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"project_test_routes\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"../project/urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE main() REDDE REX")
+  CONIURA writer_writeln(w, "  CONIURA project_urls_register()")
+  CONIURA writer_writeln(w, "  REDDE 0")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_core_test() REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, "INCIPIT grimoire \"core_test\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "ADVOCARE \"../urls.cct\"")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "RITUALE main() REDDE REX")
+  CONIURA writer_writeln(w, "  CONIURA core_urls_register()")
+  CONIURA writer_writeln(w, "  REDDE 0")
+  CONIURA writer_writeln(w, "EXPLICIT RITUALE")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "EXPLICIT grimoire")
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_base_html(CivitasNewConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>"
+  VINCIRE out AD CONIURA concat(out, cfg.name)
+  VINCIRE out AD CONIURA concat(out, "</title>\n  <link rel=\"stylesheet\" href=\"/static/css/main.css\">\n</head>\n<body>\n  <header class=\"site-header\"><h1>")
+  VINCIRE out AD CONIURA concat(out, cfg.name)
+  VINCIRE out AD CONIURA concat(out, "</h1></header>\n  <main class=\"shell\">\n    <!-- Shared shell for user templates. Add real rendering/layout slots here. -->\n  </main>\n  <script src=\"/static/js/main.js\"></script>\n</body>\n</html>\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_index_html(CivitasNewConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD "<section class=\"card\">\n  <p class=\"eyebrow\">Civitas</p>\n  <h2>"
+  VINCIRE out AD CONIURA concat(out, cfg.name)
+  VINCIRE out AD CONIURA concat(out, "</h2>\n  <p>This is the first template owned by the project. Replace it with the first real page for your app.</p>\n</section>\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_style_css() REDDE VERBUM
+  REDDE ":root{color-scheme:dark;--bg:#07111f;--panel:#0f1b30;--ink:#ecf2ff;--muted:#9bb0d1;--line:#223355;--accent:#56c2ff}*{box-sizing:border-box}body{margin:0;font-family:ui-sans-serif,system-ui,sans-serif;background:radial-gradient(circle at top,#112142,#07111f 45%);color:var(--ink)}.site-header{padding:24px 32px;border-bottom:1px solid var(--line)}.shell{max-width:960px;margin:0 auto;padding:32px 20px}.card{background:rgba(15,27,48,.85);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.eyebrow{margin:0 0 12px;color:var(--accent);text-transform:uppercase;letter-spacing:.14em;font-size:12px}h2{margin:0 0 10px;font-size:32px}p{margin:0;color:var(--muted)}\n"
+EXPLICIT RITUALE
+
+RITUALE civitas_new_script_js() REDDE VERBUM
+  REDDE "document.documentElement.dataset.civitas = \"ready\";\n"
+EXPLICIT RITUALE
+
+RITUALE civitas_new_gitignore() REDDE VERBUM
+  REDDE ".civitas/\ndata/\npublic/static/\n*.cgen.c\n*.sigil\n*.system.sigil\n*.svg\n*.system.svg\nproject/main\napps/core/tests/*.test\n"
+EXPLICIT RITUALE
+
+RITUALE civitas_new_readme(CivitasNewConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL w AD CONIURA writer_init()
+  CONIURA writer_writeln(w, CONIURA concat("# ", cfg.name))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, CONIURA concat("Template: `", CONIURA concat(CONIURA civitas_new_kind_name(cfg.template), "`.")))
+  CONIURA writer_writeln(w, CONIURA concat("Style: `", CONIURA concat(CONIURA civitas_new_style_name(cfg.style), "`.")))
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "## Project layout")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "- `project/`: bootstrap and root URL tree owned by the project.")
+  CONIURA writer_writeln(w, "- `apps/`: feature apps, starting with `apps/core`.")
+  CONIURA writer_writeln(w, "- `settings/`: environment notes and future project-specific config split.")
+  CONIURA writer_writeln(w, "- `data/` and `.civitas/`: runtime/internal artifacts that should stay out of git.")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "## Bootstrap")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "```bash")
+  CONIURA writer_writeln(w, "CCT_BIN=${CCT_BIN:-$(command -v cct-host || command -v cct)}")
+  CONIURA writer_writeln(w, "\"$CCT_BIN\" project/main.cct")
+  CONIURA writer_writeln(w, "./project/main")
+  CONIURA writer_writeln(w, "```")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "## Next steps")
+  CONIURA writer_writeln(w, "")
+  CONIURA writer_writeln(w, "- Edit `civitas.toml` for ports, database and admin prefix.")
+  CONIURA writer_writeln(w, "- Start with `apps/core`, then split new domains into new apps.")
+  CONIURA writer_writeln(w, "- Keep root routing in `project/urls.cct` and app-local routing in `apps/<app>/urls.cct`.")
+  CONIURA writer_writeln(w, "- Add migrations in `migrations/` and integration tests in `tests/`.")
+  SI cfg.style == StyleLayered
+    CONIURA writer_writeln(w, "- Use `services/`, `queries/`, `policies/` and `jobs/` when the core app grows beyond simple handlers.")
+  FIN SI
+  SI cfg.style == StyleDomain
+    CONIURA writer_writeln(w, "- Move domain-specific features into `apps/public`, `apps/accounts`, `apps/backoffice` or new apps of your own.")
+    CONIURA writer_writeln(w, "- Keep shared code in `apps/shared` and project-level composition in `project/`.")
+  FIN SI
+  EVOCA VERBUM out AD CONIURA writer_to_verbum(w)
+  CONIURA writer_free(w)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_common_tree(CivitasNewConfig cfg) REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA mkdir_all(root)
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "project"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "settings"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/models"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/views"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/routes"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/tests"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "tests"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "migrations"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "data/db"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "data/media"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "data/logs"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "data/backups"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/bench"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/profiles"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/mem"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/reports"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/build"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, ".civitas/cache"))
+  CONIURA civitas_new_write_file(root, ".editorconfig", CONIURA civitas_new_editorconfig())
+  CONIURA civitas_new_write_file(root, "civitas.toml", CONIURA civitas_new_civitas_toml(cfg))
+  SI cfg.style == StyleDomain
+    CONIURA civitas_new_write_file(root, "project/urls.cct", CONIURA civitas_new_project_urls_domain())
+  ALITER
+    CONIURA civitas_new_write_file(root, "project/urls.cct", CONIURA civitas_new_project_urls())
+  FIN SI
+  CONIURA civitas_new_write_file(root, "apps/core/urls.cct", CONIURA civitas_new_core_urls())
+  CONIURA civitas_new_write_file(root, "apps/core/views/index.cct", CONIURA civitas_new_core_views_index(cfg))
+  CONIURA civitas_new_write_file(root, "apps/core/models/index.cct", CONIURA civitas_new_core_models_index())
+  CONIURA civitas_new_write_file(root, "apps/core/tests/test_core.cct", CONIURA civitas_new_core_test())
+  CONIURA civitas_new_write_file(root, "apps/core/routes/.keep", CONIURA civitas_new_empty_keep())
+  CONIURA civitas_new_write_file(root, "settings/base.toml", CONIURA civitas_new_settings_file("base"))
+  CONIURA civitas_new_write_file(root, "settings/dev.toml", CONIURA civitas_new_settings_file("dev"))
+  CONIURA civitas_new_write_file(root, "settings/prod.toml", CONIURA civitas_new_settings_file("prod"))
+  CONIURA civitas_new_write_file(root, "tests/test_routes.cct", CONIURA civitas_new_test_routes())
+  CONIURA civitas_new_write_file(root, ".gitignore", CONIURA civitas_new_gitignore())
+  CONIURA civitas_new_write_file(root, "README.md", CONIURA civitas_new_readme(cfg))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_layered_tree(CivitasNewConfig cfg) REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/services"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/policies"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/queries"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/jobs"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/contracts"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "docs/adr"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "docs/runbooks"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "scripts"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "ops/environments"))
+  CONIURA civitas_new_write_file(root, "apps/core/services/index.cct", CONIURA civitas_new_simple_module("core_services", "core_services_register", "Keep orchestration and use-case code here."))
+  CONIURA civitas_new_write_file(root, "apps/core/policies/index.cct", CONIURA civitas_new_simple_module("core_policies", "core_policies_register", "Keep authorization and domain policy helpers here."))
+  CONIURA civitas_new_write_file(root, "apps/core/queries/index.cct", CONIURA civitas_new_simple_module("core_queries", "core_queries_register", "Keep read models and query composition here."))
+  CONIURA civitas_new_write_file(root, "apps/core/jobs/index.cct", CONIURA civitas_new_simple_module("core_jobs", "core_jobs_register", "Keep background jobs owned by the core app here."))
+  CONIURA civitas_new_write_file(root, "apps/core/contracts/index.cct", CONIURA civitas_new_simple_module("core_contracts", "core_contracts_register", "Keep DTO and boundary contracts shared inside the app here."))
+  CONIURA civitas_new_write_file(root, "docs/adr/README.md", CONIURA civitas_new_text_note("Architecture Decision Records", "Record important architectural choices here.", "One file per decision keeps the project history readable."))
+  CONIURA civitas_new_write_file(root, "docs/runbooks/README.md", CONIURA civitas_new_text_note("Runbooks", "Store operational procedures for incidents, deploys and maintenance here.", "Keep commands, expectations and rollback notes close to the codebase."))
+  CONIURA civitas_new_write_file(root, "scripts/.keep", CONIURA civitas_new_empty_keep())
+  CONIURA civitas_new_write_file(root, "ops/environments/.keep", CONIURA civitas_new_empty_keep())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_domain_app(CivitasNewConfig cfg, VERBUM app_name) REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, CONIURA concat("apps/", CONIURA concat(app_name, "/models"))))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, CONIURA concat("apps/", CONIURA concat(app_name, "/views"))))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, CONIURA concat("apps/", CONIURA concat(app_name, "/routes"))))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, CONIURA concat("apps/", CONIURA concat(app_name, "/tests"))))
+  CONIURA civitas_new_write_file(root, CONIURA concat("apps/", CONIURA concat(app_name, "/urls.cct")), CONIURA civitas_new_app_urls(app_name))
+  CONIURA civitas_new_write_file(root, CONIURA concat("apps/", CONIURA concat(app_name, "/views/index.cct")), CONIURA civitas_new_app_views_index(app_name, cfg.name))
+  CONIURA civitas_new_write_file(root, CONIURA concat("apps/", CONIURA concat(app_name, "/routes/.keep")), CONIURA civitas_new_empty_keep())
+  CONIURA civitas_new_write_file(root, CONIURA concat("apps/", CONIURA concat(app_name, "/models/.keep")), CONIURA civitas_new_empty_keep())
+  CONIURA civitas_new_write_file(root, CONIURA concat("apps/", CONIURA concat(app_name, CONIURA concat("/tests/test_", CONIURA concat(app_name, ".cct")))), CONIURA civitas_new_app_test(app_name))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_domain_tree(CivitasNewConfig cfg) REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA civitas_new_write_layered_tree(cfg)
+  CONIURA civitas_new_write_domain_app(cfg, "public")
+  CONIURA civitas_new_write_domain_app(cfg, "accounts")
+  CONIURA civitas_new_write_domain_app(cfg, "backoffice")
+  CONIURA civitas_new_write_domain_app(cfg, "shared")
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/shared/services"))
+  CONIURA civitas_new_write_file(root, "apps/shared/models/index.cct", CONIURA civitas_new_simple_module("shared_models", "shared_models_register", "Keep models reused by multiple apps here."))
+  CONIURA civitas_new_write_file(root, "apps/shared/services/index.cct", CONIURA civitas_new_simple_module("shared_services", "shared_services_register", "Keep shared services, cross-app adapters and common use cases here."))
+  CONIURA civitas_new_write_file(root, "apps/shared/tests/test_shared.cct", CONIURA civitas_new_app_test("shared"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_write_style_tree(CivitasNewConfig cfg) REDDE NIHIL
+  SI cfg.style == StyleLayered
+    CONIURA civitas_new_write_layered_tree(cfg)
+    REDDE
+  FIN SI
+  SI cfg.style == StyleDomain
+    CONIURA civitas_new_write_domain_tree(cfg)
+    REDDE
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_create_minimal(CivitasNewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA civitas_new_write_common_tree(cfg)
+  CONIURA civitas_new_write_style_tree(cfg)
+  CONIURA civitas_new_write_file(root, "project/main.cct", CONIURA civitas_new_project_main(cfg, CONIURA concat(cfg.name, " ready. Start wiring real Civitas runtime code in project/main.cct.")))
+  REDDE CONIURA civitas_new_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_new_create_web(CivitasNewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA civitas_new_write_common_tree(cfg)
+  CONIURA civitas_new_write_style_tree(cfg)
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/admin"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "templates/core"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "static/css"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "static/js"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "static/img"))
+  CONIURA civitas_new_write_file(root, "project/main.cct", CONIURA civitas_new_project_main(cfg, CONIURA concat(cfg.name, " ready. Add real HTTP/runtime wiring in project/main.cct when you are ready.")))
+  CONIURA civitas_new_write_file(root, "apps/core/admin/index.cct", CONIURA civitas_new_core_admin_index())
+  CONIURA civitas_new_write_file(root, "templates/base.html", CONIURA civitas_new_base_html(cfg))
+  CONIURA civitas_new_write_file(root, "templates/core/index.html", CONIURA civitas_new_index_html(cfg))
+  CONIURA civitas_new_write_file(root, "static/css/main.css", CONIURA civitas_new_style_css())
+  CONIURA civitas_new_write_file(root, "static/js/main.js", CONIURA civitas_new_script_js())
+  CONIURA civitas_new_write_file(root, "static/img/.keep", CONIURA civitas_new_empty_keep())
+  REDDE CONIURA civitas_new_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_new_create_api(CivitasNewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA civitas_new_target_dir(cfg)
+  CONIURA civitas_new_write_common_tree(cfg)
+  CONIURA civitas_new_write_style_tree(cfg)
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/admin"))
+  CONIURA mkdir_all(CONIURA civitas_new_rel_path(root, "apps/core/serializers"))
+  CONIURA civitas_new_write_file(root, "project/main.cct", CONIURA civitas_new_project_main(cfg, CONIURA concat(cfg.name, " ready. Add API/runtime wiring in project/main.cct when you are ready.")))
+  CONIURA civitas_new_write_file(root, "apps/core/admin/index.cct", CONIURA civitas_new_core_admin_index())
+  CONIURA civitas_new_write_file(root, "apps/core/serializers/index.cct", CONIURA civitas_new_core_serializers_index())
+  REDDE CONIURA civitas_new_ok()
+EXPLICIT RITUALE
+
+RITUALE civitas_new_create(CivitasNewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM target AD CONIURA civitas_new_target_dir(cfg)
+  SI CONIURA len(CONIURA trim(cfg.name)) == 0
+    REDDE CONIURA civitas_new_err("project name required")
+  FIN SI
+  SI CONIURA exists(target) ET NON cfg.force
+    REDDE CONIURA civitas_new_err("target directory already exists")
+  FIN SI
+  ELIGE cfg.template
+    CASUS TemplateWeb:
+      REDDE CONIURA civitas_new_create_web(cfg)
+    CASUS TemplateApi:
+      REDDE CONIURA civitas_new_create_api(cfg)
+    ALIOQUIN:
+      REDDE CONIURA civitas_new_create_minimal(cfg)
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE civitas_new_parse_args() REDDE SPECULUM NIHIL
+  EVOCA REX n AD CONIURA argc()
+  EVOCA REX i AD 1
+  EVOCA VERBUM name AD ""
+  EVOCA VERBUM dest_dir AD CONIURA cwd()
+  EVOCA TemplateKind kind AD TemplateMinimal
+  EVOCA ScaffoldStyle style AD StyleStarter
+  EVOCA VERUM force AD FALSUM
+  DUM i < n
+    EVOCA VERBUM current AD CONIURA arg(i)
+    SI CONIURA compare(current, "new") == 0 VEL CONIURA compare(current, "init") == 0
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA compare(current, "--template") == 0 ET i + 1 < n
+      VINCIRE kind AD CONIURA civitas_new_parse_template(CONIURA arg(i + 1))
+      VINCIRE i AD i + 2
+      RECEDE
+    FIN SI
+    SI CONIURA compare(current, "--dest") == 0 ET i + 1 < n
+      VINCIRE dest_dir AD CONIURA arg(i + 1)
+      VINCIRE i AD i + 2
+      RECEDE
+    FIN SI
+    SI CONIURA compare(current, "--style") == 0 ET i + 1 < n
+      VINCIRE style AD CONIURA civitas_new_parse_style(CONIURA arg(i + 1))
+      VINCIRE i AD i + 2
+      RECEDE
+    FIN SI
+    SI CONIURA compare(current, "--force") == 0
+      VINCIRE force AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA starts_with(current, "--")
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA len(name) == 0
+      VINCIRE name AD current
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA len(name) == 0
+    REDDE CONIURA Err GENUS(CivitasNewConfig, VERBUM)("usage: civitas new|init <name> [--template minimal|web|api] [--style starter|layered|domain] [--force] [--dest <dir>]")
+  FIN SI
+  REDDE CONIURA Ok GENUS(CivitasNewConfig, VERBUM)(CONIURA civitas_new_cfg_with_style(name, kind, style, dest_dir, force))
+EXPLICIT RITUALE
+
+RITUALE civitas_new_main() REDDE REX
+  EVOCA SPECULUM NIHIL parse_res AD CONIURA civitas_new_parse_args()
+  SI CONIURA result_is_err GENUS(CivitasNewConfig, VERBUM)(parse_res)
+    REDDE 1
+  FIN SI
+  EVOCA CivitasNewConfig cfg AD CONIURA result_unwrap GENUS(CivitasNewConfig, VERBUM)(parse_res)
+  EVOCA SPECULUM NIHIL create_res AD CONIURA civitas_new_create(cfg)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(create_res)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

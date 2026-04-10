@@ -1,0 +1,12 @@
+INCIPIT grimoire "civitas_session_file"
+
+ADVOCARE "session.cct"
+
+RITUALE session_file_directory(SessionStore store) REDDE VERBUM
+  SI store.kind != SbkArquivo
+    REDDE ""
+  FIN SI
+  REDDE CONIURA session_file_state_get_dir(store.state)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

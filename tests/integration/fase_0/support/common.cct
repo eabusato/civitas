@@ -1,0 +1,89 @@
+INCIPIT grimoire "fase0_support_common"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE compiler_bin() REDDE VERBUM
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM candidate AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(candidate) > 0
+      REDDE candidate
+    FIN SI
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+RITUALE ensure_tmp_root() REDDE NIHIL
+  CONIURA mkdir_all("tests/tmp/fase_0")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tmp_file(VERBUM name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_0/", name)
+EXPLICIT RITUALE
+
+RITUALE cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE compiler_check(VERBUM path) REDDE REX
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " --check ")
+  VINCIRE cmd AD CONIURA concat(cmd, path)
+  REDDE CONIURA run(cmd)
+EXPLICIT RITUALE
+
+RITUALE compiler_build_project(VERBUM path) REDDE REX
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " build --project ")
+  VINCIRE cmd AD CONIURA concat(cmd, path)
+  REDDE CONIURA run(cmd)
+EXPLICIT RITUALE
+
+RITUALE run_to_log(VERBUM cmd, VERBUM log) REDDE REX
+  CONIURA ensure_tmp_root()
+  EVOCA VERBUM full AD cmd
+  VINCIRE full AD CONIURA concat(full, " >")
+  VINCIRE full AD CONIURA concat(full, log)
+  VINCIRE full AD CONIURA concat(full, " 2>&1")
+  REDDE CONIURA run(full)
+EXPLICIT RITUALE
+
+RITUALE spawn_to_log(VERBUM cmd, VERBUM log) REDDE REX
+  CONIURA ensure_tmp_root()
+  EVOCA VERBUM full AD cmd
+  VINCIRE full AD CONIURA concat(full, " >")
+  VINCIRE full AD CONIURA concat(full, log)
+  VINCIRE full AD CONIURA concat(full, " 2>&1 &")
+  REDDE CONIURA run(full)
+EXPLICIT RITUALE
+
+RITUALE wait_for_file(VERBUM path, REX timeout_ms) REDDE VERUM
+  EVOCA REX elapsed AD 0
+  DUM elapsed < timeout_ms
+    SI CONIURA exists(path)
+      REDDE VERUM
+    FIN SI
+    CONIURA sleep_ms(20)
+    VINCIRE elapsed AD elapsed + 20
+  FIN DUM
+  REDDE CONIURA exists(path)
+EXPLICIT RITUALE
+
+RITUALE write_executable_script(VERBUM path, VERBUM body) REDDE NIHIL
+  CONIURA write_all(path, body)
+  CONIURA chmod(path, 493)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

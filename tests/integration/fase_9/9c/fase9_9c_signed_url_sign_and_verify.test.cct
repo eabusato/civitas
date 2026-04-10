@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase9_9c_signed_url_sign_and_verify"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_url.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9c_root("sign_verify")
+  EVOCA MediaStore store AD CONIURA phase9_9c_open_store(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9c_put_tmp(root, "secret.pdf", "PDFDATA")
+  EVOCA SPECULUM NIHIL promote_res AD CONIURA storage_promote(store, artifact, MEDIA_ZONE_PRIVATE)
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(promote_res)
+    IACE CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(promote_res)
+  FIN SI
+  EVOCA MediaArtifact private_artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(promote_res)
+  EVOCA SignedUrlConfig cfg AD CONIURA signed_url_config_default("/media/private")
+  EVOCA SignedUrl signed_url AD CONIURA storage_sign_url(cfg, "secret-material", private_artifact, 1700000300)
+
+  SI NON CONIURA contains(signed_url.url, private_artifact.artifact_id)
+    IACE "signed url should contain artifact id"
+  FIN SI
+  SI NON CONIURA storage_verify_signed_url("secret-material", private_artifact.artifact_id, signed_url.token, signed_url.expires_unix, 1700000000)
+    IACE "signed token should verify before expiration"
+  FIN SI
+  SI CONIURA storage_verify_signed_url("secret-material", private_artifact.artifact_id, signed_url.token, signed_url.expires_unix, 1700000400)
+    IACE "signed token should fail after expiration"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

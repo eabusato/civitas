@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase7_7d_whitespace_normalization_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/text.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM raw AD CONIURA concat(
+    "  Linha",
+    CONIURA concat(
+      CONIURA phase7_7d_nbsp_text(),
+      CONIURA concat(
+        CONIURA phase7_crlf(),
+        CONIURA concat(
+          CONIURA phase7_crlf(),
+          CONIURA concat(
+            CONIURA phase7_crlf(),
+            "fim  "
+          )
+        )
+      )
+    )
+  )
+  EVOCA VERBUM normalized AD CONIURA normalize_whitespace(raw)
+  EVOCA VERBUM normalized_twice AD CONIURA normalize_whitespace(normalized)
+
+  SI CONIURA find(normalized, CONIURA from_char(13)) != -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(normalized, "A B") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(normalized, CONIURA concat("\n", CONIURA concat("\n", "\n"))) != -1
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(normalized, normalized_twice) != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

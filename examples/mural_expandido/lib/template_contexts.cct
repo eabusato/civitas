@@ -1,0 +1,35 @@
+INCIPIT grimoire "mural_template_contexts"
+
+ADVOCARE "cct/fluxus.cct"
+
+SIGILLUM MuralMessageItemContext
+  id: REX
+  name: VERBUM
+  email: VERBUM
+  has_email: VERUM
+  body: VERBUM
+  created_at: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MuralIndexPageContext
+  page_title: VERBUM
+  css_url: VERBUM
+  flash_message: VERBUM
+  has_flash: VERUM
+  form_html: VERBUM
+  empty_text: VERBUM
+  message_count: REX
+  messages: SPECULUM NIHIL   -- FLUXUS(MuralMessageItemContext)
+FIN SIGILLUM
+
+SIGILLUM MuralAdminPageContext
+  page_title: VERBUM
+  css_url: VERBUM
+  flash_message: VERBUM
+  has_flash: VERUM
+  empty_text: VERBUM
+  message_count: REX
+  messages: SPECULUM NIHIL   -- FLUXUS(MuralMessageItemContext)
+FIN SIGILLUM
+
+EXPLICIT grimoire

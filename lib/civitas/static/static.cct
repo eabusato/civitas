@@ -1,0 +1,134 @@
+INCIPIT grimoire "civitas_static"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../mime.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "static_headers.cct"
+ADVOCARE "static_index.cct"
+
+ORDO StaticResult
+  SrOk
+  SrNaoModificado
+  SrNaoEncontrado
+  SrProibido
+FIN ORDO
+
+SIGILLUM StaticServeResult
+  kind: StaticResult
+  response: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE static_serve_result(StaticResult kind, SPECULUM NIHIL response) REDDE StaticServeResult
+  EVOCA StaticServeResult out
+  VINCIRE out.kind AD kind
+  VINCIRE out.response AD response
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE static_caminho_seguro(VERBUM raiz, VERBUM url_path) REDDE VERBUM
+  EVOCA VERBUM cleaned AD url_path
+  SI CONIURA starts_with(cleaned, "/")
+    VINCIRE cleaned AD CONIURA substring(cleaned, 1, CONIURA len(cleaned))
+  FIN SI
+  SI NON CONIURA static_safe_relative_name(cleaned)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM resolved_root AD CONIURA resolve(raiz)
+  EVOCA VERBUM absolute_path AD CONIURA resolve(CONIURA path_join(resolved_root, cleaned))
+  SI NON CONIURA starts_with(absolute_path, resolved_root)
+    REDDE ""
+  FIN SI
+  REDDE absolute_path
+EXPLICIT RITUALE
+
+RITUALE static_response_ok(StaticFile sf, StaticConfig cfg, VERUM com_body) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(200)
+  CONIURA response_set_header(SPECULUM res, "content-type", sf.mime_type)
+  CONIURA response_set_header(SPECULUM res, "etag", sf.etag)
+  CONIURA response_set_header(SPECULUM res, "accept-ranges", "bytes")
+  CONIURA response_set_header(SPECULUM res, "last-modified", CONIURA stringify_int(sf.last_modified))
+  SI cfg.modo == SmProducao
+    CONIURA response_set_header(SPECULUM res, "cache-control", CONIURA static_cache_control_production(cfg.cache_max_age))
+  ALITER
+    CONIURA response_set_header(SPECULUM res, "cache-control", "no-cache")
+  FIN SI
+  SI com_body
+    VINCIRE res.body AD CONIURA read_all(sf.caminho)
+    VINCIRE res.body_kind AD WEB_RESPONSE_TEXT
+  FIN SI
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE static_response_304(StaticFile sf, StaticConfig cfg) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(304)
+  CONIURA response_set_header(SPECULUM res, "etag", sf.etag)
+  CONIURA response_set_header(SPECULUM res, "accept-ranges", "bytes")
+  SI cfg.modo == SmProducao
+    CONIURA response_set_header(SPECULUM res, "cache-control", CONIURA static_cache_control_production(cfg.cache_max_age))
+  ALITER
+    CONIURA response_set_header(SPECULUM res, "cache-control", "no-cache")
+  FIN SI
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE static_find_dev_file(StaticIndex idx, VERBUM url_path) REDDE SPECULUM NIHIL
+  EVOCA VERBUM caminho AD CONIURA static_caminho_seguro(idx.config.raiz, url_path)
+  SI CONIURA len(caminho) == 0 VEL NON CONIURA is_file(caminho)
+    REDDE CONIURA None GENUS(StaticFile)()
+  FIN SI
+  EVOCA VERBUM relative_name AD CONIURA relative_to(caminho, idx.config.raiz)
+  EVOCA StaticFile sf
+  VINCIRE sf.nome AD relative_name
+  VINCIRE sf.nome_com_hash AD relative_name
+  VINCIRE sf.caminho AD caminho
+  VINCIRE sf.url AD CONIURA concat(idx.config.prefixo_url, relative_name)
+  VINCIRE sf.etag AD CONIURA static_etag(caminho)
+  VINCIRE sf.tamanho AD CONIURA size(caminho)
+  VINCIRE sf.last_modified AD CONIURA modified_time(caminho)
+  VINCIRE sf.mime_type AD CONIURA mime_guess_from_path(relative_name)
+  REDDE CONIURA Some GENUS(StaticFile)(sf)
+EXPLICIT RITUALE
+
+RITUALE static_resolve_file(StaticIndex idx, VERBUM url_path) REDDE SPECULUM NIHIL
+  SI idx.config.modo == SmDesenvolvimento
+    REDDE CONIURA static_find_dev_file(idx, url_path)
+  FIN SI
+  REDDE CONIURA static_find_by_url(idx, url_path)
+EXPLICIT RITUALE
+
+RITUALE static_serve(StaticIndex idx, WebRequest req, VERBUM url_path) REDDE StaticServeResult
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA static_resolve_file(idx, url_path)
+  SI CONIURA option_is_none GENUS(StaticFile)(file_opt)
+    CONIURA option_free GENUS(StaticFile)(file_opt)
+    SI idx.config.modo == SmDesenvolvimento ET CONIURA len(CONIURA static_caminho_seguro(idx.config.raiz, url_path)) == 0
+      REDDE CONIURA static_serve_result(SrProibido, CONIURA None GENUS(WebResponse)())
+    FIN SI
+    REDDE CONIURA static_serve_result(SrNaoEncontrado, CONIURA None GENUS(WebResponse)())
+  FIN SI
+
+  EVOCA StaticFile sf AD CONIURA option_unwrap GENUS(StaticFile)(file_opt)
+  CONIURA option_free GENUS(StaticFile)(file_opt)
+  EVOCA SPECULUM NIHIL inm_opt AD CONIURA request_header(req, "if-none-match")
+  SI CONIURA option_is_some GENUS(VERBUM)(inm_opt)
+    EVOCA VERBUM inm AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(inm_opt))
+    CONIURA option_free GENUS(VERBUM)(inm_opt)
+    SI CONIURA compare(inm, sf.etag) == 0
+      REDDE CONIURA static_serve_result(
+        SrNaoModificado,
+        CONIURA Some GENUS(WebResponse)(CONIURA static_response_304(sf, idx.config))
+      )
+    FIN SI
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(inm_opt)
+  REDDE CONIURA static_serve_result(
+    SrOk,
+    CONIURA Some GENUS(WebResponse)(CONIURA static_response_ok(sf, idx.config, VERUM))
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase4_4b_health_degraded_safe_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/app_module.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4b_tmp_dir("4b_health_degraded_safe")
+  EVOCA Application app AD CONIURA phase4_4b_new_app(
+    root,
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"127.0.0.1\"]\n\n[mail]\npassword = \"super-secret\"\n"
+  )
+  EVOCA AppModule module AD CONIURA app_module_new("health", "desviados.ops")
+  EVOCA HttpResponse res
+  EVOCA VERBUM body AD ""
+
+  VINCIRE module.health_name AD "cache.health"
+  VINCIRE module.health_ref AD phase4_4b_health_degraded
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA app_register_module(SPECULUM app, module))
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA app_start(SPECULUM app))
+    REDDE 2
+  FIN SI
+
+  VINCIRE res AD CONIURA app_health_response(SPECULUM app)
+  VINCIRE body AD CONIURA http_response_body(res)
+  SI CONIURA http_response_status(res) != 200
+    REDDE 3
+  FIN SI
+  SI CONIURA find(body, "\"status\":\"degraded\"") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(body, "\"name\":\"cache\"") == -1
+    REDDE 5
+  FIN SI
+  SI CONIURA find(body, "super-secret") != -1
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

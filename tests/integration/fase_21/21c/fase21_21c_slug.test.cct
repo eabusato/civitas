@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase21_21c_slug"
+
+ADVOCARE "../../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM slug AD CONIURA trace_export_slug("GET", "/api/posts/{id}?draft=1")
+  SI CONIURA compare(slug, "GET____api__posts___id__draft_1") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

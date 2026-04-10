@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase2_2b_response_json_text_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL http_res AD CONIURA response_to_http(CONIURA response_json_text("{\"status\":\"ok\"}"))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_res)
+    REDDE 1
+  FIN SI
+  EVOCA HttpResponse out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_res)
+  SI CONIURA compare(CONIURA http_response_header(out, "content-type", ""), "application/json; charset=utf-8") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

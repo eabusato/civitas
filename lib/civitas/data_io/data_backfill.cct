@@ -1,0 +1,123 @@
+INCIPIT grimoire "civitas_data_backfill"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/slug.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "data_io.cct"
+ADVOCARE "data_import.cct"
+ADVOCARE "../upload_descriptor/upload_descriptor.cct"
+ADVOCARE "../upload_descriptor/upload_descriptor_helpers.cct"
+
+RITUALE data_backfill_slugs(SPECULUM NIHIL db, VERBUM tabela, VERBUM campo_origem, VERBUM campo_slug) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM sql AD CONIURA concat("SELECT id, ", campo_origem)
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, campo_slug)
+  VINCIRE sql AD CONIURA concat(sql, " IS NULL OR ")
+  VINCIRE sql AD CONIURA concat(sql, campo_slug)
+  VINCIRE sql AD CONIURA concat(sql, " = '' ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  DUM CONIURA rows_next(rows)
+    EVOCA REX id AD CONIURA rows_get_int(rows, 0)
+    EVOCA VERBUM base AD CONIURA slug_from_text_latin(CONIURA rows_get_text(rows, 1))
+    EVOCA VERBUM candidate AD base
+    EVOCA REX suffix AD 2
+    DUM CONIURA db_scalar_int(db, CONIURA concat(CONIURA concat(CONIURA concat("SELECT COUNT(*) FROM ", tabela), CONIURA concat(" WHERE ", campo_slug)), CONIURA concat(" = ", CONIURA concat(CONIURA concat("'", candidate), "'")))) > 0
+      VINCIRE candidate AD CONIURA concat(base, "-")
+      VINCIRE candidate AD CONIURA concat(candidate, CONIURA stringify_int(suffix))
+      VINCIRE suffix AD suffix + 1
+    FIN DUM
+    EVOCA VERBUM up AD CONIURA concat("UPDATE ", tabela)
+    VINCIRE up AD CONIURA concat(up, " SET ")
+    VINCIRE up AD CONIURA concat(up, campo_slug)
+    VINCIRE up AD CONIURA concat(up, " = '")
+    VINCIRE up AD CONIURA concat(up, candidate)
+    VINCIRE up AD CONIURA concat(up, "' WHERE id = ")
+    VINCIRE up AD CONIURA concat(up, CONIURA stringify_int(id))
+    CONIURA db_exec(db, up)
+    VINCIRE result.processados AD result.processados + 1
+    VINCIRE result.ok AD result.ok + 1
+  FIN DUM
+  CONIURA rows_close(rows)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_backfill_blob_hashes(SPECULUM NIHIL db, VERBUM tabela, VERBUM campo_blob) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM sql AD CONIURA concat("SELECT id, ", campo_blob)
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  DUM CONIURA rows_next(rows)
+    EVOCA REX id AD CONIURA rows_get_int(rows, 0)
+    EVOCA UploadDescriptor d AD CONIURA upload_descriptor_from_json(CONIURA rows_get_text(rows, 1))
+    EVOCA VERBUM up AD ""
+    VINCIRE result.processados AD result.processados + 1
+    SI CONIURA len(d.path) == 0 VEL NON CONIURA exists(d.path)
+      VINCIRE result.pulados AD result.pulados + 1
+    FIN SI
+    SI CONIURA len(d.path) != 0 ET CONIURA exists(d.path)
+      SI CONIURA upload_descriptor_has_hash(d)
+        VINCIRE result.pulados AD result.pulados + 1
+      ALITER
+        VINCIRE d.hash AD CONIURA sha256(CONIURA read_all(d.path))
+        VINCIRE up AD CONIURA concat("UPDATE ", tabela)
+        VINCIRE up AD CONIURA concat(up, " SET ")
+        VINCIRE up AD CONIURA concat(up, campo_blob)
+        VINCIRE up AD CONIURA concat(up, " = ")
+        VINCIRE up AD CONIURA concat(up, CONIURA data_json_to_sql(CONIURA json_str(CONIURA upload_descriptor_to_json(d))))
+        VINCIRE up AD CONIURA concat(up, " WHERE id = ")
+        VINCIRE up AD CONIURA concat(up, CONIURA stringify_int(id))
+        CONIURA db_exec(db, up)
+        VINCIRE result.ok AD result.ok + 1
+      FIN SI
+    FIN SI
+  FIN DUM
+  CONIURA rows_close(rows)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_backfill_blob_state(SPECULUM NIHIL db, VERBUM tabela, VERBUM campo_blob) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM sql AD CONIURA concat("SELECT id, ", campo_blob)
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  DUM CONIURA rows_next(rows)
+    EVOCA REX id AD CONIURA rows_get_int(rows, 0)
+    EVOCA UploadDescriptor d AD CONIURA upload_descriptor_from_json(CONIURA rows_get_text(rows, 1))
+    EVOCA VERBUM up AD ""
+    VINCIRE result.processados AD result.processados + 1
+    SI CONIURA len(d.path) == 0
+      VINCIRE result.pulados AD result.pulados + 1
+    FIN SI
+    SI CONIURA len(d.path) != 0
+      SI CONIURA exists(d.path)
+        CONIURA upload_descriptor_promote(SPECULUM d)
+      ALITER
+        CONIURA upload_descriptor_orphan(SPECULUM d)
+      FIN SI
+      VINCIRE up AD CONIURA concat("UPDATE ", tabela)
+      VINCIRE up AD CONIURA concat(up, " SET ")
+      VINCIRE up AD CONIURA concat(up, campo_blob)
+      VINCIRE up AD CONIURA concat(up, " = ")
+      VINCIRE up AD CONIURA concat(up, CONIURA data_json_to_sql(CONIURA json_str(CONIURA upload_descriptor_to_json(d))))
+      VINCIRE up AD CONIURA concat(up, " WHERE id = ")
+      VINCIRE up AD CONIURA concat(up, CONIURA stringify_int(id))
+      CONIURA db_exec(db, up)
+      VINCIRE result.ok AD result.ok + 1
+    FIN SI
+  FIN DUM
+  CONIURA rows_close(rows)
+  REDDE result
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

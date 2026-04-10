@@ -1,0 +1,143 @@
+INCIPIT grimoire "fase5_support_common"
+
+ADVOCARE "../../fase_4/support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase5_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_5/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase5_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA phase4_write(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_load_settings(VERBUM root, VERBUM content) REDDE Settings
+  EVOCA SPECULUM NIHIL res
+  CONIURA phase5_reset_dir(root)
+  CONIURA phase5_write(CONIURA path_join(root, "civitas.toml"), content)
+  VINCIRE res AD CONIURA settings_load(root)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(res)
+    IACE CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(res))
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Settings, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE phase5_new_app(VERBUM root, VERBUM content) REDDE Application
+  EVOCA Settings settings AD CONIURA phase5_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA app_new(settings)
+  SI CONIURA result_is_err GENUS(Application, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(Application, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Application, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase5_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE phase5_request_with_body(
+  VERBUM method,
+  VERBUM target,
+  SPECULUM NIHIL headers,
+  VERBUM body,
+  VERBUM scheme,
+  VERBUM host,
+  VERBUM client_ip
+) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    method,
+    target,
+    "HTTP/1.1",
+    headers,
+    body,
+    client_ip,
+    scheme,
+    host,
+    "req-phase5",
+    "",
+    CONIURA concat(client_ip, ":50000"),
+    "127.0.0.1:8080"
+  )
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase5_request_with_body_fill(
+  SPECULUM WebRequest dest,
+  VERBUM method,
+  VERBUM target,
+  SPECULUM NIHIL headers,
+  VERBUM body,
+  VERBUM scheme,
+  VERBUM host,
+  VERBUM client_ip
+) REDDE NIHIL
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    method,
+    target,
+    "HTTP/1.1",
+    headers,
+    body,
+    client_ip,
+    scheme,
+    host,
+    "req-phase5",
+    "",
+    CONIURA concat(client_ip, ":50000"),
+    "127.0.0.1:8080"
+  )
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE CONIURA result_unwrap_err GENUS(WebRequest, VERBUM)(req_res)
+  FIN SI
+  EVOCA SPECULUM WebRequest built_ptr AD OBSECRO result_unwrap_ptr(req_res)
+  VINCIRE (*dest).method AD (*built_ptr).method
+  VINCIRE (*dest).raw_target AD (*built_ptr).raw_target
+  VINCIRE (*dest).path AD (*built_ptr).path
+  VINCIRE (*dest).version AD (*built_ptr).version
+  VINCIRE (*dest).headers AD (*built_ptr).headers
+  VINCIRE (*dest).query_params AD (*built_ptr).query_params
+  VINCIRE (*dest).path_params AD (*built_ptr).path_params
+  VINCIRE (*dest).cookies AD (*built_ptr).cookies
+  VINCIRE (*dest).body AD (*built_ptr).body
+  VINCIRE (*dest).corpo_bruto AD (*built_ptr).corpo_bruto
+  VINCIRE (*dest).corpo_bruto_ativo AD (*built_ptr).corpo_bruto_ativo
+  VINCIRE (*dest).client_ip AD (*built_ptr).client_ip
+  VINCIRE (*dest).scheme AD (*built_ptr).scheme
+  VINCIRE (*dest).host AD (*built_ptr).host
+  VINCIRE (*dest).request_id AD (*built_ptr).request_id
+  VINCIRE (*dest).proxy_ip AD (*built_ptr).proxy_ip
+  VINCIRE (*dest).remote_addr AD (*built_ptr).remote_addr
+  VINCIRE (*dest).local_addr AD (*built_ptr).local_addr
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_response_init(SPECULUM WebResponse dest, REX status) REDDE NIHIL
+  VINCIRE (*dest).status AD status
+  VINCIRE (*dest).headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE (*dest).body AD ""
+  VINCIRE (*dest).body_kind AD WEB_RESPONSE_EMPTY
+  VINCIRE (*dest).set_cookies AD CONIURA fluxus_init(MENSURA(SetCookie))
+  VINCIRE (*dest).gzip_enabled AD FALSUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_request(VERBUM method, VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase5_request_with_body(method, target, CONIURA phase5_headers(), "", "http", "example.test", "127.0.0.1")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

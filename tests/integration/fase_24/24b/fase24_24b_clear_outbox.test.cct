@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase24_24b_clear_outbox"
+
+ADVOCARE "../../../../lib/civitas/test_mail/test_mail.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase24_send_one(SPECULUM NIHIL outbox, VERBUM to_email) REDDE NIHIL
+  EVOCA MailMessage msg AD CONIURA mail_message_new()
+  CONIURA mail_message_set_from(SPECULUM msg, CONIURA mail_address("noreply@test.local", "Test"))
+  CONIURA mail_message_add_to(SPECULUM msg, CONIURA mail_address(to_email, "Any"))
+  CONIURA mail_message_set_subject(SPECULUM msg, "Ping")
+  CONIURA mail_message_set_text(SPECULUM msg, "ping")
+  CONIURA mail_send(CONIURA test_mail_client(outbox), msg)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL outbox AD CONIURA test_mail_outbox_new()
+  CONIURA phase24_send_one(outbox, "one@example.com")
+  CONIURA phase24_send_one(outbox, "two@example.com")
+  CONIURA assert_email_sent(outbox, 2)
+  CONIURA test_mail_clear(outbox)
+  CONIURA assert_email_sent(outbox, 0)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

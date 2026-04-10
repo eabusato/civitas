@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase8_8c_invalidate_missing_set_ok_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase8_8c_tmp_dir("invalidate_empty")
+  CONIURA phase8_reset_dir(root)
+  SI CONIURA phase8_8c_start_fake_redis(root) != 0
+    REDDE 1
+  FIN SI
+  EVOCA SessionStore store AD CONIURA phase8_8c_store(root)
+  EVOCA SPECULUM NIHIL inv_res AD CONIURA session_invalidate_all_for_user(store, "sem-sessoes")
+  CONIURA phase8_8c_stop_fake_redis(root)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(inv_res)
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

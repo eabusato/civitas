@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_test_tasks_root"
+
+ADVOCARE "test_tasks/test_tasks.cct"
+
+EXPLICIT grimoire

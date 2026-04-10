@@ -1,0 +1,24 @@
+{
+  "locale": "pt-BR",
+  "version": 1,
+  "fallback": "en-US",
+  "entries": {
+    "site.tagline": "Rede criativa com feed publico, API, moderacao e traces operacionais.",
+    "nav.feed": "Feed",
+    "nav.logout": "Sair",
+    "nav.login": "Entrar",
+    "nav.register": "Criar conta",
+    "hero.kicker": "Exemplo canônico expandido",
+    "hero.title": "Publique imagens, videos e notas de processo em um mural social.",
+    "hero.lead": "O Mural Expandido demonstra auth, sessoes, cache, i18n, API publica, reacoes, comentarios moderados, traces e operacao leve sem sair do exemplo.",
+    "hero.panel_title": "O que esta ativo neste exemplo",
+    "composer.title": "Publicar novo post",
+    "auth.prompt_title": "Entre na rede para publicar e reagir.",
+    "auth.prompt_body": "Contas locais usam senha hash, sessao assinada e fluxo completo de feedback server-side.",
+    "comments.title": "Comentarios",
+    "auth.register_title": "Criar conta no Mural Expandido",
+    "auth.register_subtitle": "Abra seu perfil autoral para publicar imagens, videos e threads de bastidores.",
+    "auth.login_title": "Entrar no Mural Expandido",
+    "auth.login_subtitle": "Retome sua sessao para publicar, reagir, seguir perfis e moderar."
+  }
+}

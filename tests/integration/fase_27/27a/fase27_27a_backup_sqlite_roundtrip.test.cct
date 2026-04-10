@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase27_27a_backup_sqlite_roundtrip"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_backup_sqlite_writes_verified_snapshot() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27a_backup_sqlite", 3, 2)
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  EVOCA VERBUM live_db AD CONIURA storage_topology_main_db_path(cfg.topology)
+  CONIURA phase27_seed_sqlite(live_db)
+
+  EVOCA BackupResult result AD CONIURA backup_sqlite(live_db, cfg, "main")
+  SI NON result.success
+    IACE result.message
+  FIN SI
+  SI NON CONIURA exists(result.backup_path)
+    IACE "sqlite backup file should exist"
+  FIN SI
+  SI NON CONIURA backup_verify_sqlite(result.backup_path)
+    IACE "sqlite backup should pass integrity check"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(result.backup_path)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM entries") != 1
+    CONIURA db_close(db)
+    IACE "backup sqlite should preserve row count"
+  FIN SI
+  CONIURA db_close(db)
+EXPLICIT RITUALE
+
+RITUALE test_backup_latest_and_prune_keep_most_recent() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27a_backup_prune", 2, 2)
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  EVOCA VERBUM live_db AD CONIURA storage_topology_main_db_path(cfg.topology)
+  CONIURA phase27_seed_sqlite(live_db)
+
+  CONIURA backup_sqlite(live_db, cfg, "main")
+  CONIURA sleep_ms(2)
+  CONIURA backup_sqlite(live_db, cfg, "main")
+  CONIURA sleep_ms(2)
+  EVOCA BackupResult latest_result AD CONIURA backup_sqlite(live_db, cfg, "main")
+
+  EVOCA SPECULUM NIHIL backups AD CONIURA backup_list_sqlite_paths(cfg, "main")
+  SI CONIURA fluxus_len(backups) != 2
+    CONIURA fluxus_free(backups)
+    IACE "sqlite backups should be pruned to keep_db_snapshots"
+  FIN SI
+  CONIURA fluxus_free(backups)
+
+  SI CONIURA compare(CONIURA backup_latest_sqlite_path(cfg, "main"), latest_result.backup_path) != 0
+    IACE "latest sqlite backup path should point to most recent snapshot"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

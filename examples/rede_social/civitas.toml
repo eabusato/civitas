@@ -1,0 +1,16 @@
+[app]
+name = "rede_social"
+environment = "development"
+allowed_hosts = ["127.0.0.1", "localhost"]
+
+[http]
+host = "127.0.0.1"
+port = 18082
+
+[project]
+# This example keeps framework-owned runtime state outside user source.
+# User code lives under apps/ and project/.
+
+[ops]
+# Reports, generated docs and release bundles are written under .civitas/.
+# Traces and sigils are written under data/traces/.

@@ -1,0 +1,418 @@
+INCIPIT grimoire "civitas_trace_panel"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../../civitas/url.cct"
+ADVOCARE "../trace_render/trace_render.cct"
+ADVOCARE "../trace_store/trace_store.cct"
+
+SIGILLUM TracePanelConfig
+  store: SPECULUM TraceStore
+  dev_host: VERBUM
+  dev_port: REX
+  page_size: REX
+  render_cfg: TraceRenderConfig
+FIN SIGILLUM
+
+SIGILLUM TracePanelFilter
+  path_fragment: VERBUM
+  status_filter: REX
+  min_duration_ms: REX
+  limit: REX
+FIN SIGILLUM
+
+RITUALE trace_panel_default_config(SPECULUM TraceStore store) REDDE TracePanelConfig
+  EVOCA TracePanelConfig cfg
+  VINCIRE cfg.store AD store
+  VINCIRE cfg.dev_host AD "127.0.0.1"
+  VINCIRE cfg.dev_port AD 8080
+  VINCIRE cfg.page_size AD 50
+  VINCIRE cfg.render_cfg AD CONIURA trace_render_default_config()
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE trace_panel_parse_filter(VERBUM query_string, REX default_limit) REDDE TracePanelFilter
+  EVOCA TracePanelFilter f
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(query_string)
+  EVOCA SPECULUM NIHIL path_opt AD CONIURA url_query_get(params, "path")
+  EVOCA SPECULUM NIHIL status_opt AD CONIURA url_query_get(params, "status")
+  EVOCA SPECULUM NIHIL dur_opt AD CONIURA url_query_get(params, "min_duration")
+  EVOCA SPECULUM NIHIL limit_opt AD CONIURA url_query_get(params, "limit")
+  VINCIRE f.path_fragment AD ""
+  VINCIRE f.status_filter AD 0
+  VINCIRE f.min_duration_ms AD 0
+  VINCIRE f.limit AD default_limit
+  SI CONIURA option_is_some GENUS(VERBUM)(path_opt)
+    VINCIRE f.path_fragment AD CONIURA option_unwrap GENUS(VERBUM)(path_opt)
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(status_opt)
+    VINCIRE f.status_filter AD CONIURA fmt_parse_int(CONIURA option_unwrap GENUS(VERBUM)(status_opt))
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(dur_opt)
+    VINCIRE f.min_duration_ms AD CONIURA fmt_parse_int(CONIURA option_unwrap GENUS(VERBUM)(dur_opt))
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(limit_opt)
+    VINCIRE f.limit AD CONIURA fmt_parse_int(CONIURA option_unwrap GENUS(VERBUM)(limit_opt))
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(path_opt)
+  CONIURA option_free GENUS(VERBUM)(status_opt)
+  CONIURA option_free GENUS(VERBUM)(dur_opt)
+  CONIURA option_free GENUS(VERBUM)(limit_opt)
+  SI f.limit <= 0
+    VINCIRE f.limit AD default_limit
+  FIN SI
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE trace_panel_path_query(VERBUM path) REDDE VERBUM
+  EVOCA REX idx AD CONIURA find(path, "?")
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(path, idx + 1, CONIURA len(path))
+EXPLICIT RITUALE
+
+RITUALE trace_panel_path_only(VERBUM path) REDDE VERBUM
+  EVOCA REX idx AD CONIURA find(path, "?")
+  SI idx == -1
+    REDDE path
+  FIN SI
+  REDDE CONIURA substring(path, 0, idx)
+EXPLICIT RITUALE
+
+RITUALE trace_panel_path_trace_id(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM clean AD CONIURA trace_panel_path_only(path)
+  EVOCA VERBUM prefix AD "/civitas/traces/"
+  SI NON CONIURA starts_with(clean, prefix)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM tail AD CONIURA substring(clean, CONIURA len(prefix), CONIURA len(clean))
+  EVOCA REX slash AD CONIURA find(tail, "/")
+  SI slash == -1
+    REDDE tail
+  FIN SI
+  REDDE CONIURA substring(tail, 0, slash)
+EXPLICIT RITUALE
+
+RITUALE trace_panel_html_head(VERBUM title) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
+  CONIURA builder_append(b, "<title>")
+  CONIURA builder_append(b, CONIURA html_encode(title))
+  CONIURA builder_append(b, " · Civitas Traces</title><style>")
+  CONIURA builder_append(b, "*{box-sizing:border-box}body{margin:0;background:#020817;color:#e2e8f0;font:13px/1.5 ui-monospace,monospace;padding:24px}a{color:#38bdf8;text-decoration:none}a:hover{text-decoration:underline}")
+  CONIURA builder_append(b, ".shell{max-width:1400px;margin:0 auto}.nav{margin-bottom:14px;color:#64748b}.hero{margin-bottom:22px}.hero h1{margin:0 0 6px;font-size:24px}.hero p{margin:0;color:#94a3b8}")
+  CONIURA builder_append(b, ".filters{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 20px}.filters label{display:flex;flex-direction:column;gap:4px;color:#94a3b8;font-size:11px}.filters input{min-width:160px;padding:8px 10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0}.filters button{padding:9px 14px;border-radius:999px;border:none;background:#0ea5e9;color:#082f49;font-weight:700;cursor:pointer}")
+  CONIURA builder_append(b, ".panel{background:linear-gradient(180deg,#0f172a,#0b1220);border:1px solid #1e293b;border-radius:18px;padding:18px;box-shadow:0 20px 50px rgba(2,6,23,.45)}")
+  CONIURA builder_append(b, "table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid #1e293b;vertical-align:top}th{font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em}")
+  CONIURA builder_append(b, ".method{font-weight:700}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#052e16;color:#86efac}.redir{background:#082f49;color:#7dd3fc}.err{background:#450a0a;color:#fca5a5}")
+  CONIURA builder_append(b, ".dur{white-space:nowrap}.dur span{display:inline-block;height:7px;border-radius:999px;background:#0ea5e9;margin-left:8px;vertical-align:middle}.svg-wrap{overflow:auto;background:#020617;border:1px solid #1e293b;border-radius:16px;padding:12px}")
+  CONIURA builder_append(b, ".meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.meta div{padding:12px;border:1px solid #1e293b;border-radius:14px;background:#0b1220}.meta dt{color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em}.meta dd{margin:6px 0 0}")
+  CONIURA builder_append(b, ".actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.btn,.actions button{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;border:none;background:#14532d;color:#dcfce7;font:inherit;cursor:pointer}.btn.secondary{background:#172554;color:#bfdbfe}.empty{color:#94a3b8}")
+  CONIURA builder_append(b, "</style></head><body><div class=\"shell\">")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_badge(REX status) REDDE VERBUM
+  EVOCA VERBUM cls AD "ok"
+  SI status >= 400
+    VINCIRE cls AD "err"
+  ALITER
+    SI status >= 300
+      VINCIRE cls AD "redir"
+    FIN SI
+  FIN SI
+  EVOCA VERBUM out AD "<span class=\"badge "
+  VINCIRE out AD CONIURA concat(out, cls)
+  VINCIRE out AD CONIURA concat(out, "\">")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(status))
+  VINCIRE out AD CONIURA concat(out, "</span>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_duration_bar(REX duration_ms, REX max_duration_ms) REDDE VERBUM
+  EVOCA REX width AD 2
+  SI max_duration_ms > 0
+    VINCIRE width AD duration_ms * 140 / max_duration_ms
+    SI width < 2
+      VINCIRE width AD 2
+    FIN SI
+  FIN SI
+  EVOCA VERBUM out AD "<span style=\"width:"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(width))
+  VINCIRE out AD CONIURA concat(out, "px\"></span>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_datetime(REX created_at) REDDE VERBUM
+  SI created_at <= 0
+    REDDE ""
+  FIN SI
+  EVOCA DateTime dt AD CONIURA datetime_from_unix(created_at)
+  REDDE CONIURA datetime_format(dt, "%Y-%m-%d %H:%M:%S")
+EXPLICIT RITUALE
+
+RITUALE trace_panel_filter_match(TraceRow row, TracePanelFilter filter) REDDE VERUM
+  SI filter.status_filter > 0 ET row.status != filter.status_filter
+    REDDE FALSUM
+  FIN SI
+  SI filter.min_duration_ms > 0 ET row.duration_ms < filter.min_duration_ms
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA len(filter.path_fragment) > 0
+    SI CONIURA find(CONIURA to_lower(row.path), CONIURA to_lower(filter.path_fragment)) == -1
+      REDDE FALSUM
+    FIN SI
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE trace_panel_query_rows(SPECULUM TraceStore store, TracePanelFilter filter) REDDE TraceResultSet
+  EVOCA TraceResultSet source AD CONIURA trace_store_query_recent(store, 500)
+  EVOCA TraceResultSet out AD CONIURA trace_store_result_set_empty()
+  EVOCA REX i AD 0
+  DUM i < source.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(source.rows, i)
+    SI CONIURA trace_panel_filter_match(*row_ptr, filter)
+      CONIURA fluxus_push(out.rows, row_ptr)
+      VINCIRE out.count AD out.count + 1
+      SI out.count >= filter.limit
+        RECEDE
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM source)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_max_duration(TraceResultSet rs) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX max_ms AD 0
+  DUM i < rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, i)
+    SI (*row_ptr).duration_ms > max_ms
+      VINCIRE max_ms AD (*row_ptr).duration_ms
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE max_ms
+EXPLICIT RITUALE
+
+RITUALE trace_panel_html_response(REX status, VERBUM body) REDDE HttpResponse
+  EVOCA HttpResponse out AD CONIURA http_response_new(status, body)
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Content-Type", "text/html; charset=utf-8")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_svg_response(VERBUM svg, VERBUM trace_id) REDDE HttpResponse
+  EVOCA HttpResponse out AD CONIURA http_response_new(200, svg)
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Content-Type", "image/svg+xml; charset=utf-8")
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Content-Disposition", CONIURA concat("inline; filename=\"", CONIURA concat(trace_id, ".svg\"")))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_redirect(VERBUM location) REDDE HttpResponse
+  EVOCA HttpResponse out AD CONIURA http_response_new(303, "")
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Location", location)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_not_found(VERBUM message) REDDE HttpResponse
+  REDDE CONIURA trace_panel_html_response(404, CONIURA concat(CONIURA trace_panel_html_head("Trace Not Found"), CONIURA concat("<div class=\"panel\"><p class=\"empty\">", CONIURA concat(CONIURA html_encode(message), "</p></div></div></body></html>"))))
+EXPLICIT RITUALE
+
+RITUALE trace_panel_method_not_allowed(VERBUM allow) REDDE HttpResponse
+  EVOCA HttpResponse out AD CONIURA http_response_new(405, "")
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Allow", allow)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_panel_build_replay_cmd(VERBUM method, VERBUM path, VERBUM dev_host, REX dev_port) REDDE VERBUM
+  EVOCA VERBUM cmd AD "curl -s -o /dev/null -X "
+  VINCIRE cmd AD CONIURA concat(cmd, method)
+  VINCIRE cmd AD CONIURA concat(cmd, " http://")
+  VINCIRE cmd AD CONIURA concat(cmd, dev_host)
+  VINCIRE cmd AD CONIURA concat(cmd, ":")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(dev_port))
+  VINCIRE cmd AD CONIURA concat(cmd, path)
+  VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1")
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE trace_panel_list(HttpRequest req, TracePanelConfig cfg) REDDE HttpResponse
+  EVOCA VERBUM query_str AD CONIURA trace_panel_path_query(CONIURA http_request_path(req))
+  EVOCA TracePanelFilter filter AD CONIURA trace_panel_parse_filter(query_str, cfg.page_size)
+  EVOCA TraceResultSet rs AD CONIURA trace_panel_query_rows(cfg.store, filter)
+  EVOCA REX max_ms AD CONIURA trace_panel_max_duration(rs)
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, CONIURA trace_panel_html_head("Trace Panel"))
+  CONIURA builder_append(b, "<div class=\"nav\"><a href=\"/\">App</a> / Civitas / Traces</div><div class=\"hero\"><h1>Trace Panel</h1><p>Recent requests indexed by the trace store, with filters, inline SVG and replay.</p></div>")
+  CONIURA builder_append(b, "<form class=\"filters\" method=\"GET\" action=\"/civitas/traces\">")
+  CONIURA builder_append(b, "<label>Path fragment<input type=\"text\" name=\"path\" value=\"")
+  CONIURA builder_append(b, CONIURA html_encode(filter.path_fragment))
+  CONIURA builder_append(b, "\"></label>")
+  CONIURA builder_append(b, "<label>Status<input type=\"text\" name=\"status\" value=\"")
+  SI filter.status_filter > 0
+    CONIURA builder_append(b, CONIURA stringify_int(filter.status_filter))
+  FIN SI
+  CONIURA builder_append(b, "\"></label>")
+  CONIURA builder_append(b, "<label>Min duration (ms)<input type=\"text\" name=\"min_duration\" value=\"")
+  SI filter.min_duration_ms > 0
+    CONIURA builder_append(b, CONIURA stringify_int(filter.min_duration_ms))
+  FIN SI
+  CONIURA builder_append(b, "\"></label>")
+  CONIURA builder_append(b, "<label>Limit<input type=\"text\" name=\"limit\" value=\"")
+  CONIURA builder_append(b, CONIURA stringify_int(filter.limit))
+  CONIURA builder_append(b, "\"></label><button type=\"submit\">Filter</button></form>")
+  CONIURA builder_append(b, "<div class=\"panel\"><table><thead><tr><th>Trace</th><th>Request</th><th>Status</th><th>Duration</th><th>Created</th><th>Actions</th></tr></thead><tbody>")
+  SI rs.count == 0
+    CONIURA builder_append(b, "<tr><td colspan=\"6\" class=\"empty\">No traces matched the current filter.</td></tr>")
+  FIN SI
+  EVOCA REX i AD 0
+  DUM i < rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, i)
+    CONIURA builder_append(b, "<tr><td><a href=\"/civitas/traces/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "\">")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "</a></td><td><span class=\"method\">")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).method))
+    CONIURA builder_append(b, "</span> ")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).path))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA trace_panel_badge((*row_ptr).status))
+    CONIURA builder_append(b, "</td><td class=\"dur\">")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).duration_ms))
+    CONIURA builder_append(b, "ms")
+    CONIURA builder_append(b, CONIURA trace_panel_duration_bar((*row_ptr).duration_ms, max_ms))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA trace_panel_datetime((*row_ptr).created_at)))
+    CONIURA builder_append(b, "</td><td><a class=\"btn secondary\" href=\"/civitas/traces/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "/svg\">SVG</a><form class=\"actions\" method=\"POST\" action=\"/civitas/traces/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "/replay\"><button type=\"submit\">Replay</button></form></td></tr>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</tbody></table></div></div></body></html>")
+  EVOCA VERBUM html AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+  REDDE CONIURA trace_panel_html_response(200, html)
+EXPLICIT RITUALE
+
+RITUALE trace_panel_detail(HttpRequest req, TracePanelConfig cfg) REDDE HttpResponse
+  EVOCA VERBUM trace_id AD CONIURA trace_panel_path_trace_id(CONIURA http_request_path(req))
+  EVOCA SPECULUM NIHIL row_opt AD CONIURA trace_store_find_by_id(cfg.store, trace_id)
+  SI NON CONIURA option_is_some GENUS(TraceRow)(row_opt)
+    CONIURA option_free GENUS(TraceRow)(row_opt)
+    REDDE CONIURA trace_panel_not_found("Trace was not found in the store.")
+  FIN SI
+  EVOCA TraceRow row AD CONIURA option_unwrap GENUS(TraceRow)(row_opt)
+  CONIURA option_free GENUS(TraceRow)(row_opt)
+  EVOCA SPECULUM NIHIL trace_res AD CONIURA trace_store_load_trace(cfg.store, trace_id)
+  SI CONIURA result_is_err GENUS(Trace, TraceError)(trace_res)
+    EVOCA TraceError err AD CONIURA result_unwrap_err GENUS(Trace, TraceError)(trace_res)
+    REDDE CONIURA trace_panel_not_found(err.mensagem)
+  FIN SI
+  EVOCA Trace trace AD CONIURA result_unwrap GENUS(Trace, TraceError)(trace_res)
+  EVOCA TraceRenderResult rendered AD CONIURA trace_render_svg(trace, cfg.render_cfg)
+  CONIURA trace_free(SPECULUM trace)
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, CONIURA trace_panel_html_head(trace_id))
+  CONIURA builder_append(b, "<div class=\"nav\"><a href=\"/civitas/traces\">Back to traces</a></div><div class=\"hero\"><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(trace_id))
+  CONIURA builder_append(b, "</h1><p>Visual replay of one captured request with inline SVG.</p></div>")
+  CONIURA builder_append(b, "<dl class=\"meta\">")
+  CONIURA builder_append(b, "<div><dt>Method</dt><dd>")
+  CONIURA builder_append(b, CONIURA html_encode(row.method))
+  CONIURA builder_append(b, "</dd></div><div><dt>Path</dt><dd>")
+  CONIURA builder_append(b, CONIURA html_encode(row.path))
+  CONIURA builder_append(b, "</dd></div><div><dt>Status</dt><dd>")
+  CONIURA builder_append(b, CONIURA stringify_int(row.status))
+  CONIURA builder_append(b, "</dd></div><div><dt>Duration</dt><dd>")
+  CONIURA builder_append(b, CONIURA stringify_int(row.duration_ms))
+  CONIURA builder_append(b, "ms</dd></div></dl>")
+  CONIURA builder_append(b, "<div class=\"actions\"><a class=\"btn secondary\" href=\"/civitas/traces/")
+  CONIURA builder_append(b, CONIURA html_encode(trace_id))
+  CONIURA builder_append(b, "/svg\">Open SVG</a><form method=\"POST\" action=\"/civitas/traces/")
+  CONIURA builder_append(b, CONIURA html_encode(trace_id))
+  CONIURA builder_append(b, "/replay\"><button type=\"submit\">Replay this request</button></form></div>")
+  CONIURA builder_append(b, "<div class=\"svg-wrap\">")
+  CONIURA builder_append(b, rendered.svg)
+  CONIURA builder_append(b, "</div></div></body></html>")
+  EVOCA VERBUM html AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE CONIURA trace_panel_html_response(200, html)
+EXPLICIT RITUALE
+
+RITUALE trace_panel_svg(HttpRequest req, TracePanelConfig cfg) REDDE HttpResponse
+  EVOCA VERBUM trace_id AD CONIURA trace_panel_path_trace_id(CONIURA http_request_path(req))
+  EVOCA SPECULUM NIHIL trace_res AD CONIURA trace_store_load_trace(cfg.store, trace_id)
+  SI CONIURA result_is_err GENUS(Trace, TraceError)(trace_res)
+    EVOCA HttpResponse out AD CONIURA http_response_new(404, "")
+    REDDE out
+  FIN SI
+  EVOCA Trace trace AD CONIURA result_unwrap GENUS(Trace, TraceError)(trace_res)
+  EVOCA TraceRenderResult rendered AD CONIURA trace_render_svg(trace, cfg.render_cfg)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE CONIURA trace_panel_svg_response(rendered.svg, trace_id)
+EXPLICIT RITUALE
+
+RITUALE trace_panel_replay(HttpRequest req, TracePanelConfig cfg) REDDE HttpResponse
+  EVOCA VERBUM trace_id AD CONIURA trace_panel_path_trace_id(CONIURA http_request_path(req))
+  EVOCA SPECULUM NIHIL row_opt AD CONIURA trace_store_find_by_id(cfg.store, trace_id)
+  SI NON CONIURA option_is_some GENUS(TraceRow)(row_opt)
+    CONIURA option_free GENUS(TraceRow)(row_opt)
+    REDDE CONIURA trace_panel_not_found("Trace was not found in the store.")
+  FIN SI
+  EVOCA TraceRow row AD CONIURA option_unwrap GENUS(TraceRow)(row_opt)
+  CONIURA option_free GENUS(TraceRow)(row_opt)
+  CONIURA run(CONIURA trace_panel_build_replay_cmd(row.method, row.path, cfg.dev_host, cfg.dev_port))
+  REDDE CONIURA trace_panel_redirect("/civitas/traces")
+EXPLICIT RITUALE
+
+RITUALE trace_panel_handle(HttpRequest req, TracePanelConfig cfg) REDDE HttpResponse
+  EVOCA VERBUM method AD CONIURA http_request_method(req)
+  EVOCA VERBUM path AD CONIURA trace_panel_path_only(CONIURA http_request_path(req))
+  SI CONIURA compare(path, "/civitas/traces") == 0
+    SI CONIURA compare(method, "GET") == 0
+      REDDE CONIURA trace_panel_list(req, cfg)
+    FIN SI
+    REDDE CONIURA trace_panel_method_not_allowed("GET")
+  FIN SI
+  SI CONIURA starts_with(path, "/civitas/traces/") ET CONIURA ends_with(path, "/svg")
+    SI CONIURA compare(method, "GET") == 0
+      REDDE CONIURA trace_panel_svg(req, cfg)
+    FIN SI
+    REDDE CONIURA trace_panel_method_not_allowed("GET")
+  FIN SI
+  SI CONIURA starts_with(path, "/civitas/traces/") ET CONIURA ends_with(path, "/replay")
+    SI CONIURA compare(method, "POST") == 0
+      REDDE CONIURA trace_panel_replay(req, cfg)
+    FIN SI
+    REDDE CONIURA trace_panel_method_not_allowed("POST")
+  FIN SI
+  SI CONIURA starts_with(path, "/civitas/traces/")
+    SI CONIURA compare(method, "GET") == 0
+      REDDE CONIURA trace_panel_detail(req, cfg)
+    FIN SI
+    REDDE CONIURA trace_panel_method_not_allowed("GET")
+  FIN SI
+  REDDE CONIURA http_response_new(404, "")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

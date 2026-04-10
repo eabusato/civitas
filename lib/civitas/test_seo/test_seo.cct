@@ -1,0 +1,174 @@
+INCIPIT grimoire "civitas_test_seo"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../test_client/test_client.cct"
+
+SIGILLUM SitemapEntry
+  loc: VERBUM
+  lastmod: VERBUM
+  changefreq: VERBUM
+  priority: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SitemapDoc
+  entries: SPECULUM NIHIL
+  raw: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RobotsDoc
+  raw: VERBUM
+FIN SIGILLUM
+
+RITUALE ts_fail(VERBUM msg) REDDE NIHIL
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE ts_extract_tag(VERBUM block, VERBUM tag) REDDE VERBUM
+  EVOCA VERBUM open_tag AD CONIURA concat(CONIURA concat("<", tag), ">")
+  EVOCA VERBUM close_tag AD CONIURA concat(CONIURA concat("</", tag), ">")
+  EVOCA REX start AD CONIURA find(block, open_tag)
+  SI start == -1
+    REDDE ""
+  FIN SI
+  EVOCA REX content_start AD start + CONIURA len(open_tag)
+  EVOCA REX end AD CONIURA find_from(block, close_tag, content_start)
+  SI end == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA trim(CONIURA substring(block, content_start, end))
+EXPLICIT RITUALE
+
+RITUALE test_sitemap_fetch(SPECULUM TestClient client) REDDE SitemapDoc
+  EVOCA TestResponse res AD CONIURA test_client_get(client, "/sitemap.xml")
+  CONIURA assert_status(res, 200)
+  CONIURA assert_header_contains(res, "content-type", "xml")
+  EVOCA SitemapDoc doc
+  VINCIRE doc.raw AD res.body
+  VINCIRE doc.entries AD CONIURA fluxus_init(MENSURA(SitemapEntry))
+  EVOCA VERBUM cursor AD res.body
+  DUM VERUM
+    EVOCA REX start AD CONIURA find(cursor, "<url>")
+    EVOCA REX finish AD CONIURA find(cursor, "</url>")
+    SI start == -1 VEL finish == -1
+      FRANGE
+    FIN SI
+    EVOCA VERBUM block AD CONIURA substring(cursor, start + 5, finish)
+    EVOCA SitemapEntry entry
+    VINCIRE entry.loc AD CONIURA ts_extract_tag(block, "loc")
+    VINCIRE entry.lastmod AD CONIURA ts_extract_tag(block, "lastmod")
+    VINCIRE entry.changefreq AD CONIURA ts_extract_tag(block, "changefreq")
+    VINCIRE entry.priority AD CONIURA ts_extract_tag(block, "priority")
+    CONIURA fluxus_push(doc.entries, SPECULUM entry)
+    VINCIRE cursor AD CONIURA substring(cursor, finish + 6, CONIURA len(cursor))
+  FIN DUM
+  REDDE doc
+EXPLICIT RITUALE
+
+RITUALE test_sitemap_count(SitemapDoc doc) REDDE REX
+  REDDE CONIURA fluxus_len(doc.entries)
+EXPLICIT RITUALE
+
+RITUALE test_sitemap_find_url(SitemapDoc doc, VERBUM fragment) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(doc.entries)
+  DUM i < n
+    EVOCA SPECULUM SitemapEntry e AD CONIURA fluxus_get(doc.entries, i)
+    SI CONIURA contains((*e).loc, fragment)
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE assert_sitemap_contains_url(SitemapDoc doc, VERBUM fragment) REDDE NIHIL
+  SI CONIURA test_sitemap_find_url(doc, fragment) != -1
+    REDDE
+  FIN SI
+  CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_sitemap_contains_url: nao encontrou ", fragment))
+EXPLICIT RITUALE
+
+RITUALE assert_sitemap_not_contains_url(SitemapDoc doc, VERBUM fragment) REDDE NIHIL
+  SI CONIURA test_sitemap_find_url(doc, fragment) == -1
+    REDDE
+  FIN SI
+  CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_sitemap_not_contains_url: encontrou ", fragment))
+EXPLICIT RITUALE
+
+RITUALE assert_sitemap_count(SitemapDoc doc, REX expected) REDDE NIHIL
+  EVOCA REX actual AD CONIURA test_sitemap_count(doc)
+  SI actual == expected
+    REDDE
+  FIN SI
+  CONIURA ts_fail("ASSERT FALHOU - assert_sitemap_count")
+EXPLICIT RITUALE
+
+RITUALE assert_sitemap_url_lastmod(SitemapDoc doc, VERBUM fragment) REDDE NIHIL
+  EVOCA REX idx AD CONIURA test_sitemap_find_url(doc, fragment)
+  SI idx == -1
+    CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_sitemap_url_lastmod: url ausente ", fragment))
+  FIN SI
+  EVOCA SPECULUM SitemapEntry e AD CONIURA fluxus_get(doc.entries, idx)
+  SI CONIURA len((*e).lastmod) > 0
+    REDDE
+  FIN SI
+  CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_sitemap_url_lastmod: lastmod vazio em ", fragment))
+EXPLICIT RITUALE
+
+RITUALE test_robots_fetch(SPECULUM TestClient client) REDDE RobotsDoc
+  EVOCA TestResponse res AD CONIURA test_client_get(client, "/robots.txt")
+  CONIURA assert_status(res, 200)
+  EVOCA RobotsDoc doc
+  VINCIRE doc.raw AD res.body
+  REDDE doc
+EXPLICIT RITUALE
+
+RITUALE assert_robots_contains(RobotsDoc doc, VERBUM fragment) REDDE NIHIL
+  SI CONIURA contains(doc.raw, fragment)
+    REDDE
+  FIN SI
+  CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_robots_contains: nao contem ", fragment))
+EXPLICIT RITUALE
+
+RITUALE assert_robots_not_contains(RobotsDoc doc, VERBUM fragment) REDDE NIHIL
+  SI NON CONIURA contains(doc.raw, fragment)
+    REDDE
+  FIN SI
+  CONIURA ts_fail(CONIURA concat("ASSERT FALHOU - assert_robots_not_contains: contem ", fragment))
+EXPLICIT RITUALE
+
+RITUALE assert_canonical(TestResponse res, VERBUM href) REDDE NIHIL
+  CONIURA assert_contains(res, CONIURA concat("rel=\"canonical\" href=\"", CONIURA concat(href, "\"")))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_hreflang(TestResponse res, VERBUM locale, VERBUM href) REDDE NIHIL
+  CONIURA assert_contains(res, CONIURA concat("hreflang=\"", CONIURA concat(locale, CONIURA concat("\" href=\"", CONIURA concat(href, "\"")))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_og_title(TestResponse res, VERBUM title) REDDE NIHIL
+  CONIURA assert_contains(res, CONIURA concat("property=\"og:title\" content=\"", CONIURA concat(title, "\"")))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_proxy_header(TestResponse res, VERBUM header_name, VERBUM expected) REDDE NIHIL
+  CONIURA assert_header(res, header_name, expected)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_upload_file(SPECULUM TestClient client, VERBUM path, VERBUM field_name, VERBUM filename, VERBUM content_type, VERBUM content) REDDE TestResponse
+  REDDE CONIURA test_client_upload(client, path, field_name, filename, content_type, content)
+EXPLICIT RITUALE
+
+RITUALE test_range_request(SPECULUM TestClient client, VERBUM path, VERBUM range_value) REDDE TestResponse
+  CONIURA test_client_set_header(client, "range", range_value)
+  EVOCA TestResponse res AD CONIURA test_client_get(client, path)
+  CONIURA test_client_clear_header(client, "range")
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

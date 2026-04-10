@@ -1,0 +1,61 @@
+INCIPIT grimoire "civitas_session_middleware"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "session.cct"
+ADVOCARE "session_cookie.cct"
+ADVOCARE "session_store.cct"
+
+RITUALE session_middleware_apply(SPECULUM NIHIL db, SessionConfig cfg, WebRequest req, SPECULUM LocalContext ctx) REDDE NIHIL
+  EVOCA SPECULUM NIHIL cookie_opt AD CONIURA request_header(req, "cookie")
+  SI CONIURA option_is_none GENUS(VERBUM)(cookie_opt)
+    CONIURA option_free GENUS(VERBUM)(cookie_opt)
+    REDDE
+  FIN SI
+  EVOCA VERBUM cookie_header AD CONIURA option_unwrap GENUS(VERBUM)(cookie_opt)
+  CONIURA option_free GENUS(VERBUM)(cookie_opt)
+  EVOCA SPECULUM NIHIL sid_opt AD CONIURA session_id_from_cookie_header(cookie_header, cfg.cookie_nome)
+  SI CONIURA option_is_none GENUS(VERBUM)(sid_opt)
+    CONIURA option_free GENUS(VERBUM)(sid_opt)
+    REDDE
+  FIN SI
+  EVOCA VERBUM sid AD CONIURA option_unwrap GENUS(VERBUM)(sid_opt)
+  CONIURA option_free GENUS(VERBUM)(sid_opt)
+  EVOCA SPECULUM NIHIL sess_opt AD CONIURA session_lookup(db, sid)
+  SI CONIURA option_is_none GENUS(Session)(sess_opt)
+    CONIURA option_free GENUS(Session)(sess_opt)
+    REDDE
+  FIN SI
+  EVOCA Session sess AD CONIURA option_unwrap GENUS(Session)(sess_opt)
+  CONIURA option_free GENUS(Session)(sess_opt)
+  CONIURA session_touch(db, cfg, sid)
+  CONIURA local_context_set(ctx, "session.id", sess.id)
+  CONIURA local_context_set(ctx, "session.user_id", sess.user_id)
+  CONIURA local_context_set(ctx, "session.dados", CONIURA session_store_data_to_json(SPECULUM sess))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_ctx_id(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, "session.id")
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM out AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE session_ctx_user_id(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, "session.user_id")
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM out AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

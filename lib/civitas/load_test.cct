@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_load_test_root"
+
+ADVOCARE "load_test/load_test.cct"
+
+EXPLICIT grimoire

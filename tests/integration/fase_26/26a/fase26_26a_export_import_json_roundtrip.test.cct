@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase26_26a_export_import_json_roundtrip"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26a_export_import_json_roundtrip")
+  EVOCA VERBUM out_path AD CONIURA path_join(root, "bench.json")
+  EVOCA Router router AD CONIURA phase26_bench_router()
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/fast", "GET")
+  CONIURA bench_config_set_n(SPECULUM cfg, 3)
+  CONIURA bench_config_set_warmup(SPECULUM cfg, 0)
+  EVOCA BenchResult result AD CONIURA bench_run_inprocess(SPECULUM router, cfg)
+  CONIURA bench_write_json(result, out_path)
+  EVOCA BenchResult loaded AD CONIURA bench_read_json(out_path)
+  SI CONIURA compare(loaded.config_url, "/fast") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(loaded.config_method, "GET") != 0
+    REDDE 2
+  FIN SI
+  SI loaded.n_requests != 3
+    REDDE 3
+  FIN SI
+  SI loaded.n_success != result.n_success
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

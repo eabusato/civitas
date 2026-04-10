@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase1_1c_parse_set_cookie_header_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA cookie_parse_set("sid=abc; Path=/; Domain=example.com; Max-Age=60; Secure; HttpOnly; SameSite=Strict")
+  SI CONIURA result_is_err GENUS(SetCookie, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  EVOCA SetCookie cookie AD CONIURA result_unwrap GENUS(SetCookie, VERBUM)(res)
+  SI CONIURA compare(cookie.name, "sid") != 0 VEL CONIURA compare(cookie.value, "abc") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(cookie.path, "/") != 0 VEL CONIURA compare(cookie.domain, "example.com") != 0
+    REDDE 3
+  FIN SI
+  SI cookie.max_age != 60 VEL NON cookie.secure VEL NON cookie.http_only
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(cookie.same_site, "Strict") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

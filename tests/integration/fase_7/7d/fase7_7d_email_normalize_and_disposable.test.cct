@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase7_7d_email_normalize_and_disposable_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/contact.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA EmailSanitizeConfig cfg AD CONIURA email_config_default()
+  EVOCA EmailSanitizeResult ok AD CONIURA email_sanitize("  Usuario@GMAIL.COM  ", cfg)
+  EVOCA VERBUM normalized AD CONIURA email_sanitize_normalized("  Usuario@GMAIL.COM  ", cfg)
+  EVOCA EmailSanitizeResult disposable AD CONIURA email_sanitize("bot@mailinator.com", cfg)
+  CONIURA email_config_free(SPECULUM cfg)
+
+  SI ok != EsrOk
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(normalized, "usuario@gmail.com") != 0
+    REDDE 2
+  FIN SI
+  SI disposable != EsrDisposableDomain
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

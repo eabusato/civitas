@@ -1,0 +1,19 @@
+INCIPIT grimoire "civitas_trace_session"
+
+ADVOCARE "cct/trace_capture.cct"
+ADVOCARE "../trace_config/trace_config.cct"
+
+RITUALE trace_session_start(TraceConfig cfg) REDDE TraceCaptureSession
+  REDDE CONIURA trace_capture_start_in(cfg.trace_dir, "civitas", cfg.mode)
+EXPLICIT RITUALE
+
+RITUALE trace_session_flush(SPECULUM TraceCaptureSession sess) REDDE REX
+  REDDE CONIURA trace_capture_flush(sess)
+EXPLICIT RITUALE
+
+RITUALE trace_session_stop(SPECULUM TraceCaptureSession sess) REDDE NIHIL
+  CONIURA trace_capture_stop(sess)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase12_12c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE phase12_12c_mem_cache(VERBUM namespace) REDDE CacheHandle
+  REDDE CONIURA cache_mem_new(namespace, 16)
+EXPLICIT RITUALE
+
+RITUALE phase12_12c_setup_items(DbHandle dbh) REDDE NIHIL
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO items(id, name, active) VALUES(1, 'alpha', 1)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO items(id, name, active) VALUES(2, 'beta', 0)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase12_12c_model_items() REDDE ModelDef
+  EVOCA ModelDef def AD CONIURA model_def_new("items")
+  CONIURA model_def_add_int(def, "id", VERUM, VERUM, FALSUM)
+  CONIURA model_def_add_text(def, "name", VERUM, FALSUM)
+  CONIURA model_def_add_bool(def, "active", FALSUM)
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE phase12_12c_query_items() REDDE Query
+  EVOCA Query q AD CONIURA query_from("items")
+  CONIURA query_select(q, "id")
+  CONIURA query_select(q, "name")
+  CONIURA query_select(q, "active")
+  CONIURA query_order_by(q, "id", Asc)
+  REDDE q
+EXPLICIT RITUALE
+
+RITUALE phase12_12c_parse(VERBUM payload) REDDE Json
+  REDDE CONIURA json_parse(payload)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

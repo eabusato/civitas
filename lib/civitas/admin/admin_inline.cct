@@ -1,0 +1,102 @@
+INCIPIT grimoire "civitas_admin_inline"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "admin.cct"
+
+ORDO InlineStyle
+  INLINE_TABULAR
+  INLINE_STACKED
+FIN ORDO
+
+SIGILLUM AdminInlineConfig
+  name: VERBUM
+  parent_model: VERBUM
+  child_model: VERBUM
+  child_table: VERBUM
+  child_pk_field: VERBUM
+  fk_field: VERBUM
+  style: InlineStyle
+  min_num: REX
+  extra: REX
+  can_add: VERUM
+  can_edit: VERUM
+  can_delete: VERUM
+  fields: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM InlineFormData
+  prefix: VERBUM
+  object_pk: VERBUM
+  fields_json: VERBUM
+  delete_flag: VERUM
+FIN SIGILLUM
+
+SIGILLUM InlineSubmit
+  parent_pk: VERBUM
+  inline_name: VERBUM
+  forms_json: VERBUM
+FIN SIGILLUM
+
+RITUALE admin_inline_style_to_string(InlineStyle style) REDDE VERBUM
+  ELIGE style
+    CASUS INLINE_STACKED:
+      REDDE "stacked"
+    ALIOQUIN:
+      REDDE "tabular"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE admin_inline_style_from_string(VERBUM style) REDDE InlineStyle
+  SI CONIURA compare(style, "stacked") == 0
+    REDDE INLINE_STACKED
+  FIN SI
+  REDDE INLINE_TABULAR
+EXPLICIT RITUALE
+
+RITUALE inline_form_data_empty() REDDE InlineFormData
+  EVOCA InlineFormData out
+  VINCIRE out.prefix AD ""
+  VINCIRE out.object_pk AD ""
+  VINCIRE out.fields_json AD "{}"
+  VINCIRE out.delete_flag AD FALSUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_inline_config_default(VERBUM name, VERBUM parent_model, AdminModelConfig child_cfg, VERBUM fk_field) REDDE AdminInlineConfig
+  EVOCA AdminInlineConfig out
+  VINCIRE out.name AD name
+  VINCIRE out.parent_model AD parent_model
+  VINCIRE out.child_model AD child_cfg.model_name
+  VINCIRE out.child_table AD child_cfg.table_name
+  VINCIRE out.child_pk_field AD child_cfg.pk_field
+  VINCIRE out.fk_field AD fk_field
+  VINCIRE out.style AD INLINE_TABULAR
+  VINCIRE out.min_num AD 0
+  VINCIRE out.extra AD 1
+  VINCIRE out.can_add AD VERUM
+  VINCIRE out.can_edit AD VERUM
+  VINCIRE out.can_delete AD VERUM
+  VINCIRE out.fields AD child_cfg.fields
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE inline_form_data_from_json(Json obj) REDDE InlineFormData
+  EVOCA InlineFormData out AD CONIURA inline_form_data_empty()
+  SI CONIURA json_has_key(obj, "prefix")
+    VINCIRE out.prefix AD CONIURA json_expect_str(CONIURA json_get_key(obj, "prefix"))
+  FIN SI
+  SI CONIURA json_has_key(obj, "object_pk")
+    VINCIRE out.object_pk AD CONIURA json_expect_str(CONIURA json_get_key(obj, "object_pk"))
+  FIN SI
+  SI CONIURA json_has_key(obj, "fields_json")
+    VINCIRE out.fields_json AD CONIURA json_expect_str(CONIURA json_get_key(obj, "fields_json"))
+  FIN SI
+  SI CONIURA json_has_key(obj, "delete_flag")
+    VINCIRE out.delete_flag AD CONIURA json_expect_bool(CONIURA json_get_key(obj, "delete_flag"))
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

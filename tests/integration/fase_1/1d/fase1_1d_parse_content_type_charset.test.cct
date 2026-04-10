@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase1_1d_parse_content_type_charset_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA mime_parse_content_type("text/html; charset=UTF-8")
+  SI CONIURA result_is_err GENUS(ContentType, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  EVOCA ContentType parsed AD CONIURA result_unwrap GENUS(ContentType, VERBUM)(res)
+  EVOCA SPECULUM NIHIL type_opt AD CONIURA mime_param_get(parsed, "type")
+  EVOCA SPECULUM NIHIL charset_opt AD CONIURA mime_param_get(parsed, "charset")
+  SI CONIURA option_is_none GENUS(VERBUM)(type_opt) VEL CONIURA option_is_none GENUS(VERBUM)(charset_opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(type_opt), "text/html") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(parsed.mime.major, "text") != 0 VEL CONIURA compare(parsed.mime.minor, "html") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(charset_opt), "UTF-8") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA mime_charset("text/html; charset=UTF-8"), "UTF-8") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

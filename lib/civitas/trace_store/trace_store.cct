@@ -1,0 +1,256 @@
+INCIPIT grimoire "civitas_trace_store"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceStore
+  db: SPECULUM NIHIL
+  trace_dir: VERBUM
+  max_traces: REX
+  max_hours: REX
+FIN SIGILLUM
+
+SIGILLUM TraceRow
+  trace_id: VERBUM
+  path: VERBUM
+  method: VERBUM
+  status: REX
+  duration_ms: REX
+  span_count: REX
+  user_id: VERBUM
+  file_path: VERBUM
+  created_at: REX
+FIN SIGILLUM
+
+SIGILLUM TraceResultSet
+  rows: SPECULUM NIHIL
+  count: REX
+FIN SIGILLUM
+
+RITUALE trace_store_result_set_empty() REDDE TraceResultSet
+  EVOCA TraceResultSet out
+  VINCIRE out.rows AD CONIURA fluxus_init(MENSURA(TraceRow))
+  VINCIRE out.count AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_store_result_set_free(SPECULUM TraceResultSet rs) REDDE NIHIL
+  CONIURA fluxus_free((*rs).rows)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_result_rows(TraceResultSet rs) REDDE SPECULUM NIHIL
+  REDDE rs.rows
+EXPLICIT RITUALE
+
+RITUALE trace_result_free(SPECULUM TraceResultSet rs) REDDE NIHIL
+  CONIURA trace_store_result_set_free(rs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_store_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS trace_index (id INTEGER PRIMARY KEY AUTOINCREMENT, trace_id TEXT NOT NULL UNIQUE, path TEXT NOT NULL, method TEXT NOT NULL, status INTEGER NOT NULL, duration_ms INTEGER NOT NULL, span_count INTEGER NOT NULL, user_id TEXT NOT NULL DEFAULT '', file_path TEXT NOT NULL, created_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_trace_index_duration ON trace_index(duration_ms DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_trace_index_status ON trace_index(status)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_trace_index_path ON trace_index(path)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_trace_index_created_at ON trace_index(created_at DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_store_open(VERBUM db_path, VERBUM trace_dir, REX max_traces, REX max_hours) REDDE TraceStore
+  EVOCA TraceStore store
+  VINCIRE store.db AD CONIURA db_open(db_path)
+  VINCIRE store.trace_dir AD trace_dir
+  VINCIRE store.max_traces AD max_traces
+  VINCIRE store.max_hours AD max_hours
+  CONIURA mkdir_all(trace_dir)
+  CONIURA trace_store_schema_up(store.db)
+  REDDE store
+EXPLICIT RITUALE
+
+RITUALE trace_store_close(SPECULUM TraceStore store) REDDE NIHIL
+  CONIURA db_close((*store).db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_store_index_trace(
+  SPECULUM TraceStore store,
+  VERBUM trace_id,
+  VERBUM path,
+  VERBUM method,
+  REX status,
+  REX duration_ms,
+  REX span_count,
+  VERBUM user_id,
+  VERBUM file_path,
+  REX created_at
+) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "INSERT OR REPLACE INTO trace_index (trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, trace_id)
+  CONIURA stmt_bind_text(stmt, 2, path)
+  CONIURA stmt_bind_text(stmt, 3, method)
+  CONIURA stmt_bind_int(stmt, 4, status)
+  CONIURA stmt_bind_int(stmt, 5, duration_ms)
+  CONIURA stmt_bind_int(stmt, 6, span_count)
+  CONIURA stmt_bind_text(stmt, 7, user_id)
+  CONIURA stmt_bind_text(stmt, 8, file_path)
+  CONIURA stmt_bind_int(stmt, 9, created_at)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_store_row_from_stmt(SPECULUM NIHIL stmt) REDDE TraceRow
+  EVOCA TraceRow row
+  VINCIRE row.trace_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 0))
+  VINCIRE row.path AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+  VINCIRE row.method AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE row.status AD CONIURA stmt_get_int(stmt, 3)
+  VINCIRE row.duration_ms AD CONIURA stmt_get_int(stmt, 4)
+  VINCIRE row.span_count AD CONIURA stmt_get_int(stmt, 5)
+  VINCIRE row.user_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  VINCIRE row.file_path AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+  VINCIRE row.created_at AD CONIURA stmt_get_int(stmt, 8)
+  REDDE row
+EXPLICIT RITUALE
+
+RITUALE trace_store_collect_stmt(SPECULUM NIHIL stmt) REDDE TraceResultSet
+  EVOCA TraceResultSet out AD CONIURA trace_store_result_set_empty()
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA TraceRow row AD CONIURA trace_store_row_from_stmt(stmt)
+      CONIURA fluxus_push(out.rows, SPECULUM row)
+      VINCIRE out.count AD out.count + 1
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_store_query_slowest(SPECULUM TraceStore store, REX min_duration_ms, REX limit_count) REDDE TraceResultSet
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE duration_ms >= ? ORDER BY duration_ms DESC, created_at DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, min_duration_ms)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  REDDE CONIURA trace_store_collect_stmt(stmt)
+EXPLICIT RITUALE
+
+RITUALE trace_store_query_by_path(SPECULUM TraceStore store, VERBUM path_pattern, REX limit_count) REDDE TraceResultSet
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE path LIKE ? ORDER BY created_at DESC LIMIT ?")
+  CONIURA stmt_bind_text(stmt, 1, path_pattern)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  REDDE CONIURA trace_store_collect_stmt(stmt)
+EXPLICIT RITUALE
+
+RITUALE trace_store_query_errors(SPECULUM TraceStore store, REX limit_count) REDDE TraceResultSet
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE status >= 400 ORDER BY created_at DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, limit_count)
+  REDDE CONIURA trace_store_collect_stmt(stmt)
+EXPLICIT RITUALE
+
+RITUALE trace_store_query_recent(SPECULUM TraceStore store, REX limit_count) REDDE TraceResultSet
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index ORDER BY created_at DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, limit_count)
+  REDDE CONIURA trace_store_collect_stmt(stmt)
+EXPLICIT RITUALE
+
+RITUALE trace_store_find_file_path(SPECULUM TraceStore store, VERBUM trace_id) REDDE VERBUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT file_path FROM trace_index WHERE trace_id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, trace_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA VERBUM out AD CONIURA concat("", CONIURA stmt_get_text(stmt, 0))
+      CONIURA stmt_finalize(stmt)
+      REDDE out
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE trace_store_find_by_id(SPECULUM TraceStore store, VERBUM trace_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE trace_id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, trace_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA TraceRow row AD CONIURA trace_store_row_from_stmt(stmt)
+      CONIURA stmt_finalize(stmt)
+      REDDE CONIURA Some GENUS(TraceRow)(row)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA None GENUS(TraceRow)()
+EXPLICIT RITUALE
+
+RITUALE trace_store_load_trace(SPECULUM TraceStore store, VERBUM trace_id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(store, trace_id)
+  SI CONIURA len(file_path) == 0
+    REDDE CONIURA Err GENUS(Trace, TraceError)(CONIURA TraceErrorMsg("trace not found"))
+  FIN SI
+  REDDE CONIURA trace_read_file(file_path)
+EXPLICIT RITUALE
+
+RITUALE trace_store_count(SPECULUM TraceStore store) REDDE REX
+  REDDE CONIURA db_scalar_int((*store).db, "SELECT COUNT(*) FROM trace_index")
+EXPLICIT RITUALE
+
+RITUALE trace_store_delete_row(SPECULUM TraceStore store, TraceRow row) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "DELETE FROM trace_index WHERE trace_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, row.trace_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  SI CONIURA exists(row.file_path)
+    CONIURA delete_file(row.file_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_store_prune_by_count(SPECULUM TraceStore store) REDDE REX
+  SI (*store).max_traces <= 0
+    REDDE 0
+  FIN SI
+  EVOCA REX current AD CONIURA trace_store_count(store)
+  SI current <= (*store).max_traces
+    REDDE 0
+  FIN SI
+  EVOCA REX excess AD current - (*store).max_traces
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index ORDER BY created_at ASC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, excess)
+  EVOCA TraceResultSet doomed AD CONIURA trace_store_collect_stmt(stmt)
+  EVOCA REX i AD 0
+  DUM i < doomed.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(doomed.rows, i)
+    CONIURA trace_store_delete_row(store, *row_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM doomed)
+  REDDE excess
+EXPLICIT RITUALE
+
+RITUALE trace_store_prune_by_hours(SPECULUM TraceStore store) REDDE REX
+  SI (*store).max_hours <= 0
+    REDDE 0
+  FIN SI
+  EVOCA REX cutoff AD (CONIURA datetime_to_unix(CONIURA datetime_now()) - ((*store).max_hours * 3600))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*store).db, "SELECT trace_id, path, method, status, duration_ms, span_count, user_id, file_path, created_at FROM trace_index WHERE created_at < ? ORDER BY created_at ASC")
+  CONIURA stmt_bind_int(stmt, 1, cutoff)
+  EVOCA TraceResultSet doomed AD CONIURA trace_store_collect_stmt(stmt)
+  EVOCA REX i AD 0
+  DUM i < doomed.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(doomed.rows, i)
+    CONIURA trace_store_delete_row(store, *row_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA REX removed AD doomed.count
+  CONIURA trace_store_result_set_free(SPECULUM doomed)
+  REDDE removed
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

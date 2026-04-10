@@ -1,0 +1,51 @@
+INCIPIT grimoire "civitas_auth_login"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth.cct"
+ADVOCARE "auth_hash.cct"
+ADVOCARE "auth_users.cct"
+
+RITUALE auth_login(SPECULUM NIHIL db, AuthConfig cfg, VERBUM email, VERBUM senha) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA auth_buscar_por_email(db, email)
+  SI CONIURA option_is_none GENUS(User)(opt)
+    CONIURA option_free GENUS(User)(opt)
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthEmailNaoEncontrado)
+  FIN SI
+
+  EVOCA User u AD CONIURA option_unwrap GENUS(User)(opt)
+  CONIURA option_free GENUS(User)(opt)
+
+  SI NON u.ativo
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthUsuarioInativo)
+  FIN SI
+
+  SI NON CONIURA auth_verificar_senha(senha, u.senha_hash)
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthSenhaIncorreta)
+  FIN SI
+
+  VINCIRE u.ultimo_login AD CONIURA auth_now_iso_utc()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE usuarios SET ultimo_login = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, u.ultimo_login)
+  CONIURA stmt_bind_text(stmt, 2, u.id)
+  CONIURA auth_exec_stmt_no_rows(stmt)
+
+  REDDE CONIURA Ok GENUS(User, AuthError)(u)
+EXPLICIT RITUALE
+
+RITUALE auth_logout() REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_usuario_atual(SPECULUM NIHIL db, LocalContext ctx) REDDE SPECULUM NIHIL
+  EVOCA VERBUM user_id AD CONIURA auth_ctx_user_id(ctx)
+  SI CONIURA len(user_id) == 0
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  REDDE CONIURA auth_usuario_ativo(db, user_id)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

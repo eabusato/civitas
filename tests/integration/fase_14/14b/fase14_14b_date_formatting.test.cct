@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase14_14b_date_formatting"
+
+ADVOCARE "../../../../lib/civitas/l10n/l10n.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_rules.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_date.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocaleRules pt AD CONIURA l10n_rules_pt_br()
+  EVOCA LocaleRules en AD CONIURA l10n_rules_en_us()
+  EVOCA Date d AD CONIURA date_make(2026, 3, 28)
+  EVOCA DateTime dt AD CONIURA datetime_make(2026, 3, 28, 14, 30, 0, 0)
+  SI CONIURA compare(CONIURA l10n_format_date(d, pt.data), "28/03/2026") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_date(d, en.data), "03/28/2026") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_datetime(dt, pt.data), "28/03/2026 14:30") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

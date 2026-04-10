@@ -1,0 +1,55 @@
+INCIPIT grimoire "fase15_15e_priority_and_fallback"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_store.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_issue.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_context.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_middleware.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_guards.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_stack_db_open("15e_priority_and_fallback")
+  EVOCA AuthConfig auth_cfg AD CONIURA auth_config_default()
+  EVOCA User bearer_user AD CONIURA result_unwrap GENUS(User, AuthError)(CONIURA auth_criar_usuario(db, auth_cfg, "bearer@example.com", "S3nh@Forte!"))
+  EVOCA User session_user AD CONIURA result_unwrap GENUS(User, AuthError)(CONIURA auth_criar_usuario(db, auth_cfg, "session@example.com", "S3nh@Forte!"))
+  EVOCA TokenConfig tok_cfg AD CONIURA token_config_new("segredo_hmac_32bytes_min_123456789", 3600, 86400)
+  EVOCA SessionConfig ses_cfg AD CONIURA session_config_default()
+  VINCIRE ses_cfg.cookie_nome AD "civitas_session"
+  EVOCA Session sess AD CONIURA session_create(db, ses_cfg, session_user.id, "127.0.0.1", "Agent/1.0")
+  EVOCA VERBUM token AD CONIURA token_issue(tok_cfg, bearer_user.id, "api.read")
+  EVOCA AuthMiddlewareConfig mw_cfg AD CONIURA auth_middleware_config_new(tok_cfg, ses_cfg)
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "authorization", CONIURA concat("Bearer ", token))
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat("civitas_session=", sess.id))
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(CONIURA request_build("GET", "/", "HTTP/1.1", headers, "", "127.0.0.1", "http", "example.test", "rid", "", "", ""))
+  EVOCA LocalContext ctx1 AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx1)
+  CONIURA auth_middleware_apply(db, mw_cfg, req, SPECULUM ctx1)
+  EVOCA AuthContext ac1 AD CONIURA auth_context_ler(ctx1)
+  SI CONIURA compare(ac1.user_id, bearer_user.id) != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  VINCIRE mw_cfg.preferir_bearer AD FALSUM
+  EVOCA LocalContext ctx2 AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx2)
+  CONIURA auth_middleware_apply(db, mw_cfg, req, SPECULUM ctx2)
+  EVOCA AuthContext ac2 AD CONIURA auth_context_ler(ctx2)
+  CONIURA db_close(db)
+  SI CONIURA compare(ac2.user_id, session_user.id) != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

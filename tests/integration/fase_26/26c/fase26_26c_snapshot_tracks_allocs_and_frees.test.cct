@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase26_26c_snapshot_tracks_allocs_and_frees"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA MemSnapshot before AD CONIURA mem_snap_begin()
+  EVOCA SPECULUM NIHIL values AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX a AD 1
+  EVOCA REX b AD 2
+  CONIURA fluxus_push(values, SPECULUM a)
+  CONIURA fluxus_push(values, SPECULUM b)
+  CONIURA fluxus_free(values)
+  EVOCA MemDelta delta AD CONIURA mem_snap_end(before, "/snapshot", "req-1", 10)
+  SI delta.alloc_count_delta <= 0
+    REDDE 1
+  FIN SI
+  SI delta.free_count_delta <= 0
+    REDDE 2
+  FIN SI
+  SI delta.suspected_leak
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

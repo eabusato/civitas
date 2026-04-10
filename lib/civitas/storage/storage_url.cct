@@ -1,0 +1,112 @@
+INCIPIT grimoire "civitas_storage_url"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../core/keyring.cct"
+ADVOCARE "../core/secrets.cct"
+ADVOCARE "storage.cct"
+
+SIGILLUM SignedUrlConfig
+  url_base_private: VERBUM
+  secret_domain: SecretDomain
+  default_expires_segundos: REX
+FIN SIGILLUM
+
+SIGILLUM SignedUrl
+  url: VERBUM
+  token: VERBUM
+  expires_unix: REX
+  artifact_id: VERBUM
+FIN SIGILLUM
+
+RITUALE signed_url_config_default(VERBUM url_base_private) REDDE SignedUrlConfig
+  EVOCA SignedUrlConfig cfg
+  VINCIRE cfg.url_base_private AD url_base_private
+  VINCIRE cfg.secret_domain AD SECRET_DOMAIN_TEMPORARY_LINK
+  VINCIRE cfg.default_expires_segundos AD 3600
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE storage_signed_message(VERBUM artifact_id, REX expires_unix) REDDE VERBUM
+  REDDE CONIURA concat(artifact_id, CONIURA concat(":", CONIURA stringify_int(expires_unix)))
+EXPLICIT RITUALE
+
+RITUALE storage_sign_url(SignedUrlConfig cfg, VERBUM secret_material, MediaArtifact artifact, REX expires_unix) REDDE SignedUrl
+  EVOCA VERBUM message AD CONIURA storage_signed_message(artifact.artifact_id, expires_unix)
+  EVOCA VERBUM hmac_raw AD CONIURA hmac_sha256(secret_material, message)
+  EVOCA VERBUM token AD CONIURA base64url_encode(hmac_raw)
+  EVOCA SignedUrl signed_url
+  VINCIRE signed_url.url AD CONIURA concat(
+    cfg.url_base_private,
+    CONIURA concat(
+      "/",
+      CONIURA concat(
+        artifact.artifact_id,
+        CONIURA concat("?token=", CONIURA concat(token, CONIURA concat("&expires=", CONIURA stringify_int(expires_unix))))
+      )
+    )
+  )
+  VINCIRE signed_url.token AD token
+  VINCIRE signed_url.expires_unix AD expires_unix
+  VINCIRE signed_url.artifact_id AD artifact.artifact_id
+  REDDE signed_url
+EXPLICIT RITUALE
+
+RITUALE storage_sign_url_default(SignedUrlConfig cfg, VERBUM secret_material, MediaArtifact artifact, REX now_unix) REDDE SignedUrl
+  REDDE CONIURA storage_sign_url(cfg, secret_material, artifact, now_unix + cfg.default_expires_segundos)
+EXPLICIT RITUALE
+
+RITUALE storage_verify_signed_url(VERBUM secret_material, VERBUM artifact_id, VERBUM token, REX expires_unix, REX now_unix) REDDE VERUM
+  SI now_unix > expires_unix
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM message AD CONIURA storage_signed_message(artifact_id, expires_unix)
+  EVOCA VERBUM expected AD CONIURA base64url_encode(CONIURA hmac_sha256(secret_material, message))
+  REDDE CONIURA constant_time_compare(token, expected)
+EXPLICIT RITUALE
+
+RITUALE storage_active_secret_material(SPECULUM NIHIL registry_ref, SignedUrlConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL active_res AD CONIURA secrets_active(registry_ref, cfg.secret_domain)
+  SI CONIURA result_is_err GENUS(SecretKey, VERBUM)(active_res)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA result_unwrap_err GENUS(SecretKey, VERBUM)(active_res))
+  FIN SI
+  EVOCA SecretKey key AD CONIURA result_unwrap GENUS(SecretKey, VERBUM)(active_res)
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(key.material)
+EXPLICIT RITUALE
+
+RITUALE storage_sign_url_from_registry(SignedUrlConfig cfg, SPECULUM NIHIL registry_ref, MediaArtifact artifact, REX now_unix) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL secret_res AD CONIURA storage_active_secret_material(registry_ref, cfg)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(secret_res)
+    REDDE CONIURA Err GENUS(SignedUrl, VERBUM)(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(secret_res))
+  FIN SI
+  REDDE CONIURA Ok GENUS(SignedUrl, VERBUM)(
+    CONIURA storage_sign_url_default(cfg, CONIURA result_unwrap GENUS(VERBUM, VERBUM)(secret_res), artifact, now_unix)
+  )
+EXPLICIT RITUALE
+
+RITUALE storage_verify_signed_url_candidates(SPECULUM NIHIL registry_ref, SignedUrlConfig cfg, VERBUM artifact_id, VERBUM token, REX expires_unix, REX now_unix) REDDE VERUM
+  EVOCA SPECULUM NIHIL candidates_res AD CONIURA secrets_verify_candidates(registry_ref, cfg.secret_domain)
+  SI CONIURA result_is_err GENUS(SecretCandidateSet, VERBUM)(candidates_res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SecretCandidateSet candidates AD CONIURA result_unwrap GENUS(SecretCandidateSet, VERBUM)(candidates_res)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(candidates.items)
+  DUM i < n
+    EVOCA SPECULUM SecretKey key_ptr AD CONIURA fluxus_get(candidates.items, i)
+    SI CONIURA storage_verify_signed_url((*key_ptr).material, artifact_id, token, expires_unix, now_unix)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

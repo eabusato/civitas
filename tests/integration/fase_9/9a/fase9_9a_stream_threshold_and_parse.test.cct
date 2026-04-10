@@ -1,0 +1,75 @@
+INCIPIT grimoire "fase9_9a_stream_threshold_and_parse"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_tmp_dir("9a_stream_threshold")
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  EVOCA VERBUM result AD CONIURA path_join(root, "result.txt")
+  EVOCA REX port AD 39281
+  CONIURA phase9_reset_dir(root)
+  SI CONIURA phase9_9a_start_fixture(root, port) != 0
+    IACE "failed to start stream fixture"
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 5000)
+    CONIURA phase9_9a_stop_fixture(root)
+    IACE "stream fixture not ready"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM title_part AD CONIURA phase9_text_part("title", "Streaming Avatar")
+  EVOCA VERBUM file_part AD CONIURA phase9_file_part("avatar", "photo.jpg", "image/jpeg", CONIURA concat(CONIURA phase9_fake_jpeg(), "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"))
+  CONIURA fluxus_push(parts, SPECULUM title_part)
+  CONIURA fluxus_push(parts, SPECULUM file_part)
+  EVOCA VERBUM boundary AD "stream-boundary"
+  EVOCA VERBUM body AD CONIURA phase9_multipart_body(boundary, parts)
+  EVOCA VERBUM req AD "POST /upload HTTP/1.1"
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Host: example.test")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Content-Type: multipart/form-data; boundary=")
+  VINCIRE req AD CONIURA concat(req, boundary)
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Content-Length: ")
+  VINCIRE req AD CONIURA concat(req, CONIURA stringify_int(CONIURA len(body)))
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, body)
+
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket(port)
+  SI CONIURA send_raw(sock, req) != 0
+    CONIURA phase9_9a_stop_fixture(root)
+    IACE "failed to send request"
+  FIN SI
+  CONIURA net_close(sock)
+
+  SI NON CONIURA wait_for_file(result, 5000)
+    CONIURA phase9_9a_stop_fixture(root)
+    IACE "stream result file missing"
+  FIN SI
+
+  EVOCA VERBUM summary AD CONIURA read_all(result)
+  CONIURA phase9_9a_stop_fixture(root)
+  SI NON CONIURA contains(summary, "stream=ok")
+    IACE "stream parse failed"
+  FIN SI
+  SI NON CONIURA contains(summary, "body_empty=true")
+    IACE "body should be empty in streamed request"
+  FIN SI
+  SI NON CONIURA contains(summary, "has_raw=true")
+    IACE "raw body handle should be preserved"
+  FIN SI
+  SI NON CONIURA contains(summary, "title=Streaming Avatar")
+    IACE "text field missing in stream parse"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

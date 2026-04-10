@@ -1,0 +1,22 @@
+INCIPIT grimoire "mural_expandido_bootstrap_db"
+
+ADVOCARE "lib/config.cct"
+ADVOCARE "lib/repository.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA muralx_project_root()
+  EVOCA SPECULUM MuralExpandidoConfig cfg_ptr AD OBSECRO mem_alloc(MENSURA(MuralExpandidoConfig))
+  EVOCA SPECULUM NIHIL res AD CONIURA muralx_config_load_fill(cfg_ptr, root)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    CONIURA println(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res))
+    REDDE 1
+  FIN SI
+  CONIURA muralx_repository_init_schema(*cfg_ptr)
+  CONIURA muralx_repository_seed_demo(*cfg_ptr)
+  CONIURA println("mural_expandido bootstrap complete")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

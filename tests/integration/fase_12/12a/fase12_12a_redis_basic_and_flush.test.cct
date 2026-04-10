@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase12_12a_redis_basic_and_flush"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_api.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_redis_cache("12a_redis_basic", "redis-ns")
+  CONIURA cache_set(SPECULUM h, "foo", "bar", 0)
+  SI NON CONIURA cache_exists(SPECULUM h, "foo")
+    REDDE 1
+  FIN SI
+  EVOCA CacheMaybeText maybe AD CONIURA cache_get(SPECULUM h, "foo")
+  SI CONIURA compare(maybe.valor, "bar") != 0
+    REDDE 2
+  FIN SI
+  CONIURA cache_flush(SPECULUM h)
+  SI CONIURA cache_exists(SPECULUM h, "foo")
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

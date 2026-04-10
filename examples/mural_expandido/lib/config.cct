@@ -1,0 +1,166 @@
+INCIPIT grimoire "mural_expandido_config"
+
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MuralExpandidoConfig
+  site_title: VERBUM
+  database_path: VERBUM
+  static_dir: VERBUM
+  locale_dir: VERBUM
+  trace_dir: VERBUM
+  recent_limit: REX
+  cache_entries: REX
+  default_locale: VERBUM
+  admin_secret: VERBUM
+  session_secret: VERBUM
+FIN SIGILLUM
+
+RITUALE muralx_config_ok(MuralExpandidoConfig value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MuralExpandidoConfig, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE muralx_config_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MuralExpandidoConfig, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE muralx_env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    REDDE CONIURA getenv(name)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE muralx_project_root() REDDE VERBUM
+  SI CONIURA has_env("MURAL_EXPANDIDO_PROJECT_ROOT")
+    REDDE CONIURA getenv("MURAL_EXPANDIDO_PROJECT_ROOT")
+  FIN SI
+  SI CONIURA exists("civitas.toml") ET CONIURA exists("main.cct") ET CONIURA exists("bootstrap_db.cct")
+    REDDE "."
+  FIN SI
+  REDDE "examples/mural_expandido"
+EXPLICIT RITUALE
+
+RITUALE muralx_resolve_path(VERBUM root, VERBUM value) REDDE VERBUM
+  SI CONIURA len(value) == 0
+    REDDE value
+  FIN SI
+  SI CONIURA starts_with(value, "/")
+    REDDE value
+  FIN SI
+  REDDE CONIURA path_join(root, value)
+EXPLICIT RITUALE
+
+RITUALE muralx_toml_string_or(TomlDocument doc, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI CONIURA toml_has(doc, key)
+    EVOCA VERBUM value AD CONIURA trim(CONIURA toml_get_string(doc, key))
+    SI CONIURA len(value) > 0
+      REDDE value
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE muralx_toml_int_or(TomlDocument doc, VERBUM key, REX fallback) REDDE REX
+  EVOCA SPECULUM NIHIL maybe AD CONIURA toml_get_int(doc, key)
+  SI CONIURA option_is_some GENUS(REX)(maybe)
+    EVOCA REX value AD CONIURA option_unwrap GENUS(REX)(maybe)
+    CONIURA option_free GENUS(REX)(maybe)
+    REDDE value
+  FIN SI
+  CONIURA option_free GENUS(REX)(maybe)
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE muralx_config_default(VERBUM root) REDDE MuralExpandidoConfig
+  EVOCA MuralExpandidoConfig cfg
+  VINCIRE cfg.site_title AD "Mural Expandido"
+  VINCIRE cfg.database_path AD "var/mural_expandido.db"
+  VINCIRE cfg.static_dir AD "static"
+  VINCIRE cfg.locale_dir AD "locales"
+  VINCIRE cfg.trace_dir AD "var/traces"
+  VINCIRE cfg.recent_limit AD 24
+  VINCIRE cfg.cache_entries AD 128
+  VINCIRE cfg.default_locale AD "pt-BR"
+  VINCIRE cfg.admin_secret AD "change-me-expanded-admin-secret"
+  VINCIRE cfg.session_secret AD "change-me-expanded-session-secret"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE muralx_config_load(VERBUM root) REDDE SPECULUM NIHIL
+  EVOCA MuralExpandidoConfig cfg AD CONIURA muralx_config_default(root)
+  EVOCA VERBUM config_path AD CONIURA path_join(root, "civitas.toml")
+
+  SI CONIURA exists(config_path)
+    EVOCA TomlDocument doc AD CONIURA toml_parse_file(config_path)
+    SI NON CONIURA toml_is_valid(doc)
+      REDDE CONIURA muralx_config_err(CONIURA concat("invalid TOML: ", config_path))
+    FIN SI
+
+    EVOCA TomlDocument mural_doc AD CONIURA toml_get_table(doc, "mural_expandido")
+    SI CONIURA toml_is_valid(mural_doc)
+      VINCIRE cfg.site_title AD CONIURA muralx_toml_string_or(mural_doc, "site_title", cfg.site_title)
+      VINCIRE cfg.database_path AD CONIURA muralx_toml_string_or(mural_doc, "database_path", cfg.database_path)
+      VINCIRE cfg.static_dir AD CONIURA muralx_toml_string_or(mural_doc, "static_dir", cfg.static_dir)
+      VINCIRE cfg.locale_dir AD CONIURA muralx_toml_string_or(mural_doc, "locale_dir", cfg.locale_dir)
+      VINCIRE cfg.trace_dir AD CONIURA muralx_toml_string_or(mural_doc, "trace_dir", cfg.trace_dir)
+      VINCIRE cfg.default_locale AD CONIURA muralx_toml_string_or(mural_doc, "default_locale", cfg.default_locale)
+      VINCIRE cfg.admin_secret AD CONIURA muralx_toml_string_or(mural_doc, "admin_secret", cfg.admin_secret)
+      VINCIRE cfg.session_secret AD CONIURA muralx_toml_string_or(mural_doc, "session_secret", cfg.session_secret)
+      VINCIRE cfg.recent_limit AD CONIURA muralx_toml_int_or(mural_doc, "recent_limit", cfg.recent_limit)
+      VINCIRE cfg.cache_entries AD CONIURA muralx_toml_int_or(mural_doc, "cache_entries", cfg.cache_entries)
+    FIN SI
+  FIN SI
+
+  VINCIRE cfg.site_title AD CONIURA muralx_env_or("MURAL_EXPANDIDO_SITE_TITLE", cfg.site_title)
+  VINCIRE cfg.database_path AD CONIURA muralx_env_or("MURAL_EXPANDIDO_DATABASE_PATH", cfg.database_path)
+  VINCIRE cfg.static_dir AD CONIURA muralx_env_or("MURAL_EXPANDIDO_STATIC_DIR", cfg.static_dir)
+  VINCIRE cfg.locale_dir AD CONIURA muralx_env_or("MURAL_EXPANDIDO_LOCALE_DIR", cfg.locale_dir)
+  VINCIRE cfg.trace_dir AD CONIURA muralx_env_or("MURAL_EXPANDIDO_TRACE_DIR", cfg.trace_dir)
+  VINCIRE cfg.default_locale AD CONIURA muralx_env_or("MURAL_EXPANDIDO_DEFAULT_LOCALE", cfg.default_locale)
+  VINCIRE cfg.admin_secret AD CONIURA muralx_env_or("MURAL_EXPANDIDO_ADMIN_SECRET", cfg.admin_secret)
+  VINCIRE cfg.session_secret AD CONIURA muralx_env_or("MURAL_EXPANDIDO_SESSION_SECRET", cfg.session_secret)
+
+  SI CONIURA has_env("MURAL_EXPANDIDO_RECENT_LIMIT")
+    VINCIRE cfg.recent_limit AD CONIURA fmt_parse_int(CONIURA getenv("MURAL_EXPANDIDO_RECENT_LIMIT"))
+  FIN SI
+  SI CONIURA has_env("MURAL_EXPANDIDO_CACHE_ENTRIES")
+    VINCIRE cfg.cache_entries AD CONIURA fmt_parse_int(CONIURA getenv("MURAL_EXPANDIDO_CACHE_ENTRIES"))
+  FIN SI
+
+  SI CONIURA len(CONIURA trim(cfg.admin_secret)) == 0
+    REDDE CONIURA muralx_config_err("Mural Expandido admin_secret cannot be empty")
+  FIN SI
+  SI CONIURA len(CONIURA trim(cfg.session_secret)) == 0
+    REDDE CONIURA muralx_config_err("Mural Expandido session_secret cannot be empty")
+  FIN SI
+  SI cfg.recent_limit <= 0
+    VINCIRE cfg.recent_limit AD 24
+  FIN SI
+  SI cfg.cache_entries <= 0
+    VINCIRE cfg.cache_entries AD 128
+  FIN SI
+
+  VINCIRE cfg.database_path AD CONIURA muralx_resolve_path(root, cfg.database_path)
+  VINCIRE cfg.locale_dir AD CONIURA muralx_resolve_path(root, cfg.locale_dir)
+  VINCIRE cfg.trace_dir AD CONIURA muralx_resolve_path(root, cfg.trace_dir)
+
+  REDDE CONIURA muralx_config_ok(cfg)
+EXPLICIT RITUALE
+
+RITUALE muralx_config_load_fill(SPECULUM MuralExpandidoConfig out, VERBUM root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL cfg_res AD CONIURA muralx_config_load(root)
+  SI CONIURA result_is_err GENUS(MuralExpandidoConfig, VERBUM)(cfg_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(MuralExpandidoConfig, VERBUM)(cfg_res))
+  FIN SI
+  VINCIRE (*out) AD CONIURA result_unwrap GENUS(MuralExpandidoConfig, VERBUM)(cfg_res)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

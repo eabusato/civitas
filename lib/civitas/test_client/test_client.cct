@@ -1,0 +1,561 @@
+INCIPIT grimoire "civitas_test_client"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../cookie.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+
+SIGILLUM TestCookie
+  nome: VERBUM
+  valor: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TestClient
+  router_ref: SPECULUM Router
+  cookies: SPECULUM NIHIL
+  default_headers: REX
+  base_path: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TestResponse
+  status: REX
+  headers: REX
+  body: VERBUM
+  path: VERBUM
+  method: VERBUM
+FIN SIGILLUM
+
+RITUALE test_client_new(SPECULUM Router router_ptr) REDDE TestClient
+  EVOCA TestClient c
+  VINCIRE c.router_ref AD router_ptr
+  VINCIRE c.cookies AD CONIURA fluxus_init(MENSURA(TestCookie))
+  VINCIRE c.default_headers AD CONIURA http_headers_new()
+  VINCIRE c.base_path AD ""
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE test_client_free(SPECULUM TestClient c) REDDE NIHIL
+  CONIURA fluxus_free((*c).cookies)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_client_set_base_path(SPECULUM TestClient c, VERBUM base_path) REDDE NIHIL
+  VINCIRE (*c).base_path AD base_path
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_cookie_find_idx(SPECULUM NIHIL jar, VERBUM nome) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(jar)
+  DUM i < n
+    EVOCA SPECULUM TestCookie ck AD CONIURA fluxus_get(jar, i)
+    SI CONIURA compare((*ck).nome, nome) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE tc_cookie_set(SPECULUM NIHIL jar, VERBUM nome, VERBUM valor) REDDE NIHIL
+  EVOCA REX idx AD CONIURA tc_cookie_find_idx(jar, nome)
+  SI idx != -1
+    EVOCA SPECULUM TestCookie ck AD CONIURA fluxus_get(jar, idx)
+    VINCIRE (*ck).valor AD valor
+    REDDE
+  FIN SI
+  EVOCA TestCookie novo
+  VINCIRE novo.nome AD nome
+  VINCIRE novo.valor AD valor
+  CONIURA fluxus_push(jar, SPECULUM novo)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_cookie_remove(SPECULUM NIHIL jar, VERBUM nome) REDDE NIHIL
+  EVOCA REX idx AD CONIURA tc_cookie_find_idx(jar, nome)
+  SI idx == -1
+    REDDE
+  FIN SI
+  CONIURA fluxus_remove(jar, idx)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_cookie_header_value(SPECULUM NIHIL jar) REDDE VERBUM
+  EVOCA REX n AD CONIURA fluxus_len(jar)
+  SI n == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  DUM i < n
+    SI i > 0
+      CONIURA builder_append(b, "; ")
+    FIN SI
+    EVOCA SPECULUM TestCookie ck AD CONIURA fluxus_get(jar, i)
+    CONIURA builder_append(b, (*ck).nome)
+    CONIURA builder_append(b, "=")
+    CONIURA builder_append(b, (*ck).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE tc_absorb_cookies(SPECULUM NIHIL jar, SPECULUM NIHIL set_cookies) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(set_cookies)
+  DUM i < n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(set_cookies, i)
+    SI (*cookie_ptr).max_age == 0
+      CONIURA tc_cookie_remove(jar, (*cookie_ptr).name)
+    ALITER
+      CONIURA tc_cookie_set(jar, (*cookie_ptr).name, (*cookie_ptr).value)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_client_set_cookie(SPECULUM TestClient c, VERBUM nome, VERBUM valor) REDDE NIHIL
+  CONIURA tc_cookie_set((*c).cookies, nome, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_client_clear_cookies(SPECULUM TestClient c) REDDE NIHIL
+  CONIURA fluxus_clear((*c).cookies)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_headers_copy(REX headers_handle) REDDE REX
+  EVOCA REX out AD CONIURA http_headers_new()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(headers_handle)
+  DUM i < n
+    EVOCA SPECULUM HttpHeader h AD CONIURA http_headers_get_ptr(headers_handle, i)
+    CONIURA http_headers_set_or_push(out, (*h).nome, (*h).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE test_client_set_header(SPECULUM TestClient c, VERBUM nome, VERBUM valor) REDDE NIHIL
+  CONIURA http_headers_set_or_push((*c).default_headers, nome, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_client_clear_header(SPECULUM TestClient c, VERBUM nome) REDDE NIHIL
+  CONIURA http_headers_set_or_push((*c).default_headers, nome, "")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_join_path(VERBUM base_path, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM base AD base_path
+  EVOCA VERBUM tail AD path
+  SI CONIURA len(base) == 0
+    REDDE tail
+  FIN SI
+  SI CONIURA len(tail) == 0
+    REDDE base
+  FIN SI
+  SI CONIURA ends_with(base, "/") ET CONIURA starts_with(tail, "/")
+    REDDE CONIURA concat(CONIURA substring(base, 0, CONIURA len(base) - 1), tail)
+  FIN SI
+  SI NON CONIURA ends_with(base, "/") ET NON CONIURA starts_with(tail, "/")
+    REDDE CONIURA concat(CONIURA concat(base, "/"), tail)
+  FIN SI
+  REDDE CONIURA concat(base, tail)
+EXPLICIT RITUALE
+
+RITUALE tc_request_headers_from_http(REX headers_handle) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA request_empty_headers()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(headers_handle)
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header_ptr AD CONIURA http_headers_get_ptr(headers_handle, i)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(out, CONIURA to_lower((*header_ptr).nome), (*header_ptr).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE tc_request_from_http(HttpRequest raw_req) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    CONIURA http_request_method(raw_req),
+    CONIURA http_request_path(raw_req),
+    "HTTP/1.1",
+    CONIURA tc_request_headers_from_http(CONIURA http_request_headers_handle(raw_req)),
+    CONIURA http_request_body(raw_req),
+    "127.0.0.1",
+    "http",
+    CONIURA http_headers_get_or(CONIURA http_request_headers_handle(raw_req), "host", "test.local"),
+    "req-test-client",
+    "",
+    "127.0.0.1:0",
+    "127.0.0.1:0"
+  )
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE CONIURA result_unwrap_err GENUS(WebRequest, VERBUM)(req_res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE tc_build_request(SPECULUM TestClient c, VERBUM method, VERBUM path, VERBUM body) REDDE WebRequest
+  EVOCA VERBUM full_path AD CONIURA tc_join_path((*c).base_path, path)
+  EVOCA HttpRequest raw_req AD CONIURA http_request_with_body(method, full_path, body)
+  EVOCA REX headers_handle AD CONIURA http_request_headers_handle(raw_req)
+  EVOCA REX copied_default_headers AD CONIURA tc_headers_copy((*c).default_headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(copied_default_headers)
+  EVOCA VERBUM cookie_header AD CONIURA tc_cookie_header_value((*c).cookies)
+
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header_ptr AD CONIURA http_headers_get_ptr(copied_default_headers, i)
+    SI CONIURA len((*header_ptr).valor) > 0
+      CONIURA http_headers_set_or_push(headers_handle, (*header_ptr).nome, (*header_ptr).valor)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA http_headers_set_or_push(headers_handle, "host", "test.local")
+  SI CONIURA len(cookie_header) > 0
+    CONIURA http_headers_set_or_push(headers_handle, "cookie", cookie_header)
+  FIN SI
+  SI CONIURA len(body) > 0
+    CONIURA http_headers_set_or_push(headers_handle, "content-length", CONIURA stringify_int(CONIURA len(body)))
+  FIN SI
+
+  REDDE CONIURA tc_request_from_http(raw_req)
+EXPLICIT RITUALE
+
+RITUALE tc_response_headers_from_web(WebResponse res) REDDE REX
+  EVOCA REX out AD CONIURA http_headers_new()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(res.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA http_headers_set_or_push(out, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len(res.set_cookies)
+  DUM i < n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(res.set_cookies, i)
+    CONIURA http_headers_set_or_push(out, "set-cookie", CONIURA cookie_build_set(*cookie_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE tc_dispatch(SPECULUM TestClient c, WebRequest req) REDDE TestResponse
+  EVOCA WebResponse res AD CONIURA router_dispatch(*((*c).router_ref), req)
+  EVOCA TestResponse out
+  CONIURA tc_absorb_cookies((*c).cookies, res.set_cookies)
+  VINCIRE out.status AD res.status
+  VINCIRE out.headers AD CONIURA tc_response_headers_from_web(res)
+  VINCIRE out.body AD res.body
+  VINCIRE out.path AD req.path
+  VINCIRE out.method AD req.method
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE test_client_get(SPECULUM TestClient c, VERBUM path) REDDE TestResponse
+  REDDE CONIURA tc_dispatch(c, CONIURA tc_build_request(c, "GET", path, ""))
+EXPLICIT RITUALE
+
+RITUALE test_client_delete(SPECULUM TestClient c, VERBUM path) REDDE TestResponse
+  REDDE CONIURA tc_dispatch(c, CONIURA tc_build_request(c, "DELETE", path, ""))
+EXPLICIT RITUALE
+
+RITUALE test_client_post(SPECULUM TestClient c, VERBUM path, VERBUM body, VERBUM content_type) REDDE TestResponse
+  CONIURA test_client_set_header(c, "content-type", content_type)
+  EVOCA TestResponse res AD CONIURA tc_dispatch(c, CONIURA tc_build_request(c, "POST", path, body))
+  CONIURA test_client_clear_header(c, "content-type")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE test_client_put(SPECULUM TestClient c, VERBUM path, VERBUM body, VERBUM content_type) REDDE TestResponse
+  CONIURA test_client_set_header(c, "content-type", content_type)
+  EVOCA TestResponse res AD CONIURA tc_dispatch(c, CONIURA tc_build_request(c, "PUT", path, body))
+  CONIURA test_client_clear_header(c, "content-type")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE test_client_patch(SPECULUM TestClient c, VERBUM path, VERBUM body, VERBUM content_type) REDDE TestResponse
+  CONIURA test_client_set_header(c, "content-type", content_type)
+  EVOCA TestResponse res AD CONIURA tc_dispatch(c, CONIURA tc_build_request(c, "PATCH", path, body))
+  CONIURA test_client_clear_header(c, "content-type")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE test_client_post_json(SPECULUM TestClient c, VERBUM path, VERBUM json_body) REDDE TestResponse
+  REDDE CONIURA test_client_post(c, path, json_body, "application/json")
+EXPLICIT RITUALE
+
+RITUALE test_client_put_json(SPECULUM TestClient c, VERBUM path, VERBUM json_body) REDDE TestResponse
+  REDDE CONIURA test_client_put(c, path, json_body, "application/json")
+EXPLICIT RITUALE
+
+RITUALE test_client_patch_json(SPECULUM TestClient c, VERBUM path, VERBUM json_body) REDDE TestResponse
+  REDDE CONIURA test_client_patch(c, path, json_body, "application/json")
+EXPLICIT RITUALE
+
+RITUALE test_client_post_form(SPECULUM TestClient c, VERBUM path, SPECULUM NIHIL campos) REDDE TestResponse
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(campos)
+  DUM i < n
+    EVOCA SPECULUM TestCookie par AD CONIURA fluxus_get(campos, i)
+    SI i > 0
+      CONIURA builder_append(b, "&")
+    FIN SI
+    CONIURA builder_append(b, CONIURA url_encode((*par).nome))
+    CONIURA builder_append(b, "=")
+    CONIURA builder_append(b, CONIURA url_encode((*par).valor))
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM body AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE CONIURA test_client_post(c, path, body, "application/x-www-form-urlencoded")
+EXPLICIT RITUALE
+
+RITUALE tc_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), CONIURA from_char(10))
+EXPLICIT RITUALE
+
+RITUALE test_client_upload(SPECULUM TestClient c, VERBUM path, VERBUM field_name, VERBUM filename, VERBUM file_content_type, VERBUM data) REDDE TestResponse
+  EVOCA VERBUM boundary AD "----CivitasTestBoundary7F3A9B"
+  EVOCA VERBUM crlf AD CONIURA tc_crlf()
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "--")
+  CONIURA builder_append(b, boundary)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Content-Disposition: form-data; name=\"")
+  CONIURA builder_append(b, field_name)
+  CONIURA builder_append(b, "\"; filename=\"")
+  CONIURA builder_append(b, filename)
+  CONIURA builder_append(b, "\"")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Content-Type: ")
+  CONIURA builder_append(b, file_content_type)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, data)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "--")
+  CONIURA builder_append(b, boundary)
+  CONIURA builder_append(b, "--")
+  CONIURA builder_append(b, crlf)
+  EVOCA VERBUM body AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE CONIURA test_client_post(c, path, body, CONIURA concat("multipart/form-data; boundary=", boundary))
+EXPLICIT RITUALE
+
+RITUALE test_client_login(SPECULUM TestClient c, VERBUM login_path, VERBUM username, VERBUM password) REDDE VERUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "{\"username\":\"")
+  CONIURA builder_append(b, username)
+  CONIURA builder_append(b, "\",\"password\":\"")
+  CONIURA builder_append(b, password)
+  CONIURA builder_append(b, "\"}")
+  EVOCA VERBUM payload AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  EVOCA TestResponse res AD CONIURA test_client_post_json(c, login_path, payload)
+  REDDE res.status == 200 VEL res.status == 201 VEL res.status == 302 VEL res.status == 303
+EXPLICIT RITUALE
+
+RITUALE test_client_logout(SPECULUM TestClient c, VERBUM logout_path) REDDE NIHIL
+  CONIURA test_client_post_json(c, logout_path, "{}")
+  CONIURA test_client_clear_cookies(c)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tc_fail_prefix(TestResponse res) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "ASSERT FALHOU - ")
+  CONIURA builder_append(b, res.method)
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, res.path)
+  CONIURA builder_append(b, " [")
+  CONIURA builder_append(b, CONIURA stringify_int(res.status))
+  CONIURA builder_append(b, "]: ")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE tc_header_or(TestResponse res, VERBUM nome, VERBUM fallback) REDDE VERBUM
+  REDDE CONIURA http_headers_get_or(res.headers, nome, fallback)
+EXPLICIT RITUALE
+
+RITUALE assert_status(TestResponse res, REX esperado) REDDE NIHIL
+  SI res.status == esperado
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("esperado status ", CONIURA concat(CONIURA stringify_int(esperado), CONIURA concat(", recebido ", CONIURA stringify_int(res.status)))))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_ok(TestResponse res) REDDE NIHIL
+  SI res.status >= 200 ET res.status < 300
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), "esperado faixa 2xx")
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_created(TestResponse res) REDDE NIHIL
+  CONIURA assert_status(res, 201)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_no_content(TestResponse res) REDDE NIHIL
+  CONIURA assert_status(res, 204)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_not_found(TestResponse res) REDDE NIHIL
+  CONIURA assert_status(res, 404)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_redirect(TestResponse res, VERBUM location_esperada) REDDE NIHIL
+  SI NON (res.status == 301 VEL res.status == 302 VEL res.status == 303 VEL res.status == 307 VEL res.status == 308)
+    EVOCA VERBUM msg_status AD CONIURA concat(CONIURA tc_fail_prefix(res), "esperado redirect 3xx")
+    CONIURA println(msg_status)
+    IACE msg_status
+  FIN SI
+  CONIURA assert_header(res, "location", location_esperada)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_header(TestResponse res, VERBUM nome, VERBUM valor_esperado) REDDE NIHIL
+  EVOCA VERBUM atual AD CONIURA tc_header_or(res, nome, "")
+  SI CONIURA compare(atual, valor_esperado) == 0
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, CONIURA tc_fail_prefix(res))
+  CONIURA builder_append(b, "header ")
+  CONIURA builder_append(b, nome)
+  CONIURA builder_append(b, " esperado \"")
+  CONIURA builder_append(b, valor_esperado)
+  CONIURA builder_append(b, "\", recebido \"")
+  CONIURA builder_append(b, atual)
+  CONIURA builder_append(b, "\"")
+  EVOCA VERBUM msg AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_header_contains(TestResponse res, VERBUM nome, VERBUM fragmento) REDDE NIHIL
+  EVOCA VERBUM atual AD CONIURA tc_header_or(res, nome, "")
+  SI CONIURA contains(atual, fragmento)
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("header ", CONIURA concat(nome, CONIURA concat(" nao contem \"", CONIURA concat(fragmento, "\"")))))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_content_type(TestResponse res, VERBUM ct) REDDE NIHIL
+  CONIURA assert_header_contains(res, "content-type", ct)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_contains(TestResponse res, VERBUM fragmento) REDDE NIHIL
+  SI CONIURA contains(res.body, fragmento)
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("body nao contem \"", CONIURA concat(fragmento, "\"")))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_not_contains(TestResponse res, VERBUM fragmento) REDDE NIHIL
+  SI NON CONIURA contains(res.body, fragmento)
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("body nao deveria conter \"", CONIURA concat(fragmento, "\"")))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_json(TestResponse res) REDDE Json
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(res.body)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), "body nao e json valido")
+    CONIURA println(msg)
+    IACE msg
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+EXPLICIT RITUALE
+
+RITUALE assert_json_key(TestResponse res, VERBUM chave) REDDE Json
+  EVOCA Json root AD CONIURA assert_json(res)
+  SI NON CONIURA json_is_obj(root)
+    EVOCA VERBUM msg_obj AD CONIURA concat(CONIURA tc_fail_prefix(res), "json raiz nao e objeto")
+    CONIURA println(msg_obj)
+    IACE msg_obj
+  FIN SI
+  SI NON CONIURA json_has_key(root, chave)
+    EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("json nao contem chave \"", CONIURA concat(chave, "\"")))
+    CONIURA println(msg)
+    IACE msg
+  FIN SI
+  REDDE CONIURA json_get_key(root, chave)
+EXPLICIT RITUALE
+
+RITUALE assert_json_str(TestResponse res, VERBUM chave, VERBUM esperado) REDDE NIHIL
+  EVOCA Json valor AD CONIURA assert_json_key(res, chave)
+  SI NON CONIURA json_is_str(valor)
+    EVOCA VERBUM msg_type AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("json[\"", CONIURA concat(chave, "\"] nao e string")))
+    CONIURA println(msg_type)
+    IACE msg_type
+  FIN SI
+  EVOCA VERBUM atual AD CONIURA json_expect_str(valor)
+  SI CONIURA compare(atual, esperado) == 0
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("json[\"", CONIURA concat(chave, CONIURA concat("\"] esperado \"", CONIURA concat(esperado, CONIURA concat("\", recebido \"", CONIURA concat(atual, "\"")))))))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_json_arr_len(TestResponse res, VERBUM chave, REX n_esperado) REDDE NIHIL
+  EVOCA Json valor AD CONIURA assert_json_key(res, chave)
+  SI NON CONIURA json_is_arr(valor)
+    EVOCA VERBUM msg_type AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("json[\"", CONIURA concat(chave, "\"] nao e array")))
+    CONIURA println(msg_type)
+    IACE msg_type
+  FIN SI
+  EVOCA REX real AD CONIURA json_arr_len(valor)
+  SI real == n_esperado
+    REDDE
+  FIN SI
+  EVOCA VERBUM msg AD CONIURA concat(CONIURA tc_fail_prefix(res), CONIURA concat("json[\"", CONIURA concat(chave, CONIURA concat("\"] len esperado ", CONIURA concat(CONIURA stringify_int(n_esperado), CONIURA concat(", recebido ", CONIURA stringify_int(real)))))))
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE assert_json_arr_empty(TestResponse res, VERBUM chave) REDDE NIHIL
+  CONIURA assert_json_arr_len(res, chave, 0)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

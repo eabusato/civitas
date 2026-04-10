@@ -1,0 +1,171 @@
+INCIPIT grimoire "civitas_i18n_registry"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "i18n.cct"
+
+RITUALE i18n_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE i18n_err(VERBUM mensagem) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(mensagem)
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_find(I18nRegistry reg, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(reg.locales)
+  DUM i < n
+    EVOCA SPECULUM I18nLocaleEntry ep AD CONIURA fluxus_get(reg.locales, i)
+    SI CONIURA compare((*ep).locale, locale) == 0
+      REDDE CONIURA Some GENUS(I18nLocaleEntry)(CONIURA i18n_registry_clone_entry(*ep))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(I18nLocaleEntry)()
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_clone_keys(SPECULUM NIHIL known_keys) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(known_keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(known_keys, i)
+    EVOCA VERBUM copied_key AD CONIURA concat("", *key_ptr)
+    CONIURA fluxus_push(out, SPECULUM copied_key)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_clone_entry(I18nLocaleEntry src) REDDE I18nLocaleEntry
+  EVOCA I18nLocaleEntry out
+  VINCIRE out.locale AD CONIURA concat("", src.locale)
+  VINCIRE out.handle AD src.handle
+  VINCIRE out.known_keys AD CONIURA i18n_registry_clone_keys(src.known_keys)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_find_index(I18nRegistry reg, VERBUM locale) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(reg.locales)
+  DUM i < n
+    EVOCA SPECULUM I18nLocaleEntry ep AD CONIURA fluxus_get(reg.locales, i)
+    SI CONIURA compare((*ep).locale, locale) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_add_catalog_with_keys(SPECULUM I18nRegistry reg, VERBUM locale, Catalog cat, SPECULUM NIHIL known_keys) REDDE NIHIL
+  EVOCA I18nLocaleEntry entry
+  VINCIRE entry.locale AD CONIURA concat("", locale)
+  VINCIRE entry.handle AD cat.handle
+  VINCIRE entry.known_keys AD CONIURA i18n_registry_clone_keys(known_keys)
+
+  EVOCA REX idx AD CONIURA i18n_registry_find_index(*reg, locale)
+  SI idx >= 0
+    CONIURA fluxus_set((*reg).locales, idx, SPECULUM entry)
+  ALITER
+    CONIURA fluxus_push((*reg).locales, SPECULUM entry)
+  FIN SI
+
+  SI CONIURA compare(locale, (*reg).config.locale_padrao) == 0
+    CONIURA gettext_set_default_catalog(cat)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_add_catalog(SPECULUM I18nRegistry reg, VERBUM locale, Catalog cat) REDDE NIHIL
+  CONIURA i18n_registry_add_catalog_with_keys(reg, locale, cat, CONIURA fluxus_init(MENSURA(VERBUM)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_entry_has_key(I18nLocaleEntry entry, VERBUM chave) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entry.known_keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM chave_ptr AD CONIURA fluxus_get(entry.known_keys, i)
+    SI CONIURA compare(*chave_ptr, chave) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_collect_po_keys(VERBUM caminho) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL linhas AD CONIURA read_lines(caminho)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(linhas)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM linha_ptr AD CONIURA fluxus_get(linhas, i)
+    EVOCA VERBUM linha AD *linha_ptr
+    SI CONIURA starts_with(linha, "msgid \"")
+      SI CONIURA compare(linha, "msgid \"\"") != 0
+        EVOCA REX total AD CONIURA len(linha)
+        EVOCA VERBUM chave AD CONIURA substring(linha, 7, total - 1)
+        EVOCA VERBUM copied_key AD CONIURA concat("", chave)
+        CONIURA fluxus_push(keys, SPECULUM copied_key)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE keys
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_catalog_path(I18nRegistry reg, VERBUM locale) REDDE VERBUM
+  EVOCA VERBUM caminho AD CONIURA concat(reg.config.dir_catalogo, "/")
+  VINCIRE caminho AD CONIURA concat(caminho, locale)
+  VINCIRE caminho AD CONIURA concat(caminho, ".")
+  VINCIRE caminho AD CONIURA concat(caminho, reg.config.formato)
+  REDDE caminho
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_load_locale(SPECULUM I18nRegistry reg, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA VERBUM caminho AD CONIURA i18n_registry_catalog_path(*reg, locale)
+  EVOCA SPECULUM NIHIL loaded AD CONIURA gettext_load_catalog(caminho, locale)
+  SI CONIURA result_is_err GENUS(Catalog, VERBUM)(loaded)
+    REDDE CONIURA i18n_err(CONIURA result_unwrap_err GENUS(Catalog, VERBUM)(loaded))
+  FIN SI
+
+  EVOCA Catalog cat AD CONIURA result_unwrap GENUS(Catalog, VERBUM)(loaded)
+  CONIURA i18n_registry_add_catalog_with_keys(reg, locale, cat, CONIURA i18n_registry_collect_po_keys(caminho))
+  REDDE CONIURA i18n_ok()
+EXPLICIT RITUALE
+
+RITUALE i18n_registry_load_all(SPECULUM I18nRegistry reg) REDDE REX
+  EVOCA VERBUM ext AD CONIURA concat(".", (*reg).config.formato)
+  EVOCA SPECULUM NIHIL arquivos AD CONIURA list_dir((*reg).config.dir_catalogo)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(arquivos)
+  EVOCA REX carregados AD 0
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM nome_ptr AD CONIURA fluxus_get(arquivos, i)
+    EVOCA VERBUM nome AD *nome_ptr
+    SI CONIURA ends_with(nome, ext)
+      EVOCA REX nome_len AD CONIURA len(nome)
+      EVOCA REX ext_len AD CONIURA len(ext)
+      EVOCA VERBUM locale AD CONIURA substring(nome, 0, nome_len - ext_len)
+      EVOCA SPECULUM NIHIL loaded AD CONIURA i18n_registry_load_locale(reg, locale)
+      SI CONIURA result_is_ok GENUS(REX, VERBUM)(loaded)
+        VINCIRE carregados AD carregados + 1
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE carregados
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

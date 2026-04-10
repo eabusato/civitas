@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase6_6a_escape_and_filters_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase6_tmp_dir("6a_escape_and_filters")
+  EVOCA VERBUM generated AD ""
+  EVOCA VERBUM code AD ""
+
+  CONIURA phase6_init_project(root)
+  CONIURA phase6_write_template(
+    root,
+    "profile.html",
+    "{% EVOCA BlogPageContext %}\n<h1>{{ nome }}</h1>\n<div>{{ bio_html|safe }}</div>\n<strong>{{ nome|upper }}</strong>\n"
+  )
+
+  VINCIRE generated AD CONIURA phase6_compile_file_ok(root, "profile.html")
+  VINCIRE code AD CONIURA read_all(generated)
+
+  SI CONIURA find(code, "html_encode(ctx.nome)") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(code, "builder_append(b, ctx.bio_html)") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(code, "tpl_filter_upper(ctx.nome)") == -1
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

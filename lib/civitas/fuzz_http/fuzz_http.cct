@@ -1,0 +1,109 @@
+INCIPIT grimoire "civitas_fuzz_http"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM FuzzConfig
+  max_inputs: REX
+  include_response_cases: VERUM
+FIN SIGILLUM
+
+SIGILLUM FuzzResult
+  total_inputs: REX
+  request_cases: REX
+  response_cases: REX
+  crashes: REX
+  approved: VERUM
+  duration_ms: REX
+FIN SIGILLUM
+
+RITUALE fuzz_http_config_default() REDDE FuzzConfig
+  EVOCA FuzzConfig cfg
+  VINCIRE cfg.max_inputs AD 16
+  VINCIRE cfg.include_response_cases AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE fuzz_http_request_cases() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM crlf AD CONIURA http_crlf()
+  EVOCA VERBUM sep AD CONIURA concat(crlf, crlf)
+  EVOCA VERBUM raw0 AD CONIURA concat("GET / HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", sep)))
+  EVOCA VERBUM raw1 AD CONIURA concat("GET /health?x=%3Cscript%3E HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", CONIURA concat(crlf, CONIURA concat("X-Test: alpha", sep)))))
+  EVOCA VERBUM raw2 AD CONIURA concat("POST /submit HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", CONIURA concat(crlf, CONIURA concat("Content-Type: application/json", CONIURA concat(crlf, CONIURA concat("Content-Length: 11", CONIURA concat(sep, "{\"ok\":true}"))))))))
+  EVOCA VERBUM raw3 AD CONIURA concat("PATCH /a/b/c HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", CONIURA concat(crlf, CONIURA concat("Cookie: a=1; b=2", CONIURA concat(crlf, CONIURA concat("X-Forwarded-For: 127.0.0.1", sep)))))))
+  EVOCA VERBUM raw4 AD CONIURA concat("DELETE /static/%2E%2E/%2E%2E/app.db HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", CONIURA concat(crlf, CONIURA concat("Authorization: Basic YWJjOmRlZg==", sep)))))
+  EVOCA VERBUM raw5 AD CONIURA concat("OPTIONS /ws/chat HTTP/1.1", CONIURA concat(crlf, CONIURA concat("Host: fuzz.local", CONIURA concat(crlf, CONIURA concat("Upgrade: websocket", CONIURA concat(crlf, CONIURA concat("Connection: Upgrade", CONIURA concat(crlf, CONIURA concat("Sec-WebSocket-Key: fuzzkey==", CONIURA concat(crlf, CONIURA concat("Sec-WebSocket-Version: 13", sep)))))))))))
+  CONIURA fluxus_push(out, SPECULUM raw0)
+  CONIURA fluxus_push(out, SPECULUM raw1)
+  CONIURA fluxus_push(out, SPECULUM raw2)
+  CONIURA fluxus_push(out, SPECULUM raw3)
+  CONIURA fluxus_push(out, SPECULUM raw4)
+  CONIURA fluxus_push(out, SPECULUM raw5)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fuzz_http_response_cases() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM crlf AD CONIURA http_crlf()
+  EVOCA VERBUM sep AD CONIURA concat(crlf, crlf)
+  EVOCA VERBUM raw0 AD CONIURA concat("HTTP/1.1 200 OK", CONIURA concat(crlf, CONIURA concat("Content-Type: text/plain", CONIURA concat(sep, "ok"))))
+  EVOCA VERBUM raw1 AD CONIURA concat("HTTP/1.1 302 Found", CONIURA concat(crlf, CONIURA concat("Location: /login", CONIURA concat(crlf, CONIURA concat("Set-Cookie: sid=abc", sep)))))
+  EVOCA VERBUM raw2 AD CONIURA concat("HTTP/1.1 401 Unauthorized", CONIURA concat(crlf, CONIURA concat("WWW-Authenticate: Basic realm=fuzz", CONIURA concat(crlf, CONIURA concat("Connection: close", sep)))))
+  EVOCA VERBUM raw3 AD CONIURA concat("HTTP/1.1 500 Internal Server Error", CONIURA concat(crlf, CONIURA concat("Content-Type: text/plain", CONIURA concat(crlf, CONIURA concat("X-Trace: abc", CONIURA concat(sep, "panic hidden"))))))
+  CONIURA fluxus_push(out, SPECULUM raw0)
+  CONIURA fluxus_push(out, SPECULUM raw1)
+  CONIURA fluxus_push(out, SPECULUM raw2)
+  CONIURA fluxus_push(out, SPECULUM raw3)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE fuzz_http_run(FuzzConfig cfg) REDDE FuzzResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA FuzzResult out
+  VINCIRE out.total_inputs AD 0
+  VINCIRE out.request_cases AD 0
+  VINCIRE out.response_cases AD 0
+  VINCIRE out.crashes AD 0
+  VINCIRE out.approved AD VERUM
+  VINCIRE out.duration_ms AD 0
+
+  EVOCA SPECULUM NIHIL reqs AD CONIURA fuzz_http_request_cases()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(reqs)
+  DUM i < n ET out.total_inputs < cfg.max_inputs
+    EVOCA SPECULUM VERBUM raw_ptr AD CONIURA fluxus_get(reqs, i)
+    EVOCA HttpRequest req AD CONIURA http_parse_request(*raw_ptr)
+    SI CONIURA len(CONIURA http_request_method(req)) == 0
+      VINCIRE out.approved AD FALSUM
+    FIN SI
+    VINCIRE out.total_inputs AD out.total_inputs + 1
+    VINCIRE out.request_cases AD out.request_cases + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(reqs)
+
+  SI cfg.include_response_cases
+    EVOCA SPECULUM NIHIL ress AD CONIURA fuzz_http_response_cases()
+    VINCIRE i AD 0
+    VINCIRE n AD CONIURA fluxus_len(ress)
+    DUM i < n ET out.total_inputs < cfg.max_inputs
+      EVOCA SPECULUM VERBUM raw_ptr AD CONIURA fluxus_get(ress, i)
+      EVOCA HttpResponse res AD CONIURA http_parse_response(*raw_ptr)
+      SI CONIURA http_response_status(res) <= 0
+        VINCIRE out.approved AD FALSUM
+      FIN SI
+      VINCIRE out.total_inputs AD out.total_inputs + 1
+      VINCIRE out.response_cases AD out.response_cases + 1
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA fluxus_free(ress)
+  FIN SI
+
+  VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,105 @@
+INCIPIT grimoire "civitas_transaction"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+SIGILLUM TxContext
+  profundidade: REX
+  ativa: VERUM
+  nome_base: VERBUM
+FIN SIGILLUM
+
+ORDO TxError
+  TxeBeginFalhou,
+  TxeSavepointFalhou,
+  TxeCommitFalhou,
+  TxeRollbackFalhou,
+  TxeSemTransacao
+FIN ORDO
+
+RITUALE tx_context_new() REDDE TxContext
+  EVOCA TxContext ctx
+  VINCIRE ctx.profundidade AD 0
+  VINCIRE ctx.ativa AD FALSUM
+  VINCIRE ctx.nome_base AD "sv"
+  REDDE ctx
+EXPLICIT RITUALE
+
+RITUALE tx_context_new_com_prefixo(VERBUM prefixo) REDDE TxContext
+  EVOCA TxContext ctx AD CONIURA tx_context_new()
+  VINCIRE ctx.nome_base AD prefixo
+  REDDE ctx
+EXPLICIT RITUALE
+
+RITUALE tx_nome_savepoint(TxContext ctx) REDDE VERBUM
+  EVOCA VERBUM nome AD CONIURA concat(ctx.nome_base, "_")
+  VINCIRE nome AD CONIURA concat(nome, CONIURA stringify_int(ctx.profundidade))
+  REDDE nome
+EXPLICIT RITUALE
+
+RITUALE tx_begin(DbHandle h, SPECULUM TxContext ctx) REDDE VERUM
+  SI (*ctx).profundidade == 0
+    CONIURA dbh_begin(h)
+    VINCIRE (*ctx).profundidade AD 1
+    VINCIRE (*ctx).ativa AD VERUM
+    REDDE VERUM
+  FIN SI
+  VINCIRE (*ctx).profundidade AD (*ctx).profundidade + 1
+  CONIURA dbh_savepoint(h, CONIURA tx_nome_savepoint(*ctx))
+  VINCIRE (*ctx).ativa AD VERUM
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE tx_commit(DbHandle h, SPECULUM TxContext ctx) REDDE VERUM
+  SI NON (*ctx).ativa
+    REDDE FALSUM
+  FIN SI
+  SI (*ctx).profundidade == 1
+    CONIURA dbh_commit(h)
+    VINCIRE (*ctx).profundidade AD 0
+    VINCIRE (*ctx).ativa AD FALSUM
+    REDDE VERUM
+  FIN SI
+  CONIURA dbh_release_savepoint(h, CONIURA tx_nome_savepoint(*ctx))
+  VINCIRE (*ctx).profundidade AD (*ctx).profundidade - 1
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE tx_rollback(DbHandle h, SPECULUM TxContext ctx) REDDE NIHIL
+  SI NON (*ctx).ativa
+    REDDE
+  FIN SI
+  SI (*ctx).profundidade == 1
+    CONIURA dbh_rollback(h)
+    VINCIRE (*ctx).profundidade AD 0
+    VINCIRE (*ctx).ativa AD FALSUM
+    REDDE
+  FIN SI
+  CONIURA dbh_rollback_to(h, CONIURA tx_nome_savepoint(*ctx))
+  CONIURA dbh_release_savepoint(h, CONIURA tx_nome_savepoint(*ctx))
+  VINCIRE (*ctx).profundidade AD (*ctx).profundidade - 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tx_profundidade(TxContext ctx) REDDE REX
+  REDDE ctx.profundidade
+EXPLICIT RITUALE
+
+RITUALE tx_esta_ativa(TxContext ctx) REDDE VERUM
+  REDDE ctx.ativa
+EXPLICIT RITUALE
+
+RITUALE com_transacao(DbHandle h, SPECULUM NIHIL fn, SPECULUM TxContext ctx) REDDE VERUM
+  CONIURA tx_begin(h, ctx)
+  EVOCA VERUM ok AD CONIURA callback_invoke1 GENUS(DbHandle, VERUM)(fn, h)
+  SI ok
+    CONIURA tx_commit(h, ctx)
+    REDDE VERUM
+  FIN SI
+  CONIURA tx_rollback(h, ctx)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

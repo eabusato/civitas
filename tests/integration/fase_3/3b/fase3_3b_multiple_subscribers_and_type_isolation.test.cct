@@ -1,0 +1,66 @@
+INCIPIT grimoire "fase3_3b_multiple_subscribers_and_type_isolation_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceState
+  value: VERBUM
+FIN SIGILLUM
+
+RITUALE first_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM EventEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).attributes
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "A")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE second_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM EventEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).attributes
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "B")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ignored_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM EventEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).attributes
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "X")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA EventBus bus
+  EVOCA EventEnvelope env
+  EVOCA TraceState trace
+  EVOCA EventDispatchReport report
+
+  CONIURA event_bus_init(SPECULUM bus, "typed-bus")
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "user.registered", "first_handler", first_handler))
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "user.registered", "second_handler", second_handler))
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "content.published", "ignored_handler", ignored_handler))
+
+  VINCIRE trace.value AD ""
+  CONIURA event_envelope_fill(SPECULUM env, "user.registered", "evt-1", "2026-03-27T10:00:00+0000", "req-3b", "actor-9", SPECULUM trace, "{\"user_id\":\"9\"}")
+  VINCIRE report AD CONIURA event_publish(bus, env)
+
+  SI CONIURA compare(trace.value, "AB") != 0
+    REDDE 1
+  FIN SI
+  SI report.delivered_count != 2
+    REDDE 2
+  FIN SI
+  SI report.filtered_out_count != 0 VEL report.failed_count != 0
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

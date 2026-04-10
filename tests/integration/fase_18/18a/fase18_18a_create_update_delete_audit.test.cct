@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase18_18a_create_update_delete_audit"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_crud.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_audit.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_list.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_create_update_delete_and_audit() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18a_crud")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA VERBUM pk AD CONIURA admin_create(*cfg_ptr, stack.dbh, "{\"title\":\"First\",\"state\":\"draft\",\"author_id\":\"u1\",\"created_at\":1000}", "actor-1")
+  SI CONIURA compare(pk, "1") != 0
+    IACE "expected sqlite autoincrement id 1"
+  FIN SI
+  CONIURA admin_update(*cfg_ptr, stack.dbh, pk, "{\"title\":\"First Updated\",\"state\":\"published\"}", "actor-1")
+  EVOCA AdminLookup lookup AD CONIURA admin_get_one(*cfg_ptr, stack.dbh, pk)
+  SI NON lookup.found
+    IACE "updated record not found"
+  FIN SI
+  SI CONIURA find(lookup.row_json, "\"title\":\"First Updated\"") == -1
+    IACE "updated title missing"
+  FIN SI
+  CONIURA admin_delete(*cfg_ptr, stack.dbh, pk, "actor-1")
+  VINCIRE lookup AD CONIURA admin_get_one(*cfg_ptr, stack.dbh, pk)
+  SI lookup.found
+    IACE "record should be deleted"
+  FIN SI
+  SI CONIURA admin_audit_count(stack.dbh, "Post") != 3
+    IACE "expected 3 audit entries"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_create_update_delete_and_audit()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

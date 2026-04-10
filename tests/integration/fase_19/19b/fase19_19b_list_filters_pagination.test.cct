@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase19_19b_list_filters_pagination"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_list_filters_pagination() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19b_list")
+  EVOCA ApiViewConfig cfg
+  EVOCA TokenConfig tok_cfg AD CONIURA auth_test_token_config()
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "Alpha", "body-1", 10, "{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Beta", "body-2", 20, "{\"id\":2,\"name\":\"Bia\",\"email\":\"bia@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Beta Plus", "body-3", 30, "{\"id\":3,\"name\":\"Caio\",\"email\":\"caio@example.com\"}")
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  VINCIRE cfg.page_size AD 1
+  VINCIRE cfg.default_order AD "published_at"
+  VINCIRE cfg.default_order_dir AD "desc"
+  CONIURA api_view_config_add_filter_field(SPECULUM cfg, "title")
+  CONIURA api_view_config_add_order_field(SPECULUM cfg, "published_at")
+  EVOCA WebRequest req AD CONIURA phase19_request("GET", "/api/v1/posts?title__like=Beta&page=1&page_size=1&order=published_at&dir=desc", "")
+  EVOCA WebResponse res AD CONIURA api_view_list(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, req)
+  SI res.status != 200
+    IACE "list status mismatch"
+  FIN SI
+  SI CONIURA find(res.body, "\"total\":2") == -1
+    IACE "list total meta mismatch"
+  FIN SI
+  SI CONIURA find(res.body, "\"title\":\"Beta Plus\"") == -1
+    IACE "list first row mismatch"
+  FIN SI
+  SI CONIURA find(res.body, "\"title\":\"Alpha\"") != -1
+    IACE "filter unexpectedly included Alpha"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_list_filters_pagination()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

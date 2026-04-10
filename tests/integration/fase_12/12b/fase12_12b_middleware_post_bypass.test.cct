@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase12_12b_middleware_post_bypass"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_middleware.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase12_12b_terminal_post(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  CONIURA append_all("tests/tmp/fase_12/12b/post_calls.txt", "x")
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("posted"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  CONIURA phase12_12b_reset_dir("tests/tmp/fase_12/12b")
+  EVOCA CacheHandle h AD CONIURA phase12_mem_cache("12b-post")
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM h, CONIURA phase12_12b_cfg("cv12b", 60), NIHIL)
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "cache_view", cache_view_middleware)
+  EVOCA WebRequest req AD CONIURA phase12_12b_request("POST", "/posts")
+  EVOCA RequestContext ctx1 AD CONIURA phase12_12b_ctx(cv, 60)
+  EVOCA RequestContext ctx2 AD CONIURA phase12_12b_ctx(cv, 60)
+  CONIURA middleware_chain_with_context(middlewares, req, SPECULUM ctx1, phase12_12b_terminal_post)
+  CONIURA middleware_chain_with_context(middlewares, req, SPECULUM ctx2, phase12_12b_terminal_post)
+  SI CONIURA len(CONIURA read_all("tests/tmp/fase_12/12b/post_calls.txt")) != 2
+    REDDE 1
+  FIN SI
+  EVOCA CacheMaybeViewEntry maybe AD CONIURA cache_view_get(cv, req)
+  SI maybe.found
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

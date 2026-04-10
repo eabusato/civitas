@@ -1,0 +1,273 @@
+INCIPIT grimoire "civitas_auth_flows"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM FlowConfig
+  ttl_reset_senha: REX
+  ttl_verificar_email: REX
+  ttl_alterar_email: REX
+  max_historico_senhas: REX
+  secret: VERBUM
+FIN SIGILLUM
+
+ORDO FlowError
+  FlowTokenInvalido,
+  FlowTokenExpirado,
+  FlowTokenJaUsado,
+  FlowTokenTipoErrado(VERBUM esperado),
+  FlowUsuarioNaoEncontrado,
+  FlowSenhaFraca,
+  FlowSenhaReutilizada,
+  FlowEmailJaVerificado,
+  FlowErroInterno(VERBUM mensagem)
+FIN ORDO
+
+SIGILLUM FlowToken
+  id: VERBUM
+  user_id: VERBUM
+  tipo: VERBUM
+  token_hash: VERBUM
+  payload: VERBUM
+  expira_em: REX
+  usado: VERUM
+  criado_em: REX
+FIN SIGILLUM
+
+SIGILLUM FlowTokenResult
+  token_claro: VERBUM
+  flow_token: FlowToken
+FIN SIGILLUM
+
+RITUALE flow_config_default(VERBUM secret) REDDE FlowConfig
+  EVOCA FlowConfig cfg
+  VINCIRE cfg.ttl_reset_senha AD 3600
+  VINCIRE cfg.ttl_verificar_email AD 86400
+  VINCIRE cfg.ttl_alterar_email AD 3600
+  VINCIRE cfg.max_historico_senhas AD 5
+  VINCIRE cfg.secret AD secret
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE auth_flow_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE auth_flow_ok_token_result(FlowTokenResult value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(FlowTokenResult, FlowError)(value)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_err_token_result(FlowError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(FlowTokenResult, FlowError)(err)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_ok_token(FlowToken value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(FlowToken, FlowError)(value)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_err_token(FlowError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(FlowToken, FlowError)(err)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_ok_verbum(VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, FlowError)(value)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_err_verbum(FlowError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERBUM, FlowError)(err)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_ok_verum(VERUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERUM, FlowError)(value)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_err_verum(FlowError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERUM, FlowError)(err)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_error_name(FlowError err) REDDE VERBUM
+  ELIGE err
+    CASUS FlowTokenInvalido:
+      REDDE "FlowTokenInvalido"
+    CASUS FlowTokenExpirado:
+      REDDE "FlowTokenExpirado"
+    CASUS FlowTokenJaUsado:
+      REDDE "FlowTokenJaUsado"
+    CASUS FlowTokenTipoErrado(_):
+      REDDE "FlowTokenTipoErrado"
+    CASUS FlowUsuarioNaoEncontrado:
+      REDDE "FlowUsuarioNaoEncontrado"
+    CASUS FlowSenhaFraca:
+      REDDE "FlowSenhaFraca"
+    CASUS FlowSenhaReutilizada:
+      REDDE "FlowSenhaReutilizada"
+    CASUS FlowEmailJaVerificado:
+      REDDE "FlowEmailJaVerificado"
+    CASUS FlowErroInterno(_):
+      REDDE "FlowErroInterno"
+    ALIOQUIN:
+      REDDE "FlowError"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE auth_flow_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_flow_token_empty() REDDE FlowToken
+  EVOCA FlowToken ft
+  VINCIRE ft.id AD ""
+  VINCIRE ft.user_id AD ""
+  VINCIRE ft.tipo AD ""
+  VINCIRE ft.token_hash AD ""
+  VINCIRE ft.payload AD ""
+  VINCIRE ft.expira_em AD 0
+  VINCIRE ft.usado AD FALSUM
+  VINCIRE ft.criado_em AD 0
+  REDDE ft
+EXPLICIT RITUALE
+
+RITUALE auth_flow_token_from_stmt(SPECULUM NIHIL stmt) REDDE FlowToken
+  EVOCA FlowToken ft AD CONIURA auth_flow_token_empty()
+  VINCIRE ft.id AD CONIURA stmt_get_text(stmt, 0)
+  VINCIRE ft.user_id AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE ft.tipo AD CONIURA stmt_get_text(stmt, 2)
+  VINCIRE ft.token_hash AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE ft.payload AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE ft.expira_em AD CONIURA stmt_get_int(stmt, 5)
+  VINCIRE ft.usado AD CONIURA stmt_get_int(stmt, 6) != 0
+  VINCIRE ft.criado_em AD CONIURA stmt_get_int(stmt, 7)
+  REDDE ft
+EXPLICIT RITUALE
+
+RITUALE auth_flow_gerar_token_claro(FlowConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL raw AD CONIURA csprng_bytes(32)
+  EVOCA VERBUM token_hex AD CONIURA bytes_to_hex(raw)
+  EVOCA VERBUM assinatura AD CONIURA hmac_sha256(cfg.secret, token_hex)
+  EVOCA VERBUM out AD CONIURA concat(token_hex, ":")
+  VINCIRE out AD CONIURA concat(out, assinatura)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE auth_flow_hash_token(VERBUM token_claro) REDDE VERBUM
+  REDDE CONIURA sha256(token_claro)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_token_signature_valid(FlowConfig cfg, VERBUM token_claro) REDDE VERUM
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(token_claro, ":")
+  SI CONIURA fluxus_len(partes) != 2
+    CONIURA fluxus_free(partes)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM VERBUM raw_ptr AD CONIURA fluxus_get(partes, 0)
+  EVOCA SPECULUM VERBUM mac_ptr AD CONIURA fluxus_get(partes, 1)
+  EVOCA VERBUM esperado AD CONIURA hmac_sha256(cfg.secret, *raw_ptr)
+  EVOCA VERUM ok AD CONIURA constant_time_compare(esperado, *mac_ptr)
+  CONIURA fluxus_free(partes)
+  REDDE ok
+EXPLICIT RITUALE
+
+RITUALE auth_flow_token_result_make(VERBUM token_claro, FlowToken ft) REDDE FlowTokenResult
+  EVOCA FlowTokenResult out
+  VINCIRE out.token_claro AD token_claro
+  VINCIRE out.flow_token AD ft
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE auth_flow_inserir_token(SPECULUM NIHIL db, FlowConfig cfg, VERBUM user_id, VERBUM tipo, VERBUM payload, REX ttl) REDDE SPECULUM NIHIL
+  EVOCA VERBUM token_claro AD CONIURA auth_flow_gerar_token_claro(cfg)
+  EVOCA VERBUM token_hash AD CONIURA auth_flow_hash_token(token_claro)
+  EVOCA VERBUM id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA REX agora_unix AD CONIURA auth_flow_now_unix()
+  EVOCA REX expira_em AD agora_unix + ttl
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "INSERT INTO auth_flow_tokens (id, user_id, tipo, token_hash, payload, expira_em, usado, criado_em) VALUES (?, ?, ?, ?, ?, ?, 0, ?)"
+  )
+  CONIURA stmt_bind_text(stmt, 1, id)
+  CONIURA stmt_bind_text(stmt, 2, user_id)
+  CONIURA stmt_bind_text(stmt, 3, tipo)
+  CONIURA stmt_bind_text(stmt, 4, token_hash)
+  CONIURA stmt_bind_text(stmt, 5, payload)
+  CONIURA stmt_bind_int(stmt, 6, expira_em)
+  CONIURA stmt_bind_int(stmt, 7, agora_unix)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt)
+
+  EVOCA FlowToken ft AD CONIURA auth_flow_token_empty()
+  VINCIRE ft.id AD id
+  VINCIRE ft.user_id AD user_id
+  VINCIRE ft.tipo AD tipo
+  VINCIRE ft.token_hash AD token_hash
+  VINCIRE ft.payload AD payload
+  VINCIRE ft.expira_em AD expira_em
+  VINCIRE ft.usado AD FALSUM
+  VINCIRE ft.criado_em AD agora_unix
+  REDDE CONIURA auth_flow_ok_token_result(CONIURA auth_flow_token_result_make(token_claro, ft))
+EXPLICIT RITUALE
+
+RITUALE auth_flow_buscar_token_por_hash(SPECULUM NIHIL db, VERBUM token_hash) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "SELECT id, user_id, tipo, token_hash, payload, expira_em, usado, criado_em FROM auth_flow_tokens WHERE token_hash = ? LIMIT 1"
+  )
+  CONIURA stmt_bind_text(stmt, 1, token_hash)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA auth_flow_err_token(FlowTokenInvalido)
+  FIN SI
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA auth_flow_err_token(FlowTokenInvalido)
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA auth_flow_token_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA auth_flow_ok_token(ft)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_invalidar_por_user_tipo(SPECULUM NIHIL db, VERBUM user_id, VERBUM tipo) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "UPDATE auth_flow_tokens SET usado = 1 WHERE user_id = ? AND tipo = ? AND usado = 0"
+  )
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, tipo)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_flow_payload_novo_email(VERBUM payload) REDDE SPECULUM NIHIL
+  TEMPTA
+    EVOCA Json root AD CONIURA json_parse(payload)
+    SI NON CONIURA json_is_obj(root)
+      REDDE CONIURA None GENUS(VERBUM)()
+    FIN SI
+    SI NON CONIURA json_has_key(root, "novo_email")
+      REDDE CONIURA None GENUS(VERBUM)()
+    FIN SI
+    EVOCA VERBUM novo_email AD CONIURA json_expect_str(CONIURA json_get_key(root, "novo_email"))
+    SI CONIURA len(novo_email) == 0
+      REDDE CONIURA None GENUS(VERBUM)()
+    FIN SI
+    REDDE CONIURA Some GENUS(VERBUM)(novo_email)
+  CAPE FRACTUM error
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN TEMPTA
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE auth_flow_payload_json_novo_email(VERBUM novo_email) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  CONIURA json_obj_push(root, "novo_email", CONIURA json_str(novo_email))
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

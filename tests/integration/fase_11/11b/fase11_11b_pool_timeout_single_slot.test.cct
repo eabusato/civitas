@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase11_11b_pool_timeout_single_slot"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+
+RITUALE main() REDDE REX
+  CONIURA phase11_reset_dir(CONIURA phase11_tmp_dir("11b_pool_timeout_single_slot"))
+  EVOCA PoolConfig cfg AD CONIURA pool_config_sqlite(CONIURA phase11_db_path("11b_pool_timeout_single_slot"))
+  VINCIRE cfg.timeout_ms AD 1
+  EVOCA SPECULUM NIHIL pool AD CONIURA pool_new(cfg, NIHIL, pool_sqlite_open_handle)
+  EVOCA SPECULUM NIHIL first AD CONIURA pool_acquire(pool)
+  SI first == NIHIL
+    REDDE 1
+  FIN SI
+  SI CONIURA pool_acquire(pool) != NIHIL
+    REDDE 2
+  FIN SI
+  CONIURA pool_release(pool, first)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

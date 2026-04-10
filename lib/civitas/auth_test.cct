@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_auth_test_root"
+
+ADVOCARE "auth_test/auth_test.cct"
+ADVOCARE "auth_test/auth_test_user.cct"
+ADVOCARE "auth_test/auth_test_token.cct"
+ADVOCARE "auth_test/auth_test_session.cct"
+ADVOCARE "auth_test/auth_test_request.cct"
+
+EXPLICIT grimoire

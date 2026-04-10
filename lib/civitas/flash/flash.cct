@@ -1,0 +1,163 @@
+INCIPIT grimoire "civitas_flash"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_scan.cct"
+ADVOCARE "../session/session.cct"
+
+ORDO FlashLevel
+  FlSuccess,
+  FlInfo,
+  FlWarning,
+  FlError
+FIN ORDO
+
+SIGILLUM FlashMessage
+  level: FlashLevel
+  texto: VERBUM
+FIN SIGILLUM
+
+RITUALE flash_level_to_string(FlashLevel level) REDDE VERBUM
+  ELIGE level
+    CASUS FlSuccess:
+      REDDE "success"
+    CASUS FlInfo:
+      REDDE "info"
+    CASUS FlWarning:
+      REDDE "warning"
+    CASUS FlError:
+      REDDE "error"
+  FIN ELIGE
+  REDDE "info"
+EXPLICIT RITUALE
+
+RITUALE flash_level_from_string(VERBUM s) REDDE FlashLevel
+  SI CONIURA compare(s, "success") == 0
+    REDDE FlSuccess
+  FIN SI
+  SI CONIURA compare(s, "warning") == 0
+    REDDE FlWarning
+  FIN SI
+  SI CONIURA compare(s, "error") == 0
+    REDDE FlError
+  FIN SI
+  REDDE FlInfo
+EXPLICIT RITUALE
+
+RITUALE flash_level_equals(FlashLevel left, FlashLevel right) REDDE VERUM
+  REDDE CONIURA compare(CONIURA flash_level_to_string(left), CONIURA flash_level_to_string(right)) == 0
+EXPLICIT RITUALE
+
+RITUALE flash_to_json(SPECULUM NIHIL msgs) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(msgs)
+  DUM i < n
+    EVOCA SPECULUM FlashMessage msg_ptr AD CONIURA fluxus_get(msgs, i)
+    EVOCA FlashMessage msg AD *msg_ptr
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "level", CONIURA json_str(CONIURA flash_level_to_string(msg.level)))
+    CONIURA json_obj_push(obj, "texto", CONIURA json_str(msg.texto))
+    CONIURA json_arr_push(arr, obj)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE flash_from_json(VERBUM json) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL msgs AD CONIURA fluxus_init(MENSURA(FlashMessage))
+  SI CONIURA len(CONIURA trim(json)) == 0 VEL CONIURA compare(CONIURA trim(json), "[]") == 0
+    REDDE msgs
+  FIN SI
+
+  EVOCA SPECULUM NIHIL c AD CONIURA cursor_init(json)
+  EVOCA Json root AD CONIURA json_parse_value(json, c)
+  CONIURA cursor_free(c)
+  SI NON CONIURA json_is_arr(root)
+    REDDE msgs
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(root)
+  DUM i < n
+    EVOCA Json item AD CONIURA json_arr_get(root, i)
+    EVOCA VERBUM level_str AD ""
+    EVOCA VERBUM texto_str AD ""
+    SI NON CONIURA json_is_obj(item)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    EVOCA Json level_json AD CONIURA json_get_key(item, "level")
+    EVOCA Json texto_json AD CONIURA json_get_key(item, "texto")
+    SI NON CONIURA json_is_str(level_json) VEL NON CONIURA json_is_str(texto_json)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    ELIGE level_json
+      CASUS JsonStr(s):
+        VINCIRE level_str AD s
+      ALIOQUIN:
+    FIN ELIGE
+    ELIGE texto_json
+      CASUS JsonStr(s):
+        VINCIRE texto_str AD s
+      ALIOQUIN:
+    FIN ELIGE
+    EVOCA FlashMessage msg
+    VINCIRE msg.level AD CONIURA flash_level_from_string(level_str)
+    VINCIRE msg.texto AD CONIURA substring(texto_str, 0, CONIURA len(texto_str))
+    CONIURA fluxus_push(msgs, SPECULUM msg)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE msgs
+EXPLICIT RITUALE
+
+RITUALE flash_set(SPECULUM Session sess, FlashLevel level, VERBUM texto) REDDE NIHIL
+  EVOCA VERBUM json_atual AD CONIURA session_get_or(sess, "_civitas_flash_pending", "[]")
+  EVOCA SPECULUM NIHIL msgs AD CONIURA flash_from_json(json_atual)
+  EVOCA FlashMessage msg
+  VINCIRE msg.level AD level
+  VINCIRE msg.texto AD CONIURA substring(texto, 0, CONIURA len(texto))
+  CONIURA fluxus_push(msgs, SPECULUM msg)
+  EVOCA VERBUM encoded AD CONIURA flash_to_json(msgs)
+  CONIURA session_set(sess, "_civitas_flash_pending", CONIURA substring(encoded, 0, CONIURA len(encoded)))
+  CONIURA fluxus_free(msgs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE flash_get_all(SPECULUM Session sess) REDDE SPECULUM NIHIL
+  REDDE CONIURA flash_from_json(CONIURA session_get_or(sess, "_civitas_flash", "[]"))
+EXPLICIT RITUALE
+
+RITUALE flash_has(SPECULUM Session sess) REDDE VERUM
+  EVOCA SPECULUM NIHIL msgs AD CONIURA flash_get_all(sess)
+  EVOCA VERUM has_any AD CONIURA fluxus_len(msgs) > 0
+  CONIURA fluxus_free(msgs)
+  REDDE has_any
+EXPLICIT RITUALE
+
+RITUALE flash_get_by_level(SPECULUM Session sess, FlashLevel level) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL all_msgs AD CONIURA flash_get_all(sess)
+  EVOCA SPECULUM NIHIL filtered AD CONIURA fluxus_init(MENSURA(FlashMessage))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(all_msgs)
+  DUM i < n
+    EVOCA SPECULUM FlashMessage msg_ptr AD CONIURA fluxus_get(all_msgs, i)
+    EVOCA FlashMessage msg AD *msg_ptr
+    SI CONIURA flash_level_equals(msg.level, level)
+      CONIURA fluxus_push(filtered, SPECULUM msg)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(all_msgs)
+  REDDE filtered
+EXPLICIT RITUALE
+
+RITUALE flash_clear(SPECULUM Session sess) REDDE NIHIL
+  CONIURA session_set(sess, "_civitas_flash", "[]")
+  CONIURA session_set(sess, "_civitas_flash_pending", "[]")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

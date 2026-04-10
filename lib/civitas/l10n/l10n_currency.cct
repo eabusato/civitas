@@ -1,0 +1,37 @@
+INCIPIT grimoire "civitas_l10n_currency"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n.cct"
+ADVOCARE "l10n_number.cct"
+
+RITUALE l10n_format_currency(UMBRA valor, VERBUM codigo_moeda, VERBUM simbolo, CurrencyRules rules, NumberRules nrules) REDDE VERBUM
+  EVOCA VERBUM val_fmt AD CONIURA l10n_format_real(valor, rules.casas_decimais, nrules)
+  EVOCA VERBUM usado AD simbolo
+  SI CONIURA len(usado) == 0
+    VINCIRE usado AD codigo_moeda
+  FIN SI
+
+  EVOCA VERBUM sep AD ""
+  SI rules.espaco_simbolo
+    VINCIRE sep AD " "
+  FIN SI
+
+  SI rules.simbolo_prefixo
+    REDDE CONIURA concat(CONIURA concat(usado, sep), val_fmt)
+  FIN SI
+  REDDE CONIURA concat(CONIURA concat(val_fmt, sep), usado)
+EXPLICIT RITUALE
+
+RITUALE l10n_format_brl(UMBRA valor, LocaleRules rules) REDDE VERBUM
+  REDDE CONIURA l10n_format_currency(valor, "BRL", "R$", rules.moeda, rules.numero)
+EXPLICIT RITUALE
+
+RITUALE l10n_format_usd(UMBRA valor, LocaleRules rules) REDDE VERBUM
+  REDDE CONIURA l10n_format_currency(valor, "USD", "$", rules.moeda, rules.numero)
+EXPLICIT RITUALE
+
+RITUALE l10n_format_eur(UMBRA valor, LocaleRules rules) REDDE VERBUM
+  REDDE CONIURA l10n_format_currency(valor, "EUR", "€", rules.moeda, rules.numero)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

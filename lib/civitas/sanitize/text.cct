@@ -1,0 +1,95 @@
+INCIPIT grimoire "civitas_sanitize_text"
+
+ADVOCARE "cct/verbum.cct"
+
+RITUALE normalize_newlines(VERBUM input) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA replace_all(input, CONIURA concat(CONIURA from_char(13), "\n"), "\n")
+  VINCIRE out AD CONIURA replace_all(out, CONIURA from_char(13), "\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE normalize_unicode_spaces(VERBUM input) REDDE VERBUM
+  EVOCA VERBUM out AD input
+  EVOCA VERBUM nbsp AD CONIURA concat(CONIURA from_char(194), CONIURA from_char(160))
+  EVOCA VERBUM em_space AD CONIURA concat(CONIURA concat(CONIURA from_char(226), CONIURA from_char(128)), CONIURA from_char(131))
+  EVOCA VERBUM thin_space AD CONIURA concat(CONIURA concat(CONIURA from_char(226), CONIURA from_char(128)), CONIURA from_char(137))
+  VINCIRE out AD CONIURA replace_all(out, nbsp, " ")
+  VINCIRE out AD CONIURA replace_all(out, em_space, " ")
+  VINCIRE out AD CONIURA replace_all(out, thin_space, " ")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE collapse_spaces(VERBUM input) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(input)
+  EVOCA VERUM pending_space AD FALSUM
+  EVOCA VERUM line_start AD VERUM
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(input, i)
+    SI ch == 32 VEL ch == 9
+      SI NON line_start
+        VINCIRE pending_space AD VERUM
+      FIN SI
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI ch == 10
+      SI CONIURA ends_with(out, " ")
+        VINCIRE out AD CONIURA substring(out, 0, CONIURA len(out) - 1)
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, "\n")
+      VINCIRE pending_space AD FALSUM
+      VINCIRE line_start AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI pending_space
+      VINCIRE out AD CONIURA concat(out, " ")
+      VINCIRE pending_space AD FALSUM
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA from_char(ch))
+    VINCIRE line_start AD FALSUM
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE normalize_paragraphs(VERBUM input) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(input)
+  EVOCA REX newline_run AD 0
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(input, i)
+    SI ch == 10
+      SI newline_run < 2
+        VINCIRE out AD CONIURA concat(out, "\n")
+      FIN SI
+      VINCIRE newline_run AD newline_run + 1
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    VINCIRE newline_run AD 0
+    VINCIRE out AD CONIURA concat(out, CONIURA from_char(ch))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE normalize_whitespace(VERBUM input) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA normalize_newlines(input)
+  VINCIRE out AD CONIURA normalize_unicode_spaces(out)
+  VINCIRE out AD CONIURA collapse_spaces(out)
+  VINCIRE out AD CONIURA normalize_paragraphs(out)
+  REDDE CONIURA trim(out)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

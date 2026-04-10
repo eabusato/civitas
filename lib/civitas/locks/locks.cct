@@ -1,0 +1,62 @@
+INCIPIT grimoire "civitas_locks"
+
+ADVOCARE "cct/db_postgres_lock.cct"
+
+SIGILLUM LockGuard
+  handle: SPECULUM NIHIL
+  released: VERUM
+FIN SIGILLUM
+
+SIGILLUM LockEvent
+  key_raw_name: VERBUM
+  acquired: VERUM
+  elapsed_ms: REX
+  job_name: VERBUM
+FIN SIGILLUM
+
+ORDO LockError
+  LockErrAcquireFalhou
+  LockErrReleaseFalhou
+  LockErrJaLiberado
+  LockErrNaoAdquirido
+FIN ORDO
+
+SIGILLUM JobLockResult
+  adquirido: VERUM
+  guard: LockGuard
+  evento: LockEvent
+FIN SIGILLUM
+
+RITUALE lock_guard_new(PgLockHandle handle) REDDE LockGuard
+  EVOCA LockGuard guard
+  EVOCA SPECULUM PgLockHandle handle_ptr AD OBSECRO mem_alloc(MENSURA(PgLockHandle))
+  VINCIRE (*handle_ptr) AD handle
+  VINCIRE guard.handle AD handle_ptr
+  VINCIRE guard.released AD FALSUM
+  REDDE guard
+EXPLICIT RITUALE
+
+RITUALE lock_event_new(VERBUM key_raw_name, VERUM acquired, REX elapsed_ms, VERBUM job_name) REDDE LockEvent
+  EVOCA LockEvent event
+  VINCIRE event.key_raw_name AD key_raw_name
+  VINCIRE event.acquired AD acquired
+  VINCIRE event.elapsed_ms AD elapsed_ms
+  VINCIRE event.job_name AD job_name
+  REDDE event
+EXPLICIT RITUALE
+
+RITUALE lock_guard_fill(SPECULUM LockGuard dest, LockGuard src) REDDE NIHIL
+  VINCIRE (*dest).handle AD src.handle
+  VINCIRE (*dest).released AD src.released
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE job_lock_result_new(VERUM adquirido, LockGuard guard, LockEvent evento) REDDE JobLockResult
+  EVOCA JobLockResult out
+  VINCIRE out.adquirido AD adquirido
+  CONIURA lock_guard_fill(SPECULUM out.guard, guard)
+  VINCIRE out.evento AD evento
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

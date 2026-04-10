@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase2_visibility_support"
+
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+
+RITUALE phase2_visibility_ctx(
+  VERUM is_authenticated,
+  VERUM is_owner,
+  VERUM has_follow_relation,
+  VERUM is_moderator,
+  VisibilitySurface surface
+) REDDE VisibilityContext
+  EVOCA VisibilityContext ctx
+  VINCIRE ctx.is_authenticated AD is_authenticated
+  VINCIRE ctx.is_owner AD is_owner
+  VINCIRE ctx.has_follow_relation AD has_follow_relation
+  VINCIRE ctx.is_moderator AD is_moderator
+  VINCIRE ctx.surface AD surface
+  REDDE ctx
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

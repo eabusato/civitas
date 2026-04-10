@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase23_23c_create_superuser_and_test_parse"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_management/civitas_management.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23c_create_superuser_and_test_parse")
+  CONIURA mkdir_all(CONIURA path_join(root, "tests"))
+  CONIURA write_all(CONIURA path_join(root, "tests/run_tests.sh"), "#!/bin/bash\necho \"[test] summary: pass=3 fail=1 skipped=2\"\n")
+  EVOCA ManagementProject proj AD CONIURA mgmt_project_default(CONIURA path_join(root, "civitas.toml"))
+  VINCIRE proj.dest_dir AD root
+  VINCIRE proj.db_url AD CONIURA path_join(root, "var/app.db")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_create_superuser_run(proj, "admin@example.com", "supersecret"))
+    REDDE 1
+  FIN SI
+  EVOCA TestResult tr AD CONIURA civitas_test_run(proj)
+  SI tr.total != 6 VEL tr.passed != 3 VEL tr.failed != 1 VEL tr.skipped != 2
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA civitas_shell_command(proj), CONIURA concat("sqlite3 ", CONIURA mgmt_shell_quote(proj.db_url))) != 0
+    REDDE 3
+  FIN SI
+  EVOCA PoolOpenResult opened AD CONIURA pool_sqlite_open_handle(proj.db_url)
+  EVOCA SPECULUM DbHandle dbh_ptr AD opened.handle
+  EVOCA DbParams lookup AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM lookup, "admin@example.com")
+  EVOCA DbRows verify AD CONIURA dbh_query(*dbh_ptr, "SELECT COUNT(*) FROM usuarios WHERE email = ?", lookup)
+  SI NON CONIURA dbrows_next(SPECULUM verify)
+    REDDE 4
+  FIN SI
+  SI CONIURA dbrows_get_int(verify, 0) != 1
+    REDDE 5
+  FIN SI
+  CONIURA dbrows_close(verify)
+  CONIURA dbh_params_free(SPECULUM lookup)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

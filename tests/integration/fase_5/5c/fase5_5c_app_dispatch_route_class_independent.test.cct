@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase5_5c_app_dispatch_route_class_independent_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5c_tmp_dir("5c_app_class_isolation")
+  EVOCA Application app AD CONIURA phase5_5c_new_app(
+    root,
+    "[app]\nname = \"f5c\"\nallowed_hosts = [\"example.test\"]\n"
+  )
+  EVOCA SPECULUM NIHIL store AD CONIURA abuse_route_store_new()
+  EVOCA SPECULUM NIHIL rules AD CONIURA abuse_route_rules_new()
+  EVOCA WebRequest login_req AD CONIURA phase5_request("GET", "/login")
+  EVOCA WebRequest contact_req AD CONIURA phase5_request("GET", "/contact")
+  EVOCA WebResponse login_first AD CONIURA response_new(500)
+  EVOCA WebResponse login_second AD CONIURA response_new(500)
+  EVOCA WebResponse contact_first AD CONIURA response_new(500)
+  EVOCA WebResponse contact_second AD CONIURA response_new(500)
+
+  CONIURA abuse_route_rules_add(rules, CONIURA rate_limit_rule_make(RlcAuth, 1, 60, 0))
+  CONIURA abuse_route_rules_add(rules, CONIURA rate_limit_rule_make(RlcPublicForm, 2, 60, 0))
+  CONIURA phase5_5c_install_route_limit(SPECULUM app, store, rules)
+  CONIURA phase5_5c_register_route(SPECULUM app, "GET", "/login", "login", RlcAuth)
+  CONIURA phase5_5c_register_route(SPECULUM app, "GET", "/contact", "contact", RlcPublicForm)
+
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM login_req, SPECULUM login_first)
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM login_req, SPECULUM login_second)
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM contact_req, SPECULUM contact_first)
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM contact_req, SPECULUM contact_second)
+
+  SI login_first.status != 200
+    REDDE 1
+  FIN SI
+  SI login_second.status != 429
+    REDDE 2
+  FIN SI
+  SI contact_first.status != 200
+    REDDE 3
+  FIN SI
+  SI contact_second.status != 200
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

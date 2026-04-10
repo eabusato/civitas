@@ -1,0 +1,365 @@
+INCIPIT grimoire "civitas_cookie"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Cookie
+  name: VERBUM
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SetCookie
+  name: VERBUM
+  value: VERBUM
+  path: VERBUM
+  domain: VERBUM
+  expires: VERBUM
+  max_age: REX
+  secure: VERUM
+  http_only: VERUM
+  same_site: VERBUM
+  is_signed: VERUM
+  is_encrypted: VERUM
+FIN SIGILLUM
+
+RITUALE cookie_default_set(VERBUM name, VERBUM value) REDDE SetCookie
+  EVOCA SetCookie cookie
+  VINCIRE cookie.name AD name
+  VINCIRE cookie.value AD value
+  VINCIRE cookie.path AD "/"
+  VINCIRE cookie.domain AD ""
+  VINCIRE cookie.expires AD ""
+  VINCIRE cookie.max_age AD -1
+  VINCIRE cookie.secure AD FALSUM
+  VINCIRE cookie.http_only AD FALSUM
+  VINCIRE cookie.same_site AD ""
+  VINCIRE cookie.is_signed AD FALSUM
+  VINCIRE cookie.is_encrypted AD FALSUM
+  REDDE cookie
+EXPLICIT RITUALE
+
+RITUALE cookie_ok(VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE cookie_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERBUM, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE cookie_set_ok(SetCookie value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(SetCookie, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE cookie_set_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(SetCookie, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE cookie_split_dot(VERBUM raw) REDDE SPECULUM NIHIL
+  REDDE CONIURA split(raw, ".")
+EXPLICIT RITUALE
+
+RITUALE cookie_get(SPECULUM NIHIL cookies, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(cookies)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM current AD *key_ptr
+    SI CONIURA compare(current, name) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(cookies, current)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE cookie_has(SPECULUM NIHIL cookies, VERBUM name) REDDE VERUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA cookie_get(cookies, name)
+  EVOCA VERUM found AD CONIURA option_is_some GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE found
+EXPLICIT RITUALE
+
+RITUALE cookie_parse_header(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL pairs AD CONIURA split(raw, ";")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(pairs)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM pair_ptr AD CONIURA fluxus_get(pairs, i)
+    EVOCA VERBUM pair AD CONIURA trim(*pair_ptr)
+    EVOCA REX eq AD CONIURA find(pair, "=")
+    SI eq > 0
+      EVOCA VERBUM name AD CONIURA trim(CONIURA substring(pair, 0, eq))
+      EVOCA VERBUM value AD CONIURA trim(CONIURA substring(pair, eq + 1, CONIURA len(pair)))
+      SI CONIURA len(name) != 0
+        CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(out, name, value)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cookie_validate_same_site(VERBUM same_site) REDDE NIHIL
+  SI CONIURA len(same_site) == 0
+    REDDE
+  FIN SI
+  EVOCA VERBUM lowered AD CONIURA to_lower(same_site)
+  SI CONIURA compare(lowered, "lax") == 0 VEL CONIURA compare(lowered, "strict") == 0 VEL CONIURA compare(lowered, "none") == 0
+    REDDE
+  FIN SI
+  IACE "cookie same_site invalido"
+EXPLICIT RITUALE
+
+RITUALE cookie_build_set(SetCookie cookie) REDDE VERBUM
+  SI CONIURA len(cookie.name) == 0
+    IACE "cookie name vazio"
+  FIN SI
+  CONIURA cookie_validate_same_site(cookie.same_site)
+
+  EVOCA VERBUM out AD CONIURA concat(cookie.name, "=")
+  VINCIRE out AD CONIURA concat(out, cookie.value)
+  SI CONIURA len(cookie.path) != 0
+    VINCIRE out AD CONIURA concat(out, "; Path=")
+    VINCIRE out AD CONIURA concat(out, cookie.path)
+  FIN SI
+  SI CONIURA len(cookie.domain) != 0
+    VINCIRE out AD CONIURA concat(out, "; Domain=")
+    VINCIRE out AD CONIURA concat(out, cookie.domain)
+  FIN SI
+  SI CONIURA len(cookie.expires) != 0
+    VINCIRE out AD CONIURA concat(out, "; Expires=")
+    VINCIRE out AD CONIURA concat(out, cookie.expires)
+  FIN SI
+  SI cookie.max_age >= 0
+    VINCIRE out AD CONIURA concat(out, "; Max-Age=")
+    VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(cookie.max_age))
+  FIN SI
+  SI cookie.secure
+    VINCIRE out AD CONIURA concat(out, "; Secure")
+  FIN SI
+  SI cookie.http_only
+    VINCIRE out AD CONIURA concat(out, "; HttpOnly")
+  FIN SI
+  SI CONIURA len(cookie.same_site) != 0
+    VINCIRE out AD CONIURA concat(out, "; SameSite=")
+    VINCIRE out AD CONIURA concat(out, cookie.same_site)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cookie_build_delete(VERBUM name) REDDE VERBUM
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(name, "")
+  VINCIRE cookie.max_age AD 0
+  VINCIRE cookie.expires AD "Thu, 01 Jan 1970 00:00:00 GMT"
+  REDDE CONIURA cookie_build_set(cookie)
+EXPLICIT RITUALE
+
+RITUALE cookie_parse_set(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(raw, ";")
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA REX i AD 0
+  EVOCA SetCookie out AD CONIURA cookie_default_set("", "")
+
+  SI n == 0
+    REDDE CONIURA cookie_set_err("set-cookie vazio")
+  FIN SI
+
+  EVOCA SPECULUM VERBUM first_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA VERBUM first AD CONIURA trim(*first_ptr)
+  EVOCA REX eq AD CONIURA find(first, "=")
+  SI eq <= 0
+    REDDE CONIURA cookie_set_err("set-cookie invalido")
+  FIN SI
+
+  VINCIRE out.name AD CONIURA trim(CONIURA substring(first, 0, eq))
+  VINCIRE out.value AD CONIURA trim(CONIURA substring(first, eq + 1, CONIURA len(first)))
+  VINCIRE i AD 1
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM part AD CONIURA trim(*part_ptr)
+    VINCIRE eq AD CONIURA find(part, "=")
+    SI eq == -1
+      EVOCA VERBUM lowered_flag AD CONIURA to_lower(part)
+      SI CONIURA compare(lowered_flag, "secure") == 0
+        VINCIRE out.secure AD VERUM
+      FIN SI
+      SI CONIURA compare(lowered_flag, "httponly") == 0
+        VINCIRE out.http_only AD VERUM
+      FIN SI
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    EVOCA VERBUM attr_name AD CONIURA to_lower(CONIURA trim(CONIURA substring(part, 0, eq)))
+    EVOCA VERBUM attr_value AD CONIURA trim(CONIURA substring(part, eq + 1, CONIURA len(part)))
+    SI CONIURA compare(attr_name, "path") == 0
+      VINCIRE out.path AD attr_value
+    FIN SI
+    SI CONIURA compare(attr_name, "domain") == 0
+      VINCIRE out.domain AD attr_value
+    FIN SI
+    SI CONIURA compare(attr_name, "expires") == 0
+      VINCIRE out.expires AD attr_value
+    FIN SI
+    SI CONIURA compare(attr_name, "max-age") == 0
+      EVOCA SPECULUM NIHIL age_opt AD CONIURA try_int(attr_value)
+      SI CONIURA option_is_none GENUS(REX)(age_opt)
+        REDDE CONIURA cookie_set_err("max-age invalido")
+      FIN SI
+      VINCIRE out.max_age AD CONIURA option_unwrap GENUS(REX)(age_opt)
+      CONIURA option_free GENUS(REX)(age_opt)
+    FIN SI
+    SI CONIURA compare(attr_name, "samesite") == 0
+      VINCIRE out.same_site AD attr_value
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA cookie_set_ok(out)
+EXPLICIT RITUALE
+
+RITUALE cookie_signed_prefix(VERBUM name_b64, VERBUM value_b64) REDDE VERBUM
+  EVOCA VERBUM prefix AD "s1."
+  VINCIRE prefix AD CONIURA concat(prefix, name_b64)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, value_b64)
+  REDDE prefix
+EXPLICIT RITUALE
+
+RITUALE cookie_sign(VERBUM name, VERBUM value, VERBUM secret) REDDE VERBUM
+  EVOCA VERBUM name_b64 AD CONIURA base64url_encode(name)
+  EVOCA VERBUM value_b64 AD CONIURA base64url_encode(value)
+  EVOCA VERBUM prefix AD CONIURA cookie_signed_prefix(name_b64, value_b64)
+  EVOCA VERBUM sig AD CONIURA hmac_sha256(secret, prefix)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, sig)
+  REDDE prefix
+EXPLICIT RITUALE
+
+RITUALE cookie_verify(VERBUM signed_value, VERBUM secret) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA cookie_split_dot(signed_value)
+  SI CONIURA fluxus_len(parts) != 4
+    REDDE CONIURA cookie_err("signed cookie invalido")
+  FIN SI
+
+  EVOCA SPECULUM VERBUM p0 AD CONIURA fluxus_get(parts, 0)
+  EVOCA SPECULUM VERBUM p1 AD CONIURA fluxus_get(parts, 1)
+  EVOCA SPECULUM VERBUM p2 AD CONIURA fluxus_get(parts, 2)
+  EVOCA SPECULUM VERBUM p3 AD CONIURA fluxus_get(parts, 3)
+  SI CONIURA compare(*p0, "s1") != 0
+    REDDE CONIURA cookie_err("signed cookie invalido")
+  FIN SI
+
+  EVOCA VERBUM prefix AD CONIURA cookie_signed_prefix(*p1, *p2)
+  EVOCA VERBUM expected AD CONIURA hmac_sha256(secret, prefix)
+  SI NON CONIURA constant_time_compare(expected, *p3)
+    REDDE CONIURA cookie_err("assinatura invalida")
+  FIN SI
+
+  EVOCA SPECULUM NIHIL decoded_opt AD CONIURA base64url_decode(*p2)
+  SI CONIURA option_is_none GENUS(VERBUM)(decoded_opt)
+    REDDE CONIURA cookie_err("payload assinado invalido")
+  FIN SI
+  REDDE CONIURA cookie_ok(CONIURA option_unwrap GENUS(VERBUM)(decoded_opt))
+EXPLICIT RITUALE
+
+RITUALE cookie_keystream_block(VERBUM secret, VERBUM context, REX index) REDDE VERBUM
+  EVOCA VERBUM digest AD CONIURA hmac_sha256(secret, CONIURA concat(CONIURA concat(context, "."), CONIURA stringify_int(index)))
+  EVOCA SPECULUM NIHIL raw_opt AD CONIURA hex_decode(digest)
+  SI CONIURA option_is_none GENUS(VERBUM)(raw_opt)
+    IACE "cookie keystream invalido"
+  FIN SI
+  REDDE CONIURA option_unwrap GENUS(VERBUM)(raw_opt)
+EXPLICIT RITUALE
+
+RITUALE cookie_xor_stream(VERBUM payload, VERBUM secret, VERBUM context) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA VERBUM stream AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(payload)
+  EVOCA REX block AD 0
+
+  DUM CONIURA len(stream) < n
+    VINCIRE stream AD CONIURA concat(stream, CONIURA cookie_keystream_block(secret, context, block))
+    VINCIRE block AD block + 1
+  FIN DUM
+
+  DUM i < n
+    EVOCA REX left AD CONIURA byte_value(CONIURA char_at(payload, i))
+    EVOCA REX right AD CONIURA byte_value(CONIURA char_at(stream, i))
+    VINCIRE out AD CONIURA append_char(out, cast GENUS(MILES)(left XOR right))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cookie_encrypt(VERBUM name, VERBUM value, VERBUM secret) REDDE VERBUM
+  EVOCA SPECULUM NIHIL nonce_bytes AD CONIURA csprng_bytes(16)
+  EVOCA VERBUM nonce_hex AD CONIURA bytes_to_hex(nonce_bytes)
+  EVOCA VERBUM name_b64 AD CONIURA base64url_encode(name)
+  EVOCA VERBUM context AD CONIURA concat(CONIURA concat(name_b64, "."), nonce_hex)
+  EVOCA VERBUM cipher_raw AD CONIURA cookie_xor_stream(value, secret, context)
+  EVOCA VERBUM cipher_b64 AD CONIURA base64url_encode(cipher_raw)
+  EVOCA VERBUM prefix AD "e1."
+  VINCIRE prefix AD CONIURA concat(prefix, name_b64)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, nonce_hex)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, cipher_b64)
+  EVOCA VERBUM mac AD CONIURA hmac_sha256(secret, prefix)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, mac)
+  REDDE prefix
+EXPLICIT RITUALE
+
+RITUALE cookie_decrypt(VERBUM protected_value, VERBUM secret) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA cookie_split_dot(protected_value)
+  SI CONIURA fluxus_len(parts) != 5
+    REDDE CONIURA cookie_err("protected cookie invalido")
+  FIN SI
+
+  EVOCA SPECULUM VERBUM p0 AD CONIURA fluxus_get(parts, 0)
+  EVOCA SPECULUM VERBUM p1 AD CONIURA fluxus_get(parts, 1)
+  EVOCA SPECULUM VERBUM p2 AD CONIURA fluxus_get(parts, 2)
+  EVOCA SPECULUM VERBUM p3 AD CONIURA fluxus_get(parts, 3)
+  EVOCA SPECULUM VERBUM p4 AD CONIURA fluxus_get(parts, 4)
+  SI CONIURA compare(*p0, "e1") != 0
+    REDDE CONIURA cookie_err("protected cookie invalido")
+  FIN SI
+
+  EVOCA VERBUM prefix AD "e1."
+  VINCIRE prefix AD CONIURA concat(prefix, *p1)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, *p2)
+  VINCIRE prefix AD CONIURA concat(prefix, ".")
+  VINCIRE prefix AD CONIURA concat(prefix, *p3)
+  EVOCA VERBUM expected AD CONIURA hmac_sha256(secret, prefix)
+  SI NON CONIURA constant_time_compare(expected, *p4)
+    REDDE CONIURA cookie_err("assinatura invalida")
+  FIN SI
+
+  EVOCA SPECULUM NIHIL cipher_opt AD CONIURA base64url_decode(*p3)
+  SI CONIURA option_is_none GENUS(VERBUM)(cipher_opt)
+    REDDE CONIURA cookie_err("payload protegido invalido")
+  FIN SI
+
+  EVOCA VERBUM context AD CONIURA concat(CONIURA concat(*p1, "."), *p2)
+  REDDE CONIURA cookie_ok(CONIURA cookie_xor_stream(CONIURA option_unwrap GENUS(VERBUM)(cipher_opt), secret, context))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

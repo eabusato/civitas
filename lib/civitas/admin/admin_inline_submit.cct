@@ -1,0 +1,40 @@
+INCIPIT grimoire "civitas_admin_inline_submit"
+
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin_inline.cct"
+ADVOCARE "admin_inline_save.cct"
+
+RITUALE admin_inline_submit_all(AdminInlineConfig cfg, DbHandle dbh, InlineSubmit submit, VERBUM actor_id) REDDE REX
+  EVOCA Json forms AD CONIURA json_parse(submit.forms_json)
+  EVOCA REX changed AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(forms)
+  CONIURA dbh_begin(dbh)
+  TEMPTA
+    DUM i < n
+      EVOCA Json item AD CONIURA json_arr_get(forms, i)
+      EVOCA InlineFormData form AD CONIURA inline_form_data_from_json(item)
+      SI form.delete_flag
+        SI CONIURA len(form.object_pk) > 0
+          CONIURA admin_inline_delete_one(cfg, dbh, submit.parent_pk, form.object_pk, actor_id)
+          VINCIRE changed AD changed + 1
+        FIN SI
+      ALITER
+        SI CONIURA len(form.object_pk) > 0 VEL CONIURA compare(form.fields_json, "{}") != 0
+          CONIURA admin_inline_save_one(cfg, dbh, submit.parent_pk, form, actor_id)
+          VINCIRE changed AD changed + 1
+        FIN SI
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA dbh_commit(dbh)
+  CAPE FRACTUM error
+    CONIURA dbh_rollback(dbh)
+    IACE error
+  FIN TEMPTA
+  REDDE changed
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

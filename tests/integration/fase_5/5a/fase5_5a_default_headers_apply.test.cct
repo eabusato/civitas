@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase5_5a_default_headers_apply_test"
+
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/security.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SecurityConfig cfg AD CONIURA security_config_default()
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE cfg.enforce_https AD VERUM
+  CONIURA security_headers_apply(SPECULUM cfg, "abc123", headers)
+
+  SI CONIURA compare(CONIURA request_header_or(headers, "x-frame-options", ""), "DENY") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA request_header_or(headers, "x-content-type-options", ""), "nosniff") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA request_header_or(headers, "referrer-policy", ""), "strict-origin-when-cross-origin") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA request_header_or(headers, "cache-control", ""), "no-store") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA len(CONIURA request_header_or(headers, "strict-transport-security", "")) == 0
+    REDDE 5
+  FIN SI
+  SI CONIURA find(CONIURA request_header_or(headers, "content-security-policy", ""), "nonce-abc123") == -1
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

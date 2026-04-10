@@ -1,0 +1,64 @@
+INCIPIT grimoire "fase20_20d_cache_task_moderation_spans"
+
+ADVOCARE "../../../../lib/civitas/trace/trace_cache.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_moderation.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_task.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+
+  EVOCA REX cache_span AD CONIURA trace_cache_begin("get", "post:1")
+  CONIURA trace_cache_mark_hit(cache_span, VERUM)
+  CONIURA trace_cache_mark_result(cache_span, 200)
+  CONIURA trace_cache_end(cache_span)
+
+  EVOCA REX task_span AD CONIURA trace_task_enqueue_begin("editorial.publish", "default")
+  CONIURA trace_task_enqueue_end(task_span, "task-1")
+
+  EVOCA REX decide_span AD CONIURA trace_moderation_decide_begin("item-9", "approve")
+  CONIURA trace_moderation_decide_end(decide_span, VERUM)
+
+  EVOCA REX bulk_span AD CONIURA trace_moderation_bulk_begin(3, "reject")
+  CONIURA instrument_span_end(bulk_span)
+
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace("trace-20d-cache-task-mod")
+  SI CONIURA trace_span_count(trace) != 4
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 1
+  FIN SI
+  EVOCA Span cache AD CONIURA trace_get_span(trace, 0)
+  SI NON CONIURA contains(cache.attributes_json, "\"cache.hit\":\"1\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 2
+  FIN SI
+  EVOCA Span task AD CONIURA trace_get_span(trace, 1)
+  SI NON CONIURA contains(task.attributes_json, "\"task.id\":\"task-1\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 3
+  FIN SI
+  EVOCA Span decide AD CONIURA trace_get_span(trace, 2)
+  SI NON CONIURA contains(decide.attributes_json, "\"moderation.result\":\"approved\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 4
+  FIN SI
+  EVOCA Span bulk AD CONIURA trace_get_span(trace, 3)
+  SI NON CONIURA contains(bulk.attributes_json, "\"moderation.count\":\"3\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 5
+  FIN SI
+
+  CONIURA trace_free(SPECULUM trace)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

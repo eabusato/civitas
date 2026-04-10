@@ -1,0 +1,242 @@
+INCIPIT grimoire "civitas_retention"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+ORDO RetentionTarget
+  RETENTION_TMP
+  RETENTION_MEDIA
+  RETENTION_SESSION
+  RETENTION_AUTH_FLOW
+  RETENTION_CACHE
+  RETENTION_TRACE
+  RETENTION_TASK_ATTEMPT
+  RETENTION_TASK_DEAD_LETTER
+  RETENTION_SCHEDULED_RUN
+  RETENTION_MEDIA_JOB
+  RETENTION_EDITORIAL_RUN
+FIN ORDO
+
+SIGILLUM RetentionConfig
+  tmp_max_age_seconds: REX
+  orphan_media_max_age_seconds: REX
+  session_max_age_seconds: REX
+  auth_flow_max_age_seconds: REX
+  cache_max_age_seconds: REX
+  trace_max_age_seconds: REX
+  task_attempt_max_age_seconds: REX
+  dead_letter_max_age_seconds: REX
+  scheduler_run_max_age_seconds: REX
+  media_job_max_age_seconds: REX
+  editorial_run_max_age_seconds: REX
+  batch_size: REX
+FIN SIGILLUM
+
+SIGILLUM RetentionReport
+  scanned_count: REX
+  deleted_count: REX
+  kept_count: REX
+  error_count: REX
+  details_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RetentionRun
+  id: VERBUM
+  target: RetentionTarget
+  started_at_unix: REX
+  finished_at_unix: REX
+  outcome: VERBUM
+  report_json: VERBUM
+FIN SIGILLUM
+
+RITUALE retention_target_to_string(RetentionTarget target) REDDE VERBUM
+  ELIGE target
+    CASUS RETENTION_MEDIA:
+      REDDE "media"
+    CASUS RETENTION_SESSION:
+      REDDE "session"
+    CASUS RETENTION_AUTH_FLOW:
+      REDDE "auth_flow"
+    CASUS RETENTION_CACHE:
+      REDDE "cache"
+    CASUS RETENTION_TRACE:
+      REDDE "trace"
+    CASUS RETENTION_TASK_ATTEMPT:
+      REDDE "task_attempt"
+    CASUS RETENTION_TASK_DEAD_LETTER:
+      REDDE "task_dead_letter"
+    CASUS RETENTION_SCHEDULED_RUN:
+      REDDE "scheduled_run"
+    CASUS RETENTION_MEDIA_JOB:
+      REDDE "media_job"
+    CASUS RETENTION_EDITORIAL_RUN:
+      REDDE "editorial_run"
+    ALIOQUIN:
+      REDDE "tmp"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE retention_report_empty() REDDE RetentionReport
+  EVOCA RetentionReport report
+  VINCIRE report.scanned_count AD 0
+  VINCIRE report.deleted_count AD 0
+  VINCIRE report.kept_count AD 0
+  VINCIRE report.error_count AD 0
+  VINCIRE report.details_json AD "{}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_config_default() REDDE RetentionConfig
+  EVOCA RetentionConfig cfg
+  VINCIRE cfg.tmp_max_age_seconds AD 3600
+  VINCIRE cfg.orphan_media_max_age_seconds AD 86400
+  VINCIRE cfg.session_max_age_seconds AD 2592000
+  VINCIRE cfg.auth_flow_max_age_seconds AD 604800
+  VINCIRE cfg.cache_max_age_seconds AD 86400
+  VINCIRE cfg.trace_max_age_seconds AD 604800
+  VINCIRE cfg.task_attempt_max_age_seconds AD 2592000
+  VINCIRE cfg.dead_letter_max_age_seconds AD 7776000
+  VINCIRE cfg.scheduler_run_max_age_seconds AD 2592000
+  VINCIRE cfg.media_job_max_age_seconds AD 604800
+  VINCIRE cfg.editorial_run_max_age_seconds AD 2592000
+  VINCIRE cfg.batch_size AD 100
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE retention_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS retention_runs (id TEXT PRIMARY KEY, target TEXT NOT NULL, started_at_unix INTEGER NOT NULL, finished_at_unix INTEGER NOT NULL DEFAULT 0, outcome TEXT NOT NULL, report_json TEXT NOT NULL DEFAULT '{}')", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_retention_runs_target ON retention_runs(target, started_at_unix)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE retention_schema_down(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS retention_runs", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE retention_report_write(DbHandle dbh, RetentionTarget target, REX started_at_unix, REX finished_at_unix, VERBUM outcome, RetentionReport report) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, CONIURA retention_target_to_string(target))
+  CONIURA dbh_param_int(SPECULUM params, started_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, finished_at_unix)
+  CONIURA dbh_param_text(SPECULUM params, outcome)
+  CONIURA dbh_param_text(SPECULUM params, report.details_json)
+  CONIURA dbh_exec(dbh, "INSERT INTO retention_runs (id, target, started_at_unix, finished_at_unix, outcome, report_json) VALUES (?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE retention_count_query(DbHandle dbh, VERBUM sql, REX cutoff, REX limit) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, cutoff)
+  SI limit >= 0
+    CONIURA dbh_param_int(SPECULUM params, limit)
+  FIN SI
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE retention_exec_cutoff(DbHandle dbh, VERBUM sql, REX cutoff, REX limit) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, cutoff)
+  SI limit >= 0
+    CONIURA dbh_param_int(SPECULUM params, limit)
+  FIN SI
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE retention_purge_task_attempts(DbHandle dbh, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  EVOCA REX cutoff AD now_unix - cfg.task_attempt_max_age_seconds
+  VINCIRE report.scanned_count AD CONIURA retention_count_query(dbh, "SELECT COUNT(*) FROM task_attempts WHERE finished_at_unix > 0 AND finished_at_unix < ?", cutoff, -1)
+  CONIURA retention_exec_cutoff(dbh, "DELETE FROM task_attempts WHERE id IN (SELECT id FROM task_attempts WHERE finished_at_unix > 0 AND finished_at_unix < ? LIMIT ?)", cutoff, cfg.batch_size)
+  VINCIRE report.deleted_count AD report.scanned_count
+  VINCIRE report.details_json AD "{\"target\":\"task_attempts\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_purge_dead_letters(DbHandle dbh, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  EVOCA REX cutoff AD now_unix - cfg.dead_letter_max_age_seconds
+  VINCIRE report.scanned_count AD CONIURA retention_count_query(dbh, "SELECT COUNT(*) FROM task_dead_letters WHERE failed_at_unix < ?", cutoff, -1)
+  CONIURA retention_exec_cutoff(dbh, "DELETE FROM task_dead_letters WHERE task_id IN (SELECT task_id FROM task_dead_letters WHERE failed_at_unix < ? LIMIT ?)", cutoff, cfg.batch_size)
+  VINCIRE report.deleted_count AD report.scanned_count
+  VINCIRE report.details_json AD "{\"target\":\"task_dead_letters\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_purge_scheduled_runs(DbHandle dbh, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  EVOCA REX cutoff AD now_unix - cfg.scheduler_run_max_age_seconds
+  VINCIRE report.scanned_count AD CONIURA retention_count_query(dbh, "SELECT COUNT(*) FROM scheduled_runs WHERE finished_at_unix > 0 AND finished_at_unix < ?", cutoff, -1)
+  CONIURA retention_exec_cutoff(dbh, "DELETE FROM scheduled_runs WHERE id IN (SELECT id FROM scheduled_runs WHERE finished_at_unix > 0 AND finished_at_unix < ? LIMIT ?)", cutoff, cfg.batch_size)
+  VINCIRE report.deleted_count AD report.scanned_count
+  VINCIRE report.details_json AD "{\"target\":\"scheduled_runs\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_purge_media_jobs(DbHandle dbh, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  EVOCA REX cutoff AD now_unix - cfg.media_job_max_age_seconds
+  VINCIRE report.scanned_count AD CONIURA retention_count_query(dbh, "SELECT COUNT(*) FROM media_jobs WHERE state IN ('done', 'failed', 'dead') AND updated_at_unix < ?", cutoff, -1)
+  CONIURA retention_exec_cutoff(dbh, "DELETE FROM media_jobs WHERE id IN (SELECT id FROM media_jobs WHERE state IN ('done', 'failed', 'dead') AND updated_at_unix < ? LIMIT ?)", cutoff, cfg.batch_size)
+  VINCIRE report.deleted_count AD report.scanned_count
+  VINCIRE report.details_json AD "{\"target\":\"media_jobs\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_purge_editorial_runs(DbHandle dbh, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  EVOCA REX cutoff AD now_unix - cfg.editorial_run_max_age_seconds
+  VINCIRE report.scanned_count AD CONIURA retention_count_query(dbh, "SELECT COUNT(*) FROM editorial_job_runs WHERE finished_at_unix > 0 AND finished_at_unix < ?", cutoff, -1)
+  CONIURA retention_exec_cutoff(dbh, "DELETE FROM editorial_job_runs WHERE id IN (SELECT id FROM editorial_job_runs WHERE finished_at_unix > 0 AND finished_at_unix < ? LIMIT ?)", cutoff, cfg.batch_size)
+  VINCIRE report.deleted_count AD report.scanned_count
+  VINCIRE report.details_json AD "{\"target\":\"editorial_job_runs\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE retention_purge_tmp_dir(VERBUM root, RetentionConfig cfg, REX now_unix) REDDE RetentionReport
+  EVOCA RetentionReport report AD CONIURA retention_report_empty()
+  SI NON CONIURA exists(root)
+    REDDE report
+  FIN SI
+  EVOCA REX cutoff AD now_unix - cfg.tmp_max_age_seconds
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(root)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM path AD CONIURA path_join(root, *name_ptr)
+    VINCIRE report.scanned_count AD report.scanned_count + 1
+    SI CONIURA is_file(path) ET CONIURA modified_time(path) < cutoff
+      CONIURA delete_file(path)
+      VINCIRE report.deleted_count AD report.deleted_count + 1
+    ALITER
+      VINCIRE report.kept_count AD report.kept_count + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  VINCIRE report.details_json AD "{\"target\":\"tmp_dir\"}"
+  REDDE report
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

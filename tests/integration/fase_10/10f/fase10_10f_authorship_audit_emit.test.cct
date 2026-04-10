@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase10_10f_authorship_audit_emit"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship_audit.cct"
+ADVOCARE "cct/audit.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase10_tmp_dir("10f_authorship_audit_emit")
+  CONIURA phase10_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA path_join(root, "audit.log")
+  EVOCA AuditLogger logger AD CONIURA authorship_audit_open(path)
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  VINCIRE origin.user_id AD "9"
+  VINCIRE origin.request_id AD "req-audit"
+  CONIURA authorship_emit(SPECULUM logger, "create", "page", 5, origin, "{\"title\":\"Hello\"}")
+  SI NON CONIURA exists(path)
+    REDDE 1
+  FIN SI
+  SI CONIURA contains(CONIURA read_all(path), "\"action\":\"create\"") == FALSUM
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

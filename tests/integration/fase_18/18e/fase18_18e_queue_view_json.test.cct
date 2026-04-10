@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase18_18e_queue_view_json"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_queue_view_json() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_dashboard_stack_open("18e_queue_view")
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-1", "default", "mail.send", "queued", "", 10, 10)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-2", "default", "mail.send", "queued", "", 11, 11)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-3", "default", "mail.send", "running", "", 12, 12)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-4", "critical", "media.process", "retry", "E_MEDIA", 13, 13)
+  EVOCA VERBUM json AD CONIURA dashboard_queue_view_json(stack.dbh)
+  SI CONIURA find(json, "\"queue_name\":\"critical\"") == -1
+    IACE "queue view missing critical queue"
+  FIN SI
+  SI CONIURA find(json, "\"state\":\"retry\"") == -1
+    IACE "queue view missing retry state"
+  FIN SI
+  SI CONIURA find(json, "\"queue_name\":\"default\"") == -1
+    IACE "queue view missing default queue"
+  FIN SI
+  SI CONIURA find(json, "\"state\":\"queued\"") == -1
+    IACE "queue view missing queued state"
+  FIN SI
+  SI CONIURA find(json, "\"count\":2") == -1
+    IACE "queue view missing queued count"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_queue_view_json()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

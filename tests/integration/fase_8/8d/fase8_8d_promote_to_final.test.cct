@@ -1,0 +1,16 @@
+INCIPIT grimoire "fase8_8d_promote_to_final_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor_helpers.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor d AD CONIURA upload_descriptor_new("uploads/tmp/a.bin", "h1", 9, "application/octet-stream", "a.bin")
+  CONIURA upload_descriptor_promote(SPECULUM d)
+  SI NON CONIURA upload_descriptor_is_final(d)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,41 @@
+INCIPIT grimoire "civitas_trace_sql"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+
+SIGILLUM TraceStmt
+  span_id: REX
+  stmt: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE trace_sql_exec(SPECULUM NIHIL db, VERBUM operation, VERBUM target, VERBUM sql) REDDE NIHIL
+  EVOCA REX span_id AD CONIURA instrument_db_span(operation, target)
+  CONIURA db_exec(db, sql)
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_sql_scalar_int(SPECULUM NIHIL db, VERBUM operation, VERBUM target, VERBUM sql) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_db_span(operation, target)
+  EVOCA REX result AD CONIURA db_scalar_int(db, sql)
+  CONIURA instrument_span_attr(span_id, "db.rows_returned", CONIURA stringify_int(result))
+  CONIURA instrument_span_end(span_id)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE trace_sql_prepare(SPECULUM NIHIL db, VERBUM operation, VERBUM target, VERBUM sql) REDDE TraceStmt
+  EVOCA TraceStmt out
+  VINCIRE out.span_id AD CONIURA instrument_db_span(operation, target)
+  VINCIRE out.stmt AD CONIURA db_prepare(db, sql)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_sql_finalize(TraceStmt ts, REX rows_returned) REDDE NIHIL
+  CONIURA instrument_span_attr(ts.span_id, "db.rows_returned", CONIURA stringify_int(rows_returned))
+  CONIURA stmt_finalize(ts.stmt)
+  CONIURA instrument_span_end(ts.span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

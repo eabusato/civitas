@@ -1,0 +1,107 @@
+INCIPIT grimoire "civitas_core_app_module"
+
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM AppLifecycleHookBinding
+  name: VERBUM
+  opaque_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AppHealthContributorBinding
+  name: VERBUM
+  opaque_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AppModule
+  name: VERBUM
+  namespace: VERBUM
+  register_routes_ref: SPECULUM NIHIL
+  register_middleware_ref: SPECULUM NIHIL
+  register_signals_ref: SPECULUM NIHIL
+  register_events_ref: SPECULUM NIHIL
+  on_start_name: VERBUM
+  on_start_ref: SPECULUM NIHIL
+  on_shutdown_name: VERBUM
+  on_shutdown_ref: SPECULUM NIHIL
+  health_name: VERBUM
+  health_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE app_module_noop_register(SPECULUM NIHIL app_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_module_noop_health(SPECULUM NIHIL app_ref, SPECULUM NIHIL status_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_module_new(VERBUM name, VERBUM namespace) REDDE AppModule
+  EVOCA AppModule module
+  VINCIRE module.name AD name
+  VINCIRE module.namespace AD namespace
+  VINCIRE module.register_routes_ref AD app_module_noop_register
+  VINCIRE module.register_middleware_ref AD app_module_noop_register
+  VINCIRE module.register_signals_ref AD app_module_noop_register
+  VINCIRE module.register_events_ref AD app_module_noop_register
+  VINCIRE module.on_start_name AD ""
+  VINCIRE module.on_start_ref AD app_module_noop_register
+  VINCIRE module.on_shutdown_name AD ""
+  VINCIRE module.on_shutdown_ref AD app_module_noop_register
+  VINCIRE module.health_name AD ""
+  VINCIRE module.health_ref AD app_module_noop_health
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_lifecycle_hook_binding(VERBUM name, SPECULUM NIHIL opaque_ref) REDDE AppLifecycleHookBinding
+  EVOCA AppLifecycleHookBinding binding
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD opaque_ref
+  REDDE binding
+EXPLICIT RITUALE
+
+RITUALE app_health_contributor_binding(VERBUM name, SPECULUM NIHIL opaque_ref) REDDE AppHealthContributorBinding
+  EVOCA AppHealthContributorBinding binding
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD opaque_ref
+  REDDE binding
+EXPLICIT RITUALE
+
+RITUALE app_module_with_routes(AppModule module, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.register_routes_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_middlewares(AppModule module, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.register_middleware_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_signals(AppModule module, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.register_signals_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_events(AppModule module, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.register_events_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_start_hook(AppModule module, VERBUM hook_name, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.on_start_name AD hook_name
+  VINCIRE module.on_start_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_shutdown_hook(AppModule module, VERBUM hook_name, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.on_shutdown_name AD hook_name
+  VINCIRE module.on_shutdown_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+RITUALE app_module_with_health(AppModule module, VERBUM contributor_name, SPECULUM NIHIL callback_ref) REDDE AppModule
+  VINCIRE module.health_name AD contributor_name
+  VINCIRE module.health_ref AD callback_ref
+  REDDE module
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

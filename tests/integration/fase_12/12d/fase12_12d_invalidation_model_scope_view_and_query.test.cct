@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase12_12d_invalidation_model_scope_view_and_query"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_api.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12d_model_scope")
+  CONIURA phase12_12c_setup_items(dbh)
+
+  EVOCA CacheHandle raw_h AD CONIURA phase12_12c_mem_cache("12d-raw")
+  EVOCA CacheHandle query_h AD CONIURA phase12_12c_mem_cache("12d-query")
+  EVOCA CacheHandle view_h AD CONIURA phase12_12c_mem_cache("12d-view")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM query_h, 60, "cq12d", NIHIL)
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM view_h, CONIURA phase12_12d_view_cfg("cv12d", 60), NIHIL)
+  EVOCA ModelDef def AD CONIURA phase12_12c_model_items()
+  EVOCA Query q AD CONIURA phase12_12c_query_items()
+  EVOCA WebRequest req AD CONIURA phase12_12d_request("GET", "/items")
+
+  CONIURA cache_set(SPECULUM raw_h, "raw:items", "raw-value", 60)
+  CONIURA cache_view_set(cv, req, CONIURA response_html("items page"), 60, "model:items,route:/items,locale:pt-BR")
+  CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  CONIURA db_exec(dbh.sqlite_conn, "UPDATE items SET name = 'alpha-model' WHERE id = 1")
+
+  EVOCA InvalidationCoord coord AD CONIURA invalidation_coord_new(SPECULUM raw_h, cv, SPECULUM cq, NIHIL)
+  EVOCA InvalidationResult result AD CONIURA invalidation_on_model_save(coord, "items")
+  SI result.chaves_removidas != 2
+    REDDE 1
+  FIN SI
+
+  EVOCA CacheMaybeText raw_maybe AD CONIURA cache_get(SPECULUM raw_h, "raw:items")
+  SI NON raw_maybe.found
+    REDDE 2
+  FIN SI
+  EVOCA CacheMaybeViewEntry maybe AD CONIURA cache_view_get(cv, req)
+  SI maybe.found
+    REDDE 3
+  FIN SI
+  EVOCA VERBUM json AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  SI CONIURA find(json, "alpha-model") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

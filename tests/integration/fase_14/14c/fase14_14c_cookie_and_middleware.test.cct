@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase14_14c_cookie_and_middleware"
+
+ADVOCARE "../../../../lib/civitas/locale/locale.cct"
+ADVOCARE "../../../../lib/civitas/locale/locale_cookie.cct"
+ADVOCARE "../../../../lib/civitas/locale/locale_middleware.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Locale en AD CONIURA locale_new("en", "US")
+  EVOCA VERBUM cookie AD CONIURA locale_to_cookie(en, "lang", 30)
+  SI NON CONIURA starts_with(cookie, "lang=en-US;")
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", "lang=en-US")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/", "HTTP/1.1", headers, "", "", "http", "example.com", "", "", "", "")
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  EVOCA LocaleConfig cfg AD CONIURA locale_config_new(CONIURA locale_new("pt", "BR"))
+  CONIURA locale_config_add(SPECULUM cfg, en)
+  VINCIRE cfg.cookie_nome AD "lang"
+  CONIURA locale_middleware_apply(cfg, req, SPECULUM ctx)
+
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_locale(ctx)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(opt), "en-US") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

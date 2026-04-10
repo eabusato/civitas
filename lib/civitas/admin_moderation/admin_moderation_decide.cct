@@ -1,0 +1,94 @@
+INCIPIT grimoire "civitas_admin_moderation_decide"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../media_jobs/media_jobs.cct"
+ADVOCARE "../tasks/tasks.cct"
+ADVOCARE "admin_moderation.cct"
+
+RITUALE moderation_find_state(DbHandle dbh, VERBUM item_id) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, item_id)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT state FROM moderation_items WHERE id = ? LIMIT 1", params)
+  EVOCA VERBUM state AD ""
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE state AD CONIURA dbrows_get_text(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE moderation_find_object(DbHandle dbh, VERBUM item_id) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, item_id)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT object_id, object_type, submitter_id FROM moderation_items WHERE id = ? LIMIT 1", params)
+  EVOCA VERBUM payload AD ""
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE payload AD CONIURA concat(CONIURA dbrows_get_text(rows, 0), CONIURA concat("\n", CONIURA concat(CONIURA dbrows_get_text(rows, 1), CONIURA concat("\n", CONIURA dbrows_get_text(rows, 2)))))
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE payload
+EXPLICIT RITUALE
+
+RITUALE moderation_decide(DbHandle dbh, VERBUM item_id, VERBUM action, VERBUM reason, VERBUM moderator_id, VERUM notify_submitter, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA VERBUM current_state AD CONIURA moderation_find_state(dbh, item_id)
+  SI CONIURA compare(current_state, "pending") != 0
+    IACE "moderation item not pending"
+  FIN SI
+  EVOCA VERBUM object_payload AD CONIURA moderation_find_object(dbh, item_id)
+  SI CONIURA len(object_payload) == 0
+    IACE "moderation item not found"
+  FIN SI
+  EVOCA REX split1 AD CONIURA find(object_payload, "\n")
+  EVOCA REX split2 AD CONIURA find(CONIURA substring(object_payload, split1 + 1, CONIURA len(object_payload)), "\n")
+  EVOCA VERBUM object_id AD CONIURA substring(object_payload, 0, split1)
+  EVOCA VERBUM tail AD CONIURA substring(object_payload, split1 + 1, CONIURA len(object_payload))
+  EVOCA VERBUM object_type AD CONIURA substring(tail, 0, split2)
+  EVOCA VERBUM submitter_id AD CONIURA substring(tail, split2 + 1, CONIURA len(tail))
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  CONIURA dbh_begin(dbh)
+  TEMPTA
+    EVOCA DbParams upd AD CONIURA dbh_params_new()
+    CONIURA dbh_param_text(SPECULUM upd, CONIURA moderation_state_to_string(CONIURA moderation_state_from_action(action)))
+    CONIURA dbh_param_int(SPECULUM upd, now_unix)
+    CONIURA dbh_param_text(SPECULUM upd, item_id)
+    CONIURA dbh_exec(dbh, "UPDATE moderation_items SET state = ?, updated_at_unix = ? WHERE id = ?", upd)
+    CONIURA dbh_params_free(SPECULUM upd)
+
+    EVOCA DbParams ins AD CONIURA dbh_params_new()
+    CONIURA dbh_param_text(SPECULUM ins, CONIURA uuid_to_string(CONIURA uuid_v4()))
+    CONIURA dbh_param_text(SPECULUM ins, item_id)
+    CONIURA dbh_param_text(SPECULUM ins, moderator_id)
+    CONIURA dbh_param_text(SPECULUM ins, action)
+    CONIURA dbh_param_text(SPECULUM ins, reason)
+    SI notify_submitter
+      CONIURA dbh_param_int(SPECULUM ins, 1)
+    ALITER
+      CONIURA dbh_param_int(SPECULUM ins, 0)
+    FIN SI
+    CONIURA dbh_param_int(SPECULUM ins, now_unix)
+    CONIURA dbh_exec(dbh, "INSERT INTO moderation_decisions (id, item_id, moderator_id, action, reason, notify_submitter, created_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?)", ins)
+    CONIURA dbh_params_free(SPECULUM ins)
+
+    SI CONIURA compare(action, "approve") == 0 ET CONIURA compare(object_type, "media_job") == 0
+      CONIURA media_job_mark_approved(dbh, object_id, task_cfg)
+    FIN SI
+    SI CONIURA compare(action, "ban") == 0 VEL notify_submitter
+      EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+      VINCIRE options.dedupe_key AD CONIURA concat("moderation:", item_id)
+      CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "moderation.notify", CONIURA concat(object_id, CONIURA concat("\n", submitter_id)), options, task_cfg)
+    FIN SI
+    CONIURA dbh_commit(dbh)
+  CAPE FRACTUM error
+    CONIURA dbh_rollback(dbh)
+    IACE error
+  FIN TEMPTA
+  REDDE CONIURA moderation_state_to_string(CONIURA moderation_state_from_action(action))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

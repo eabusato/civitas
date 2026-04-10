@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_trace_capture_flush"
+
+ADVOCARE "trace_request.cct"
+
+RITUALE trace_capture_flush_to_disk(VERBUM trace_id, VERBUM trace_dir) REDDE REX
+  REDDE CONIURA trace_request_flush_to_disk(trace_id, trace_dir)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

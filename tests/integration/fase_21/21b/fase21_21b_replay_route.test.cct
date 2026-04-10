@@ -1,0 +1,98 @@
+INCIPIT grimoire "fase21_21b_replay_route"
+
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_panel/trace_panel.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase21b_replay_port() REDDE REX
+  REDDE 26121
+EXPLICIT RITUALE
+
+RITUALE phase21b_cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase21b_wait_for_log(VERBUM path, REX timeout_ms) REDDE VERUM
+  EVOCA REX elapsed AD 0
+  DUM elapsed < timeout_ms
+    SI CONIURA exists(path) ET CONIURA find(CONIURA read_all(path), "/meta") != -1
+      REDDE VERUM
+    FIN SI
+    CONIURA sleep_ms(50)
+    VINCIRE elapsed AD elapsed + 50
+  FIN DUM
+  SI CONIURA exists(path) ET CONIURA find(CONIURA read_all(path), "/meta") != -1
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA REX port AD CONIURA phase21b_replay_port()
+  EVOCA VERBUM root AD CONIURA phase21_reset_root("21b_replay_route")
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  EVOCA VERBUM done AD CONIURA path_join(root, "done.txt")
+  EVOCA VERBUM request_log AD CONIURA path_join(root, "requests.log")
+  EVOCA VERBUM stats_file AD CONIURA path_join(root, "stats.txt")
+  EVOCA VERBUM server_log AD CONIURA path_join(root, "server.log")
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  EVOCA VERBUM build_log AD CONIURA path_join(root, "build.log")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA REX attempt AD 0
+  EVOCA VERUM started AD FALSUM
+
+  SI CONIURA build_probe_server(build_log) != 0
+    REDDE 1
+  FIN SI
+  DUM attempt < 12 ET NON started
+    VINCIRE port AD CONIURA phase21b_replay_port() + attempt
+    CONIURA phase21b_cleanup_file(ready)
+    CONIURA phase21b_cleanup_file(done)
+    CONIURA phase21b_cleanup_file(request_log)
+    CONIURA phase21b_cleanup_file(stats_file)
+    CONIURA phase21b_cleanup_file(server_log)
+    CONIURA phase21b_cleanup_file(pid_file)
+    SI CONIURA spawn_to_log_with_pid(CONIURA probe_command(port, 1, ready, done, request_log, stats_file), server_log, pid_file) != 0
+      REDDE 2
+    FIN SI
+    SI CONIURA wait_for_file(ready, 1000) ET CONIURA compare(CONIURA read_all(ready), "ready") == 0
+      VINCIRE started AD VERUM
+    FIN SI
+    VINCIRE attempt AD attempt + 1
+  FIN DUM
+  SI NON started
+    REDDE 7
+  FIN SI
+
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase21_trace_db_path("21b_replay_route"), trace_dir, 20, 24)
+  CONIURA mkdir_all(trace_dir)
+  CONIURA write_all(CONIURA path_join(trace_dir, "trace-replay.ctrace"), "")
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-replay", "/meta", "GET", 200, 15, 1, "user-1", CONIURA path_join(trace_dir, "trace-replay.ctrace"), 1700)
+  EVOCA TracePanelConfig cfg AD CONIURA trace_panel_default_config(SPECULUM store)
+  VINCIRE cfg.dev_port AD port
+  EVOCA HttpRequest req AD CONIURA http_request_new("POST", "/civitas/traces/trace-replay/replay")
+  EVOCA HttpResponse res AD CONIURA trace_panel_handle(req, cfg)
+  CONIURA trace_store_close(SPECULUM store)
+
+  SI CONIURA http_response_status(res) != 303
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA http_response_header(res, "Location", ""), "/civitas/traces") != 0
+    REDDE 5
+  FIN SI
+  SI NON CONIURA phase21b_wait_for_log(request_log, 3000)
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

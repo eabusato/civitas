@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase11_11a_query_mut_dbh_crud"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/query/query_exec.cct"
+ADVOCARE "../../../../lib/civitas/query/query_mut.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase11_dbh_sqlite("11a_query_mut_dbh_crud")
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE posts(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, published INTEGER NOT NULL)")
+  EVOCA InsertQuery iq AD CONIURA insert_into("posts")
+  CONIURA insert_set_text(iq, "title", "first")
+  CONIURA insert_set_bool(iq, "published", VERUM)
+  SI CONIURA insert_execute_dbh(dbh, iq) != 1
+    REDDE 1
+  FIN SI
+  EVOCA UpdateQuery uq AD CONIURA update_table("posts")
+  CONIURA update_set_text(uq, "title", "updated")
+  CONIURA update_where_int(uq, "id", Eq, 1)
+  CONIURA update_execute_dbh(dbh, uq)
+  EVOCA Query q AD CONIURA query_from("posts")
+  CONIURA query_filter_int(q, "id", Eq, 1)
+  EVOCA DbRows rows AD CONIURA query_first_dbh(dbh, q)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 1), "updated") != 0
+    REDDE 3
+  FIN SI
+  CONIURA dbrows_close(rows)
+  EVOCA DeleteQuery dq AD CONIURA delete_from("posts")
+  CONIURA delete_where_int(dq, "id", Eq, 1)
+  CONIURA delete_execute_dbh(dbh, dq)
+  SI CONIURA dbh_scalar_int(dbh, "SELECT COUNT(*) FROM posts") != 0
+    REDDE 4
+  FIN SI
+  CONIURA db_close(dbh.sqlite_conn)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

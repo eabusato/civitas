@@ -1,0 +1,28 @@
+INCIPIT grimoire "civitas_web_app"
+
+ADVOCARE "../core/version.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE civitas_app_name() REDDE VERBUM
+  REDDE CONIURA civitas_name()
+EXPLICIT RITUALE
+
+RITUALE civitas_app_banner() REDDE VERBUM
+  EVOCA VERBUM out AD "Framework web em CCT: "
+  VINCIRE out AD CONIURA concat(out, CONIURA civitas_banner())
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_bootstrap_ready() REDDE VERUM
+  SI CONIURA len(CONIURA civitas_version()) == 0
+    REDDE FALSUM
+  FIN SI
+
+  SI CONIURA len(CONIURA civitas_cct_min_version()) == 0
+    REDDE FALSUM
+  FIN SI
+
+  REDDE VERUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

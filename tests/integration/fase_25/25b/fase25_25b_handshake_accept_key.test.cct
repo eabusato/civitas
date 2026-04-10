@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase25_25b_handshake_accept_key"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/websocket/websocket.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase25SocketPair pair AD CONIURA phase25_open_socket_pair(19525)
+  EVOCA HttpRequest req AD CONIURA phase25_http_ws_request("/ws/chat", "dGhlIHNhbXBsZSBub25jZQ==")
+
+  SI NON CONIURA ws_handshake(pair.server, req)
+    CONIURA phase25_close_socket_pair(pair)
+    REDDE 1
+  FIN SI
+
+  EVOCA VERBUM raw AD CONIURA net_read_until(pair.client, CONIURA phase25_http_header_end())
+  CONIURA phase25_close_socket_pair(pair)
+
+  SI NON CONIURA starts_with(raw, "HTTP/1.1 101 Switching Protocols")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(raw, "Upgrade: websocket")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(raw, "Connection: Upgrade")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(raw, "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+    REDDE 1
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

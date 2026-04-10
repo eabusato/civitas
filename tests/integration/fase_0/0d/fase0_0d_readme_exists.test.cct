@@ -1,0 +1,12 @@
+INCIPIT grimoire "fase0_0d_readme_exists_test"
+
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA is_file("README.md")
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

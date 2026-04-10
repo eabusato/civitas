@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase9_9d_derive_no_upscale"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_derive.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("derive_no_upscale")
+  EVOCA VERBUM dest_path AD CONIURA concat(root, "/medium.jpg")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM source_path AD CONIURA phase9_9d_make_image(root, "small.jpg", "green", 40, 30)
+  EVOCA ImageDerivativeSpec spec AD CONIURA image_spec_medium()
+
+  EVOCA SPECULUM NIHIL derive_res AD CONIURA image_derive_one(source_path, spec, dest_path)
+  SI CONIURA result_is_err GENUS(ImageDimensions, VERBUM)(derive_res)
+    IACE CONIURA result_unwrap_err GENUS(ImageDimensions, VERBUM)(derive_res)
+  FIN SI
+  EVOCA ImageDimensions dims AD CONIURA result_unwrap GENUS(ImageDimensions, VERBUM)(derive_res)
+  SI dims.width != 40 VEL dims.height != 30
+    IACE "small image should not be upscaled"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

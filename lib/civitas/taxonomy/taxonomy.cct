@@ -1,0 +1,283 @@
+INCIPIT grimoire "civitas_taxonomy"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/slug.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO TaxonomyError
+  TeNone,
+  TeSlugInvalido,
+  TeSlugConflito,
+  TeNaoEncontrado
+FIN ORDO
+
+SIGILLUM Category
+  id: REX
+  slug: VERBUM
+  title: VERBUM
+  description: VERBUM
+  locale: VERBUM
+  parent_id: REX
+  created_at: REX
+  updated_at: REX
+FIN SIGILLUM
+
+SIGILLUM Tag
+  id: REX
+  slug: VERBUM
+  label: VERBUM
+  locale: VERBUM
+  created_at: REX
+FIN SIGILLUM
+
+SIGILLUM SlugRecord
+  slug: VERBUM
+  object_type: VERBUM
+  object_id: REX
+  locale: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SlugResolution
+  found: VERUM
+  slug: VERBUM
+  object_type: VERBUM
+  object_id: REX
+  locale: VERBUM
+FIN SIGILLUM
+
+RITUALE taxonomy_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE taxonomy_ensure_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_slugs (slug TEXT NOT NULL, object_type TEXT NOT NULL, object_id INTEGER NOT NULL, locale TEXT NOT NULL, PRIMARY KEY (slug, locale))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, locale TEXT NOT NULL, parent_id INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_civitas_categories_slug_locale ON civitas_categories(slug, locale)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_tags (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, label TEXT NOT NULL, locale TEXT NOT NULL, created_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_civitas_tags_slug_locale ON civitas_tags(slug, locale)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_object_tags (object_type TEXT NOT NULL, object_id INTEGER NOT NULL, tag_id INTEGER NOT NULL, PRIMARY KEY (object_type, object_id, tag_id))")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE taxonomy_slug_from_title(VERBUM title) REDDE VERBUM
+  REDDE CONIURA slug_from_text_latin(title)
+EXPLICIT RITUALE
+
+RITUALE taxonomy_collect_slugs(SPECULUM NIHIL db, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT slug FROM civitas_slugs WHERE locale = ? ORDER BY slug")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA VERBUM slug AD CONIURA stmt_get_text(stmt, 0)
+    CONIURA fluxus_push(out, SPECULUM slug)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE taxonomy_slug_reserve(SPECULUM NIHIL db, VERBUM title, VERBUM locale) REDDE VERBUM
+  EVOCA VERBUM base AD CONIURA taxonomy_slug_from_title(title)
+  EVOCA SPECULUM NIHIL existing AD CONIURA taxonomy_collect_slugs(db, locale)
+  EVOCA VERBUM unique_slug AD CONIURA slug_ensure_unique(base, existing)
+  CONIURA fluxus_free(existing)
+  REDDE unique_slug
+EXPLICIT RITUALE
+
+RITUALE taxonomy_slug_register(SPECULUM NIHIL db, VERBUM slug, VERBUM object_type, REX object_id, VERBUM locale) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO civitas_slugs (slug, object_type, object_id, locale) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, object_type)
+  CONIURA stmt_bind_int(stmt, 3, object_id)
+  CONIURA stmt_bind_text(stmt, 4, locale)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE taxonomy_slug_unregister(SPECULUM NIHIL db, VERBUM slug, VERBUM locale) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_slugs WHERE slug = ? AND locale = ?")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, locale)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE taxonomy_slug_resolve(SPECULUM NIHIL db, VERBUM slug, VERBUM locale) REDDE SlugResolution
+  EVOCA SlugResolution res
+  VINCIRE res.found AD FALSUM
+  VINCIRE res.slug AD slug
+  VINCIRE res.object_type AD ""
+  VINCIRE res.object_id AD 0
+  VINCIRE res.locale AD locale
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT object_type, object_id FROM civitas_slugs WHERE slug = ? AND locale = ?")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, locale)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE res.found AD VERUM
+    VINCIRE res.object_type AD CONIURA stmt_get_text(stmt, 0)
+    VINCIRE res.object_id AD CONIURA stmt_get_int(stmt, 1)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE category_empty() REDDE Category
+  EVOCA Category cat
+  VINCIRE cat.id AD 0
+  VINCIRE cat.slug AD ""
+  VINCIRE cat.title AD ""
+  VINCIRE cat.description AD ""
+  VINCIRE cat.locale AD ""
+  VINCIRE cat.parent_id AD 0
+  VINCIRE cat.created_at AD 0
+  VINCIRE cat.updated_at AD 0
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE tag_empty() REDDE Tag
+  EVOCA Tag tag
+  VINCIRE tag.id AD 0
+  VINCIRE tag.slug AD ""
+  VINCIRE tag.label AD ""
+  VINCIRE tag.locale AD ""
+  VINCIRE tag.created_at AD 0
+  REDDE tag
+EXPLICIT RITUALE
+
+RITUALE category_from_stmt(SPECULUM NIHIL stmt) REDDE Category
+  EVOCA Category cat
+  VINCIRE cat.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE cat.slug AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE cat.title AD CONIURA stmt_get_text(stmt, 2)
+  VINCIRE cat.description AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE cat.locale AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE cat.parent_id AD CONIURA stmt_get_int(stmt, 5)
+  VINCIRE cat.created_at AD CONIURA stmt_get_int(stmt, 6)
+  VINCIRE cat.updated_at AD CONIURA stmt_get_int(stmt, 7)
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE tag_from_stmt(SPECULUM NIHIL stmt) REDDE Tag
+  EVOCA Tag tag
+  VINCIRE tag.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE tag.slug AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE tag.label AD CONIURA stmt_get_text(stmt, 2)
+  VINCIRE tag.locale AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE tag.created_at AD CONIURA stmt_get_int(stmt, 4)
+  REDDE tag
+EXPLICIT RITUALE
+
+RITUALE category_create(SPECULUM NIHIL db, VERBUM title, VERBUM description, VERBUM locale, REX parent_id) REDDE Category
+  CONIURA taxonomy_ensure_schema(db)
+  EVOCA VERBUM slug AD CONIURA taxonomy_slug_reserve(db, title, locale)
+  EVOCA REX now AD CONIURA taxonomy_now()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_categories (slug, title, description, locale, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, title)
+  CONIURA stmt_bind_text(stmt, 3, description)
+  CONIURA stmt_bind_text(stmt, 4, locale)
+  CONIURA stmt_bind_int(stmt, 5, parent_id)
+  CONIURA stmt_bind_int(stmt, 6, now)
+  CONIURA stmt_bind_int(stmt, 7, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  EVOCA REX id AD CONIURA db_scalar_int(db, "SELECT last_insert_rowid()")
+  CONIURA taxonomy_slug_register(db, slug, "category", id, locale)
+  REDDE CONIURA category_get_by_id(db, id)
+EXPLICIT RITUALE
+
+RITUALE category_get_by_id(SPECULUM NIHIL db, REX id) REDDE Category
+  EVOCA Category cat AD CONIURA category_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, slug, title, description, locale, parent_id, created_at, updated_at FROM civitas_categories WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE cat AD CONIURA category_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE category_get_by_slug(SPECULUM NIHIL db, VERBUM slug, VERBUM locale) REDDE Category
+  EVOCA Category cat AD CONIURA category_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, slug, title, description, locale, parent_id, created_at, updated_at FROM civitas_categories WHERE slug = ? AND locale = ?")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, locale)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE cat AD CONIURA category_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE tag_create(SPECULUM NIHIL db, VERBUM label, VERBUM locale) REDDE Tag
+  CONIURA taxonomy_ensure_schema(db)
+  EVOCA VERBUM slug AD CONIURA taxonomy_slug_reserve(db, label, locale)
+  EVOCA REX now AD CONIURA taxonomy_now()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_tags (slug, label, locale, created_at) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, label)
+  CONIURA stmt_bind_text(stmt, 3, locale)
+  CONIURA stmt_bind_int(stmt, 4, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  EVOCA REX id AD CONIURA db_scalar_int(db, "SELECT last_insert_rowid()")
+  CONIURA taxonomy_slug_register(db, slug, "tag", id, locale)
+  REDDE CONIURA tag_get_by_id(db, id)
+EXPLICIT RITUALE
+
+RITUALE tag_get_by_id(SPECULUM NIHIL db, REX id) REDDE Tag
+  EVOCA Tag tag AD CONIURA tag_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, slug, label, locale, created_at FROM civitas_tags WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE tag AD CONIURA tag_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE tag
+EXPLICIT RITUALE
+
+RITUALE tag_attach(SPECULUM NIHIL db, VERBUM object_type, REX object_id, REX tag_id) REDDE NIHIL
+  CONIURA taxonomy_ensure_schema(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO civitas_object_tags (object_type, object_id, tag_id) VALUES (?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_int(stmt, 3, tag_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tag_detach(SPECULUM NIHIL db, VERBUM object_type, REX object_id, REX tag_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_object_tags WHERE object_type = ? AND object_id = ? AND tag_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_int(stmt, 3, tag_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tag_list_for_object(SPECULUM NIHIL db, VERBUM object_type, REX object_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Tag))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT t.id, t.slug, t.label, t.locale, t.created_at FROM civitas_tags t INNER JOIN civitas_object_tags ot ON t.id = ot.tag_id WHERE ot.object_type = ? AND ot.object_id = ? ORDER BY t.label")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Tag tag AD CONIURA tag_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM tag)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

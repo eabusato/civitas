@@ -1,0 +1,77 @@
+INCIPIT grimoire "civitas_l10n_fmt_reltime"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n_fmt.cct"
+
+RITUALE l10n_reltime(DateTime dt, SPECULUM L10nFmtRules rules) REDDE VERBUM
+  EVOCA DateTime agora AD CONIURA datetime_now()
+  EVOCA REX diff AD CONIURA datetime_diff_seconds(agora, dt)
+  EVOCA VERUM passado AD diff >= 0
+  EVOCA REX abs_diff AD diff
+  SI diff < 0
+    VINCIRE abs_diff AD 0 - diff
+  FIN SI
+
+  SI abs_diff < 30
+    REDDE (*rules).reltime.agora
+  FIN SI
+
+  SI passado
+    SI abs_diff < 90
+      REDDE CONIURA replace((*rules).reltime.seg_singular, "{n}", "1")
+    FIN SI
+    SI abs_diff < 3600
+      EVOCA REX mins AD abs_diff / 60
+      SI mins == 1
+        REDDE CONIURA replace((*rules).reltime.min_singular, "{n}", CONIURA stringify_int(mins))
+      FIN SI
+      REDDE CONIURA replace((*rules).reltime.min_plural, "{n}", CONIURA stringify_int(mins))
+    FIN SI
+    SI abs_diff < 86400
+      EVOCA REX horas AD abs_diff / 3600
+      SI horas == 1
+        REDDE CONIURA replace((*rules).reltime.hora_singular, "{n}", CONIURA stringify_int(horas))
+      FIN SI
+      REDDE CONIURA replace((*rules).reltime.hora_plural, "{n}", CONIURA stringify_int(horas))
+    FIN SI
+    SI abs_diff < 604800
+      EVOCA REX dias AD abs_diff / 86400
+      SI dias == 1
+        REDDE CONIURA replace((*rules).reltime.dia_singular, "{n}", CONIURA stringify_int(dias))
+      FIN SI
+      REDDE CONIURA replace((*rules).reltime.dia_plural, "{n}", CONIURA stringify_int(dias))
+    FIN SI
+    EVOCA REX semanas AD abs_diff / 604800
+    SI semanas == 1
+      REDDE CONIURA replace((*rules).reltime.semana_singular, "{n}", CONIURA stringify_int(semanas))
+    FIN SI
+    REDDE CONIURA replace((*rules).reltime.semana_plural, "{n}", CONIURA stringify_int(semanas))
+  FIN SI
+
+  SI abs_diff < 90
+    REDDE CONIURA replace((*rules).reltime.futuro_seg_singular, "{n}", "1")
+  FIN SI
+  SI abs_diff < 3600
+    EVOCA REX mins AD abs_diff / 60
+    SI mins == 1
+      REDDE CONIURA replace((*rules).reltime.futuro_min_singular, "{n}", CONIURA stringify_int(mins))
+    FIN SI
+    REDDE CONIURA replace((*rules).reltime.futuro_min_plural, "{n}", CONIURA stringify_int(mins))
+  FIN SI
+  SI abs_diff < 86400
+    EVOCA REX horas AD abs_diff / 3600
+    SI horas == 1
+      REDDE CONIURA replace((*rules).reltime.futuro_hora_singular, "{n}", CONIURA stringify_int(horas))
+    FIN SI
+    REDDE CONIURA replace((*rules).reltime.futuro_hora_plural, "{n}", CONIURA stringify_int(horas))
+  FIN SI
+  EVOCA REX dias AD abs_diff / 86400
+  SI dias == 1
+    REDDE CONIURA replace((*rules).reltime.futuro_dia_singular, "{n}", CONIURA stringify_int(dias))
+  FIN SI
+  REDDE CONIURA replace((*rules).reltime.futuro_dia_plural, "{n}", CONIURA stringify_int(dias))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

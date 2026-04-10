@@ -1,0 +1,84 @@
+INCIPIT grimoire "civitas_cache_view"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../cache.cct"
+
+SIGILLUM CacheViewConfig
+  ttl_padrao: REX
+  vary_headers: SPECULUM NIHIL
+  namespace: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheViewEntryMeta
+  status: REX
+  headers_json: VERBUM
+  tags: VERBUM
+  criado_em: REX
+  expira_em: REX
+FIN SIGILLUM
+
+SIGILLUM CacheMaybeViewEntry
+  found: VERUM
+  body: VERBUM
+  meta: CacheViewEntryMeta
+FIN SIGILLUM
+
+SIGILLUM CacheViewTagMem
+  tag: VERBUM
+  keys: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheView
+  handle: SPECULUM NIHIL
+  ttl_padrao: REX
+  vary_headers: SPECULUM NIHIL
+  namespace: VERBUM
+  tags_mem: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM CacheViewMiddlewareCtx
+  cv_ptr: SPECULUM NIHIL
+  ttl: REX
+FIN SIGILLUM
+
+RITUALE cache_view_config_default() REDDE CacheViewConfig
+  EVOCA CacheViewConfig cfg
+  VINCIRE cfg.ttl_padrao AD 0
+  VINCIRE cfg.vary_headers AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE cfg.namespace AD "civitas"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE cache_view_entry_empty() REDDE CacheMaybeViewEntry
+  EVOCA CacheMaybeViewEntry out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.body AD ""
+  VINCIRE out.meta.status AD 0
+  VINCIRE out.meta.headers_json AD "{}"
+  VINCIRE out.meta.tags AD ""
+  VINCIRE out.meta.criado_em AD 0
+  VINCIRE out.meta.expira_em AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_view_new(SPECULUM NIHIL ch, CacheViewConfig config, SPECULUM NIHIL logger) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CacheView cv_ptr AD OBSECRO mem_alloc(MENSURA(CacheView))
+  VINCIRE (*cv_ptr).handle AD ch
+  VINCIRE (*cv_ptr).ttl_padrao AD config.ttl_padrao
+  VINCIRE (*cv_ptr).vary_headers AD config.vary_headers
+  VINCIRE (*cv_ptr).namespace AD config.namespace
+  VINCIRE (*cv_ptr).tags_mem AD CONIURA fluxus_init(MENSURA(CacheViewTagMem))
+  VINCIRE (*cv_ptr).logger AD logger
+  REDDE cv_ptr
+EXPLICIT RITUALE
+
+RITUALE cache_view_context_cv_key() REDDE VERBUM
+  REDDE "civitas.cache_view.handle"
+EXPLICIT RITUALE
+
+RITUALE cache_view_context_ttl_key() REDDE VERBUM
+  REDDE "civitas.cache_view.ttl"
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

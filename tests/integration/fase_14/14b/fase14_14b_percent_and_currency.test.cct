@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase14_14b_percent_and_currency"
+
+ADVOCARE "../../../../lib/civitas/l10n/l10n.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_rules.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_number.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_currency.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocaleRules pt AD CONIURA l10n_rules_pt_br()
+  EVOCA LocaleRules en AD CONIURA l10n_rules_en_us()
+  EVOCA LocaleRules de AD CONIURA l10n_rules_de_de()
+  SI CONIURA compare(CONIURA l10n_format_percent(0.125, 1, pt.numero), "12,5%") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_brl(1234.5, pt), "R$ 1.234,50") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_usd(1234.5, en), "$1,234.50") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_eur(1234.5, de), "1.234,50 €") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

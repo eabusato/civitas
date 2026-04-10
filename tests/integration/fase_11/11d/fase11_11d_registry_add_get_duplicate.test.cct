@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase11_11d_registry_add_get_duplicate"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/search/search.cct"
+ADVOCARE "../../../../lib/civitas/search/search_registry.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SearchField title AD CONIURA search_field_new("title", "A")
+  CONIURA fluxus_push(fields, SPECULUM title)
+  EVOCA SPECULUM NIHIL idx_result AD CONIURA search_index_new("page", "pages", "id", "pt-BR", fields)
+  SI CONIURA result_is_err GENUS(SearchIndex, VERBUM)(idx_result)
+    REDDE 1
+  FIN SI
+  EVOCA SearchIndex idx AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(idx_result)
+  EVOCA SPECULUM NIHIL registry AD CONIURA search_registry_new()
+  EVOCA SPECULUM NIHIL add_result AD CONIURA search_registry_add(registry, idx)
+  SI CONIURA result_is_err GENUS(VERUM, VERBUM)(add_result)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL found AD CONIURA search_registry_get(registry, "page")
+  SI CONIURA option_is_none GENUS(SearchIndex)(found)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(VERUM, VERBUM)(CONIURA search_registry_add(registry, idx))
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

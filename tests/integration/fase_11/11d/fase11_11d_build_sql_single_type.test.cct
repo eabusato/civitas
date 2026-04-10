@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase11_11d_build_sql_single_type"
+
+ADVOCARE "../../../../lib/civitas/search/search.cct"
+ADVOCARE "../../../../lib/civitas/search/search_registry.cct"
+ADVOCARE "../../../../lib/civitas/search/search_build.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SearchField title AD CONIURA search_field_new("title", "A")
+  CONIURA fluxus_push(fields, SPECULUM title)
+  EVOCA SearchIndex idx AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(CONIURA search_index_new("page", "pages", "id", "pt-BR", fields))
+  EVOCA SPECULUM NIHIL registry AD CONIURA search_registry_new()
+  CONIURA search_registry_add(registry, idx)
+  EVOCA SearchQuery q AD CONIURA search_query_default("hello world")
+  VINCIRE q.filter.locale AD "pt-BR"
+  VINCIRE q.filter.apenas_publico AD VERUM
+  EVOCA SPECULUM NIHIL sql_result AD CONIURA search_build_sql(registry, q)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(sql_result)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM sql AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(sql_result)
+  SI CONIURA find(sql, "websearch_to_tsquery") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(sql, "ts_headline") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(sql, "locale = $2") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(sql, "publish_state = 3") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

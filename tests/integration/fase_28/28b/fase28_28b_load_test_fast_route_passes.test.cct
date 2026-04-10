@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase28_28b_load_test_fast_route_passes"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/load_test.cct"
+ADVOCARE "../../../../lib/civitas/load_test/load_test.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA phase28_load_router()
+  EVOCA LoadConfig cfg AD CONIURA load_config_default()
+  VINCIRE cfg.n_requests AD 20
+  VINCIRE cfg.max_p99_ms AD 250
+  VINCIRE cfg.min_throughput AD 0.0
+  EVOCA LoadRoute route AD CONIURA load_route_new("GET", "/fast")
+  CONIURA load_config_add_route(SPECULUM cfg, route)
+  EVOCA LoadResult result AD CONIURA load_test_run_inprocess(SPECULUM router, cfg)
+  SI result.total_requests != 20
+    REDDE 1
+  FIN SI
+  SI NON result.approved
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

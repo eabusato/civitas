@@ -1,0 +1,67 @@
+INCIPIT grimoire "fase3_3a_stop_on_error_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceState
+  value: VERBUM
+FIN SIGILLUM
+
+RITUALE ok_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).payload_ref
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "A")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bad_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  IACE "boom-stop"
+EXPLICIT RITUALE
+
+RITUALE late_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM TraceState state
+  VINCIRE env AD env_ref
+  VINCIRE state AD (*env).payload_ref
+  VINCIRE (*state).value AD CONIURA concat((*state).value, "C")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Signal signal
+  EVOCA TraceState state
+  EVOCA SignalEnvelope env
+  EVOCA SignalDispatchReport report
+
+  CONIURA signal_init(SPECULUM signal, "stop", SIGNAL_STOP_ON_ERROR)
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signal, "ok_handler", ok_handler))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signal, "bad_handler", bad_handler))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signal, "late_handler", late_handler))
+
+  VINCIRE state.value AD ""
+  CONIURA signal_envelope_fill(SPECULUM env, "stop", "test", "", "TraceState", SPECULUM state)
+  VINCIRE report AD CONIURA signal_send(signal, SPECULUM env)
+
+  SI CONIURA compare(state.value, "A") != 0
+    REDDE 1
+  FIN SI
+  SI report.invoked_count != 2
+    REDDE 2
+  FIN SI
+  SI report.failed_count != 1
+    REDDE 3
+  FIN SI
+  SI report.stopped_early != VERUM
+    REDDE 4
+  FIN SI
+  SI CONIURA find(report.first_error, "boom-stop") == -1
+    REDDE 5
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

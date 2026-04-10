@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase9_9e_check_deps"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA video_check_deps()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

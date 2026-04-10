@@ -1,0 +1,17 @@
+INCIPIT grimoire "rede_social_html"
+
+ADVOCARE "../../gen/shell.cct"
+ADVOCARE "template_contexts.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_layout(VERBUM title, VERBUM current_user, VERBUM hero_html, VERBUM body_html) REDDE VERBUM
+  EVOCA RedeShellPageContext ctx
+  VINCIRE ctx.page_title AD title
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.hero_html AD hero_html
+  VINCIRE ctx.body_html AD body_html
+  REDDE CONIURA render_shell(ctx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+{% EVOCA RedeLoungePageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Lounge</p>
+    <h1>Room log built on ws_room</h1>
+    <p>This example keeps phase 25 visible with room membership and event logs, even though the public HTTP server still does not hand the accepted socket to userland routes.</p>
+  </div>
+</section>
+<section class="grid-main">
+  <div class="card">
+    {% SI has_user %}
+      <form method="POST" action="/lounge/send" class="stack-form">
+        {{ csrf_html|safe }}
+        <label>Message<textarea name="body" rows="3" placeholder="Broadcast a note to the lounge log"></textarea></label>
+        <button type="submit">Send to room log</button>
+      </form>
+    {% FIN SI %}
+  </div>
+  <div class="card">
+    <h3>Recent room events</h3>
+    {% DUM row IN events %}
+      <div class="activity-item">
+        <strong>{{ row.kind }}</strong>
+        <p>{{ row.payload }}</p>
+        <span class="muted">user {{ row.user_id }} &middot; actor {{ row.actor_id }} &middot; {{ row.created_at }}</span>
+      </div>
+    {% FIN DUM %}
+  </div>
+</section>
+{% FIN SECTIO %}

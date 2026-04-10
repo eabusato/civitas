@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase10_10f_origin_and_populate"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA local_context_key_user_id(), "7")
+  CONIURA local_context_set(SPECULUM ctx, CONIURA local_context_key_request_id(), "req-1")
+  CONIURA local_context_set(SPECULUM ctx, CONIURA local_context_key_locale(), "pt-BR")
+  EVOCA ContentOrigin origin AD CONIURA authorship_origin_from_ctx(ctx)
+  EVOCA AuthorshipFields fields AD CONIURA authorship_fields_empty()
+  CONIURA authorship_populate_create(SPECULUM fields, origin)
+  SI CONIURA compare(fields.created_by, "7") != 0 VEL CONIURA compare(fields.locale, "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  CONIURA local_context_close(SPECULUM ctx)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

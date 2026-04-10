@@ -1,0 +1,59 @@
+INCIPIT grimoire "fase2_2d_reverse_routing_success_and_errors_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE noop_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA SPECULUM NIHIL ok_params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL rest_params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL missing_params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL bad_int_params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL url_res
+  EVOCA SPECULUM NIHIL rest_res
+  EVOCA SPECULUM NIHIL missing_res
+  EVOCA SPECULUM NIHIL bad_int_res
+
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/users/{id:int}", "users.show", "noop_handler", noop_handler), 1)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/assets/{rest:*}", "assets.show", "noop_handler", noop_handler), 2)
+
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(ok_params, "id", "42")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(rest_params, "rest", "css/app main.css")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(bad_int_params, "id", "abc")
+
+  VINCIRE url_res AD CONIURA router_url_for(router, "users.show", ok_params)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(url_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA result_unwrap GENUS(VERBUM, VERBUM)(url_res), "/users/42") != 0
+    REDDE 2
+  FIN SI
+
+  VINCIRE rest_res AD CONIURA router_url_for(router, "assets.show", rest_params)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(rest_res)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA result_unwrap GENUS(VERBUM, VERBUM)(rest_res), "/assets/css/app%20main.css") != 0
+    REDDE 4
+  FIN SI
+
+  VINCIRE missing_res AD CONIURA router_url_for(router, "users.show", missing_params)
+  SI NON CONIURA result_is_err GENUS(VERBUM, VERBUM)(missing_res)
+    REDDE 5
+  FIN SI
+
+  VINCIRE bad_int_res AD CONIURA router_url_for(router, "users.show", bad_int_params)
+  SI NON CONIURA result_is_err GENUS(VERBUM, VERBUM)(bad_int_res)
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

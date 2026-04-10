@@ -1,0 +1,170 @@
+INCIPIT grimoire "civitas_cache_view_tags"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../cache/cache_api.cct"
+ADVOCARE "../cache/cache_redis.cct"
+ADVOCARE "cache_view.cct"
+
+RITUALE cache_view_tag_key(SPECULUM CacheView cv, VERBUM tag) REDDE VERBUM
+  REDDE CONIURA concat((*cv).namespace, CONIURA concat(":tag:", CONIURA trim(tag)))
+EXPLICIT RITUALE
+
+RITUALE cache_view_tags_split(VERBUM tags) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(tags, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM clean AD CONIURA trim(*part_ptr)
+    SI CONIURA len(clean) > 0
+      CONIURA fluxus_push(out, SPECULUM clean)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_view_tag_mem_add(SPECULUM CacheView cv, VERBUM tag, VERBUM chave) REDDE NIHIL
+  EVOCA VERBUM clean_tag AD CONIURA trim(tag)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cv).tags_mem)
+  DUM i < n
+    EVOCA SPECULUM CacheViewTagMem bucket_ptr AD CONIURA fluxus_get((*cv).tags_mem, i)
+    SI CONIURA compare((*bucket_ptr).tag, clean_tag) == 0
+      SI CONIURA len((*bucket_ptr).keys) == 0
+        VINCIRE (*bucket_ptr).keys AD chave
+        REDDE
+      FIN SI
+      SI CONIURA find(CONIURA concat(CONIURA concat("\n", (*bucket_ptr).keys), "\n"), CONIURA concat(CONIURA concat("\n", chave), "\n")) != -1
+        REDDE
+      FIN SI
+      VINCIRE (*bucket_ptr).keys AD CONIURA concat(CONIURA concat((*bucket_ptr).keys, "\n"), chave)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA CacheViewTagMem bucket
+  VINCIRE bucket.tag AD clean_tag
+  VINCIRE bucket.keys AD chave
+  CONIURA fluxus_push((*cv).tags_mem, SPECULUM bucket)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_tag_add_chave(SPECULUM NIHIL cv_ptr, VERBUM tag, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM CacheView cv AD cv_ptr
+  EVOCA SPECULUM CacheHandle ch AD (*cv).handle
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    CONIURA redis_sadd(*redis_ptr, CONIURA cache_view_tag_key(cv, tag), chave)
+    REDDE
+  FIN SI
+  CONIURA cache_view_tag_mem_add(cv, tag, chave)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_tags_indexar(SPECULUM NIHIL cv_ptr, VERBUM chave, VERBUM tags) REDDE NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA cache_view_tags_split(tags)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM tag_ptr AD CONIURA fluxus_get(parts, i)
+    CONIURA cache_view_tag_add_chave(cv_ptr, *tag_ptr, chave)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_invalidar_tag(SPECULUM NIHIL cv_ptr, VERBUM tag) REDDE NIHIL
+  EVOCA SPECULUM CacheView cv AD cv_ptr
+  EVOCA SPECULUM CacheHandle ch AD (*cv).handle
+
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, CONIURA cache_view_tag_key(cv, tag))
+    SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+      EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+      EVOCA REX i AD 0
+      DUM i < CONIURA redis_text_list_len(list)
+        CONIURA cache_delete(ch, CONIURA redis_text_list_get(list, i))
+        VINCIRE i AD i + 1
+      FIN DUM
+    FIN SI
+    CONIURA redis_del(*redis_ptr, CONIURA cache_view_tag_key(cv, tag))
+    REDDE
+  FIN SI
+
+  EVOCA VERBUM clean_tag AD CONIURA trim(tag)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cv).tags_mem)
+  DUM i < n
+    EVOCA SPECULUM CacheViewTagMem bucket_ptr AD CONIURA fluxus_get((*cv).tags_mem, i)
+    SI CONIURA compare((*bucket_ptr).tag, clean_tag) == 0
+      EVOCA SPECULUM NIHIL keys AD CONIURA split((*bucket_ptr).keys, "\n")
+      EVOCA REX j AD 0
+      EVOCA REX m AD CONIURA fluxus_len(keys)
+      DUM j < m
+        EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, j)
+        SI CONIURA len(CONIURA trim(*key_ptr)) > 0
+          CONIURA cache_delete(ch, *key_ptr)
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+      CONIURA fluxus_remove((*cv).tags_mem, i)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_tag_count(SPECULUM NIHIL cv_ptr, VERBUM tag) REDDE REX
+  EVOCA SPECULUM CacheView cv AD cv_ptr
+  EVOCA SPECULUM CacheHandle ch AD (*cv).handle
+
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, CONIURA cache_view_tag_key(cv, tag))
+    SI CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+      REDDE 0
+    FIN SI
+    EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+    REDDE CONIURA redis_text_list_len(list)
+  FIN SI
+
+  EVOCA VERBUM clean_tag AD CONIURA trim(tag)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cv).tags_mem)
+  DUM i < n
+    EVOCA SPECULUM CacheViewTagMem bucket_ptr AD CONIURA fluxus_get((*cv).tags_mem, i)
+    SI CONIURA compare((*bucket_ptr).tag, clean_tag) == 0
+      SI CONIURA len((*bucket_ptr).keys) == 0
+        REDDE 0
+      FIN SI
+      EVOCA SPECULUM NIHIL keys AD CONIURA split((*bucket_ptr).keys, "\n")
+      EVOCA REX j AD 0
+      EVOCA REX count AD 0
+      EVOCA REX m AD CONIURA fluxus_len(keys)
+      DUM j < m
+        EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, j)
+        SI CONIURA len(CONIURA trim(*key_ptr)) > 0
+          VINCIRE count AD count + 1
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+      REDDE count
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

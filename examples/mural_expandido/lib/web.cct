@@ -1,0 +1,8 @@
+INCIPIT grimoire "mural_web"
+
+-- Compatibility shim.
+-- The canonical example keeps runtime handlers in `web_runtime.cct`
+-- and router callbacks in `web_routes.cct` to stay inside the current
+-- executable subset without changing the public example layout.
+
+EXPLICIT grimoire

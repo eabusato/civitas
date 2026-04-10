@@ -1,0 +1,30 @@
+INCIPIT grimoire "civitas_pages_menu"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "pages.cct"
+
+RITUALE page_menu_build(SPECULUM NIHIL db, VERBUM locale, VERBUM menu_slot) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(PageMenuItem))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT title, slug, locale, menu_slot, menu_label, menu_order FROM civitas_pages WHERE locale = ? AND menu_slot = ? AND state = ? ORDER BY menu_order ASC, title ASC")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  CONIURA stmt_bind_text(stmt, 2, menu_slot)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA page_publish_state_to_int(PsPublished))
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA PageMenuItem item
+    VINCIRE item.title AD CONIURA stmt_get_text(stmt, 0)
+    VINCIRE item.slug AD CONIURA stmt_get_text(stmt, 1)
+    VINCIRE item.locale AD CONIURA stmt_get_text(stmt, 2)
+    VINCIRE item.menu_slot AD CONIURA stmt_get_text(stmt, 3)
+    VINCIRE item.menu_label AD CONIURA stmt_get_text(stmt, 4)
+    VINCIRE item.menu_order AD CONIURA stmt_get_int(stmt, 5)
+    CONIURA fluxus_push(out, SPECULUM item)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

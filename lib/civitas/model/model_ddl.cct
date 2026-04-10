@@ -1,0 +1,127 @@
+INCIPIT grimoire "civitas_model_ddl"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "model.cct"
+
+RITUALE model_field_type_sql(FieldKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS FkInt:
+      REDDE "INTEGER"
+    CASUS FkText:
+      REDDE "TEXT"
+    CASUS FkReal:
+      REDDE "REAL"
+    CASUS FkBool:
+      REDDE "INTEGER"
+    CASUS FkDate:
+      REDDE "TEXT"
+    CASUS FkDateTime:
+      REDDE "INTEGER"
+    CASUS FkUUID:
+      REDDE "TEXT"
+    CASUS FkBlob:
+      REDDE "TEXT"
+    ALIOQUIN:
+      REDDE "TEXT"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE model_field_default_sql(FieldDef field) REDDE VERBUM
+  SI NON field.tem_default
+    REDDE ""
+  FIN SI
+  ELIGE field.kind
+    CASUS FkText:
+      REDDE CONIURA concat(" DEFAULT '", CONIURA concat(field.default_texto, "'"))
+    CASUS FkDate:
+      REDDE CONIURA concat(" DEFAULT '", CONIURA concat(field.default_texto, "'"))
+    CASUS FkUUID:
+      REDDE CONIURA concat(" DEFAULT '", CONIURA concat(field.default_texto, "'"))
+    ALIOQUIN:
+      REDDE CONIURA concat(" DEFAULT ", CONIURA stringify_int(field.default_int))
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE model_field_ddl(FieldDef field) REDDE VERBUM
+  EVOCA VERBUM ddl AD field.nome
+  VINCIRE ddl AD CONIURA concat(ddl, " ")
+  SI field.pk ET field.kind == FkInt ET field.auto_increment
+    VINCIRE ddl AD CONIURA concat(ddl, "INTEGER PRIMARY KEY AUTOINCREMENT")
+    REDDE ddl
+  FIN SI
+  VINCIRE ddl AD CONIURA concat(ddl, CONIURA model_field_type_sql(field.kind))
+  SI field.pk
+    VINCIRE ddl AD CONIURA concat(ddl, " PRIMARY KEY")
+  FIN SI
+  SI field.required
+    VINCIRE ddl AD CONIURA concat(ddl, " NOT NULL")
+  FIN SI
+  SI field.unique
+    VINCIRE ddl AD CONIURA concat(ddl, " UNIQUE")
+  FIN SI
+  VINCIRE ddl AD CONIURA concat(ddl, CONIURA model_field_default_sql(field))
+  SI CONIURA len(field.fk_tabela) > 0 ET CONIURA len(field.fk_col) > 0
+    VINCIRE ddl AD CONIURA concat(ddl, " REFERENCES ")
+    VINCIRE ddl AD CONIURA concat(ddl, field.fk_tabela)
+    VINCIRE ddl AD CONIURA concat(ddl, "(")
+    VINCIRE ddl AD CONIURA concat(ddl, field.fk_col)
+    VINCIRE ddl AD CONIURA concat(ddl, ")")
+  FIN SI
+  REDDE ddl
+EXPLICIT RITUALE
+
+RITUALE model_def_sql_create(ModelDef def) REDDE VERBUM
+  EVOCA VERBUM sql AD "CREATE TABLE IF NOT EXISTS "
+  VINCIRE sql AD CONIURA concat(sql, def.tabela)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  DUM i < n
+    EVOCA SPECULUM FieldDef field_ptr AD CONIURA fluxus_get(def.campos, i)
+    VINCIRE sql AD CONIURA concat(sql, CONIURA model_field_ddl(*field_ptr))
+    SI i < n - 1
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE model_index_name(ModelDef def, IndexDef idx) REDDE VERBUM
+  EVOCA VERBUM flat AD CONIURA replace_all(idx.campos, ",", "_")
+  VINCIRE flat AD CONIURA replace_all(flat, " ", "")
+  REDDE CONIURA concat(CONIURA concat("idx_", def.tabela), CONIURA concat("_", flat))
+EXPLICIT RITUALE
+
+RITUALE model_index_ddl(ModelDef def, IndexDef idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "CREATE "
+  SI idx.unico
+    VINCIRE sql AD CONIURA concat(sql, "UNIQUE ")
+  FIN SI
+  VINCIRE sql AD CONIURA concat(sql, "INDEX IF NOT EXISTS ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA model_index_name(def, idx))
+  VINCIRE sql AD CONIURA concat(sql, " ON ")
+  VINCIRE sql AD CONIURA concat(sql, def.tabela)
+  VINCIRE sql AD CONIURA concat(sql, "(")
+  VINCIRE sql AD CONIURA concat(sql, idx.campos)
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE model_def_create_table(SPECULUM NIHIL db, ModelDef def) REDDE NIHIL
+  CONIURA db_exec(db, CONIURA model_def_sql_create(def))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(def.indices)
+  DUM i < n
+    EVOCA SPECULUM IndexDef idx_ptr AD CONIURA fluxus_get(def.indices, i)
+    CONIURA db_exec(db, CONIURA model_index_ddl(def, *idx_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase13_13b_factory_override_prevents_dep_creation"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_seq.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_rel.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/json.cct"
+
+RITUALE main() REDDE REX
+  CONIURA factory_seq_reset()
+  EVOCA SPECULUM NIHIL db AD CONIURA phase13_db_open("13b_factory_override_prevents_dep_creation")
+  CONIURA phase13_seed_schema(db)
+  CONIURA db_exec(db, "INSERT INTO categorias(id, nome, slug, ativo) VALUES(7, 'Manual', 'manual', 1)")
+
+  EVOCA FactoryDef cat AD CONIURA factory_def_new("categorias")
+  CONIURA factory_def_add_const(cat, "nome", "Unused")
+  CONIURA factory_def_add_seq(cat, "slug", "cat-")
+  CONIURA factory_def_add_const(cat, "ativo", "1")
+
+  EVOCA FactoryDef post AD CONIURA factory_def_new("posts")
+  CONIURA factory_def_add_const(post, "titulo", "Hello")
+  CONIURA factory_def_add_seq(post, "slug", "post-")
+  CONIURA factory_def_add_dep(post, "categoria_id", "categoria")
+  CONIURA factory_def_add_nulo(post, "email")
+
+  EVOCA FactoryRegistry reg AD CONIURA factory_registry_new()
+  CONIURA factory_registry_add(SPECULUM reg, "categoria", cat)
+
+  EVOCA Json overrides AD CONIURA json_obj()
+  CONIURA json_obj_push(overrides, "categoria_id", CONIURA json_num(7.0))
+  CONIURA factory_create_with_deps(db, post, reg, overrides)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM categorias") != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT categoria_id FROM posts WHERE id = 1") != 7
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

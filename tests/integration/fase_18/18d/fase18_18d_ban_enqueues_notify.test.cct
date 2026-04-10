@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase18_18d_ban_enqueues_notify"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_schema.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_queue.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_decide.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_ban_enqueues_notify() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18d_ban")
+  EVOCA TaskConfig task_cfg AD CONIURA task_config_default()
+  CONIURA moderation_schema_up(stack.dbh)
+  CONIURA tasks_schema_up(stack.dbh)
+  EVOCA ModerationItem item
+  VINCIRE item.id AD "mod-ban"
+  VINCIRE item.kind AD MODERATION_USER
+  VINCIRE item.state AD MOD_PENDING
+  VINCIRE item.object_id AD "user-9"
+  VINCIRE item.object_type AD "user"
+  VINCIRE item.submitter_id AD "user-9"
+  VINCIRE item.content_preview_json AD "{}"
+  VINCIRE item.report_reason AD "abuse"
+  VINCIRE item.assigned_to AD ""
+  VINCIRE item.priority AD 1
+  VINCIRE item.created_at_unix AD 1
+  VINCIRE item.updated_at_unix AD 1
+  CONIURA moderation_item_create(stack.dbh, item)
+  SI CONIURA compare(CONIURA moderation_decide(stack.dbh, "mod-ban", "ban", "ban user", "mod-a", VERUM, task_cfg), "banned") != 0
+    IACE "ban action state mismatch"
+  FIN SI
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT COUNT(*) FROM task_queue WHERE task_name = 'moderation.notify'", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "ban notify task count missing"
+  FIN SI
+  SI CONIURA dbrows_get_int(rows, 0) != 1
+    IACE "ban action did not enqueue notify task"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_ban_enqueues_notify()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

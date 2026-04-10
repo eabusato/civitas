@@ -1,0 +1,41 @@
+INCIPIT grimoire "civitas_l10n_fmt_list"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n_fmt.cct"
+
+RITUALE l10n_format_list(SPECULUM NIHIL itens, SPECULUM L10nFmtRules rules) REDDE VERBUM
+  EVOCA REX n AD CONIURA fluxus_len(itens)
+  SI n == 0
+    REDDE ""
+  FIN SI
+  SI n == 1
+    EVOCA SPECULUM VERBUM ptr0 AD CONIURA fluxus_get(itens, 0)
+    REDDE *ptr0
+  FIN SI
+  SI n == 2
+    EVOCA SPECULUM VERBUM ptr_a AD CONIURA fluxus_get(itens, 0)
+    EVOCA SPECULUM VERBUM ptr_b AD CONIURA fluxus_get(itens, 1)
+    REDDE CONIURA concat(*ptr_a, CONIURA concat((*rules).lista.conj, *ptr_b))
+  FIN SI
+
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  DUM i < n - 1
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(itens, i)
+    SI i > 0
+      VINCIRE out AD CONIURA concat(out, (*rules).lista.sep)
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA SPECULUM VERBUM last_ptr AD CONIURA fluxus_get(itens, n - 1)
+  SI (*rules).lista.conj_oxford
+    VINCIRE out AD CONIURA concat(out, CONIURA trim_right((*rules).lista.sep))
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, CONIURA concat((*rules).lista.conj, *last_ptr))
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

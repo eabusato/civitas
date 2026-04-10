@@ -1,0 +1,244 @@
+INCIPIT grimoire "civitas_load_test"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../bench.cct"
+ADVOCARE "../bench/bench.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../test_client.cct"
+ADVOCARE "../test_client/test_client.cct"
+
+SIGILLUM LoadRoute
+  method: VERBUM
+  path: VERBUM
+  body: VERBUM
+  headers_json: VERBUM
+  weight: REX
+FIN SIGILLUM
+
+SIGILLUM LoadConfig
+  warmup: REX
+  n_requests: REX
+  timeout_ms: REX
+  max_errors: REX
+  min_throughput: UMBRA
+  max_p99_ms: REX
+  routes: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM LoadResult
+  total_requests: REX
+  requests_ok: REX
+  requests_error: REX
+  throughput: UMBRA
+  p50_ms: REX
+  p95_ms: REX
+  p99_ms: REX
+  min_ms: REX
+  max_ms: REX
+  approved: VERUM
+FIN SIGILLUM
+
+SIGILLUM LoadComparison
+  before: LoadResult
+  after: LoadResult
+  delta_throughput_pct: UMBRA
+  delta_p99_pct: UMBRA
+  delta_errors: REX
+  regressao: VERUM
+FIN SIGILLUM
+
+RITUALE load_route_new(VERBUM method, VERBUM path) REDDE LoadRoute
+  EVOCA LoadRoute route
+  VINCIRE route.method AD CONIURA to_upper(method)
+  VINCIRE route.path AD path
+  VINCIRE route.body AD ""
+  VINCIRE route.headers_json AD "{}"
+  VINCIRE route.weight AD 1
+  REDDE route
+EXPLICIT RITUALE
+
+RITUALE load_config_default() REDDE LoadConfig
+  EVOCA LoadConfig cfg
+  VINCIRE cfg.warmup AD 2
+  VINCIRE cfg.n_requests AD 50
+  VINCIRE cfg.timeout_ms AD 5000
+  VINCIRE cfg.max_errors AD 0
+  VINCIRE cfg.min_throughput AD 1.0
+  VINCIRE cfg.max_p99_ms AD 250
+  VINCIRE cfg.routes AD CONIURA fluxus_init(MENSURA(LoadRoute))
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE load_config_add_route(SPECULUM LoadConfig cfg, LoadRoute route) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE load_result_empty() REDDE LoadResult
+  EVOCA LoadResult out
+  VINCIRE out.total_requests AD 0
+  VINCIRE out.requests_ok AD 0
+  VINCIRE out.requests_error AD 0
+  VINCIRE out.throughput AD 0.0
+  VINCIRE out.p50_ms AD 0
+  VINCIRE out.p95_ms AD 0
+  VINCIRE out.p99_ms AD 0
+  VINCIRE out.min_ms AD 0
+  VINCIRE out.max_ms AD 0
+  VINCIRE out.approved AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE load_route_total_weight(SPECULUM NIHIL routes) REDDE REX
+  EVOCA REX total AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(routes)
+  DUM i < n
+    EVOCA SPECULUM LoadRoute route_ptr AD CONIURA fluxus_get(routes, i)
+    VINCIRE total AD total + (*route_ptr).weight
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI total <= 0
+    REDDE 1
+  FIN SI
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE load_pick_route(SPECULUM NIHIL routes, REX ordinal) REDDE LoadRoute
+  EVOCA REX total_weight AD CONIURA load_route_total_weight(routes)
+  EVOCA REX target AD ordinal
+  SI total_weight > 0
+    VINCIRE target AD ordinal - ((ordinal / total_weight) * total_weight)
+  FIN SI
+  EVOCA REX accum AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(routes)
+  DUM i < n
+    EVOCA SPECULUM LoadRoute route_ptr AD CONIURA fluxus_get(routes, i)
+    VINCIRE accum AD accum + (*route_ptr).weight
+    SI target < accum
+      REDDE *route_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA SPECULUM LoadRoute first_ptr AD CONIURA fluxus_get(routes, 0)
+  REDDE *first_ptr
+EXPLICIT RITUALE
+
+RITUALE load_apply_headers(SPECULUM TestClient client, VERBUM headers_json) REDDE NIHIL
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/", "GET")
+  VINCIRE cfg.headers_json AD headers_json
+  CONIURA bench_headers_apply_json(client, cfg.headers_json)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE load_dispatch(SPECULUM TestClient client, LoadRoute route) REDDE TestResponse
+  CONIURA test_client_clear_header(client, "content-type")
+  SI CONIURA len(route.headers_json) != 0 ET CONIURA compare(route.headers_json, "{}") != 0
+    CONIURA load_apply_headers(client, route.headers_json)
+  FIN SI
+  SI CONIURA compare(route.method, "POST") == 0
+    REDDE CONIURA test_client_post(client, route.path, route.body, "application/json")
+  FIN SI
+  SI CONIURA compare(route.method, "PUT") == 0
+    REDDE CONIURA test_client_put(client, route.path, route.body, "application/json")
+  FIN SI
+  SI CONIURA compare(route.method, "PATCH") == 0
+    REDDE CONIURA test_client_patch(client, route.path, route.body, "application/json")
+  FIN SI
+  SI CONIURA compare(route.method, "DELETE") == 0
+    REDDE CONIURA test_client_delete(client, route.path)
+  FIN SI
+  REDDE CONIURA test_client_get(client, route.path)
+EXPLICIT RITUALE
+
+RITUALE load_test_run_inprocess(SPECULUM Router router_ptr, LoadConfig cfg) REDDE LoadResult
+  EVOCA LoadResult out AD CONIURA load_result_empty()
+  EVOCA TestClient client AD CONIURA test_client_new(router_ptr)
+  EVOCA SPECULUM NIHIL durations AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX total_duration_ms AD 0
+  EVOCA REX suite_started_ms AD CONIURA now_ms()
+  EVOCA REX i AD 0
+
+  DUM i < cfg.warmup
+    EVOCA LoadRoute warm_route AD CONIURA load_pick_route(cfg.routes, i)
+    CONIURA load_dispatch(SPECULUM client, warm_route)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE i AD 0
+  DUM i < cfg.n_requests
+    EVOCA LoadRoute route AD CONIURA load_pick_route(cfg.routes, i)
+    EVOCA REX started_ms AD CONIURA now_ms()
+    EVOCA TestResponse res AD CONIURA load_dispatch(SPECULUM client, route)
+    EVOCA REX duration_ms AD CONIURA now_ms() - started_ms
+    CONIURA fluxus_push(durations, SPECULUM duration_ms)
+    VINCIRE total_duration_ms AD total_duration_ms + duration_ms
+    SI i == 0 VEL duration_ms < out.min_ms
+      VINCIRE out.min_ms AD duration_ms
+    FIN SI
+    SI duration_ms > out.max_ms
+      VINCIRE out.max_ms AD duration_ms
+    FIN SI
+    SI res.status >= 200 ET res.status < 500
+      VINCIRE out.requests_ok AD out.requests_ok + 1
+    ALITER
+      VINCIRE out.requests_error AD out.requests_error + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE out.total_requests AD cfg.n_requests
+  SI cfg.n_requests > 0
+    VINCIRE out.p50_ms AD CONIURA bench_percentile(durations, 50.0)
+    VINCIRE out.p95_ms AD CONIURA bench_percentile(durations, 95.0)
+    VINCIRE out.p99_ms AD CONIURA bench_percentile(durations, 99.0)
+  FIN SI
+  EVOCA REX suite_duration_ms AD CONIURA now_ms() - suite_started_ms
+  SI suite_duration_ms > 0
+    VINCIRE out.throughput AD (cast GENUS(UMBRA)(cfg.n_requests) * 1000.0) / cast GENUS(UMBRA)(suite_duration_ms)
+  FIN SI
+  SI out.requests_error > cfg.max_errors
+    VINCIRE out.approved AD FALSUM
+  FIN SI
+  SI out.p99_ms > cfg.max_p99_ms
+    VINCIRE out.approved AD FALSUM
+  FIN SI
+  SI out.throughput < cfg.min_throughput
+    VINCIRE out.approved AD FALSUM
+  FIN SI
+  CONIURA fluxus_free(durations)
+  CONIURA test_client_free(SPECULUM client)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE load_compare(LoadResult before, LoadResult after) REDDE LoadComparison
+  EVOCA LoadComparison out
+  VINCIRE out.before AD before
+  VINCIRE out.after AD after
+  VINCIRE out.delta_throughput_pct AD 0.0
+  VINCIRE out.delta_p99_pct AD 0.0
+  VINCIRE out.delta_errors AD after.requests_error - before.requests_error
+  VINCIRE out.regressao AD FALSUM
+  SI before.throughput > 0.0
+    VINCIRE out.delta_throughput_pct AD ((after.throughput - before.throughput) * 100.0) / before.throughput
+  FIN SI
+  SI before.p99_ms > 0
+    VINCIRE out.delta_p99_pct AD ((cast GENUS(UMBRA)(after.p99_ms - before.p99_ms)) * 100.0) / cast GENUS(UMBRA)(before.p99_ms)
+  FIN SI
+  SI after.requests_error > before.requests_error
+    VINCIRE out.regressao AD VERUM
+  FIN SI
+  SI after.p99_ms > before.p99_ms
+    VINCIRE out.regressao AD VERUM
+  FIN SI
+  SI after.throughput < before.throughput
+    VINCIRE out.regressao AD VERUM
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

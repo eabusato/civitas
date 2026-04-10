@@ -1,0 +1,35 @@
+INCIPIT grimoire "civitas_cache_view_chave"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "cache_view.cct"
+
+RITUALE cache_view_chave(SPECULUM CacheView cv, WebRequest req) REDDE VERBUM
+  EVOCA VERBUM chave AD (*cv).namespace
+  VINCIRE chave AD CONIURA concat(chave, ":view:")
+  VINCIRE chave AD CONIURA concat(chave, req.method)
+  VINCIRE chave AD CONIURA concat(chave, ":")
+  VINCIRE chave AD CONIURA concat(chave, req.path)
+
+  EVOCA REX query_pos AD CONIURA find(req.raw_target, "?")
+  SI query_pos >= 0
+    VINCIRE chave AD CONIURA concat(chave, CONIURA substring(req.raw_target, query_pos, CONIURA len(req.raw_target)))
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cv).vary_headers)
+  DUM i < n
+    EVOCA SPECULUM VERBUM hdr_ptr AD CONIURA fluxus_get((*cv).vary_headers, i)
+    EVOCA VERBUM hdr_value AD CONIURA request_header_or(req.headers, *hdr_ptr, "")
+    SI CONIURA len(hdr_value) > 0
+      VINCIRE chave AD CONIURA concat(chave, ":")
+      VINCIRE chave AD CONIURA concat(chave, hdr_value)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE chave
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

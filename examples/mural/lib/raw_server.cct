@@ -1,0 +1,321 @@
+INCIPIT grimoire "mural_raw_server"
+
+ADVOCARE "../../../lib/civitas/cookie.cct"
+ADVOCARE "../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/security.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../lib/civitas/validate/validate.cct"
+ADVOCARE "../../../lib/civitas/mime.cct"
+ADVOCARE "config.cct"
+ADVOCARE "repository.cct"
+ADVOCARE "views.cct"
+ADVOCARE "web_runtime.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE mural_response_to_raw(WebResponse res, VERUM keep_alive) REDDE HttpRawResponse
+  EVOCA HttpRawResponse raw AD CONIURA http_server_response_new(res.status, res.body)
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(res.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA http_server_headers_set(raw.headers, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA len(CONIURA http_server_headers_get_or(raw.headers, "content-type", "")) == 0
+    ELIGE res.body_kind
+      CASUS WEB_RESPONSE_HTML:
+        CONIURA http_server_headers_set(raw.headers, "content-type", "text/html; charset=utf-8")
+      CASUS WEB_RESPONSE_JSON:
+        CONIURA http_server_headers_set(raw.headers, "content-type", "application/json; charset=utf-8")
+      CASUS WEB_RESPONSE_TEXT:
+        CONIURA http_server_headers_set(raw.headers, "content-type", "text/plain; charset=utf-8")
+      ALIOQUIN:
+    FIN ELIGE
+  FIN SI
+  VINCIRE raw.close_connection AD NON keep_alive
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE mural_raw_headify(HttpRawResponse raw) REDDE HttpRawResponse
+  SI NON CONIURA http_server_headers_has(raw.headers, "content-length")
+    CONIURA http_server_headers_set(raw.headers, "content-length", CONIURA stringify_int(CONIURA len(raw.body)))
+  FIN SI
+  VINCIRE raw.body AD ""
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE mural_raw_path(HttpRawRequest raw_req) REDDE VERBUM
+  EVOCA REX q AD CONIURA find(raw_req.target, "?")
+  SI q == -1
+    SI CONIURA len(raw_req.target) == 0
+      REDDE "/"
+    FIN SI
+    REDDE raw_req.target
+  FIN SI
+  SI q == 0
+    REDDE "/"
+  FIN SI
+  REDDE CONIURA substring(raw_req.target, 0, q)
+EXPLICIT RITUALE
+
+RITUALE mural_flash_cookie_value(HttpRawRequest raw_req) REDDE VERBUM
+  EVOCA SPECULUM NIHIL cookies AD CONIURA cookie_parse_header(CONIURA http_server_headers_get_or(raw_req.headers, "cookie", ""))
+  REDDE CONIURA mural_cookie_map_value(cookies, CONIURA mural_flash_cookie_name())
+EXPLICIT RITUALE
+
+RITUALE mural_flash_expire_header() REDDE VERBUM
+  REDDE "mural_flash=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+EXPLICIT RITUALE
+
+RITUALE mural_basic_auth_ok(HttpRawRequest raw_req, MuralConfig cfg) REDDE VERUM
+  EVOCA VERBUM auth AD CONIURA http_server_headers_get_or(raw_req.headers, "authorization", "")
+  EVOCA VERBUM lowered AD CONIURA to_lower(auth)
+  EVOCA VERBUM payload AD ""
+  EVOCA SPECULUM NIHIL decoded_opt
+  EVOCA VERBUM decoded AD ""
+  EVOCA REX colon AD 0
+  SI NON CONIURA starts_with(lowered, "basic ")
+    REDDE FALSUM
+  FIN SI
+  VINCIRE payload AD CONIURA trim(CONIURA substring(auth, 6, CONIURA len(auth)))
+  VINCIRE decoded_opt AD CONIURA base64_decode(payload)
+  SI CONIURA option_is_none GENUS(VERBUM)(decoded_opt)
+    CONIURA option_free GENUS(VERBUM)(decoded_opt)
+    REDDE FALSUM
+  FIN SI
+  VINCIRE decoded AD CONIURA option_unwrap GENUS(VERBUM)(decoded_opt)
+  CONIURA option_free GENUS(VERBUM)(decoded_opt)
+  VINCIRE colon AD CONIURA find(decoded, ":")
+  SI colon == -1
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA compare(CONIURA substring(decoded, 0, colon), "admin") == 0 ET CONIURA compare(CONIURA substring(decoded, colon + 1, CONIURA len(decoded)), cfg.admin_secret) == 0
+EXPLICIT RITUALE
+
+RITUALE mural_admin_unauthorized_raw(VERUM keep_alive) REDDE HttpRawResponse
+  EVOCA HttpRawResponse raw AD CONIURA http_server_response_new(401, "authorization required")
+  CONIURA http_server_headers_set(raw.headers, "www-authenticate", "Basic realm=\"Mural admin-lite\"")
+  CONIURA http_server_headers_set(raw.headers, "content-type", "text/plain; charset=utf-8")
+  VINCIRE raw.close_connection AD NON keep_alive
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE mural_method_not_allowed_raw(VERBUM allow_header, VERUM keep_alive) REDDE HttpRawResponse
+  EVOCA HttpRawResponse raw AD CONIURA http_server_response_new(405, "method not allowed")
+  CONIURA http_server_headers_set(raw.headers, "allow", allow_header)
+  CONIURA http_server_headers_set(raw.headers, "content-type", "text/plain; charset=utf-8")
+  VINCIRE raw.close_connection AD NON keep_alive
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE mural_raw_delete_path_id(VERBUM path) REDDE SPECULUM NIHIL
+  EVOCA VERBUM prefix AD "/admin-lite/mensagens/"
+  EVOCA VERBUM suffix AD "/delete"
+  EVOCA VERBUM middle AD ""
+  EVOCA SPECULUM NIHIL id_num_opt
+  SI NON CONIURA starts_with(path, prefix)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  SI NON CONIURA ends_with(path, suffix)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  VINCIRE middle AD CONIURA substring(path, CONIURA len(prefix), CONIURA len(path) - CONIURA len(suffix))
+  SI CONIURA len(middle) == 0
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  VINCIRE id_num_opt AD CONIURA try_int(middle)
+  SI CONIURA option_is_none GENUS(REX)(id_num_opt)
+    CONIURA option_free GENUS(REX)(id_num_opt)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  REDDE id_num_opt
+EXPLICIT RITUALE
+
+RITUALE mural_static_response(StaticIndex static_index, VERBUM path_only) REDDE WebResponse
+  EVOCA VERBUM asset_path AD ""
+  EVOCA VERBUM root AD CONIURA resolve(static_index.config.raiz)
+  EVOCA VERBUM full_path AD ""
+  SI NON CONIURA starts_with(path_only, "/static/")
+    REDDE CONIURA response_not_found()
+  FIN SI
+  VINCIRE asset_path AD CONIURA substring(path_only, CONIURA len("/static/"), CONIURA len(path_only))
+  SI CONIURA len(asset_path) == 0
+    REDDE CONIURA response_not_found()
+  FIN SI
+  SI CONIURA starts_with(asset_path, "/") VEL CONIURA find(asset_path, "..") != -1
+    REDDE CONIURA response_bad_request("invalid static path")
+  FIN SI
+  VINCIRE full_path AD CONIURA resolve(CONIURA path_join(root, asset_path))
+  SI NON CONIURA starts_with(full_path, root)
+    REDDE CONIURA response_bad_request("invalid static path")
+  FIN SI
+  SI NON CONIURA is_file(full_path)
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA WebResponse ok_res AD CONIURA response_ok()
+  VINCIRE ok_res.body AD CONIURA read_all(full_path)
+  CONIURA response_set_header(SPECULUM ok_res, "content-type", CONIURA mime_guess_from_path(asset_path))
+  SI static_index.config.modo == SmProducao
+    CONIURA response_set_header(SPECULUM ok_res, "cache-control", "public, max-age=31536000, immutable")
+  ALITER
+    CONIURA response_set_header(SPECULUM ok_res, "cache-control", "no-cache")
+  FIN SI
+  REDDE ok_res
+EXPLICIT RITUALE
+
+RITUALE mural_index_raw(MuralConfig cfg, StaticIndex static_index, HttpRawRequest raw_req) REDDE HttpRawResponse
+  EVOCA SPECULUM NIHIL records AD CONIURA mural_repository_recent(cfg, cfg.recent_limit)
+  EVOCA VERBUM flash_message AD ""
+  SI CONIURA len(CONIURA mural_flash_cookie_value(raw_req)) > 0
+    VINCIRE flash_message AD "Message posted."
+  FIN SI
+  EVOCA WebResponse res AD CONIURA mural_render_index(cfg, static_index, records, CONIURA mural_blank_form(), CONIURA mural_blank_validation(), flash_message)
+  SI CONIURA len(flash_message) > 0
+    CONIURA response_set_header(SPECULUM res, "set-cookie", CONIURA mural_flash_expire_header())
+  FIN SI
+  REDDE CONIURA mural_response_to_raw(res, raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_create_raw(MuralConfig cfg, StaticIndex static_index, HttpRawRequest raw_req) REDDE HttpRawResponse
+  EVOCA FormSchema schema AD CONIURA mural_form_schema()
+  EVOCA FormData fd AD CONIURA mural_decode_form(raw_req.body)
+  EVOCA ValidationResult vr AD CONIURA validate_form(schema, fd)
+  SI NON vr.valido
+    EVOCA SPECULUM NIHIL records AD CONIURA mural_repository_recent(cfg, cfg.recent_limit)
+    EVOCA WebResponse invalid_form_res AD CONIURA mural_render_index(cfg, static_index, records, fd, vr, "")
+    VINCIRE invalid_form_res.status AD 422
+    REDDE CONIURA mural_response_to_raw(invalid_form_res, raw_req.keep_alive)
+  FIN SI
+  EVOCA MuralCreateMessage create_input
+  VINCIRE create_input.name AD CONIURA trim(CONIURA form_data_get_or(fd, "name", ""))
+  VINCIRE create_input.email AD CONIURA trim(CONIURA form_data_get_or(fd, "email", ""))
+  VINCIRE create_input.body AD CONIURA trim(CONIURA form_data_get_or(fd, "body", ""))
+  CONIURA mural_repository_insert(cfg, create_input)
+  EVOCA WebResponse create_res AD CONIURA response_redirect("/")
+  CONIURA response_set_header(SPECULUM create_res, "set-cookie", "mural_flash=posted; Path=/; Max-Age=30; HttpOnly")
+  REDDE CONIURA mural_response_to_raw(create_res, raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_admin_raw(MuralConfig cfg, StaticIndex static_index, HttpRawRequest raw_req) REDDE HttpRawResponse
+  SI NON CONIURA mural_basic_auth_ok(raw_req, cfg)
+    REDDE CONIURA mural_admin_unauthorized_raw(raw_req.keep_alive)
+  FIN SI
+  EVOCA SPECULUM NIHIL records AD CONIURA mural_repository_recent(cfg, 100)
+  EVOCA VERBUM flash_message AD ""
+  SI CONIURA len(CONIURA mural_flash_cookie_value(raw_req)) > 0
+    VINCIRE flash_message AD "Message deleted."
+  FIN SI
+  EVOCA WebResponse res AD CONIURA mural_render_admin(cfg, static_index, records, flash_message)
+  SI CONIURA len(flash_message) > 0
+    CONIURA response_set_header(SPECULUM res, "set-cookie", CONIURA mural_flash_expire_header())
+  FIN SI
+  REDDE CONIURA mural_response_to_raw(res, raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_delete_raw(MuralConfig cfg, HttpRawRequest raw_req, VERBUM path_only) REDDE HttpRawResponse
+  EVOCA SPECULUM NIHIL id_opt
+  SI NON CONIURA mural_basic_auth_ok(raw_req, cfg)
+    REDDE CONIURA mural_admin_unauthorized_raw(raw_req.keep_alive)
+  FIN SI
+  VINCIRE id_opt AD CONIURA mural_raw_delete_path_id(path_only)
+  SI CONIURA option_is_none GENUS(REX)(id_opt)
+    CONIURA option_free GENUS(REX)(id_opt)
+    REDDE CONIURA mural_response_to_raw(CONIURA response_not_found(), raw_req.keep_alive)
+  FIN SI
+  CONIURA mural_repository_delete(cfg, CONIURA option_unwrap GENUS(REX)(id_opt))
+  CONIURA option_free GENUS(REX)(id_opt)
+  EVOCA WebResponse delete_res AD CONIURA response_redirect("/admin-lite")
+  CONIURA response_set_header(SPECULUM delete_res, "set-cookie", "mural_flash=deleted; Path=/; Max-Age=30; HttpOnly")
+  REDDE CONIURA mural_response_to_raw(delete_res, raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_static_raw(StaticIndex static_index, HttpRawRequest raw_req, VERBUM path_only) REDDE HttpRawResponse
+  REDDE CONIURA mural_response_to_raw(CONIURA mural_static_response(static_index, path_only), raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_dispatch_body_raw(MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL allowed_hosts, HttpRawRequest raw_req) REDDE HttpRawResponse
+  EVOCA VERBUM host AD CONIURA http_server_headers_get_or(raw_req.headers, "host", "")
+  EVOCA VERBUM path_only AD CONIURA mural_raw_path(raw_req)
+  EVOCA VERUM method_is_get_like AD CONIURA compare(raw_req.method, "GET") == 0 VEL CONIURA compare(raw_req.method, "HEAD") == 0
+  SI NON CONIURA security_host_is_allowed(allowed_hosts, host)
+    REDDE CONIURA mural_response_to_raw(CONIURA response_bad_request("invalid host"), raw_req.keep_alive)
+  FIN SI
+  SI method_is_get_like ET CONIURA compare(path_only, "/") == 0
+    REDDE CONIURA mural_index_raw(cfg, static_index, raw_req)
+  FIN SI
+  SI CONIURA compare(raw_req.method, "POST") == 0 ET CONIURA compare(path_only, "/mensagens") == 0
+    REDDE CONIURA mural_create_raw(cfg, static_index, raw_req)
+  FIN SI
+  SI method_is_get_like ET CONIURA compare(path_only, "/admin-lite") == 0
+    REDDE CONIURA mural_admin_raw(cfg, static_index, raw_req)
+  FIN SI
+  SI CONIURA compare(raw_req.method, "POST") == 0 ET CONIURA starts_with(path_only, "/admin-lite/mensagens/")
+    REDDE CONIURA mural_delete_raw(cfg, raw_req, path_only)
+  FIN SI
+  SI method_is_get_like ET CONIURA starts_with(path_only, "/static/")
+    REDDE CONIURA mural_static_raw(static_index, raw_req, path_only)
+  FIN SI
+  SI CONIURA compare(path_only, "/") == 0
+    REDDE CONIURA mural_method_not_allowed_raw("GET, HEAD", raw_req.keep_alive)
+  FIN SI
+  SI CONIURA compare(path_only, "/mensagens") == 0
+    REDDE CONIURA mural_method_not_allowed_raw("POST", raw_req.keep_alive)
+  FIN SI
+  SI CONIURA compare(path_only, "/admin-lite") == 0
+    REDDE CONIURA mural_method_not_allowed_raw("GET, HEAD", raw_req.keep_alive)
+  FIN SI
+  SI CONIURA starts_with(path_only, "/admin-lite/mensagens/")
+    REDDE CONIURA mural_method_not_allowed_raw("POST", raw_req.keep_alive)
+  FIN SI
+  SI CONIURA starts_with(path_only, "/static/")
+    REDDE CONIURA mural_method_not_allowed_raw("GET, HEAD", raw_req.keep_alive)
+  FIN SI
+  REDDE CONIURA mural_response_to_raw(CONIURA response_not_found(), raw_req.keep_alive)
+EXPLICIT RITUALE
+
+RITUALE mural_dispatch_raw(MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL allowed_hosts, HttpRawRequest raw_req) REDDE HttpRawResponse
+  EVOCA HttpRawResponse raw AD CONIURA mural_dispatch_body_raw(cfg, static_index, allowed_hosts, raw_req)
+  SI CONIURA compare(raw_req.method, "HEAD") == 0
+    REDDE CONIURA mural_raw_headify(raw)
+  FIN SI
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE mural_run_server_limit(HttpServer server, MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL allowed_hosts, REX max_requests) REDDE NIHIL
+  EVOCA REX served AD 0
+  DUM (max_requests == 0 VEL served < max_requests) ET NON CONIURA http_server_should_shutdown(server)
+    EVOCA SPECULUM NIHIL raw_req_res AD CONIURA civitas_http_server_accept(server)
+    SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+      EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+      SI CONIURA compare(err.message, "server stopping") == 0
+        FRANGE
+      FIN SI
+      CONIURA http_server_respond(server, CONIURA http_server_error_response(err))
+      RECEDE
+    FIN SI
+    EVOCA HttpRawRequest raw_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+    CONIURA http_server_respond(server, CONIURA mural_dispatch_raw(cfg, static_index, allowed_hosts, raw_req))
+    VINCIRE served AD served + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_run_server(HttpServer server, MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL allowed_hosts) REDDE NIHIL
+  CONIURA mural_run_server_limit(server, cfg, static_index, allowed_hosts, 0)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

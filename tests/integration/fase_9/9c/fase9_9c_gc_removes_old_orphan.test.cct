@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase9_9c_gc_removes_old_orphan"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_gc.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9c_root("gc_orphan")
+  EVOCA MediaStore store AD CONIURA phase9_9c_open_store(root)
+  EVOCA StorageConfig cfg AD CONIURA phase9_9c_config(root)
+  EVOCA VERBUM orphan_path AD CONIURA path_join(CONIURA path_join(cfg.root_dir, "tmp"), "orphan.txt")
+  CONIURA write_all(orphan_path, "orphan")
+
+  EVOCA StorageGcReport report AD CONIURA storage_gc_tmp(store, cfg, phase9_9c_gc_checker_drop_all, 4102444800)
+  SI report.orfaos_removidos != 1
+    IACE "gc should remove old orphan file"
+  FIN SI
+  SI CONIURA exists(orphan_path)
+    IACE "orphan file should be deleted"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

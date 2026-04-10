@@ -1,0 +1,737 @@
+INCIPIT grimoire "civitas_api_views"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../api/api.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "../auth_token/auth_token.cct"
+ADVOCARE "../auth_token/auth_token_verify.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+
+ORDO ApiMethod
+  API_GET
+  API_POST
+  API_PUT
+  API_PATCH
+  API_DELETE
+FIN ORDO
+
+SIGILLUM ApiFilterSpec
+  field: VERBUM
+  op: VERBUM
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ApiViewConfig
+  model_name: VERBUM
+  table_name: VERBUM
+  pk_field: VERBUM
+  serializer_name: VERBUM
+  pagination_kind: REX
+  page_size: REX
+  filter_fields: SPECULUM NIHIL
+  order_fields: SPECULUM NIHIL
+  default_order: VERBUM
+  default_order_dir: VERBUM
+  auth_required: VERUM
+  allowed_methods: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ViewSetConfig
+  name: VERBUM
+  path_prefix: VERBUM
+  version: VERBUM
+  view_config: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ApiVersionConfig
+  version: VERBUM
+  path_prefix: VERBUM
+  accept_header_prefix: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ApiViewSetRegistry
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ApiVersionRegistry
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE api_method_text(ApiMethod method) REDDE VERBUM
+  ELIGE method
+    CASUS API_POST:
+      REDDE "POST"
+    CASUS API_PUT:
+      REDDE "PUT"
+    CASUS API_PATCH:
+      REDDE "PATCH"
+    CASUS API_DELETE:
+      REDDE "DELETE"
+    ALIOQUIN:
+      REDDE "GET"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE api_method_parse(VERBUM method) REDDE ApiMethod
+  EVOCA VERBUM upper AD CONIURA to_upper(method)
+  SI CONIURA compare(upper, "POST") == 0
+    REDDE API_POST
+  FIN SI
+  SI CONIURA compare(upper, "PUT") == 0
+    REDDE API_PUT
+  FIN SI
+  SI CONIURA compare(upper, "PATCH") == 0
+    REDDE API_PATCH
+  FIN SI
+  SI CONIURA compare(upper, "DELETE") == 0
+    REDDE API_DELETE
+  FIN SI
+  REDDE API_GET
+EXPLICIT RITUALE
+
+RITUALE api_view_config_init(SPECULUM ApiViewConfig cfg, VERBUM model_name, VERBUM table_name, VERBUM pk_field, VERBUM serializer_name) REDDE NIHIL
+  VINCIRE (*cfg).model_name AD model_name
+  VINCIRE (*cfg).table_name AD table_name
+  VINCIRE (*cfg).pk_field AD pk_field
+  VINCIRE (*cfg).serializer_name AD serializer_name
+  VINCIRE (*cfg).pagination_kind AD 0
+  VINCIRE (*cfg).page_size AD 20
+  VINCIRE (*cfg).filter_fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*cfg).order_fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*cfg).default_order AD pk_field
+  VINCIRE (*cfg).default_order_dir AD "asc"
+  VINCIRE (*cfg).auth_required AD FALSUM
+  VINCIRE (*cfg).allowed_methods AD CONIURA fluxus_init(MENSURA(ApiMethod))
+  EVOCA ApiMethod m_get AD API_GET
+  EVOCA ApiMethod m_post AD API_POST
+  EVOCA ApiMethod m_put AD API_PUT
+  EVOCA ApiMethod m_delete AD API_DELETE
+  CONIURA fluxus_push((*cfg).allowed_methods, SPECULUM m_get)
+  CONIURA fluxus_push((*cfg).allowed_methods, SPECULUM m_post)
+  CONIURA fluxus_push((*cfg).allowed_methods, SPECULUM m_put)
+  CONIURA fluxus_push((*cfg).allowed_methods, SPECULUM m_delete)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_view_config_add_filter_field(SPECULUM ApiViewConfig cfg, VERBUM field_name) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).filter_fields, SPECULUM field_name)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_view_config_add_order_field(SPECULUM ApiViewConfig cfg, VERBUM field_name) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).order_fields, SPECULUM field_name)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_view_config_reset_methods(SPECULUM ApiViewConfig cfg) REDDE NIHIL
+  VINCIRE (*cfg).allowed_methods AD CONIURA fluxus_init(MENSURA(ApiMethod))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_view_config_allow_method(SPECULUM ApiViewConfig cfg, ApiMethod method) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).allowed_methods, SPECULUM method)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_viewset_config_init(SPECULUM ViewSetConfig cfg, VERBUM name, VERBUM path_prefix, VERBUM version, SPECULUM ApiViewConfig view_config) REDDE NIHIL
+  VINCIRE (*cfg).name AD name
+  VINCIRE (*cfg).path_prefix AD path_prefix
+  VINCIRE (*cfg).version AD version
+  VINCIRE (*cfg).view_config AD view_config
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_viewset_registry_init(SPECULUM ApiViewSetRegistry reg) REDDE NIHIL
+  VINCIRE (*reg).items AD CONIURA fluxus_init(MENSURA(ViewSetConfig))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_viewset_registry_put(SPECULUM ApiViewSetRegistry reg, ViewSetConfig cfg) REDDE NIHIL
+  CONIURA fluxus_push((*reg).items, SPECULUM cfg)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_viewset_registry_len(SPECULUM ApiViewSetRegistry reg) REDDE REX
+  REDDE CONIURA fluxus_len((*reg).items)
+EXPLICIT RITUALE
+
+RITUALE api_version_registry_init(SPECULUM ApiVersionRegistry reg) REDDE NIHIL
+  VINCIRE (*reg).items AD CONIURA fluxus_init(MENSURA(ApiVersionConfig))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_version_registry_put(SPECULUM ApiVersionRegistry reg, ApiVersionConfig cfg) REDDE NIHIL
+  CONIURA fluxus_push((*reg).items, SPECULUM cfg)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_version_extract(WebRequest req) REDDE VERBUM
+  SI CONIURA starts_with(req.path, "/api/")
+    EVOCA SPECULUM NIHIL parts AD CONIURA split(req.path, "/")
+    SI CONIURA fluxus_len(parts) > 2
+      EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, 2)
+      REDDE *part_ptr
+    FIN SI
+  FIN SI
+  EVOCA VERBUM accept AD CONIURA request_header_or(req.headers, "accept", "")
+  EVOCA REX pos AD CONIURA find(accept, "application/vnd.civitas.")
+  SI pos != -1
+    EVOCA REX start AD pos + CONIURA len("application/vnd.civitas.")
+    EVOCA REX plus_pos AD CONIURA find(CONIURA substring(accept, start, CONIURA len(accept)), "+json")
+    SI plus_pos != -1
+      REDDE CONIURA substring(accept, start, start + plus_pos)
+    FIN SI
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE api_version_config_for(SPECULUM ApiVersionRegistry reg, VERBUM version) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*reg).items)
+  DUM i < n
+    EVOCA SPECULUM ApiVersionConfig ptr AD CONIURA fluxus_get((*reg).items, i)
+    SI CONIURA compare((*ptr).version, version) == 0
+      REDDE ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE api_field_allowed(SPECULUM NIHIL fields, VERBUM field_name) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(fields, i)
+    SI CONIURA compare(*ptr, field_name) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE api_dbparams_init(SPECULUM DbParams params) REDDE NIHIL
+  VINCIRE (*params).valores AD CONIURA fluxus_init(MENSURA(DbParam))
+  VINCIRE (*params).tipos AD CONIURA fluxus_init(MENSURA(DbParamKind))
+  VINCIRE (*params).n AD 0
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_method_allowed(ApiViewConfig cfg, VERBUM method) REDDE VERUM
+  EVOCA ApiMethod want AD CONIURA api_method_parse(method)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.allowed_methods)
+  DUM i < n
+    EVOCA SPECULUM ApiMethod ptr AD CONIURA fluxus_get(cfg.allowed_methods, i)
+    SI *ptr == want
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE api_allowed_methods_header(ApiViewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.allowed_methods)
+  DUM i < n
+    EVOCA SPECULUM ApiMethod ptr AD CONIURA fluxus_get(cfg.allowed_methods, i)
+    EVOCA VERBUM method_text AD CONIURA api_method_text(*ptr)
+    CONIURA fluxus_push(out, SPECULUM method_text)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_query_value(WebRequest req, VERBUM key) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA request_query_first(req, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM out AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_query_int(WebRequest req, VERBUM key, REX fallback) REDDE REX
+  EVOCA VERBUM raw AD CONIURA api_query_value(req, key)
+  EVOCA SPECULUM NIHIL parsed AD CONIURA try_int(raw)
+  SI CONIURA option_is_none GENUS(REX)(parsed)
+    CONIURA option_free GENUS(REX)(parsed)
+    REDDE fallback
+  FIN SI
+  EVOCA REX out AD CONIURA option_unwrap GENUS(REX)(parsed)
+  CONIURA option_free GENUS(REX)(parsed)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_filter_push(SPECULUM NIHIL filters, VERBUM field, VERBUM op, VERBUM value) REDDE NIHIL
+  EVOCA ApiFilterSpec spec
+  VINCIRE spec.field AD field
+  VINCIRE spec.op AD op
+  VINCIRE spec.value AD value
+  CONIURA fluxus_push(filters, SPECULUM spec)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_parse_filters(WebRequest req, ApiViewConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(ApiFilterSpec))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.filter_fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.filter_fields, i)
+    EVOCA VERBUM field AD *field_ptr
+    EVOCA VERBUM eq_value AD CONIURA api_query_value(req, field)
+    EVOCA VERBUM like_value AD CONIURA api_query_value(req, CONIURA concat(field, "__like"))
+    EVOCA VERBUM gt_value AD CONIURA api_query_value(req, CONIURA concat(field, "__gt"))
+    EVOCA VERBUM lt_value AD CONIURA api_query_value(req, CONIURA concat(field, "__lt"))
+    SI CONIURA len(eq_value) > 0
+      CONIURA api_filter_push(out, field, "eq", eq_value)
+    FIN SI
+    SI CONIURA len(like_value) > 0
+      CONIURA api_filter_push(out, field, "like", like_value)
+    FIN SI
+    SI CONIURA len(gt_value) > 0
+      CONIURA api_filter_push(out, field, "gt", gt_value)
+    FIN SI
+    SI CONIURA len(lt_value) > 0
+      CONIURA api_filter_push(out, field, "lt", lt_value)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_build_filter_sql(SPECULUM NIHIL filters, SPECULUM DbParams params) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(filters)
+  DUM i < n
+    EVOCA SPECULUM ApiFilterSpec ptr AD CONIURA fluxus_get(filters, i)
+    SI i > 0
+      VINCIRE out AD CONIURA concat(out, " AND ")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, (*ptr).field)
+    SI CONIURA compare((*ptr).op, "gt") == 0
+      VINCIRE out AD CONIURA concat(out, " > ?")
+      CONIURA dbh_param_text(params, (*ptr).value)
+    ALITER
+      SI CONIURA compare((*ptr).op, "lt") == 0
+        VINCIRE out AD CONIURA concat(out, " < ?")
+        CONIURA dbh_param_text(params, (*ptr).value)
+      ALITER
+        SI CONIURA compare((*ptr).op, "like") == 0
+          VINCIRE out AD CONIURA concat(out, " LIKE ?")
+          CONIURA dbh_param_text(params, CONIURA concat(CONIURA concat("%", (*ptr).value), "%"))
+        ALITER
+          VINCIRE out AD CONIURA concat(out, " = ?")
+          CONIURA dbh_param_text(params, (*ptr).value)
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_serializer_read_columns(SerializerConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI NON (*ptr).write_only
+      SI CONIURA len(out) > 0
+        VINCIRE out AD CONIURA concat(out, ", ")
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, (*ptr).source)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_list_select_sql(ApiViewConfig cfg, SerializerConfig serializer, SPECULUM NIHIL filters, SPECULUM DbParams params, VERBUM requested_order, VERBUM requested_dir) REDDE VERBUM
+  EVOCA VERBUM order_field AD requested_order
+  EVOCA VERBUM order_dir AD CONIURA to_lower(requested_dir)
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", CONIURA api_serializer_read_columns(serializer))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  SI CONIURA fluxus_len(filters) > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA api_build_filter_sql(filters, params))
+  FIN SI
+  SI CONIURA len(order_field) == 0 VEL NON CONIURA api_field_allowed(cfg.order_fields, order_field)
+    VINCIRE order_field AD cfg.default_order
+  FIN SI
+  SI CONIURA compare(order_dir, "desc") != 0
+    VINCIRE order_dir AD cfg.default_order_dir
+    SI CONIURA compare(CONIURA to_lower(order_dir), "desc") != 0
+      VINCIRE order_dir AD "asc"
+    FIN SI
+  FIN SI
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY ")
+  VINCIRE sql AD CONIURA concat(sql, order_field)
+  VINCIRE sql AD CONIURA concat(sql, " ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA to_upper(order_dir))
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE api_list_count_sql(ApiViewConfig cfg, SPECULUM NIHIL filters, SPECULUM DbParams params) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM ", cfg.table_name)
+  SI CONIURA fluxus_len(filters) > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA api_build_filter_sql(filters, params))
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE api_response_json_status(VERBUM body_json, REX status) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_json_text(body_json)
+  VINCIRE res.status AD status
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE api_response_csv_status(VERBUM csv_text, REX status) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_text(csv_text)
+  VINCIRE res.status AD status
+  CONIURA response_set_header(SPECULUM res, "content-type", "text/csv; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE api_auth_check(SPECULUM NIHIL db, TokenConfig tok_cfg, WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL token_opt AD CONIURA request_bearer_token(req)
+  SI CONIURA option_is_none GENUS(VERBUM)(token_opt)
+    CONIURA option_free GENUS(VERBUM)(token_opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(token_opt)
+  CONIURA option_free GENUS(VERBUM)(token_opt)
+  EVOCA SPECULUM NIHIL verified AD CONIURA token_verify(db, tok_cfg, token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(verified)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA TokenPayload payload AD CONIURA result_unwrap GENUS(TokenPayload, TokenError)(verified)
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_usuario_ativo(db, payload.user_id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  CONIURA option_free GENUS(User)(user_opt)
+  REDDE CONIURA Some GENUS(VERBUM)(payload.user_id)
+EXPLICIT RITUALE
+
+RITUALE api_ensure_request_allowed(ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  SI CONIURA api_method_allowed(cfg, req.method)
+    REDDE CONIURA response_ok()
+  FIN SI
+  REDDE CONIURA response_method_not_allowed(CONIURA api_allowed_methods_header(cfg))
+EXPLICIT RITUALE
+
+RITUALE api_get_serializer(SPECULUM ApiSerializerRegistry serializers, VERBUM serializer_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA api_serializer_registry_get(serializers, serializer_name)
+EXPLICIT RITUALE
+
+RITUALE api_detail_fetch_json(ApiViewConfig cfg, SerializerConfig serializer, DbHandle dbh, VERBUM pk) REDDE VERBUM
+  EVOCA DbParams params
+  CONIURA api_dbparams_init(SPECULUM params)
+  CONIURA dbh_param_text(SPECULUM params, pk)
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", CONIURA api_serializer_read_columns(serializer))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ? LIMIT 1")
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA VERBUM out AD "[]"
+  SI CONIURA dbrows_next(SPECULUM rows)
+    EVOCA Json row_obj AD CONIURA api_dbrow_to_json_object(serializer, rows)
+    VINCIRE out AD CONIURA json_stringify(row_obj)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_json_field_as_text(Json obj, VERBUM key) REDDE VERBUM
+  SI NON CONIURA json_has_key(obj, key)
+    REDDE ""
+  FIN SI
+  EVOCA Json val AD CONIURA json_get_key(obj, key)
+  SI CONIURA json_is_str(val)
+    REDDE CONIURA json_expect_str(val)
+  FIN SI
+  SI CONIURA json_is_num(val)
+    REDDE CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(val)))
+  FIN SI
+  SI CONIURA json_is_bool(val)
+    SI CONIURA json_expect_bool(val)
+      REDDE "1"
+    FIN SI
+    REDDE "0"
+  FIN SI
+  REDDE CONIURA json_stringify(val)
+EXPLICIT RITUALE
+
+RITUALE api_dbh_bind_json_value(SPECULUM DbParams params, ApiFieldKind kind, Json val) REDDE NIHIL
+  SI CONIURA json_is_null(val)
+    CONIURA dbh_param_null(params)
+    REDDE
+  FIN SI
+  SI kind == API_FIELD_INT
+    CONIURA dbh_param_int(params, cast GENUS(REX)(CONIURA json_expect_num(val)))
+    REDDE
+  FIN SI
+  SI kind == API_FIELD_REAL
+    CONIURA dbh_param_real(params, CONIURA json_expect_num(val))
+    REDDE
+  FIN SI
+  SI kind == API_FIELD_BOOL
+    CONIURA dbh_param_bool(params, CONIURA json_expect_bool(val))
+    REDDE
+  FIN SI
+  SI kind == API_FIELD_JSON VEL kind == API_FIELD_NESTED
+    CONIURA dbh_param_text(params, CONIURA json_stringify(val))
+    REDDE
+  FIN SI
+  CONIURA dbh_param_text(params, CONIURA api_json_val_to_csv_str(val))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_view_list(SPECULUM ApiSerializerRegistry serializers, SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse method_check AD CONIURA api_ensure_request_allowed(cfg, req)
+  SI method_check.status == 405
+    REDDE method_check
+  FIN SI
+  SI cfg.auth_required
+    EVOCA SPECULUM NIHIL auth_opt AD CONIURA api_auth_check(db, tok_cfg, req)
+    SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+      CONIURA option_free GENUS(VERBUM)(auth_opt)
+      REDDE CONIURA api_response_json_status(CONIURA api_response_error("unauthorized", "Bearer token required", "null"), 401)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+  FIN SI
+  EVOCA SPECULUM SerializerConfig serializer_ptr AD CONIURA api_get_serializer(serializers, cfg.serializer_name)
+  SI serializer_ptr == NIHIL
+    REDDE CONIURA api_response_json_status(CONIURA api_response_internal_error("serializer not found"), 500)
+  FIN SI
+  EVOCA SPECULUM NIHIL filters AD CONIURA api_parse_filters(req, cfg)
+  EVOCA DbParams select_params
+  EVOCA DbParams count_params
+  CONIURA api_dbparams_init(SPECULUM select_params)
+  CONIURA api_dbparams_init(SPECULUM count_params)
+  EVOCA VERBUM select_sql AD CONIURA api_list_select_sql(cfg, *serializer_ptr, filters, SPECULUM select_params, CONIURA api_query_value(req, "order"), CONIURA api_query_value(req, "dir"))
+  EVOCA VERBUM count_sql AD CONIURA api_list_count_sql(cfg, filters, SPECULUM count_params)
+  EVOCA ApiPaginatedResult paged AD CONIURA paginate_offset(serializers, *serializer_ptr, dbh, select_sql, select_params, count_sql, count_params, CONIURA api_query_int(req, "page", 1), CONIURA api_query_int(req, "page_size", cfg.page_size))
+  EVOCA ContentFormat format AD CONIURA api_content_format_from_accept(CONIURA request_header_or(req.headers, "accept", "application/json"))
+  SI format == CONTENT_CSV
+    REDDE CONIURA api_response_csv_status(CONIURA api_format_response(paged.data_json, format), 200)
+  FIN SI
+  REDDE CONIURA api_response_json_status(CONIURA api_response_paginated(paged), 200)
+EXPLICIT RITUALE
+
+RITUALE api_view_detail(SPECULUM ApiSerializerRegistry serializers, SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse method_check AD CONIURA api_ensure_request_allowed(cfg, req)
+  SI method_check.status == 405
+    REDDE method_check
+  FIN SI
+  SI cfg.auth_required
+    EVOCA SPECULUM NIHIL auth_opt AD CONIURA api_auth_check(db, tok_cfg, req)
+    SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+      CONIURA option_free GENUS(VERBUM)(auth_opt)
+      REDDE CONIURA api_response_json_status(CONIURA api_response_error("unauthorized", "Bearer token required", "null"), 401)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+  FIN SI
+  EVOCA SPECULUM SerializerConfig serializer_ptr AD CONIURA api_get_serializer(serializers, cfg.serializer_name)
+  EVOCA SPECULUM NIHIL pk_opt AD CONIURA request_param(req, "pk")
+  SI serializer_ptr == NIHIL VEL CONIURA option_is_none GENUS(VERBUM)(pk_opt)
+    CONIURA option_free GENUS(VERBUM)(pk_opt)
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  EVOCA VERBUM pk AD CONIURA option_unwrap GENUS(VERBUM)(pk_opt)
+  CONIURA option_free GENUS(VERBUM)(pk_opt)
+  EVOCA VERBUM data_json AD CONIURA api_detail_fetch_json(cfg, *serializer_ptr, dbh, pk)
+  SI CONIURA compare(data_json, "[]") == 0
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  REDDE CONIURA api_response_json_status(CONIURA api_response_ok(data_json), 200)
+EXPLICIT RITUALE
+
+RITUALE api_view_create(SPECULUM ApiSerializerRegistry serializers, SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse method_check AD CONIURA api_ensure_request_allowed(cfg, req)
+  SI method_check.status == 405
+    REDDE method_check
+  FIN SI
+  SI cfg.auth_required
+    EVOCA SPECULUM NIHIL auth_opt AD CONIURA api_auth_check(db, tok_cfg, req)
+    SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+      CONIURA option_free GENUS(VERBUM)(auth_opt)
+      REDDE CONIURA api_response_json_status(CONIURA api_response_error("unauthorized", "Bearer token required", "null"), 401)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+  FIN SI
+  EVOCA SPECULUM SerializerConfig serializer_ptr AD CONIURA api_get_serializer(serializers, cfg.serializer_name)
+  SI serializer_ptr == NIHIL
+    REDDE CONIURA api_response_json_status(CONIURA api_response_internal_error("serializer not found"), 500)
+  FIN SI
+  EVOCA ValidationResult vr AD CONIURA serializer_validate(serializers, *serializer_ptr, req.body)
+  SI NON vr.is_valid
+    REDDE CONIURA api_response_json_status(CONIURA api_response_validation_error(vr), 400)
+  FIN SI
+  EVOCA SPECULUM NIHIL parsed_opt AD CONIURA json_try_parse(vr.validated_json)
+  EVOCA Json parsed AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed_opt)
+  EVOCA VERBUM columns AD ""
+  EVOCA VERBUM placeholders AD ""
+  EVOCA DbParams params
+  CONIURA api_dbparams_init(SPECULUM params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*serializer_ptr).fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField field_ptr AD CONIURA fluxus_get((*serializer_ptr).fields, i)
+    SI NON (*field_ptr).read_only ET CONIURA json_has_key(parsed, (*field_ptr).name)
+      SI CONIURA len(columns) > 0
+        VINCIRE columns AD CONIURA concat(columns, ", ")
+        VINCIRE placeholders AD CONIURA concat(placeholders, ", ")
+      FIN SI
+      VINCIRE columns AD CONIURA concat(columns, (*field_ptr).source)
+      VINCIRE placeholders AD CONIURA concat(placeholders, "?")
+      CONIURA api_dbh_bind_json_value(SPECULUM params, (*field_ptr).kind, CONIURA json_get_key(parsed, (*field_ptr).name))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM insert_sql AD CONIURA concat(CONIURA concat(CONIURA concat("INSERT INTO ", cfg.table_name), " ("), columns)
+  VINCIRE insert_sql AD CONIURA concat(insert_sql, ") VALUES (")
+  VINCIRE insert_sql AD CONIURA concat(insert_sql, placeholders)
+  VINCIRE insert_sql AD CONIURA concat(insert_sql, ")")
+  CONIURA dbh_exec(dbh, insert_sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  EVOCA DbParams id_params
+  CONIURA api_dbparams_init(SPECULUM id_params)
+  EVOCA DbRows id_rows AD CONIURA dbh_query(dbh, "SELECT last_insert_rowid()", id_params)
+  EVOCA VERBUM pk AD ""
+  SI CONIURA dbrows_next(SPECULUM id_rows)
+    VINCIRE pk AD CONIURA stringify_int(CONIURA dbrows_get_int(id_rows, 0))
+  FIN SI
+  CONIURA dbrows_close(id_rows)
+  CONIURA dbh_params_free(SPECULUM id_params)
+  REDDE CONIURA api_response_json_status(CONIURA api_response_ok(CONIURA api_detail_fetch_json(cfg, *serializer_ptr, dbh, pk)), 201)
+EXPLICIT RITUALE
+
+RITUALE api_view_update(SPECULUM ApiSerializerRegistry serializers, SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse method_check AD CONIURA api_ensure_request_allowed(cfg, req)
+  SI method_check.status == 405
+    REDDE method_check
+  FIN SI
+  SI cfg.auth_required
+    EVOCA SPECULUM NIHIL auth_opt AD CONIURA api_auth_check(db, tok_cfg, req)
+    SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+      CONIURA option_free GENUS(VERBUM)(auth_opt)
+      REDDE CONIURA api_response_json_status(CONIURA api_response_error("unauthorized", "Bearer token required", "null"), 401)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+  FIN SI
+  EVOCA SPECULUM SerializerConfig serializer_ptr AD CONIURA api_get_serializer(serializers, cfg.serializer_name)
+  EVOCA SPECULUM NIHIL pk_opt AD CONIURA request_param(req, "pk")
+  SI serializer_ptr == NIHIL VEL CONIURA option_is_none GENUS(VERBUM)(pk_opt)
+    CONIURA option_free GENUS(VERBUM)(pk_opt)
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  EVOCA VERBUM pk AD CONIURA option_unwrap GENUS(VERBUM)(pk_opt)
+  CONIURA option_free GENUS(VERBUM)(pk_opt)
+  SI CONIURA compare(CONIURA api_detail_fetch_json(cfg, *serializer_ptr, dbh, pk), "[]") == 0
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  EVOCA ValidationResult vr AD CONIURA serializer_validate(serializers, *serializer_ptr, req.body)
+  SI NON vr.is_valid
+    REDDE CONIURA api_response_json_status(CONIURA api_response_validation_error(vr), 400)
+  FIN SI
+  EVOCA Json parsed AD CONIURA result_unwrap GENUS(Json, JsonError)(CONIURA json_try_parse(vr.validated_json))
+  EVOCA VERBUM set_sql AD ""
+  EVOCA DbParams params
+  CONIURA api_dbparams_init(SPECULUM params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*serializer_ptr).fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField field_ptr AD CONIURA fluxus_get((*serializer_ptr).fields, i)
+    SI NON (*field_ptr).read_only ET CONIURA json_has_key(parsed, (*field_ptr).name)
+      SI CONIURA len(set_sql) > 0
+        VINCIRE set_sql AD CONIURA concat(set_sql, ", ")
+      FIN SI
+      VINCIRE set_sql AD CONIURA concat(set_sql, (*field_ptr).source)
+      VINCIRE set_sql AD CONIURA concat(set_sql, " = ?")
+      CONIURA api_dbh_bind_json_value(SPECULUM params, (*field_ptr).kind, CONIURA json_get_key(parsed, (*field_ptr).name))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA dbh_param_text(SPECULUM params, pk)
+  EVOCA VERBUM sql AD CONIURA concat(CONIURA concat(CONIURA concat("UPDATE ", cfg.table_name), " SET "), set_sql)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA api_response_json_status(CONIURA api_response_ok(CONIURA api_detail_fetch_json(cfg, *serializer_ptr, dbh, pk)), 200)
+EXPLICIT RITUALE
+
+RITUALE api_view_delete(SPECULUM ApiSerializerRegistry serializers, SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ApiViewConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse method_check AD CONIURA api_ensure_request_allowed(cfg, req)
+  SI method_check.status == 405
+    REDDE method_check
+  FIN SI
+  SI cfg.auth_required
+    EVOCA SPECULUM NIHIL auth_opt AD CONIURA api_auth_check(db, tok_cfg, req)
+    SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+      CONIURA option_free GENUS(VERBUM)(auth_opt)
+      REDDE CONIURA api_response_json_status(CONIURA api_response_error("unauthorized", "Bearer token required", "null"), 401)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+  FIN SI
+  EVOCA SPECULUM SerializerConfig serializer_ptr AD CONIURA api_get_serializer(serializers, cfg.serializer_name)
+  EVOCA SPECULUM NIHIL pk_opt AD CONIURA request_param(req, "pk")
+  SI serializer_ptr == NIHIL VEL CONIURA option_is_none GENUS(VERBUM)(pk_opt)
+    CONIURA option_free GENUS(VERBUM)(pk_opt)
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  EVOCA VERBUM pk AD CONIURA option_unwrap GENUS(VERBUM)(pk_opt)
+  CONIURA option_free GENUS(VERBUM)(pk_opt)
+  SI CONIURA compare(CONIURA api_detail_fetch_json(cfg, *serializer_ptr, dbh, pk), "[]") == 0
+    REDDE CONIURA api_response_json_status(CONIURA api_response_not_found(cfg.model_name), 404)
+  FIN SI
+  EVOCA DbParams params
+  CONIURA api_dbparams_init(SPECULUM params)
+  CONIURA dbh_param_text(SPECULUM params, pk)
+  EVOCA VERBUM sql AD CONIURA concat(CONIURA concat(CONIURA concat("DELETE FROM ", cfg.table_name), " WHERE "), cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA response_no_content()
+EXPLICIT RITUALE
+
+RITUALE api_viewset_register(SPECULUM Router router, SPECULUM ApiViewSetRegistry reg, ViewSetConfig viewset) REDDE NIHIL
+  CONIURA api_viewset_registry_put(reg, viewset)
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA router_add(router, "GET", viewset.path_prefix, CONIURA concat(viewset.name, ".list"), "api_view_list", NIHIL))
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA router_add(router, "POST", viewset.path_prefix, CONIURA concat(viewset.name, ".create"), "api_view_create", NIHIL))
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA router_add(router, "GET", CONIURA concat(viewset.path_prefix, "/{pk}"), CONIURA concat(viewset.name, ".detail"), "api_view_detail", NIHIL))
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA router_add(router, "PUT", CONIURA concat(viewset.path_prefix, "/{pk}"), CONIURA concat(viewset.name, ".update"), "api_view_update", NIHIL))
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA router_add(router, "DELETE", CONIURA concat(viewset.path_prefix, "/{pk}"), CONIURA concat(viewset.name, ".delete"), "api_view_delete", NIHIL))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

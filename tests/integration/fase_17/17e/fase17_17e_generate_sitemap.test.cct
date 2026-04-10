@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase17_17e_generate_sitemap"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17e_generate_sitemap")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  CONIURA pages_ensure_schema(stack.db)
+  CONIURA phase17_insert_page(stack.db, "pt-BR", "ola", "Ola", 2, "https://example.test/pt-BR/ola", 10)
+  EVOCA VERBUM out_path AD CONIURA path_join(stack.root, "public/sitemap.xml")
+  CONIURA editorial_enqueue_sitemap(stack.dbh, out_path, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "editorial-worker")
+  SI NON CONIURA exists(out_path)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(CONIURA read_all(out_path), "https://example.test/pt-BR/ola")
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

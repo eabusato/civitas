@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase2_2a_query_repeated_preserves_order_test"
+
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest raw AD CONIURA http_request_new("GET", "/posts?tag=a&tag=b&tag=c")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_from_http(raw, "127.0.0.1", "http", "example.test", "req-3")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL values AD CONIURA request_query_all(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res), "tag")
+  SI CONIURA fluxus_len(values) != 3
+    REDDE 2
+  FIN SI
+
+  EVOCA SPECULUM VERBUM v0 AD CONIURA fluxus_get(values, 0)
+  EVOCA SPECULUM VERBUM v1 AD CONIURA fluxus_get(values, 1)
+  EVOCA SPECULUM VERBUM v2 AD CONIURA fluxus_get(values, 2)
+  SI CONIURA compare(*v0, "a") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(*v1, "b") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(*v2, "c") != 0
+    REDDE 5
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

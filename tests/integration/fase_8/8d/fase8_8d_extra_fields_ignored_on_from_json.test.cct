@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase8_8d_extra_fields_ignored_on_from_json_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor parsed AD CONIURA upload_descriptor_from_json(
+    "{\"path\":\"uploads/x.png\",\"hash\":\"abc\",\"size\":33,\"mime\":\"image/png\",\"original_name\":\"x.png\",\"state\":\"final\",\"provider\":\"s3\",\"bucket\":\"media\",\"owner_id\":\"42\"}"
+  )
+  SI CONIURA compare(parsed.path, "uploads/x.png") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(parsed.hash, "abc") != 0
+    REDDE 2
+  FIN SI
+  SI parsed.size != 33
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(parsed.mime, "image/png") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(parsed.original_name, "x.png") != 0
+    REDDE 5
+  FIN SI
+  SI parsed.state != UsFinal
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

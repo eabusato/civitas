@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_trace_panel_root"
+
+ADVOCARE "trace_panel/trace_panel.cct"
+
+EXPLICIT grimoire

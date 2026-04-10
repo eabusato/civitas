@@ -1,0 +1,332 @@
+INCIPIT grimoire "civitas_events"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM EventEnvelope
+  event_type: VERBUM
+  event_id: VERBUM
+  occurred_at_iso: VERBUM
+  request_id: VERBUM
+  actor_id: VERBUM
+  attributes: SPECULUM NIHIL
+  payload_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM EventFilter
+  key: VERBUM
+  expected_value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM EventSubscriberBinding
+  id: REX
+  subscriber_name: VERBUM
+  event_type: VERBUM
+  has_filter: VERUM
+  filter: EventFilter
+  handler_ref: SPECULUM NIHIL
+  active: VERUM
+FIN SIGILLUM
+
+SIGILLUM EventDispatchReport
+  delivered_count: REX
+  filtered_out_count: REX
+  failed_count: REX
+  first_error: VERBUM
+FIN SIGILLUM
+
+SIGILLUM EventBus
+  name: VERBUM
+  subscribers: SPECULUM NIHIL
+  next_subscriber_id: REX
+FIN SIGILLUM
+
+RITUALE event_ok_id(REX value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE event_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE event_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE event_now_iso() REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_now(), "%Y-%m-%dT%H:%M:%S%z")
+EXPLICIT RITUALE
+
+RITUALE event_attributes_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE event_attribute_storage_key(SPECULUM NIHIL attrs, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(attrs)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE event_attributes_set(SPECULUM NIHIL attrs, VERBUM key, VERBUM value) REDDE NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA event_attribute_storage_key(attrs, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(attrs, stored_key, value)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(attrs, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE event_attribute_or(EventEnvelope env, VERBUM key, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA event_attribute_storage_key(env.attributes, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE fallback
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(env.attributes, stored_key, fallback)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE event_attributes_copy(SPECULUM NIHIL attrs) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA event_attributes_new()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(attrs)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA event_attributes_set(out, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(attrs, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE event_filter_new(VERBUM key, VERBUM expected_value) REDDE EventFilter
+  EVOCA EventFilter filter
+  VINCIRE filter.key AD key
+  VINCIRE filter.expected_value AD expected_value
+  REDDE filter
+EXPLICIT RITUALE
+
+RITUALE event_dispatch_report_new() REDDE EventDispatchReport
+  EVOCA EventDispatchReport report
+  VINCIRE report.delivered_count AD 0
+  VINCIRE report.filtered_out_count AD 0
+  VINCIRE report.failed_count AD 0
+  VINCIRE report.first_error AD ""
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE event_bus_init(SPECULUM EventBus bus, VERBUM name) REDDE NIHIL
+  VINCIRE (*bus).name AD name
+  VINCIRE (*bus).subscribers AD CONIURA fluxus_init(MENSURA(EventSubscriberBinding))
+  VINCIRE (*bus).next_subscriber_id AD 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE event_bus_new(VERBUM name) REDDE EventBus
+  EVOCA EventBus bus
+  CONIURA event_bus_init(SPECULUM bus, name)
+  REDDE bus
+EXPLICIT RITUALE
+
+RITUALE event_envelope_fill(
+  SPECULUM EventEnvelope env,
+  VERBUM event_type,
+  VERBUM event_id,
+  VERBUM occurred_at_iso,
+  VERBUM request_id,
+  VERBUM actor_id,
+  SPECULUM NIHIL attributes,
+  VERBUM payload_json
+) REDDE NIHIL
+  VINCIRE (*env).event_type AD event_type
+  VINCIRE (*env).event_id AD event_id
+  VINCIRE (*env).occurred_at_iso AD occurred_at_iso
+  VINCIRE (*env).request_id AD request_id
+  VINCIRE (*env).actor_id AD actor_id
+  VINCIRE (*env).attributes AD attributes
+  VINCIRE (*env).payload_json AD payload_json
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE event_envelope_init(
+  SPECULUM EventEnvelope env,
+  VERBUM event_type,
+  VERBUM request_id,
+  VERBUM actor_id,
+  SPECULUM NIHIL attributes,
+  VERBUM payload_json
+) REDDE NIHIL
+  EVOCA UUID uid AD CONIURA uuid_v7()
+  CONIURA event_envelope_fill(
+    env,
+    event_type,
+    CONIURA uuid_to_string(uid),
+    CONIURA event_now_iso(),
+    request_id,
+    actor_id,
+    attributes,
+    payload_json
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE event_envelope_new(
+  VERBUM event_type,
+  VERBUM request_id,
+  VERBUM actor_id,
+  SPECULUM NIHIL attributes,
+  VERBUM payload_json
+) REDDE EventEnvelope
+  EVOCA EventEnvelope env
+  CONIURA event_envelope_init(SPECULUM env, event_type, request_id, actor_id, attributes, payload_json)
+  REDDE env
+EXPLICIT RITUALE
+
+RITUALE event_subscribe(
+  SPECULUM EventBus bus,
+  VERBUM event_type,
+  VERBUM subscriber_name,
+  SPECULUM NIHIL handler_ref
+) REDDE SPECULUM NIHIL
+  EVOCA EventSubscriberBinding binding
+  SI CONIURA len(CONIURA trim(event_type)) == 0
+    REDDE CONIURA event_err("event_type nao pode ser vazio")
+  FIN SI
+  SI CONIURA len(CONIURA trim(subscriber_name)) == 0
+    REDDE CONIURA event_err("subscriber_name nao pode ser vazio")
+  FIN SI
+
+  VINCIRE binding.id AD (*bus).next_subscriber_id
+  VINCIRE binding.subscriber_name AD subscriber_name
+  VINCIRE binding.event_type AD event_type
+  VINCIRE binding.has_filter AD FALSUM
+  VINCIRE binding.filter AD CONIURA event_filter_new("", "")
+  VINCIRE binding.handler_ref AD handler_ref
+  VINCIRE binding.active AD VERUM
+  CONIURA fluxus_push((*bus).subscribers, SPECULUM binding)
+  VINCIRE (*bus).next_subscriber_id AD (*bus).next_subscriber_id + 1
+  REDDE CONIURA event_ok_id(binding.id)
+EXPLICIT RITUALE
+
+RITUALE event_subscribe_filtered(
+  SPECULUM EventBus bus,
+  VERBUM event_type,
+  VERBUM subscriber_name,
+  EventFilter filter,
+  SPECULUM NIHIL handler_ref
+) REDDE SPECULUM NIHIL
+  EVOCA EventSubscriberBinding binding
+  SI CONIURA len(CONIURA trim(event_type)) == 0
+    REDDE CONIURA event_err("event_type nao pode ser vazio")
+  FIN SI
+  SI CONIURA len(CONIURA trim(subscriber_name)) == 0
+    REDDE CONIURA event_err("subscriber_name nao pode ser vazio")
+  FIN SI
+  SI CONIURA len(CONIURA trim(filter.key)) == 0
+    REDDE CONIURA event_err("event filter key nao pode ser vazio")
+  FIN SI
+
+  VINCIRE binding.id AD (*bus).next_subscriber_id
+  VINCIRE binding.subscriber_name AD subscriber_name
+  VINCIRE binding.event_type AD event_type
+  VINCIRE binding.has_filter AD VERUM
+  VINCIRE binding.filter AD filter
+  VINCIRE binding.handler_ref AD handler_ref
+  VINCIRE binding.active AD VERUM
+  CONIURA fluxus_push((*bus).subscribers, SPECULUM binding)
+  VINCIRE (*bus).next_subscriber_id AD (*bus).next_subscriber_id + 1
+  REDDE CONIURA event_ok_id(binding.id)
+EXPLICIT RITUALE
+
+RITUALE event_unsubscribe(SPECULUM EventBus bus, REX subscriber_id) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*bus).subscribers)
+
+  DUM i < n
+    EVOCA SPECULUM EventSubscriberBinding binding_ptr AD CONIURA fluxus_get((*bus).subscribers, i)
+    SI (*binding_ptr).id == subscriber_id
+      CONIURA fluxus_remove((*bus).subscribers, i)
+      REDDE CONIURA event_ok_unit()
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA event_err("subscriber id nao encontrado")
+EXPLICIT RITUALE
+
+RITUALE event_filter_match(EventFilter filter, EventEnvelope env) REDDE VERUM
+  EVOCA VERBUM value AD CONIURA event_attribute_or(env, filter.key, "")
+  SI CONIURA len(value) == 0
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA compare(value, filter.expected_value) == 0
+EXPLICIT RITUALE
+
+RITUALE event_bus_has_subscribers(EventBus bus, VERBUM event_type) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(bus.subscribers)
+  DUM i < n
+    EVOCA SPECULUM EventSubscriberBinding binding_ptr AD CONIURA fluxus_get(bus.subscribers, i)
+    SI CONIURA compare((*binding_ptr).event_type, event_type) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE event_publish(EventBus bus, EventEnvelope env) REDDE EventDispatchReport
+  EVOCA EventDispatchReport report AD CONIURA event_dispatch_report_new()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(bus.subscribers)
+
+  DUM i < n
+    EVOCA SPECULUM EventSubscriberBinding binding_ptr AD CONIURA fluxus_get(bus.subscribers, i)
+    SI CONIURA compare((*binding_ptr).event_type, env.event_type) == 0
+      SI (*binding_ptr).has_filter ET NON CONIURA event_filter_match((*binding_ptr).filter, env)
+        VINCIRE report.filtered_out_count AD report.filtered_out_count + 1
+      ALITER
+        TEMPTA
+          CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*binding_ptr).handler_ref, SPECULUM env)
+          VINCIRE report.delivered_count AD report.delivered_count + 1
+        CAPE FRACTUM error
+          EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(error)
+          VINCIRE report.failed_count AD report.failed_count + 1
+          SI CONIURA len(report.first_error) == 0
+            VINCIRE report.first_error AD error_text
+          FIN SI
+        FIN TEMPTA
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE report
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

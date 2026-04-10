@@ -1,0 +1,508 @@
+INCIPIT grimoire "civitas_template_checker"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "ast.cct"
+
+RITUALE template_check(SPECULUM TemplateNode root, VERBUM context_sigillum_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA template_check_with_project(root, context_sigillum_name, ".")
+EXPLICIT RITUALE
+
+RITUALE template_check_with_project(SPECULUM TemplateNode root, VERBUM context_sigillum_name, VERBUM project_root) REDDE SPECULUM NIHIL
+  EVOCA TemplateCheckerState state AD CONIURA template_checker_state_new("")
+  VINCIRE state.current_context AD context_sigillum_name
+  CONIURA template_schema_scan_dir(SPECULUM state, project_root)
+  SI NON CONIURA template_sigillum_exists(state.sigilla, context_sigillum_name)
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_compile_error("", CONIURA concat("SIGILLUM de contexto nao encontrado: ", context_sigillum_name), 1, 1))
+  FIN SI
+  CONIURA template_check_children(SPECULUM state, (*root).children)
+  SI CONIURA fluxus_len(state.errors) != 0
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_join_errors(state.errors))
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(0)
+EXPLICIT RITUALE
+
+RITUALE template_schema_scan_dir(SPECULUM TemplateCheckerState state, VERBUM dir_path) REDDE NIHIL
+  SI NON CONIURA exists(dir_path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(dir_path)
+    SI CONIURA compare(CONIURA path_ext(dir_path), ".cct") == 0
+      CONIURA template_schema_scan_file(state, dir_path)
+    FIN SI
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir_path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA compare(*name_ptr, ".cct") != 0
+      CONIURA template_schema_scan_dir(state, CONIURA path_join(dir_path, *name_ptr))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_schema_scan_file(SPECULUM TemplateCheckerState state, VERBUM file_path) REDDE NIHIL
+  EVOCA SPECULUM NIHIL lines AD CONIURA read_lines(file_path)
+  EVOCA TemplateSigillumSpec current
+  CONIURA template_sigillum_spec_fill(SPECULUM current, CONIURA template_sigillum_spec("", file_path))
+  EVOCA VERUM in_sigillum AD FALSUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM trimmed AD CONIURA trim(*line_ptr)
+
+    SI CONIURA starts_with(trimmed, "SIGILLUM ")
+      CONIURA template_sigillum_spec_fill(SPECULUM current, CONIURA template_sigillum_spec(CONIURA template_take_second_word(trimmed), file_path))
+      VINCIRE in_sigillum AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI in_sigillum ET CONIURA starts_with(trimmed, "FIN SIGILLUM")
+      CONIURA fluxus_push((*state).sigilla, SPECULUM current)
+      VINCIRE in_sigillum AD FALSUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI in_sigillum ET CONIURA find(trimmed, ":") != -1
+      EVOCA TemplateFieldSpec field AD CONIURA template_parse_field_line(trimmed)
+      SI CONIURA len(field.name) != 0
+        CONIURA fluxus_push(current.fields, SPECULUM field)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_parse_field_line(VERBUM line) REDDE TemplateFieldSpec
+  EVOCA REX colon AD CONIURA find(line, ":")
+  EVOCA VERBUM left AD ""
+  EVOCA VERBUM right AD ""
+  EVOCA VERBUM type_name AD ""
+  EVOCA VERBUM comment AD ""
+  EVOCA REX comment_pos AD CONIURA find(line, "--")
+  EVOCA VERBUM kind AD ""
+  EVOCA VERBUM pointee AD ""
+  EVOCA VERBUM loop_item AD ""
+
+  SI colon == -1
+    REDDE CONIURA template_field_spec("", "", "", "", "")
+  FIN SI
+
+  VINCIRE left AD CONIURA trim(CONIURA substring(line, 0, colon))
+  VINCIRE right AD CONIURA trim(CONIURA substring(line, colon + 1, CONIURA len(line)))
+  SI comment_pos != -1
+    VINCIRE right AD CONIURA trim(CONIURA substring(line, colon + 1, comment_pos))
+    VINCIRE comment AD CONIURA trim(CONIURA substring(line, comment_pos + 2, CONIURA len(line)))
+  FIN SI
+  VINCIRE type_name AD right
+
+  SI CONIURA compare(type_name, "VERBUM") == 0
+    VINCIRE kind AD "string"
+  ALITER
+    SI CONIURA compare(type_name, "REX") == 0
+      VINCIRE kind AD "int"
+    ALITER
+      SI CONIURA compare(type_name, "UMBRA") == 0
+        VINCIRE kind AD "real"
+      ALITER
+        SI CONIURA compare(type_name, "VERUM") == 0
+          VINCIRE kind AD "bool"
+        ALITER
+          SI CONIURA starts_with(type_name, "SPECULUM ")
+            VINCIRE pointee AD CONIURA trim(CONIURA substring(type_name, 9, CONIURA len(type_name)))
+            SI CONIURA compare(pointee, "NIHIL") == 0
+              VINCIRE kind AD "opaque_ptr"
+            ALITER
+              VINCIRE kind AD "ptr"
+            FIN SI
+          ALITER
+            VINCIRE kind AD "sigillum"
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN SI
+
+  SI CONIURA find(comment, "FLUXUS(") != -1
+    EVOCA REX start AD CONIURA find(comment, "FLUXUS(") + 7
+    EVOCA REX finish AD CONIURA find(comment, ")")
+    SI finish > start
+      VINCIRE loop_item AD CONIURA trim(CONIURA substring(comment, start, finish))
+    FIN SI
+  FIN SI
+
+  REDDE CONIURA template_field_spec(left, type_name, kind, pointee, loop_item)
+EXPLICIT RITUALE
+
+RITUALE template_check_children(SPECULUM TemplateCheckerState state, SPECULUM NIHIL children) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get(children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    CONIURA template_check_node(state, node_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_node(SPECULUM TemplateCheckerState state, SPECULUM TemplateNode node_ptr) REDDE NIHIL
+  ELIGE (*node_ptr).kind
+    CASUS TnExpression:
+      CONIURA template_check_expr(state, SPECULUM (*node_ptr).expr, (*node_ptr).line, (*node_ptr).column)
+    CASUS TnIf:
+      CONIURA template_check_condition(state, SPECULUM (*node_ptr).condition, (*node_ptr).line, (*node_ptr).column)
+      CONIURA template_check_children(state, (*node_ptr).children)
+      CONIURA template_check_children(state, (*node_ptr).else_children)
+    CASUS TnFor:
+      CONIURA template_check_for(state, node_ptr)
+    CASUS TnInclude:
+      CONIURA template_check_include(state, node_ptr)
+    CASUS TnFlash:
+      CONIURA template_check_flash(state, node_ptr)
+    ALIOQUIN:
+      CONIURA template_check_children(state, (*node_ptr).children)
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_flash(SPECULUM TemplateCheckerState state, SPECULUM TemplateNode node_ptr) REDDE NIHIL
+  EVOCA TemplateExpr expr AD CONIURA template_expr_from_path("session")
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(state, SPECULUM expr, (*node_ptr).line, (*node_ptr).column)
+  SI CONIURA len(spec.name) == 0
+    REDDE
+  FIN SI
+  SI CONIURA compare(spec.type_name, "Session") != 0
+    CONIURA template_push_error(state, "SIGNA exige campo session: Session no contexto", (*node_ptr).line, (*node_ptr).column)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_include(SPECULUM TemplateCheckerState state, SPECULUM TemplateNode node_ptr) REDDE NIHIL
+  SI CONIURA len((*node_ptr).include_with) == 0
+    REDDE
+  FIN SI
+  EVOCA TemplateExpr expr
+  CONIURA template_expr_fill(SPECULUM expr, CONIURA template_expr_from_path((*node_ptr).include_with))
+  CONIURA template_check_expr(state, SPECULUM expr, (*node_ptr).line, (*node_ptr).column)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_for(SPECULUM TemplateCheckerState state, SPECULUM TemplateNode node_ptr) REDDE NIHIL
+  EVOCA TemplateExpr iter_expr
+  CONIURA template_expr_fill(SPECULUM iter_expr, CONIURA template_expr_from_path((*node_ptr).iter_field))
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(state, SPECULUM iter_expr, (*node_ptr).line, (*node_ptr).column)
+  EVOCA VERBUM saved_loop_item AD (*state).current_loop_item
+  EVOCA VERBUM saved_loop_type AD (*state).current_loop_item_type
+
+  SI CONIURA len(spec.name) == 0
+    REDDE
+  FIN SI
+  SI CONIURA compare(spec.kind, "opaque_ptr") != 0 ET CONIURA compare(spec.kind, "ptr") != 0
+    CONIURA template_push_error(state, "campo de iteracao precisa ser FLUXUS/ponteiro", (*node_ptr).line, (*node_ptr).column)
+    REDDE
+  FIN SI
+
+  VINCIRE (*state).current_loop_item AD (*node_ptr).iter_var
+  SI CONIURA len(spec.loop_item_name) != 0
+    VINCIRE (*state).current_loop_item_type AD spec.loop_item_name
+  ALITER
+    VINCIRE (*state).current_loop_item_type AD "VERBUM"
+  FIN SI
+
+  CONIURA template_check_children(state, (*node_ptr).children)
+  VINCIRE (*state).current_loop_item AD saved_loop_item
+  VINCIRE (*state).current_loop_item_type AD saved_loop_type
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_condition(SPECULUM TemplateCheckerState state, SPECULUM TemplateCondition cond, REX line, REX column) REDDE NIHIL
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(state, SPECULUM (*cond).expr, line, column)
+  SI CONIURA len(spec.name) == 0
+    REDDE
+  FIN SI
+  SI CONIURA len((*cond).op) == 0
+    SI CONIURA compare(spec.kind, "bool") != 0
+      CONIURA template_push_error(state, "condicao sem operador exige campo VERUM", line, column)
+    FIN SI
+    REDDE
+  FIN SI
+  SI CONIURA compare((*cond).rhs_kind, "int") == 0
+    SI CONIURA compare(spec.kind, "int") != 0
+      CONIURA template_push_error(state, "comparacao numerica exige campo REX", line, column)
+    FIN SI
+    REDDE
+  FIN SI
+  SI CONIURA compare((*cond).rhs_kind, "string") == 0
+    SI CONIURA compare(spec.kind, "string") != 0
+      CONIURA template_push_error(state, "comparacao textual exige campo VERBUM", line, column)
+    FIN SI
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_check_expr(SPECULUM TemplateCheckerState state, SPECULUM TemplateExpr expr, REX line, REX column) REDDE NIHIL
+  EVOCA TemplateFieldSpec spec AD CONIURA template_resolve_expr_or_empty(state, expr, line, column)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*expr).filters)
+  DUM i < n
+    EVOCA SPECULUM TemplateFilter filter_ptr AD CONIURA fluxus_get((*expr).filters, i)
+    VINCIRE spec AD CONIURA template_filter_apply_or_error(state, spec, *filter_ptr, line, column)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_filter_apply_or_error(
+  SPECULUM TemplateCheckerState state,
+  TemplateFieldSpec spec,
+  TemplateFilter filter,
+  REX line,
+  REX column
+) REDDE TemplateFieldSpec
+  SI CONIURA compare(filter.name, "upper") == 0 VEL CONIURA compare(filter.name, "lower") == 0 VEL CONIURA compare(filter.name, "truncate") == 0 VEL CONIURA compare(filter.name, "default") == 0 VEL CONIURA compare(filter.name, "safe") == 0
+    SI CONIURA compare(spec.kind, "string") != 0
+      CONIURA template_push_error(state, CONIURA concat("filtro textual invalido: ", filter.name), line, column)
+    FIN SI
+    REDDE spec
+  FIN SI
+  SI CONIURA compare(filter.name, "format") == 0
+    SI CONIURA compare(spec.kind, "int") == 0
+      REDDE CONIURA template_field_spec(spec.name, "VERBUM", "string", "", "")
+    FIN SI
+    SI CONIURA compare(spec.kind, "real") == 0
+      REDDE CONIURA template_field_spec(spec.name, "VERBUM", "string", "", "")
+    FIN SI
+    CONIURA template_push_error(state, "filtro format exige REX ou UMBRA", line, column)
+    REDDE spec
+  FIN SI
+  SI CONIURA compare(filter.name, "length") == 0
+    SI CONIURA compare(spec.kind, "opaque_ptr") != 0 ET CONIURA compare(spec.kind, "ptr") != 0
+      CONIURA template_push_error(state, "filtro length exige ponteiro/fluxus", line, column)
+    FIN SI
+    REDDE CONIURA template_field_spec(spec.name, "REX", "int", "", "")
+  FIN SI
+  SI CONIURA compare(filter.name, "abs") == 0
+    SI CONIURA compare(spec.kind, "int") == 0 VEL CONIURA compare(spec.kind, "real") == 0
+      REDDE spec
+    FIN SI
+    CONIURA template_push_error(state, "filtro abs exige REX ou UMBRA", line, column)
+    REDDE spec
+  FIN SI
+  CONIURA template_push_error(state, CONIURA concat("filtro desconhecido: ", filter.name), line, column)
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE template_resolve_expr_or_empty(SPECULUM TemplateCheckerState state, SPECULUM TemplateExpr expr, REX line, REX column) REDDE TemplateFieldSpec
+  EVOCA SPECULUM NIHIL res AD CONIURA template_resolve_expr(state, expr, line, column)
+  SI CONIURA result_is_err GENUS(TemplateFieldSpec, TemplateCompileError)(res)
+    EVOCA TemplateCompileError err AD CONIURA result_unwrap_err GENUS(TemplateFieldSpec, TemplateCompileError)(res)
+    CONIURA fluxus_push((*state).errors, SPECULUM err)
+    REDDE CONIURA template_field_spec("", "", "", "", "")
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(TemplateFieldSpec, TemplateCompileError)(res)
+EXPLICIT RITUALE
+
+RITUALE template_resolve_expr(SPECULUM TemplateCheckerState state, SPECULUM TemplateExpr expr, REX line, REX column) REDDE SPECULUM NIHIL
+  EVOCA REX n AD CONIURA fluxus_len((*expr).path)
+  EVOCA REX idx AD 0
+  EVOCA TemplateFieldSpec current
+  EVOCA VERBUM base_sigillum AD ""
+
+  SI n == 0
+    REDDE CONIURA Err GENUS(TemplateFieldSpec, TemplateCompileError)(CONIURA template_compile_error((*state).current_template, "expressao vazia", line, column))
+  FIN SI
+
+  EVOCA SPECULUM VERBUM first_ptr AD CONIURA fluxus_get((*expr).path, 0)
+  SI CONIURA compare(*first_ptr, "loop") == 0
+    SI CONIURA len((*state).current_loop_item) == 0
+      REDDE CONIURA Err GENUS(TemplateFieldSpec, TemplateCompileError)(CONIURA template_compile_error((*state).current_template, "loop fora de DUM", line, column))
+    FIN SI
+    VINCIRE current AD CONIURA template_loop_field(CONIURA template_resolve_loop_name(expr, 1))
+    REDDE CONIURA Ok GENUS(TemplateFieldSpec, TemplateCompileError)(current)
+  FIN SI
+
+  SI CONIURA compare(*first_ptr, (*state).current_loop_item) == 0 ET CONIURA len((*state).current_loop_item) != 0
+    VINCIRE idx AD 1
+    SI CONIURA compare((*state).current_loop_item_type, "VERBUM") == 0
+      VINCIRE current AD CONIURA template_field_spec(*first_ptr, "VERBUM", "string", "", "")
+    ALITER
+      VINCIRE current AD CONIURA template_field_spec(*first_ptr, (*state).current_loop_item_type, "sigillum", "", "")
+    FIN SI
+  ALITER
+    VINCIRE current AD CONIURA template_lookup_sigillum_field_or_empty((*state).sigilla, (*state).current_context, *first_ptr)
+    VINCIRE idx AD 1
+  FIN SI
+
+  SI CONIURA len(current.name) == 0
+    REDDE CONIURA Err GENUS(TemplateFieldSpec, TemplateCompileError)(CONIURA template_compile_error((*state).current_template, CONIURA concat("campo nao encontrado: ", *first_ptr), line, column))
+  FIN SI
+
+  DUM idx < n
+    EVOCA SPECULUM VERBUM seg_ptr AD CONIURA fluxus_get((*expr).path, idx)
+    VINCIRE base_sigillum AD ""
+    SI CONIURA compare(current.kind, "ptr") == 0
+      VINCIRE base_sigillum AD current.pointee_name
+    ALITER
+      SI CONIURA compare(current.kind, "sigillum") == 0
+        VINCIRE base_sigillum AD current.type_name
+      ALITER
+        REDDE CONIURA Err GENUS(TemplateFieldSpec, TemplateCompileError)(CONIURA template_compile_error((*state).current_template, CONIURA concat("acesso invalido em campo: ", current.name), line, column))
+      FIN SI
+    FIN SI
+    VINCIRE current AD CONIURA template_lookup_sigillum_field_or_empty((*state).sigilla, base_sigillum, *seg_ptr)
+    SI CONIURA len(current.name) == 0
+      REDDE CONIURA Err GENUS(TemplateFieldSpec, TemplateCompileError)(CONIURA template_compile_error((*state).current_template, CONIURA concat("campo nao encontrado: ", *seg_ptr), line, column))
+    FIN SI
+    VINCIRE idx AD idx + 1
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(TemplateFieldSpec, TemplateCompileError)(current)
+EXPLICIT RITUALE
+
+RITUALE template_resolve_loop_name(SPECULUM TemplateExpr expr, REX start_idx) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD start_idx
+  EVOCA REX n AD CONIURA fluxus_len((*expr).path)
+  DUM i < n
+    EVOCA SPECULUM VERBUM seg_ptr AD CONIURA fluxus_get((*expr).path, i)
+    SI i != start_idx
+      VINCIRE out AD CONIURA concat(out, ".")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *seg_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE template_loop_field(VERBUM field_name) REDDE TemplateFieldSpec
+  SI CONIURA compare(field_name, "index") == 0 VEL CONIURA compare(field_name, "count") == 0 VEL CONIURA compare(field_name, "length") == 0
+    REDDE CONIURA template_field_spec(field_name, "REX", "int", "", "")
+  FIN SI
+  SI CONIURA compare(field_name, "is_first") == 0 VEL CONIURA compare(field_name, "is_last") == 0
+    REDDE CONIURA template_field_spec(field_name, "VERUM", "bool", "", "")
+  FIN SI
+  REDDE CONIURA template_field_spec("", "", "", "", "")
+EXPLICIT RITUALE
+
+RITUALE template_lookup_sigillum_field_or_empty(SPECULUM NIHIL sigilla, VERBUM sigillum_name, VERBUM field_name) REDDE TemplateFieldSpec
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(sigilla)
+  DUM i < n
+    EVOCA SPECULUM TemplateSigillumSpec spec_ptr AD CONIURA fluxus_get(sigilla, i)
+    SI CONIURA compare((*spec_ptr).name, sigillum_name) == 0
+      REDDE CONIURA template_sigillum_field_or_empty(*spec_ptr, field_name)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA template_field_spec("", "", "", "", "")
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_field_or_empty(TemplateSigillumSpec spec, VERBUM field_name) REDDE TemplateFieldSpec
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(spec.fields)
+  DUM i < n
+    EVOCA SPECULUM TemplateFieldSpec field_ptr AD CONIURA fluxus_get(spec.fields, i)
+    SI CONIURA compare((*field_ptr).name, field_name) == 0
+      REDDE *field_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA template_field_spec("", "", "", "", "")
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_exists(SPECULUM NIHIL sigilla, VERBUM sigillum_name) REDDE VERUM
+  REDDE CONIURA template_sigillum_present(sigilla, sigillum_name)
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_present(SPECULUM NIHIL sigilla, VERBUM sigillum_name) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(sigilla)
+  DUM i < n
+    EVOCA SPECULUM TemplateSigillumSpec spec_ptr AD CONIURA fluxus_get(sigilla, i)
+    SI CONIURA compare((*spec_ptr).name, sigillum_name) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_import_path(SPECULUM NIHIL sigilla, VERBUM sigillum_name) REDDE VERBUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(sigilla)
+  DUM i < n
+    EVOCA SPECULUM TemplateSigillumSpec spec_ptr AD CONIURA fluxus_get(sigilla, i)
+    SI CONIURA compare((*spec_ptr).name, sigillum_name) == 0
+      REDDE (*spec_ptr).import_path
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE template_push_error(SPECULUM TemplateCheckerState state, VERBUM message, REX line, REX column) REDDE NIHIL
+  EVOCA TemplateCompileError err AD CONIURA template_compile_error((*state).current_template, message, line, column)
+  CONIURA fluxus_push((*state).errors, SPECULUM err)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_join_errors(SPECULUM NIHIL errors) REDDE TemplateCompileError
+  EVOCA SPECULUM TemplateCompileError first_ptr AD CONIURA fluxus_get(errors, 0)
+  EVOCA TemplateCompileError joined AD *first_ptr
+  EVOCA VERBUM message AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(errors)
+  DUM i < n
+    EVOCA SPECULUM TemplateCompileError err_ptr AD CONIURA fluxus_get(errors, i)
+    SI i != 0
+      VINCIRE message AD CONIURA concat(message, "\n")
+    FIN SI
+    VINCIRE message AD CONIURA concat(message, (*err_ptr).message)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE joined.message AD message
+  REDDE joined
+EXPLICIT RITUALE
+
+RITUALE template_take_second_word(VERBUM line) REDDE VERBUM
+  EVOCA REX first_space AD CONIURA find(line, " ")
+  EVOCA VERBUM rest AD CONIURA trim(CONIURA substring(line, first_space + 1, CONIURA len(line)))
+  EVOCA REX second_space AD CONIURA find(rest, " ")
+  SI second_space == -1
+    REDDE rest
+  FIN SI
+  REDDE CONIURA substring(rest, 0, second_space)
+EXPLICIT RITUALE
+
+RITUALE template_expr_from_path(VERBUM path) REDDE TemplateExpr
+  EVOCA TemplateExpr expr AD CONIURA template_expr_empty()
+  EVOCA VERBUM rest AD path
+  DUM CONIURA len(rest) != 0
+    EVOCA REX dot AD CONIURA find(rest, ".")
+    EVOCA VERBUM part AD ""
+    SI dot == -1
+      VINCIRE part AD rest
+      VINCIRE rest AD ""
+    ALITER
+      VINCIRE part AD CONIURA substring(rest, 0, dot)
+      VINCIRE rest AD CONIURA substring(rest, dot + 1, CONIURA len(rest))
+    FIN SI
+    CONIURA fluxus_push(expr.path, SPECULUM part)
+  FIN DUM
+  REDDE expr
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

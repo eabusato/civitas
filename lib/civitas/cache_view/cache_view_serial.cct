@@ -1,0 +1,101 @@
+INCIPIT grimoire "civitas_cache_view_serial"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "cache_view.cct"
+
+RITUALE cache_view_headers_json(WebResponse res) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(res.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA json_obj_push(root, *key_ptr, CONIURA json_str(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, *key_ptr, "")))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE cache_view_serializar(REX status, VERBUM headers_json, VERBUM tags, VERBUM body) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA stringify_int(status)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, headers_json)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, tags)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, body)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_view_status_from_string(VERBUM raw) REDDE REX
+  REDDE CONIURA parse_int(raw)
+EXPLICIT RITUALE
+
+RITUALE cache_view_desserializar(VERBUM raw) REDDE CacheMaybeViewEntry
+  EVOCA CacheMaybeViewEntry out AD CONIURA cache_view_entry_empty()
+  EVOCA REX p1 AD CONIURA find(raw, "\n")
+  SI p1 < 0
+    REDDE out
+  FIN SI
+
+  EVOCA VERBUM rest1 AD CONIURA substring(raw, p1 + 1, CONIURA len(raw))
+  EVOCA REX p2_rel AD CONIURA find(rest1, "\n")
+  SI p2_rel < 0
+    REDDE out
+  FIN SI
+  EVOCA REX p2 AD p1 + 1 + p2_rel
+
+  EVOCA VERBUM rest2 AD CONIURA substring(raw, p2 + 1, CONIURA len(raw))
+  EVOCA REX p3_rel AD CONIURA find(rest2, "\n")
+  SI p3_rel < 0
+    REDDE out
+  FIN SI
+  EVOCA REX p3 AD p2 + 1 + p3_rel
+
+  VINCIRE out.found AD VERUM
+  VINCIRE out.meta.status AD CONIURA cache_view_status_from_string(CONIURA substring(raw, 0, p1))
+  VINCIRE out.meta.headers_json AD CONIURA substring(raw, p1 + 1, p2)
+  VINCIRE out.meta.tags AD CONIURA substring(raw, p2 + 1, p3)
+  VINCIRE out.body AD CONIURA substring(raw, p3 + 1, CONIURA len(raw))
+  VINCIRE out.meta.criado_em AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  VINCIRE out.meta.expira_em AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_view_response_fill_headers(SPECULUM WebResponse res, VERBUM headers_json) REDDE NIHIL
+  EVOCA Json root AD CONIURA json_parse(headers_json)
+  SI NON CONIURA json_is_obj(root)
+    REDDE
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_obj_len(root)
+  DUM i < n
+    CONIURA response_set_header(res, CONIURA json_obj_key_at(root, i), CONIURA json_expect_str(CONIURA json_obj_value_at(root, i)))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_response_from_entry(CacheMaybeViewEntry entry) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(entry.meta.status)
+  VINCIRE res.body AD entry.body
+  VINCIRE res.body_kind AD WEB_RESPONSE_TEXT
+  CONIURA cache_view_response_fill_headers(SPECULUM res, entry.meta.headers_json)
+  EVOCA VERBUM ct AD CONIURA response_header_or(res, "content-type", "")
+  SI CONIURA starts_with(ct, "text/html")
+    VINCIRE res.body_kind AD WEB_RESPONSE_HTML
+  FIN SI
+  SI CONIURA starts_with(ct, "application/json")
+    VINCIRE res.body_kind AD WEB_RESPONSE_JSON
+  FIN SI
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

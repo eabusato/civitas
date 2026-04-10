@@ -1,0 +1,152 @@
+INCIPIT grimoire "civitas_test_mail"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+
+SIGILLUM TestMailOutbox
+  client: SPECULUM MailClient
+FIN SIGILLUM
+
+RITUALE tm_fail(VERBUM prefix, VERBUM detail) REDDE NIHIL
+  EVOCA VERBUM msg AD CONIURA concat(prefix, detail)
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE tm_int_msg(VERBUM prefix, REX expected, REX actual) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, prefix)
+  CONIURA builder_append(b, " esperado ")
+  CONIURA builder_append(b, CONIURA stringify_int(expected))
+  CONIURA builder_append(b, ", recebido ")
+  CONIURA builder_append(b, CONIURA stringify_int(actual))
+  EVOCA VERBUM msg AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE msg
+EXPLICIT RITUALE
+
+RITUALE tm_pair_msg(VERBUM prefix, VERBUM expected, VERBUM actual) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, prefix)
+  CONIURA builder_append(b, " esperado \"")
+  CONIURA builder_append(b, expected)
+  CONIURA builder_append(b, "\", recebido \"")
+  CONIURA builder_append(b, actual)
+  CONIURA builder_append(b, "\"")
+  EVOCA VERBUM msg AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE msg
+EXPLICIT RITUALE
+
+RITUALE test_mail_outbox_new() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opened AD CONIURA mail_client_open(CONIURA mail_backend_memory())
+  SI CONIURA result_is_err GENUS(MailClient, VERBUM)(opened)
+    IACE CONIURA result_unwrap_err GENUS(MailClient, VERBUM)(opened)
+  FIN SI
+  EVOCA MailClient opened_client AD CONIURA result_unwrap GENUS(MailClient, VERBUM)(opened)
+  EVOCA SPECULUM MailClient client_ptr AD OBSECRO mem_alloc(MENSURA(MailClient))
+  EVOCA SPECULUM TestMailOutbox out AD OBSECRO mem_alloc(MENSURA(TestMailOutbox))
+  VINCIRE (*client_ptr).options AD opened_client.options
+  VINCIRE (*client_ptr).memory_outbox AD opened_client.memory_outbox
+  VINCIRE (*client_ptr).last_error AD opened_client.last_error
+  VINCIRE (*client_ptr).is_open AD opened_client.is_open
+  VINCIRE (*out).client AD client_ptr
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE test_mail_outbox_free(SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM TestMailOutbox out AD out_ref
+  CONIURA fluxus_free((*(*out).client).memory_outbox)
+  CONIURA mail_client_close((*out).client)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_mail_client(SPECULUM NIHIL out_ref) REDDE SPECULUM MailClient
+  EVOCA SPECULUM TestMailOutbox out AD out_ref
+  REDDE (*out).client
+EXPLICIT RITUALE
+
+RITUALE test_mail_count(SPECULUM NIHIL out_ref) REDDE REX
+  EVOCA SPECULUM TestMailOutbox out AD out_ref
+  REDDE CONIURA mail_memory_count(*((*out).client))
+EXPLICIT RITUALE
+
+RITUALE test_mail_get(SPECULUM NIHIL out_ref, REX idx) REDDE MailMessage
+  EVOCA SPECULUM TestMailOutbox out AD out_ref
+  EVOCA SPECULUM NIHIL got AD CONIURA mail_memory_get(*((*out).client), idx)
+  SI CONIURA result_is_err GENUS(MailMessage, VERBUM)(got)
+    IACE CONIURA result_unwrap_err GENUS(MailMessage, VERBUM)(got)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(MailMessage, VERBUM)(got)
+EXPLICIT RITUALE
+
+RITUALE test_mail_last(SPECULUM NIHIL out_ref) REDDE MailMessage
+  EVOCA REX total AD CONIURA test_mail_count(out_ref)
+  SI total == 0
+    IACE "ASSERT FALHOU - test_mail_last: outbox vazio"
+  FIN SI
+  REDDE CONIURA test_mail_get(out_ref, total - 1)
+EXPLICIT RITUALE
+
+RITUALE test_mail_clear(SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM TestMailOutbox out AD out_ref
+  CONIURA fluxus_clear((*(*out).client).memory_outbox)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tm_addresses_contains(SPECULUM NIHIL addrs, VERBUM email) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(addrs)
+  EVOCA VERBUM target AD CONIURA to_lower(email)
+  DUM i < n
+    EVOCA SPECULUM MailAddress addr AD CONIURA fluxus_get(addrs, i)
+    SI CONIURA compare(CONIURA to_lower((*addr).email), target) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE assert_email_sent(SPECULUM NIHIL out_ref, REX expected) REDDE NIHIL
+  EVOCA REX actual AD CONIURA test_mail_count(out_ref)
+  SI actual == expected
+    REDDE
+  FIN SI
+  CONIURA tm_fail("", CONIURA tm_int_msg("ASSERT FALHOU - assert_email_sent:", expected, actual))
+EXPLICIT RITUALE
+
+RITUALE assert_email_to(MailMessage msg, VERBUM email) REDDE NIHIL
+  SI CONIURA tm_addresses_contains(msg.to, email)
+    REDDE
+  FIN SI
+  CONIURA tm_fail("", CONIURA concat("ASSERT FALHOU - assert_email_to: destinatario nao encontrado: ", email))
+EXPLICIT RITUALE
+
+RITUALE assert_email_subject(MailMessage msg, VERBUM expected) REDDE NIHIL
+  SI CONIURA compare(msg.subject, expected) == 0
+    REDDE
+  FIN SI
+  CONIURA tm_fail("", CONIURA tm_pair_msg("ASSERT FALHOU - assert_email_subject:", expected, msg.subject))
+EXPLICIT RITUALE
+
+RITUALE assert_email_contains(MailMessage msg, VERBUM fragment) REDDE NIHIL
+  SI CONIURA contains(msg.text_body, fragment)
+    REDDE
+  FIN SI
+  CONIURA tm_fail("", CONIURA concat("ASSERT FALHOU - assert_email_contains: text body nao contem \"", CONIURA concat(fragment, "\"")))
+EXPLICIT RITUALE
+
+RITUALE assert_email_html_contains(MailMessage msg, VERBUM fragment) REDDE NIHIL
+  SI CONIURA contains(msg.html_body, fragment)
+    REDDE
+  FIN SI
+  CONIURA tm_fail("", CONIURA concat("ASSERT FALHOU - assert_email_html_contains: html body nao contem \"", CONIURA concat(fragment, "\"")))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

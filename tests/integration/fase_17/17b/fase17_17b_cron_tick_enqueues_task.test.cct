@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase17_17b_cron_tick_enqueues_task"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/date.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17b_cron_tick_enqueues_task")
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA SchedulerConfig sched_cfg AD CONIURA phase17_scheduler_cfg()
+  CONIURA scheduled_register_cron(stack.dbh, "job.feed", "echo", "* * * * *", "{\"kind\":\"feed\"}")
+  CONIURA db_exec(stack.db, "UPDATE scheduled_jobs SET next_run_at_unix = 0 WHERE job_name = 'job.feed'")
+  SI CONIURA scheduler_tick(stack.dbh, task_cfg, sched_cfg, CONIURA datetime_now()) != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA task_count_by_state(stack.dbh, "queued") != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

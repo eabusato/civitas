@@ -1,0 +1,73 @@
+INCIPIT grimoire "fase5_5c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse_middleware.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase5_5c_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase5_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_new_app(VERBUM root, VERBUM content) REDDE Application
+  REDDE CONIURA phase5_new_app(root, content)
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_ok_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_register_route(
+  SPECULUM Application app,
+  VERBUM method,
+  VERBUM path,
+  VERBUM route_name,
+  RateLimitClass rate_limit_class
+) REDDE NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA app_add_route_with_rate_limit_class(
+    app,
+    method,
+    path,
+    route_name,
+    "phase5_5c_ok_handler",
+    phase5_5c_ok_handler,
+    rate_limit_class
+  )
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_install_route_limit(
+  SPECULUM Application app,
+  SPECULUM NIHIL store,
+  SPECULUM NIHIL rules
+) REDDE NIHIL
+  CONIURA app_service_set(app, CONIURA app_service_abuse_route_store_key(), store)
+  CONIURA app_service_set(app, CONIURA app_service_abuse_route_rules_key(), rules)
+  CONIURA app_add_global_middleware(app, CONIURA middleware_binding_named("abuse.route", abuse_route_middleware))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_has_signal(SpamCheckResult result, SpamSignal signal) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(result.signals)
+  DUM i < n
+    EVOCA SPECULUM SpamSignalEntry signal_ptr AD CONIURA fluxus_get(result.signals, i)
+    SI (*signal_ptr).signal == signal
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

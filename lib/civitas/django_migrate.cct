@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_django_migrate_root"
+
+ADVOCARE "django_migrate/django_migrate.cct"
+ADVOCARE "django_migrate/django_schema_map.cct"
+ADVOCARE "django_migrate/django_fixture_import.cct"
+ADVOCARE "django_migrate/django_media_import.cct"
+ADVOCARE "django_migrate/django_parity.cct"
+
+EXPLICIT grimoire

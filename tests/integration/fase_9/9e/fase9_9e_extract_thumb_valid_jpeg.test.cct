@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase9_9e_extract_thumb_valid_jpeg"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_thumb.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9e_root("thumb")
+  EVOCA VERBUM thumb_path AD CONIURA concat(root, "/thumb.jpg")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA phase9_9e_make_video(root, "clip.mp4", 1.0, 320, 240)
+  EVOCA SPECULUM NIHIL res AD CONIURA video_extract_thumb(path, thumb_path, 0.0)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  EVOCA Image img AD CONIURA image_load(thumb_path)
+  SI NON CONIURA image_is_valid(img)
+    IACE "thumbnail should be a valid image"
+  FIN SI
+  CONIURA image_free(img)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

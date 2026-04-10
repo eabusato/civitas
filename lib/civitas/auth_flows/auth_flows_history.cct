@@ -1,0 +1,64 @@
+INCIPIT grimoire "civitas_auth_flows_history"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_hash.cct"
+ADVOCARE "auth_flows.cct"
+
+RITUALE auth_history_registrar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM user_id, VERBUM hash_senha) REDDE NIHIL
+  EVOCA REX agora_unix AD CONIURA auth_flow_now_unix()
+  EVOCA SPECULUM NIHIL stmt_ins AD CONIURA db_prepare(
+    db,
+    "INSERT INTO senha_historico (user_id, hash, criado_em) VALUES (?, ?, ?)"
+  )
+  CONIURA stmt_bind_text(stmt_ins, 1, user_id)
+  CONIURA stmt_bind_text(stmt_ins, 2, hash_senha)
+  CONIURA stmt_bind_int(stmt_ins, 3, agora_unix)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_ins)
+
+  EVOCA SPECULUM NIHIL stmt_del AD CONIURA db_prepare(
+    db,
+    "DELETE FROM senha_historico WHERE user_id = ? AND id NOT IN (SELECT id FROM senha_historico WHERE user_id = ? ORDER BY criado_em DESC, id DESC LIMIT ?)"
+  )
+  CONIURA stmt_bind_text(stmt_del, 1, user_id)
+  CONIURA stmt_bind_text(stmt_del, 2, user_id)
+  CONIURA stmt_bind_int(stmt_del, 3, cfg.max_historico_senhas)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_del)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_history_verificar_reuso(SPECULUM NIHIL db, FlowConfig cfg, AuthConfig auth_cfg, VERBUM user_id, VERBUM nova_senha) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt_atual AD CONIURA db_prepare(
+    db,
+    "SELECT senha_hash FROM usuarios WHERE id = ? LIMIT 1"
+  )
+  CONIURA stmt_bind_text(stmt_atual, 1, user_id)
+  SI CONIURA stmt_step(stmt_atual) ET CONIURA stmt_has_row(stmt_atual)
+    SI CONIURA auth_verificar_senha(nova_senha, CONIURA stmt_get_text(stmt_atual, 0))
+      CONIURA stmt_finalize(stmt_atual)
+      REDDE CONIURA auth_flow_err_verum(FlowSenhaReutilizada)
+    FIN SI
+  FIN SI
+  CONIURA stmt_finalize(stmt_atual)
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "SELECT hash FROM senha_historico WHERE user_id = ? ORDER BY criado_em DESC, id DESC LIMIT ?"
+  )
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, cfg.max_historico_senhas)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      SI CONIURA auth_verificar_senha(nova_senha, CONIURA stmt_get_text(stmt, 0))
+        CONIURA stmt_finalize(stmt)
+        REDDE CONIURA auth_flow_err_verum(FlowSenhaReutilizada)
+      FIN SI
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA auth_flow_ok_verum(VERUM)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

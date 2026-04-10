@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase9_9b_serve_304_if_none_match"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9b_root("serve_304")
+  EVOCA VERBUM static_root AD CONIURA phase9_9b_prepare_files(root)
+  EVOCA StaticIndex idx AD CONIURA phase9_9b_index_prod(static_root)
+  EVOCA VERBUM css_url AD CONIURA static_url(idx, "css/app.css")
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA static_find_by_name(idx, "css/app.css")
+  SI CONIURA option_is_none GENUS(StaticFile)(file_opt)
+    IACE "css file should be indexed"
+  FIN SI
+  EVOCA StaticFile sf AD CONIURA option_unwrap GENUS(StaticFile)(file_opt)
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase9_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "if-none-match", sf.etag)
+  EVOCA WebRequest req AD CONIURA phase9_request("GET", css_url, headers, "")
+  EVOCA StaticServeResult served AD CONIURA static_serve(idx, req, css_url)
+
+  SI served.kind != SrNaoModificado
+    IACE "if-none-match should produce 304"
+  FIN SI
+  SI CONIURA option_is_none GENUS(WebResponse)(served.response)
+    IACE "304 response should be present"
+  FIN SI
+  EVOCA WebResponse response AD CONIURA option_unwrap GENUS(WebResponse)(served.response)
+  SI response.status != 304
+    IACE "response status should be 304"
+  FIN SI
+  SI CONIURA len(response.body) != 0
+    IACE "304 should not include body"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

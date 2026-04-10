@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase10_10b_insert_update_delete"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/query/query_mut.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10b_insert_update_delete")
+  CONIURA db_exec(db, "CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, active INTEGER NOT NULL)")
+
+  EVOCA InsertQuery iq AD CONIURA insert_into("users")
+  CONIURA insert_set_text(iq, "email", "user@example.com")
+  CONIURA insert_set_bool(iq, "active", VERUM)
+  EVOCA REX new_id AD CONIURA insert_execute(db, iq)
+  SI new_id != 1
+    REDDE 1
+  FIN SI
+
+  EVOCA UpdateQuery uq AD CONIURA update_table("users")
+  CONIURA update_set_text(uq, "email", "new@example.com")
+  CONIURA update_where_int(uq, "id", Eq, new_id)
+  CONIURA update_execute(db, uq)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM users WHERE email = 'new@example.com'") != 1
+    REDDE 2
+  FIN SI
+
+  EVOCA DeleteQuery dq AD CONIURA delete_from("users")
+  CONIURA delete_where_int(dq, "id", Eq, new_id)
+  CONIURA delete_execute(db, dq)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM users") != 0
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

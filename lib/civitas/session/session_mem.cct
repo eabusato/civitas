@@ -1,0 +1,13 @@
+INCIPIT grimoire "civitas_session_mem"
+
+ADVOCARE "session.cct"
+ADVOCARE "cct/map.cct"
+
+RITUALE session_mem_count(SessionStore store) REDDE REX
+  SI store.kind != SbkMemoria
+    REDDE 0
+  FIN SI
+  REDDE CONIURA map_len GENUS(VERBUM, VERBUM)(store.state)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

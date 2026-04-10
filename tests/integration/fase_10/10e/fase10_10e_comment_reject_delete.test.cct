@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase10_10e_comment_reject_delete"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "../../../../lib/civitas/social/social_comment.cct"
+ADVOCARE "../../../../lib/civitas/social/social_softdelete.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10e_comment_reject_delete")
+  EVOCA Comment c1 AD CONIURA comment_create(db, "post", 3, "Ana", "ana@example.com", "Hello")
+  CONIURA comment_reject(db, c1.id)
+  EVOCA Comment loaded1 AD CONIURA comment_get(db, c1.id)
+  SI loaded1.state != CsRejected
+    REDDE 1
+  FIN SI
+  EVOCA Comment c2 AD CONIURA comment_create(db, "post", 3, "Bob", "", "Bye")
+  CONIURA comment_delete(db, c2.id)
+  EVOCA Comment loaded2 AD CONIURA comment_get(db, c2.id)
+  SI loaded2.state != CsDeleted
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,224 @@
+INCIPIT grimoire "civitas_admin_dashboard"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+SIGILLUM DashboardContentMetrics
+  total_pages: REX
+  published_pages: REX
+  draft_pages: REX
+  pages_last_24h: REX
+  pages_last_7d: REX
+FIN SIGILLUM
+
+SIGILLUM DashboardUserMetrics
+  total_users: REX
+  active_last_30d: REX
+  new_last_7d: REX
+  banned_users: REX
+FIN SIGILLUM
+
+SIGILLUM DashboardUploadMetrics
+  total_uploads: REX
+  uploads_last_24h: REX
+  media_jobs_pending: REX
+  media_jobs_failed: REX
+  media_jobs_dead: REX
+FIN SIGILLUM
+
+SIGILLUM DashboardTaskMetrics
+  queued: REX
+  running: REX
+  retry: REX
+  done_last_24h: REX
+  dead_last_24h: REX
+  failed_last_24h: REX
+FIN SIGILLUM
+
+SIGILLUM DashboardModerationMetrics
+  pending_videos: REX
+  pending_images: REX
+  pending_reports: REX
+  decided_last_24h: REX
+FIN SIGILLUM
+
+SIGILLUM DashboardSnapshot
+  id: VERBUM
+  content: DashboardContentMetrics
+  users: DashboardUserMetrics
+  uploads: DashboardUploadMetrics
+  tasks: DashboardTaskMetrics
+  moderation: DashboardModerationMetrics
+  computed_at_unix: REX
+FIN SIGILLUM
+
+RITUALE dashboard_scalar(DbHandle dbh, VERBUM sql) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX out AD CONIURA dbh_scalar_int(dbh, sql)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dashboard_scalar_cutoff(DbHandle dbh, VERBUM sql, REX cutoff) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, cutoff)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX out AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dashboard_snapshot_empty() REDDE DashboardSnapshot
+  EVOCA DashboardSnapshot s
+  VINCIRE s.id AD ""
+  VINCIRE s.content.total_pages AD 0
+  VINCIRE s.content.published_pages AD 0
+  VINCIRE s.content.draft_pages AD 0
+  VINCIRE s.content.pages_last_24h AD 0
+  VINCIRE s.content.pages_last_7d AD 0
+  VINCIRE s.users.total_users AD 0
+  VINCIRE s.users.active_last_30d AD 0
+  VINCIRE s.users.new_last_7d AD 0
+  VINCIRE s.users.banned_users AD 0
+  VINCIRE s.uploads.total_uploads AD 0
+  VINCIRE s.uploads.uploads_last_24h AD 0
+  VINCIRE s.uploads.media_jobs_pending AD 0
+  VINCIRE s.uploads.media_jobs_failed AD 0
+  VINCIRE s.uploads.media_jobs_dead AD 0
+  VINCIRE s.tasks.queued AD 0
+  VINCIRE s.tasks.running AD 0
+  VINCIRE s.tasks.retry AD 0
+  VINCIRE s.tasks.done_last_24h AD 0
+  VINCIRE s.tasks.dead_last_24h AD 0
+  VINCIRE s.tasks.failed_last_24h AD 0
+  VINCIRE s.moderation.pending_videos AD 0
+  VINCIRE s.moderation.pending_images AD 0
+  VINCIRE s.moderation.pending_reports AD 0
+  VINCIRE s.moderation.decided_last_24h AD 0
+  VINCIRE s.computed_at_unix AD 0
+  REDDE s
+EXPLICIT RITUALE
+
+RITUALE dashboard_snapshot_compute(DbHandle dbh) REDDE DashboardSnapshot
+  EVOCA DashboardSnapshot s AD CONIURA dashboard_snapshot_empty()
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  VINCIRE s.id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  VINCIRE s.computed_at_unix AD now_unix
+  VINCIRE s.content.total_pages AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM civitas_pages")
+  VINCIRE s.content.published_pages AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM civitas_pages WHERE state = 2")
+  VINCIRE s.content.draft_pages AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM civitas_pages WHERE state = 0")
+  VINCIRE s.content.pages_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM civitas_pages WHERE created_at >= ?", now_unix - 86400)
+  VINCIRE s.content.pages_last_7d AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM civitas_pages WHERE created_at >= ?", now_unix - 604800)
+  VINCIRE s.users.total_users AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM usuarios")
+  VINCIRE s.users.active_last_30d AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(DISTINCT user_id) FROM sessoes WHERE criado_em >= ?", now_unix - 2592000)
+  VINCIRE s.users.new_last_7d AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM usuarios")
+  VINCIRE s.users.banned_users AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM usuarios WHERE ativo = 0")
+  VINCIRE s.uploads.total_uploads AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM media_jobs")
+  VINCIRE s.uploads.uploads_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM media_jobs WHERE created_at_unix >= ?", now_unix - 86400)
+  VINCIRE s.uploads.media_jobs_pending AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM media_jobs WHERE state IN ('queued', 'running', 'waiting_approval')")
+  VINCIRE s.uploads.media_jobs_failed AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM media_jobs WHERE state = 'failed'")
+  VINCIRE s.uploads.media_jobs_dead AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM media_jobs WHERE state = 'dead'")
+  VINCIRE s.tasks.queued AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = 'queued'")
+  VINCIRE s.tasks.running AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = 'running'")
+  VINCIRE s.tasks.retry AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = 'retry'")
+  VINCIRE s.tasks.done_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = 'done' AND updated_at_unix >= ?", now_unix - 86400)
+  VINCIRE s.tasks.dead_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = 'dead' AND updated_at_unix >= ?", now_unix - 86400)
+  VINCIRE s.tasks.failed_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM task_dead_letters WHERE failed_at_unix >= ?", now_unix - 86400)
+  VINCIRE s.moderation.pending_videos AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM moderation_items WHERE kind = 'video' AND state = 'pending'")
+  VINCIRE s.moderation.pending_images AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM moderation_items WHERE kind = 'image' AND state = 'pending'")
+  VINCIRE s.moderation.pending_reports AD CONIURA dashboard_scalar(dbh, "SELECT COUNT(*) FROM moderation_items WHERE kind = 'report' AND state = 'pending'")
+  VINCIRE s.moderation.decided_last_24h AD CONIURA dashboard_scalar_cutoff(dbh, "SELECT COUNT(*) FROM moderation_decisions WHERE created_at_unix >= ?", now_unix - 86400)
+  REDDE s
+EXPLICIT RITUALE
+
+RITUALE dashboard_snapshot_to_json(DashboardSnapshot s) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json content AD CONIURA json_obj()
+  EVOCA Json users AD CONIURA json_obj()
+  EVOCA Json uploads AD CONIURA json_obj()
+  EVOCA Json tasks AD CONIURA json_obj()
+  EVOCA Json moderation AD CONIURA json_obj()
+  CONIURA json_obj_push(content, "total_pages", CONIURA json_num(cast GENUS(UMBRA)(s.content.total_pages)))
+  CONIURA json_obj_push(content, "published_pages", CONIURA json_num(cast GENUS(UMBRA)(s.content.published_pages)))
+  CONIURA json_obj_push(content, "draft_pages", CONIURA json_num(cast GENUS(UMBRA)(s.content.draft_pages)))
+  CONIURA json_obj_push(users, "total_users", CONIURA json_num(cast GENUS(UMBRA)(s.users.total_users)))
+  CONIURA json_obj_push(users, "active_last_30d", CONIURA json_num(cast GENUS(UMBRA)(s.users.active_last_30d)))
+  CONIURA json_obj_push(users, "banned_users", CONIURA json_num(cast GENUS(UMBRA)(s.users.banned_users)))
+  CONIURA json_obj_push(uploads, "total_uploads", CONIURA json_num(cast GENUS(UMBRA)(s.uploads.total_uploads)))
+  CONIURA json_obj_push(uploads, "media_jobs_pending", CONIURA json_num(cast GENUS(UMBRA)(s.uploads.media_jobs_pending)))
+  CONIURA json_obj_push(tasks, "queued", CONIURA json_num(cast GENUS(UMBRA)(s.tasks.queued)))
+  CONIURA json_obj_push(tasks, "retry", CONIURA json_num(cast GENUS(UMBRA)(s.tasks.retry)))
+  CONIURA json_obj_push(moderation, "pending_reports", CONIURA json_num(cast GENUS(UMBRA)(s.moderation.pending_reports)))
+  CONIURA json_obj_push(root, "id", CONIURA json_str(s.id))
+  CONIURA json_obj_push(root, "content", content)
+  CONIURA json_obj_push(root, "users", users)
+  CONIURA json_obj_push(root, "uploads", uploads)
+  CONIURA json_obj_push(root, "tasks", tasks)
+  CONIURA json_obj_push(root, "moderation", moderation)
+  CONIURA json_obj_push(root, "computed_at_unix", CONIURA json_num(cast GENUS(UMBRA)(s.computed_at_unix)))
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE dashboard_snapshot_save(DbHandle dbh, DashboardSnapshot s) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, s.id)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA dashboard_snapshot_to_json(s))
+  CONIURA dbh_param_int(SPECULUM params, s.computed_at_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO admin_dashboard_snapshots (id, snapshot_json, computed_at_unix) VALUES (?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dashboard_latest_snapshot_json(DbHandle dbh) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT snapshot_json FROM admin_dashboard_snapshots ORDER BY computed_at_unix DESC LIMIT 1", params)
+  EVOCA VERBUM out AD "{}"
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA dbrows_get_text(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dashboard_queue_view_json(DbHandle dbh) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT queue_name, state, COUNT(*) FROM task_queue GROUP BY queue_name, state ORDER BY queue_name ASC, state ASC", params)
+  EVOCA Json arr AD CONIURA json_arr()
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "queue_name", CONIURA json_str(CONIURA dbrows_get_text(rows, 0)))
+    CONIURA json_obj_push(obj, "state", CONIURA json_str(CONIURA dbrows_get_text(rows, 1)))
+    CONIURA json_obj_push(obj, "count", CONIURA json_num(cast GENUS(UMBRA)(CONIURA dbrows_get_int(rows, 2))))
+    CONIURA json_arr_push(arr, obj)
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE dashboard_recent_failures_json(DbHandle dbh, REX limit) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, limit)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT task_name, last_error_code, state FROM task_queue WHERE state IN ('retry', 'dead') ORDER BY updated_at_unix DESC LIMIT ?", params)
+  EVOCA Json arr AD CONIURA json_arr()
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "task_name", CONIURA json_str(CONIURA dbrows_get_text(rows, 0)))
+    CONIURA json_obj_push(obj, "error_code", CONIURA json_str(CONIURA dbrows_get_text(rows, 1)))
+    CONIURA json_obj_push(obj, "state", CONIURA json_str(CONIURA dbrows_get_text(rows, 2)))
+    CONIURA json_arr_push(arr, obj)
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

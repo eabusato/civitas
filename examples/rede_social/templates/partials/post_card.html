@@ -1,0 +1,33 @@
+{% EVOCA RedePostCardContext %}
+<article class="card post-card">
+  <div class="post-head">
+    <img class="avatar" src="{{ author_avatar_url }}" alt="">
+    <div>
+      <a class="author" href="/perfil/{{ author_handle }}">@{{ author_handle }}</a>
+      <div class="muted">{{ author_name }} &middot; {{ created_at }}</div>
+    </div>
+  </div>
+  <h2><a href="/posts/{{ slug }}">{{ title }}</a></h2>
+  <p>{{ body }}</p>
+  {% SI has_video %}
+    <video class="media" controls preload="metadata" src="{{ media_url }}"></video>
+  {% FIN SI %}
+  {% SI has_image %}
+    <img class="media" alt="post media" src="{{ media_url }}">
+  {% FIN SI %}
+  <div class="post-actions">
+    <span>{{ likes_count }} likes</span>
+    <span>{{ comments_count }} comments</span>
+    {% SI can_interact %}
+      <form method="POST" action="/posts/{{ slug }}/like" class="inline-form">
+        {{ csrf_html|safe }}
+        <input type="hidden" name="next" value="{{ return_path }}">
+        {% SI liked %}
+          <button type="submit" class="secondary">Liked</button>
+        {% ALITER %}
+          <button type="submit">Like</button>
+        {% FIN SI %}
+      </form>
+    {% FIN SI %}
+  </div>
+</article>

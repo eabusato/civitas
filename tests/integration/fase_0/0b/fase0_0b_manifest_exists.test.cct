@@ -1,0 +1,12 @@
+INCIPIT grimoire "fase0_0b_manifest_exists_test"
+
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA is_file("cct.toml")
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

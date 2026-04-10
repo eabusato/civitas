@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase12_12c_signal_apply_registered_table"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_signal.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12c_signal_reg")
+  CONIURA phase12_12c_setup_items(dbh)
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12c-signal")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM h, 60, "cq12c", NIHIL)
+  EVOCA ModelDef def AD CONIURA phase12_12c_model_items()
+  EVOCA Query q AD CONIURA phase12_12c_query_items()
+  CONIURA cache_query_registrar_invalidacao(SPECULUM cq, "items")
+
+  EVOCA VERBUM json1 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  CONIURA db_exec(dbh.sqlite_conn, "UPDATE items SET name = 'alpha-signal' WHERE id = 1")
+  EVOCA SignalEnvelope env AD CONIURA signal_envelope_new("post_save:items", "test", "", "", NIHIL)
+  CONIURA cache_query_signal_apply(SPECULUM cq, env)
+  EVOCA VERBUM json2 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  SI CONIURA compare(json1, json2) == 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(json2, "alpha-signal") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

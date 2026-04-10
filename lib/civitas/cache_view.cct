@@ -1,0 +1,10 @@
+INCIPIT grimoire "civitas_cache_view_wrapper"
+
+ADVOCARE "cache_view/cache_view.cct"
+ADVOCARE "cache_view/cache_view_chave.cct"
+ADVOCARE "cache_view/cache_view_serial.cct"
+ADVOCARE "cache_view/cache_view_tags.cct"
+ADVOCARE "cache_view/cache_view_ops.cct"
+ADVOCARE "cache_view/cache_view_middleware.cct"
+
+EXPLICIT grimoire

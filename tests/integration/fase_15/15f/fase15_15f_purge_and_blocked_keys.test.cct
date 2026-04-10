@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase15_15f_purge_and_blocked_keys"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit_check.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_rate_limit_db_open("15f_purge_and_blocked_keys")
+  EVOCA RateLimitConfig cfg AD CONIURA rate_limit_config_default()
+  EVOCA REX agora AD CONIURA rate_limit_now_unix()
+  EVOCA VERBUM bloqueada AD CONIURA rate_limit_chave_ip("10.0.0.1")
+  EVOCA VERBUM antiga AD CONIURA rate_limit_chave_ip("10.0.0.2")
+  EVOCA REX i AD 0
+  DUM i < cfg.max_tentativas
+    CONIURA phase15_15f_insert_attempt(db, bloqueada, agora - 5 - i, FALSUM)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA phase15_15f_insert_attempt(db, antiga, agora - cfg.janela_segundos - cfg.lockout_segundos - 100, FALSUM)
+  EVOCA SPECULUM NIHIL blocked AD CONIURA rate_limit_chaves_bloqueadas(db, cfg)
+  SI NON CONIURA phase15_15f_fluxus_contains(blocked, bloqueada)
+    CONIURA fluxus_free(blocked)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  CONIURA fluxus_free(blocked)
+  SI CONIURA rate_limit_purge_antigas(db, cfg) < 1
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM auth_attempts WHERE chave = 'ip:10.0.0.2'") != 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

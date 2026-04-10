@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase14_14a_locale_active_from_context"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n_context.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA local_context_key_locale(), "en-US")
+  SI CONIURA compare(CONIURA i18n_locale_active(ctx), "en-US") != 0
+    REDDE 1
+  FIN SI
+  CONIURA local_context_close(SPECULUM ctx)
+  SI CONIURA compare(CONIURA i18n_locale_active(ctx), "") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

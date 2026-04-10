@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase14_14d_merge_override"
+
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_merge.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA JsonCatalog base AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(CONIURA i18n_json_parse("{\"locale\":\"pt-BR\",\"entries\":{\"nav.home\":\"Inicio\",\"nav.contact\":\"Contato\"}}"))
+  EVOCA JsonCatalog over AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(CONIURA i18n_json_parse("{\"locale\":\"pt-BR\",\"entries\":{\"nav.home\":\"Casa\"}}"))
+  EVOCA JsonCatalog merged AD CONIURA i18n_json_merge(base, over)
+  EVOCA SPECULUM JsonCatalogEntry ep0 AD CONIURA fluxus_get(merged.entradas, 0)
+  SI CONIURA compare((*ep0).traducao, "Casa") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

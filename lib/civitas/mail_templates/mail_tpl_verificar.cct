@@ -1,0 +1,48 @@
+INCIPIT grimoire "civitas_mail_tpl_verificar"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "mail_tpl_base.cct"
+
+RITUALE mail_tpl_verificar_email(MailerConfig mcfg, VERBUM user_email, VERBUM user_nome, VERBUM url_verificacao, REX expira_horas) REDDE MailMessage
+  EVOCA SPECULUM NIHIL bt AD CONIURA builder_init()
+  CONIURA builder_append(bt, "Confirm your email address\n")
+  CONIURA builder_append(bt, "Hello, ")
+  CONIURA builder_append(bt, user_nome)
+  CONIURA builder_append(bt, ".\n\n")
+  CONIURA builder_append(bt, "Thanks for signing up. Confirm your email address by opening the link below:\n")
+  CONIURA builder_append(bt, url_verificacao)
+  CONIURA builder_append(bt, "\n\nThis link expires in ")
+  CONIURA builder_append(bt, CONIURA stringify_int(expira_horas))
+  CONIURA builder_append(bt, " hours.\n\n")
+  CONIURA builder_append(bt, "If you did not create this account, ignore this email.\n")
+  EVOCA VERBUM corpo_texto AD CONIURA mail_tpl_builder_take(bt)
+
+  EVOCA SPECULUM NIHIL bh AD CONIURA builder_init()
+  CONIURA builder_append(bh, CONIURA mail_html_head("Confirm your email address"))
+  CONIURA builder_append(bh, "<div class=\"header\"><h1>Confirm your email</h1></div>")
+  CONIURA builder_append(bh, "<div class=\"body\">")
+  CONIURA builder_append(bh, "<p>Hello, ")
+  CONIURA builder_append(bh, CONIURA html_encode(user_nome))
+  CONIURA builder_append(bh, ".</p>")
+  CONIURA builder_append(bh, "<p>Thanks for signing up. Confirm your email address to activate your account.</p>")
+  CONIURA builder_append(bh, CONIURA mail_html_botao(url_verificacao, "Confirm email"))
+  EVOCA SPECULUM NIHIL ba AD CONIURA builder_init()
+  CONIURA builder_append(ba, "This link expires in ")
+  CONIURA builder_append(ba, CONIURA stringify_int(expira_horas))
+  CONIURA builder_append(ba, " hours. If you did not create this account, ignore this email.")
+  CONIURA builder_append(bh, CONIURA mail_html_aviso(CONIURA mail_tpl_builder_take(ba)))
+  CONIURA builder_append(bh, CONIURA mail_html_fallback_link(url_verificacao))
+  CONIURA builder_append(bh, "</div>")
+  CONIURA builder_append(bh, CONIURA mail_html_foot())
+  EVOCA VERBUM corpo_html AD CONIURA mail_tpl_builder_take(bh)
+
+  REDDE CONIURA mail_tpl_message(mcfg, user_email, user_nome, "Confirm your email address", corpo_texto, corpo_html)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

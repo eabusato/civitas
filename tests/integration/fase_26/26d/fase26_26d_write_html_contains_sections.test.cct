@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase26_26d_write_html_contains_sections"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_26d_reset_root("write_html_contains_sections")
+  EVOCA PerfReport report AD CONIURA phase26_26d_report(VERUM, 1)
+  EVOCA VERBUM out_path AD CONIURA path_join(root, "report.html")
+  CONIURA perf_report_write_html(report, out_path)
+  EVOCA VERBUM html AD CONIURA read_all(out_path)
+  SI CONIURA find(html, "Civitas Perf Report") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "Benchmark") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "CPU, Rituals and Queries") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "Memory") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(html, "Recommendations") == -1
+    REDDE 5
+  FIN SI
+  CONIURA fluxus_free(report.mem_report.deltas)
+  CONIURA fluxus_free(report.profiles)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

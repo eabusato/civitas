@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase11_support_common"
+
+ADVOCARE "../../fase_10/support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle_sqlite.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase11_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_11/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase11_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase10_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase11_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase11_tmp_dir(test_name), "test.db")
+EXPLICIT RITUALE
+
+RITUALE phase11_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA phase10_db_open(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase11_dbh_sqlite(VERBUM test_name) REDDE DbHandle
+  REDDE CONIURA dbh_from_sqlite(CONIURA phase11_db_open(test_name))
+EXPLICIT RITUALE
+
+RITUALE phase11_logger_file(VERBUM test_name) REDDE Logger
+  EVOCA Logger logger AD CONIURA log_new("fase11", DEBUG)
+  EVOCA VERBUM path AD CONIURA path_join(CONIURA phase11_tmp_dir(test_name), "phase11.log")
+  CONIURA phase11_reset_dir(CONIURA phase11_tmp_dir(test_name))
+  CONIURA log_set_sink_file(SPECULUM logger, path)
+  REDDE logger
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase6_6d_assets_static_and_media_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/assets.cct"
+ADVOCARE "../../../../lib/civitas/core/storage_settings.cct"
+ADVOCARE "support.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL registry AD CONIURA asset_registry_new()
+  EVOCA StorageSettings media_cfg AD CONIURA phase6_6d_storage_settings("https://cdn.civitas.dev/media")
+  EVOCA VERBUM css_url AD ""
+  EVOCA VERBUM fallback_url AD ""
+  EVOCA VERBUM photo_url AD ""
+
+  CONIURA asset_registry_set(registry, "css/app.css", "/static/css/app.a1b2c3d4.css")
+  VINCIRE css_url AD CONIURA static_url(registry, "css/app.css")
+  VINCIRE fallback_url AD CONIURA static_url_or_passthrough(registry, "js/site.js")
+  VINCIRE photo_url AD CONIURA media_url(SPECULUM media_cfg, "profiles/user_1.jpg")
+
+  SI CONIURA compare(css_url, "/static/css/app.a1b2c3d4.css") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(fallback_url, "js/site.js") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(photo_url, "https://cdn.civitas.dev/media/profiles/user_1.jpg") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

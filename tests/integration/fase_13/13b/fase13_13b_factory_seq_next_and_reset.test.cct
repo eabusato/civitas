@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase13_13b_factory_seq_next_and_reset"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_seq.cct"
+
+RITUALE main() REDDE REX
+  CONIURA factory_seq_reset()
+  SI CONIURA factory_seq_next("posts.slug") != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA factory_seq_next("posts.slug") != 2
+    REDDE 2
+  FIN SI
+  CONIURA factory_seq_reset()
+  SI CONIURA factory_seq_next("posts.slug") != 1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

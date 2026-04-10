@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase16_16b_memory_send_and_clear"
+
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_settings.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_memory("no-reply@test.example", "Test App")
+  EVOCA SPECULUM NIHIL open_res AD CONIURA mailer_open(cfg)
+  SI CONIURA result_is_err GENUS(Mailer, MailerError)(open_res)
+    REDDE 1
+  FIN SI
+  EVOCA Mailer mailer AD CONIURA result_unwrap GENUS(Mailer, MailerError)(open_res)
+  EVOCA MailMessage msg AD CONIURA mailer_simple("ana@test.example", "Ana", "Hello", "Body", "<p>Body</p>")
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(SPECULUM mailer, msg)
+  SI CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 2
+  FIN SI
+  SI CONIURA mailer_memory_count(mailer) != 1
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 3
+  FIN SI
+  EVOCA SPECULUM NIHIL get_res AD CONIURA mailer_memory_get(mailer, 0)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(get_res)
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 4
+  FIN SI
+  CONIURA mailer_memory_clear(SPECULUM mailer)
+  SI CONIURA mailer_memory_count(mailer) != 0
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 5
+  FIN SI
+  CONIURA mailer_close(SPECULUM mailer)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

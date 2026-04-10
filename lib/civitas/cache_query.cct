@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_cache_query_root"
+
+ADVOCARE "cache_query/cache_query.cct"
+ADVOCARE "cache_query/cache_query_serial.cct"
+ADVOCARE "cache_query/cache_query_exec.cct"
+ADVOCARE "cache_query/cache_query_signal.cct"
+
+EXPLICIT grimoire

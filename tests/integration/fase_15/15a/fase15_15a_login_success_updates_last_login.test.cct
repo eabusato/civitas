@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase15_15a_login_success_updates_last_login"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_login.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open("15a_login_success_updates_last_login")
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  CONIURA auth_criar_usuario(db, cfg, "login@example.com", "S3nh@Forte!")
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_login(db, cfg, "login@example.com", "S3nh@Forte!")
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA User u AD CONIURA result_unwrap GENUS(User, AuthError)(res)
+  SI CONIURA len(u.ultimo_login) == 0
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL opt AD CONIURA auth_buscar_por_email(db, "login@example.com")
+  SI CONIURA option_is_none GENUS(User)(opt)
+    CONIURA option_free GENUS(User)(opt)
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  EVOCA User loaded AD CONIURA option_unwrap GENUS(User)(opt)
+  CONIURA option_free GENUS(User)(opt)
+  SI CONIURA compare(loaded.ultimo_login, u.ultimo_login) != 0
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  SI CONIURA ends_with(loaded.ultimo_login, "Z") == FALSUM
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase14_14e_ordinal_rules"
+
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt.cct"
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt_rules.cct"
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt_ordinal.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA L10nFmtRules pt AD CONIURA l10n_fmt_rules_pt_br()
+  EVOCA L10nFmtRules en AD CONIURA l10n_fmt_rules_en_us()
+  SI CONIURA compare(CONIURA l10n_format_ordinal(1, SPECULUM pt, FALSUM), "1o") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_ordinal(1, SPECULUM pt, VERUM), "1a") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_ordinal(21, SPECULUM en, FALSUM), "21st") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_ordinal(12, SPECULUM en, FALSUM), "12th") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

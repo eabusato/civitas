@@ -1,0 +1,179 @@
+INCIPIT grimoire "fase1_support_common"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE compiler_bin() REDDE VERBUM
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM candidate AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(candidate) > 0
+      REDDE candidate
+    FIN SI
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+RITUALE ensure_tmp_root() REDDE NIHIL
+  CONIURA mkdir_all("tests/tmp/fase_1")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tmp_file(VERBUM name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_1/", name)
+EXPLICIT RITUALE
+
+RITUALE cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE run_to_log(VERBUM cmd, VERBUM log) REDDE REX
+  CONIURA ensure_tmp_root()
+  EVOCA VERBUM full AD cmd
+  VINCIRE full AD CONIURA concat(full, " >")
+  VINCIRE full AD CONIURA concat(full, log)
+  VINCIRE full AD CONIURA concat(full, " 2>&1")
+  REDDE CONIURA run(full)
+EXPLICIT RITUALE
+
+RITUALE spawn_to_log(VERBUM cmd, VERBUM log) REDDE REX
+  CONIURA ensure_tmp_root()
+  EVOCA VERBUM full AD cmd
+  VINCIRE full AD CONIURA concat(full, " >")
+  VINCIRE full AD CONIURA concat(full, log)
+  VINCIRE full AD CONIURA concat(full, " 2>&1 &")
+  REDDE CONIURA run(full)
+EXPLICIT RITUALE
+
+RITUALE spawn_to_log_with_pid(VERBUM cmd, VERBUM log, VERBUM pid_file) REDDE REX
+  CONIURA ensure_tmp_root()
+  EVOCA VERBUM full AD "{ "
+  VINCIRE full AD CONIURA concat(full, cmd)
+  VINCIRE full AD CONIURA concat(full, " >")
+  VINCIRE full AD CONIURA concat(full, log)
+  VINCIRE full AD CONIURA concat(full, " 2>&1 & echo $! >")
+  VINCIRE full AD CONIURA concat(full, pid_file)
+  VINCIRE full AD CONIURA concat(full, "; }")
+  REDDE CONIURA run(full)
+EXPLICIT RITUALE
+
+RITUALE wait_for_file(VERBUM path, REX timeout_ms) REDDE VERUM
+  EVOCA REX elapsed AD 0
+  DUM elapsed < timeout_ms
+    SI CONIURA exists(path)
+      REDDE VERUM
+    FIN SI
+    CONIURA sleep_ms(20)
+    VINCIRE elapsed AD elapsed + 20
+  FIN DUM
+  REDDE CONIURA exists(path)
+EXPLICIT RITUALE
+
+RITUALE crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE probe_source() REDDE VERBUM
+  REDDE "tests/integration/fase_1/1a/fixtures/http_server_probe.cct"
+EXPLICIT RITUALE
+
+RITUALE probe_binary() REDDE VERBUM
+  REDDE "tests/integration/fase_1/1a/fixtures/http_server_probe"
+EXPLICIT RITUALE
+
+RITUALE build_probe_server(VERBUM log) REDDE REX
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA probe_source())
+  REDDE CONIURA run_to_log(cmd, log)
+EXPLICIT RITUALE
+
+RITUALE probe_command(REX port, REX max_requests, VERBUM ready, VERBUM done, VERBUM request_log, VERBUM stats_file) REDDE VERBUM
+  EVOCA VERBUM cmd AD "CIVITAS_HOST=127.0.0.1 CIVITAS_PORT="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_REQUESTS=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(max_requests))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, ready)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_DONE_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, done)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_REQUEST_LOG_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, request_log)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_STATS_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, stats_file)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA probe_binary())
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE probe_command_with_hardening(REX port, REX max_requests, VERBUM ready, VERBUM done, VERBUM request_log, VERBUM stats_file, REX read_header_timeout_ms, REX read_body_timeout_ms, REX idle_timeout_ms, REX max_header_bytes, REX max_header_count, REX max_body_bytes) REDDE VERBUM
+  EVOCA VERBUM cmd AD "CIVITAS_READ_HEADER_TIMEOUT_MS="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(read_header_timeout_ms))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_READ_BODY_TIMEOUT_MS=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(read_body_timeout_ms))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_IDLE_TIMEOUT_MS=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(idle_timeout_ms))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_HEADER_BYTES=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(max_header_bytes))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_HEADER_COUNT=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(max_header_count))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_BODY_BYTES=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(max_body_bytes))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA probe_command(port, max_requests, ready, done, request_log, stats_file))
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE probe_command_with_proxy(REX port, REX max_requests, VERBUM ready, VERBUM done, VERBUM request_log, VERBUM access_log, VERBUM stats_file, VERBUM trusted_proxies, REX enable_request_id, REX enable_access_log, REX allow_proxy_request_id) REDDE VERBUM
+  EVOCA VERBUM cmd AD "CIVITAS_ACCESS_LOG_FILE="
+  VINCIRE cmd AD CONIURA concat(cmd, access_log)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_TRUSTED_PROXIES=")
+  VINCIRE cmd AD CONIURA concat(cmd, trusted_proxies)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_ENABLE_REQUEST_ID=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(enable_request_id))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_ENABLE_ACCESS_LOG=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(enable_access_log))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_ALLOW_PROXY_REQUEST_ID=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(allow_proxy_request_id))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA probe_command(port, max_requests, ready, done, request_log, stats_file))
+  REDDE cmd
+EXPLICIT RITUALE
+
+RITUALE open_local_socket(REX port) REDDE SPECULUM NIHIL
+  REDDE CONIURA open_local_socket_with_timeout(port, 1000)
+EXPLICIT RITUALE
+
+RITUALE open_local_socket_with_timeout(REX port, REX timeout_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL sock AD CONIURA socket_tcp()
+  CONIURA sock_connect(sock, "127.0.0.1", port)
+  CONIURA sock_set_timeout_ms(sock, timeout_ms)
+  REDDE sock
+EXPLICIT RITUALE
+
+RITUALE send_raw(SPECULUM NIHIL sock, VERBUM payload) REDDE REX
+  SI CONIURA sock_send(sock, payload) != CONIURA len(payload)
+    REDDE -1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE read_http_response(SPECULUM NIHIL sock) REDDE HttpResponse
+  EVOCA VERBUM raw AD CONIURA http_read_response_raw(sock)
+  REDDE CONIURA http_parse_response(raw)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,28 @@
+INCIPIT grimoire "civitas_locks_keys"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+
+RITUALE lock_key_media(VERBUM upload_id) REDDE PgLockKey
+  REDDE CONIURA pg_lock_key_named("media_process", upload_id)
+EXPLICIT RITUALE
+
+RITUALE lock_key_translation(VERBUM object_type, VERBUM object_id, VERBUM locale) REDDE PgLockKey
+  EVOCA VERBUM resource AD CONIURA concat(object_type, ":")
+  VINCIRE resource AD CONIURA concat(resource, object_id)
+  VINCIRE resource AD CONIURA concat(resource, ":")
+  VINCIRE resource AD CONIURA concat(resource, locale)
+  REDDE CONIURA pg_lock_key_named("translation", resource)
+EXPLICIT RITUALE
+
+RITUALE lock_key_cron(VERBUM task_name) REDDE PgLockKey
+  REDDE CONIURA pg_lock_key_named("cron", task_name)
+EXPLICIT RITUALE
+
+RITUALE lock_key_model(VERBUM model_name, VERBUM record_id) REDDE PgLockKey
+  EVOCA VERBUM resource AD CONIURA concat(model_name, ":")
+  VINCIRE resource AD CONIURA concat(resource, record_id)
+  REDDE CONIURA pg_lock_key_named("model", resource)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase23_23c_seed_applies_seed_sql"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_management/civitas_management.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23c_seed_applies_seed_sql")
+  CONIURA write_all(CONIURA path_join(root, "seed.sql"), "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\nINSERT INTO tags (id, name) VALUES (7, 'featured');\n")
+  EVOCA ManagementProject proj AD CONIURA mgmt_project_default(CONIURA path_join(root, "civitas.toml"))
+  VINCIRE proj.db_url AD CONIURA path_join(root, "var/app.db")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_seed_run(proj))
+    REDDE 1
+  FIN SI
+  EVOCA PoolOpenResult opened AD CONIURA pool_sqlite_open_handle(proj.db_url)
+  EVOCA SPECULUM DbHandle dbh_ptr AD opened.handle
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(*dbh_ptr, "SELECT COUNT(*) FROM tags WHERE id = 7", params)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    REDDE 2
+  FIN SI
+  SI CONIURA dbrows_get_int(rows, 0) != 1
+    REDDE 3
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

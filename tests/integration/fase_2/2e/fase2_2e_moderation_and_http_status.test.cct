@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase2_2e_moderation_and_http_status_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VisibilityContext owner_html AD CONIURA phase2_visibility_ctx(VERUM, VERUM, FALSUM, FALSUM, VISIBILITY_SURFACE_HTML)
+  EVOCA VisibilityContext anon_html AD CONIURA phase2_visibility_ctx(FALSUM, FALSUM, FALSUM, FALSUM, VISIBILITY_SURFACE_HTML)
+  EVOCA VisibilityContext mod_api AD CONIURA phase2_visibility_ctx(VERUM, FALSUM, FALSUM, VERUM, VISIBILITY_SURFACE_API)
+
+  SI CONIURA visibility_decide(VISIBILITY_MODERATION, owner_html) != VISIBILITY_ALLOW
+    REDDE 1
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_MODERATION, anon_html) != VISIBILITY_DENY
+    REDDE 2
+  FIN SI
+  SI CONIURA visibility_decide(VISIBILITY_MODERATION, mod_api) != VISIBILITY_ALLOW
+    REDDE 3
+  FIN SI
+
+  SI CONIURA visibility_http_status(VISIBILITY_ALLOW) != 200
+    REDDE 4
+  FIN SI
+  SI CONIURA visibility_http_status(VISIBILITY_REQUIRE_LOGIN) != 401
+    REDDE 5
+  FIN SI
+  SI CONIURA visibility_http_status(VISIBILITY_REQUIRE_RELATION) != 403
+    REDDE 6
+  FIN SI
+  SI CONIURA visibility_http_status(VISIBILITY_REQUIRE_ELEVATED_ACCESS) != 403
+    REDDE 7
+  FIN SI
+  SI CONIURA visibility_http_status(VISIBILITY_DENY) != 404
+    REDDE 8
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase15_15a_create_user_and_lookup"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open("15a_create_user_and_lookup")
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_criar_usuario(db, cfg, "ana@example.com", "S3nh@Forte!")
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA User created AD CONIURA result_unwrap GENUS(User, AuthError)(res)
+  EVOCA SPECULUM NIHIL opt AD CONIURA auth_buscar_por_email(db, "ana@example.com")
+  SI CONIURA option_is_none GENUS(User)(opt)
+    CONIURA option_free GENUS(User)(opt)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA User loaded AD CONIURA option_unwrap GENUS(User)(opt)
+  CONIURA option_free GENUS(User)(opt)
+  SI CONIURA compare(created.id, loaded.id) != 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(loaded.email, "ana@example.com") != 0
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  SI CONIURA len(loaded.criado_em) == 0 VEL CONIURA len(loaded.ultimo_login) != 0
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

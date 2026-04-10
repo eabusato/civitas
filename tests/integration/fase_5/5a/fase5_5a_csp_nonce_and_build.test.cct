@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase5_5a_csp_nonce_and_build_test"
+
+ADVOCARE "../../../../lib/civitas/security.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM nonce_a AD CONIURA csp_nonce_generate()
+  EVOCA VERBUM nonce_b AD CONIURA csp_nonce_generate()
+  EVOCA CspPolicy policy AD CONIURA csp_policy_default()
+  EVOCA VERBUM csp AD CONIURA csp_build(SPECULUM policy, nonce_a)
+
+  SI CONIURA len(nonce_a) != 32
+    REDDE 1
+  FIN SI
+  SI CONIURA len(nonce_b) != 32
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(nonce_a, nonce_b) == 0
+    REDDE 3
+  FIN SI
+  SI CONIURA find(csp, "script-src") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(csp, "style-src") == -1
+    REDDE 5
+  FIN SI
+  SI CONIURA find(csp, CONIURA concat("nonce-", nonce_a)) == -1
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

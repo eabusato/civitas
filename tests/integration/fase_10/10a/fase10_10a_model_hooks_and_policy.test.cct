@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase10_10a_model_hooks_and_policy"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_hooks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ModelDef def AD CONIURA model_def_new("comments")
+  CONIURA model_def_set_hook_before_save(SPECULUM def, "comment_before_save")
+  CONIURA model_def_set_hook_after_delete(SPECULUM def, "comment_after_delete")
+  CONIURA model_def_set_storage_policy(SPECULUM def, "app_owned")
+
+  SI CONIURA compare(def.hook_before_save, "comment_before_save") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(def.hook_after_delete, "comment_after_delete") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(def.storage_policy, "app_owned") != 0
+    REDDE 3
+  FIN SI
+  SI NON CONIURA model_def_has_hooks(def)
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

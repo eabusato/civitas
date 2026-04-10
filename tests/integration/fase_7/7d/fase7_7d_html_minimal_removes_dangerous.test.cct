@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase7_7d_html_minimal_removes_dangerous_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HtmlAllowList al AD CONIURA allowlist_minimal()
+  EVOCA HtmlSanitizeConfig cfg AD CONIURA html_sanitize_config_default(al)
+  EVOCA VERBUM raw AD "<b>Oi</b><script>alert(1)</script><a href='javascript:alert(1)' onclick='evil()'>link</a>"
+  EVOCA VERBUM clean AD CONIURA html_sanitize(raw, cfg)
+  CONIURA html_sanitize_config_free(SPECULUM cfg)
+
+  SI CONIURA find(clean, "<b>Oi</b>") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(clean, "script") != -1 VEL CONIURA find(clean, "alert(1)") != -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(clean, "onclick") != -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(clean, "<a>link</a>") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

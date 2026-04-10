@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase2_2a_form_helper_test"
+
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest raw AD CONIURA http_request_with_body("POST", "/submit", "tag=red&tag=blue&title=civitas")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(raw), "Content-Type", "application/x-www-form-urlencoded")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_from_http(raw, "127.0.0.1", "http", "example.test", "req-9")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL form_res AD CONIURA request_as_form(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res))
+  SI CONIURA result_is_err GENUS(WebFormData, VERBUM)(form_res)
+    REDDE 2
+  FIN SI
+
+  EVOCA WebFormData form AD CONIURA result_unwrap GENUS(WebFormData, VERBUM)(form_res)
+  EVOCA SPECULUM NIHIL values_opt AD CONIURA form_get_multi(form.handle, "tag")
+  SI CONIURA option_is_none GENUS(FormValues)(values_opt)
+    REDDE 3
+  FIN SI
+  EVOCA FormValues values AD CONIURA option_unwrap GENUS(FormValues)(values_opt)
+  SI CONIURA fluxus_len(values.items) != 2
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

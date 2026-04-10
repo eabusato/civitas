@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase7_7c_label_help_and_escape_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FieldDef nome AD CONIURA field_def_new("nome", "Nome", IkText)
+  EVOCA VERBUM html
+
+  VINCIRE nome.required AD VERUM
+  VINCIRE nome.css_class AD "custom"
+  VINCIRE nome.help_text AD "Seu nome publico"
+  CONIURA form_data_put_text(SPECULUM fd, "nome", "<script>alert(1)</script>")
+  VINCIRE html AD CONIURA render_field(nome, vr, fd)
+
+  SI CONIURA find(html, "class=\"form-group custom\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, ">Nome *</label>") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "class=\"help-text\"") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "&lt;script&gt;alert(1)&lt;/script&gt;") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

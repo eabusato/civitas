@@ -1,0 +1,77 @@
+INCIPIT grimoire "civitas_social_comment"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "social.cct"
+
+RITUALE comment_create(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM author_name, VERBUM author_email, VERBUM body) REDDE Comment
+  CONIURA social_ensure_schema(db)
+  EVOCA REX now AD CONIURA social_now()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_comments (object_type, object_id, author_name, author_email, body, state, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_text(stmt, 3, author_name)
+  CONIURA stmt_bind_text(stmt, 4, author_email)
+  CONIURA stmt_bind_text(stmt, 5, body)
+  CONIURA stmt_bind_int(stmt, 6, CONIURA comment_state_to_int(CsPending))
+  CONIURA stmt_bind_int(stmt, 7, now)
+  CONIURA stmt_bind_int(stmt, 8, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA comment_get(db, CONIURA db_scalar_int(db, "SELECT last_insert_rowid()"))
+EXPLICIT RITUALE
+
+RITUALE comment_get(SPECULUM NIHIL db, REX id) REDDE Comment
+  EVOCA Comment c AD CONIURA comment_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, object_type, object_id, author_name, author_email, body, state, created_at, updated_at FROM civitas_comments WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE c AD CONIURA comment_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE comment_update_state(SPECULUM NIHIL db, REX id, CommentState state) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_comments SET state = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA comment_state_to_int(state))
+  CONIURA stmt_bind_int(stmt, 2, CONIURA social_now())
+  CONIURA stmt_bind_int(stmt, 3, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE comment_approve(SPECULUM NIHIL db, REX id) REDDE NIHIL
+  CONIURA comment_update_state(db, id, CsApproved)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE comment_reject(SPECULUM NIHIL db, REX id) REDDE NIHIL
+  CONIURA comment_update_state(db, id, CsRejected)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE comment_soft_delete(SPECULUM NIHIL db, REX id) REDDE NIHIL
+  CONIURA comment_update_state(db, id, CsDeleted)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE comment_list_approved(SPECULUM NIHIL db, VERBUM object_type, REX object_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Comment))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, object_type, object_id, author_name, author_email, body, state, created_at, updated_at FROM civitas_comments WHERE object_type = ? AND object_id = ? AND state = ? ORDER BY created_at")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA comment_state_to_int(CsApproved))
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Comment c AD CONIURA comment_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM c)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

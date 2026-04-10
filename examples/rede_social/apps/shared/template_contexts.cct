@@ -1,0 +1,150 @@
+INCIPIT grimoire "rede_social_template_contexts"
+
+ADVOCARE "types.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM RedeBasePageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+FIN SIGILLUM
+
+SIGILLUM RedeShellPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  hero_html: VERBUM
+  body_html: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedePostCardContext
+  author_handle: VERBUM
+  author_name: VERBUM
+  author_avatar_url: VERBUM
+  slug: VERBUM
+  title: VERBUM
+  body: VERBUM
+  media_url: VERBUM
+  created_at: VERBUM
+  likes_count: REX
+  comments_count: REX
+  can_interact: VERUM
+  liked: VERUM
+  has_image: VERUM
+  has_video: VERUM
+  csrf_html: VERBUM
+  return_path: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeHomePageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  online_count: REX
+  posts: SPECULUM NIHIL       -- FLUXUS(RedePostCardContext)
+  activity: SPECULUM NIHIL    -- FLUXUS(RedeActivity)
+FIN SIGILLUM
+
+SIGILLUM RedeProfilePageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  profile: RedeProfile
+  can_follow: VERUM
+  follow_action: VERBUM
+  posts: SPECULUM NIHIL       -- FLUXUS(RedePostCardContext)
+FIN SIGILLUM
+
+SIGILLUM RedeLoginPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  error_message: VERBUM
+  has_error: VERUM
+FIN SIGILLUM
+
+SIGILLUM RedePostDetailPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  post: RedePost
+  post_card: RedePostCardContext
+  comments: SPECULUM NIHIL    -- FLUXUS(RedeComment)
+  can_comment: VERUM
+  comment_action: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeLoungePageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  events: SPECULUM NIHIL      -- FLUXUS(RedeRoomEventView)
+FIN SIGILLUM
+
+SIGILLUM RedeOpsDashboardPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeOpsLoginPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  csrf_html: VERBUM
+  notice: VERBUM
+  has_notice: VERUM
+  next_path: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeOpsReportPageContext
+  page_title: VERBUM
+  current_user: VERBUM
+  has_user: VERUM
+  title: VERBUM
+  subtitle: VERBUM
+  body_html: VERBUM
+FIN SIGILLUM
+
+RITUALE rede_post_card_context(RedePost post, VERUM can_interact, VERBUM csrf_html, VERUM liked, VERBUM return_path) REDDE RedePostCardContext
+  EVOCA RedePostCardContext out
+  VINCIRE out.author_handle AD post.author_handle
+  VINCIRE out.author_name AD post.author_name
+  VINCIRE out.author_avatar_url AD post.author_avatar_url
+  VINCIRE out.slug AD post.slug
+  VINCIRE out.title AD post.title
+  VINCIRE out.body AD post.body
+  VINCIRE out.media_url AD post.media_url
+  VINCIRE out.created_at AD post.created_at
+  VINCIRE out.likes_count AD post.likes_count
+  VINCIRE out.comments_count AD post.comments_count
+  VINCIRE out.can_interact AD can_interact
+  VINCIRE out.liked AD liked
+  VINCIRE out.has_image AD CONIURA compare(post.media_kind, "image") == 0
+  VINCIRE out.has_video AD CONIURA compare(post.media_kind, "video") == 0
+  VINCIRE out.csrf_html AD csrf_html
+  VINCIRE out.return_path AD return_path
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_post_card_contexts(SPECULUM NIHIL posts, VERUM can_interact, VERBUM csrf_html, VERUM liked_all, VERBUM return_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedePostCardContext))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(posts)
+  DUM i < n
+    EVOCA SPECULUM RedePost post_ptr AD CONIURA fluxus_get(posts, i)
+    EVOCA RedePostCardContext card AD CONIURA rede_post_card_context(*post_ptr, can_interact, csrf_html, liked_all, return_path)
+    CONIURA fluxus_push(out, SPECULUM card)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

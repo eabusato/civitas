@@ -1,0 +1,89 @@
+INCIPIT grimoire "civitas_data_io"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../model/model.cct"
+
+ORDO ImportSource
+  IsJson(VERBUM path),
+  IsToml(VERBUM path),
+  IsCsv(VERBUM path)
+FIN ORDO
+
+ORDO ExportTarget
+  EtJson(VERBUM path),
+  EtToml(VERBUM path),
+  EtCsv(VERBUM path)
+FIN ORDO
+
+SIGILLUM DataIoResult
+  processados: REX
+  ok: REX
+  erros: REX
+  pulados: REX
+FIN SIGILLUM
+
+SIGILLUM CsvColMapEntry
+  col_csv: VERBUM
+  col_banco: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CsvColMap
+  entries: SPECULUM NIHIL
+FIN SIGILLUM
+
+ORDO BackfillKind
+  BkSlug,
+  BkBlobHash,
+  BkBlobState
+FIN ORDO
+
+RITUALE data_io_result_new() REDDE DataIoResult
+  EVOCA DataIoResult r
+  VINCIRE r.processados AD 0
+  VINCIRE r.ok AD 0
+  VINCIRE r.erros AD 0
+  VINCIRE r.pulados AD 0
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE csv_col_map_new() REDDE CsvColMap
+  EVOCA CsvColMap m
+  VINCIRE m.entries AD CONIURA fluxus_init(MENSURA(CsvColMapEntry))
+  REDDE m
+EXPLICIT RITUALE
+
+RITUALE csv_col_map_add(CsvColMap m, VERBUM col_csv, VERBUM col_banco) REDDE NIHIL
+  EVOCA CsvColMapEntry e
+  VINCIRE e.col_csv AD col_csv
+  VINCIRE e.col_banco AD col_banco
+  CONIURA fluxus_push(m.entries, SPECULUM e)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csv_col_map_resolve(CsvColMap m, VERBUM col_csv) REDDE VERBUM
+  EVOCA REX n AD CONIURA fluxus_len(m.entries)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM CsvColMapEntry ep AD CONIURA fluxus_get(m.entries, i)
+    SI CONIURA compare((*ep).col_csv, col_csv) == 0
+      REDDE (*ep).col_banco
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE col_csv
+EXPLICIT RITUALE
+
+RITUALE csv_col_map_identity(ModelDef def) REDDE CsvColMap
+  EVOCA CsvColMap m AD CONIURA csv_col_map_new()
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, i)
+    CONIURA csv_col_map_add(m, (*fp).nome, (*fp).nome)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE m
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

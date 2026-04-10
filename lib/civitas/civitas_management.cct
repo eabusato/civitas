@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_management_root"
+
+ADVOCARE "civitas_management/civitas_management.cct"
+
+EXPLICIT grimoire

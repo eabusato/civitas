@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase23_23b_sql_mapping_nullable_and_bool"
+
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ModelField bool_field AD CONIURA civitas_gen_parse_field("publicado:VERUM")
+  EVOCA ModelField nullable_field AD CONIURA civitas_gen_parse_field("subtitulo:VERBUM?")
+  SI CONIURA compare(CONIURA civitas_gen_sql_type(bool_field), "BOOLEAN NOT NULL DEFAULT FALSE") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA civitas_gen_sql_type(nullable_field), "TEXT") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

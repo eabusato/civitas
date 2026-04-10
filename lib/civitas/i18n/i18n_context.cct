@@ -1,0 +1,16 @@
+INCIPIT grimoire "civitas_i18n_context"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE i18n_locale_active(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_locale(ctx)
+  SI CONIURA option_is_some GENUS(VERBUM)(opt)
+    REDDE CONIURA option_unwrap GENUS(VERBUM)(opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE ""
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

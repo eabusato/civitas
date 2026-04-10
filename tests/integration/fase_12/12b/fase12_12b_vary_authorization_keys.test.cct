@@ -1,0 +1,47 @@
+INCIPIT grimoire "fase12_12b_vary_authorization_keys"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_chave.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_tags.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_mem_cache("12b-vary")
+  EVOCA CacheViewConfig cfg AD CONIURA phase12_12b_cfg("cv12b", 60)
+  EVOCA VERBUM hdr AD "authorization"
+  CONIURA fluxus_push(cfg.vary_headers, SPECULUM hdr)
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM h, cfg, NIHIL)
+
+  EVOCA SPECULUM NIHIL headers1 AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL headers2 AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers1, "authorization", "Bearer tok1")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers2, "authorization", "Bearer tok2")
+
+  EVOCA WebRequest req1 AD CONIURA phase12_12b_request_with_headers("GET", "/dashboard", headers1)
+  EVOCA WebRequest req2 AD CONIURA phase12_12b_request_with_headers("GET", "/dashboard", headers2)
+  EVOCA VERBUM key1 AD CONIURA cache_view_chave(cv, req1)
+  EVOCA VERBUM key2 AD CONIURA cache_view_chave(cv, req2)
+  SI CONIURA compare(key1, key2) == 0
+    REDDE 1
+  FIN SI
+
+  CONIURA cache_view_set(cv, req1, CONIURA response_html("one"), 60, "dashboard")
+  CONIURA cache_view_set(cv, req2, CONIURA response_html("two"), 60, "dashboard")
+  CONIURA cache_view_invalidar_tag(cv, "dashboard")
+  EVOCA CacheMaybeViewEntry maybe1 AD CONIURA cache_view_get(cv, req1)
+  EVOCA CacheMaybeViewEntry maybe2 AD CONIURA cache_view_get(cv, req2)
+  SI maybe1.found VEL maybe2.found
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,147 @@
+INCIPIT grimoire "civitas_i18n_catalog_json_loader"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../i18n/i18n.cct"
+ADVOCARE "../i18n/i18n_registry.cct"
+ADVOCARE "i18n_catalog_json.cct"
+
+RITUALE i18n_json_ok(JsonCatalog cat) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(JsonCatalog, VERBUM)(cat)
+EXPLICIT RITUALE
+
+RITUALE i18n_json_err(VERBUM msg) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(JsonCatalog, VERBUM)(msg)
+EXPLICIT RITUALE
+
+RITUALE i18n_json_catalog_new() REDDE JsonCatalog
+  EVOCA JsonCatalog cat
+  VINCIRE cat.locale AD ""
+  VINCIRE cat.version AD 1
+  VINCIRE cat.fallback AD ""
+  VINCIRE cat.entradas AD CONIURA fluxus_init(MENSURA(JsonCatalogEntry))
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE i18n_json_parse(VERBUM conteudo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(conteudo)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE CONIURA i18n_json_err("invalid JSON catalog")
+  FIN SI
+
+  EVOCA Json root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(root)
+    REDDE CONIURA i18n_json_err("catalog is not a JSON object")
+  FIN SI
+
+  SI NON CONIURA json_has_key(root, "locale")
+    REDDE CONIURA i18n_json_err("field 'locale' is required")
+  FIN SI
+  SI NON CONIURA json_has_key(root, "entries")
+    REDDE CONIURA i18n_json_err("field 'entries' is required")
+  FIN SI
+
+  EVOCA JsonCatalog cat AD CONIURA i18n_json_catalog_new()
+  VINCIRE cat.locale AD CONIURA json_expect_str(CONIURA json_get_key(root, "locale"))
+  SI CONIURA json_has_key(root, "version")
+    VINCIRE cat.version AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "version")))
+  FIN SI
+  SI CONIURA json_has_key(root, "fallback")
+    VINCIRE cat.fallback AD CONIURA json_expect_str(CONIURA json_get_key(root, "fallback"))
+  FIN SI
+
+  EVOCA Json entries AD CONIURA json_get_key(root, "entries")
+  SI NON CONIURA json_is_obj(entries)
+    REDDE CONIURA i18n_json_err("field 'entries' must be an object")
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_obj_len(entries)
+  DUM i < n
+    EVOCA JsonCatalogEntry entry
+    VINCIRE entry.chave AD CONIURA concat("", CONIURA json_obj_key_at(entries, i))
+    VINCIRE entry.kind AD JcekSimple
+    VINCIRE entry.traducao AD CONIURA concat("", CONIURA json_expect_str(CONIURA json_obj_value_at(entries, i)))
+    VINCIRE entry.singular AD ""
+    VINCIRE entry.plural AD ""
+    CONIURA fluxus_push(cat.entradas, SPECULUM entry)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA json_has_key(root, "plurais")
+    EVOCA Json plurais AD CONIURA json_get_key(root, "plurais")
+    SI NON CONIURA json_is_obj(plurais)
+      REDDE CONIURA i18n_json_err("field 'plurais' must be an object")
+    FIN SI
+    VINCIRE i AD 0
+    VINCIRE n AD CONIURA json_obj_len(plurais)
+    DUM i < n
+      EVOCA Json pair AD CONIURA json_obj_value_at(plurais, i)
+      SI NON CONIURA json_is_obj(pair)
+        REDDE CONIURA i18n_json_err("plural entry must be an object")
+      FIN SI
+      SI NON CONIURA json_has_key(pair, "singular") VEL NON CONIURA json_has_key(pair, "plural")
+        REDDE CONIURA i18n_json_err("plural entry requires singular and plural")
+      FIN SI
+      EVOCA JsonCatalogEntry entry
+      VINCIRE entry.chave AD CONIURA concat("", CONIURA json_obj_key_at(plurais, i))
+      VINCIRE entry.kind AD JcekPlural
+      VINCIRE entry.traducao AD ""
+      VINCIRE entry.singular AD CONIURA concat("", CONIURA json_expect_str(CONIURA json_get_key(pair, "singular")))
+      VINCIRE entry.plural AD CONIURA concat("", CONIURA json_expect_str(CONIURA json_get_key(pair, "plural")))
+      CONIURA fluxus_push(cat.entradas, SPECULUM entry)
+      VINCIRE i AD i + 1
+    FIN DUM
+  FIN SI
+
+  REDDE CONIURA i18n_json_ok(cat)
+EXPLICIT RITUALE
+
+RITUALE i18n_json_load_file(VERBUM caminho) REDDE SPECULUM NIHIL
+  REDDE CONIURA i18n_json_parse(CONIURA read_all(caminho))
+EXPLICIT RITUALE
+
+RITUALE i18n_json_to_catalog(JsonCatalog jcat) REDDE Catalog
+  EVOCA Catalog cat AD CONIURA gettext_catalog_new(jcat.locale)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(jcat.entradas)
+  DUM i < n
+    EVOCA SPECULUM JsonCatalogEntry ep AD CONIURA fluxus_get(jcat.entradas, i)
+    ELIGE (*ep).kind
+      CASUS JcekSimple:
+        CONIURA gettext_add_message(SPECULUM cat, (*ep).chave, (*ep).traducao)
+      CASUS JcekPlural:
+        CONIURA gettext_add_plural(SPECULUM cat, (*ep).chave, (*ep).chave, (*ep).singular, (*ep).plural)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE cat
+EXPLICIT RITUALE
+
+RITUALE i18n_json_entry_keys(JsonCatalog jcat) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(jcat.entradas)
+  DUM i < n
+    EVOCA SPECULUM JsonCatalogEntry ep AD CONIURA fluxus_get(jcat.entradas, i)
+    CONIURA fluxus_push(keys, SPECULUM (*ep).chave)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE keys
+EXPLICIT RITUALE
+
+RITUALE i18n_json_load_into_registry(SPECULUM I18nRegistry reg, VERBUM caminho) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA i18n_json_load_file(caminho)
+  SI CONIURA result_is_err GENUS(JsonCatalog, VERBUM)(res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(JsonCatalog, VERBUM)(res))
+  FIN SI
+  EVOCA JsonCatalog jcat AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(res)
+  CONIURA i18n_registry_add_catalog_with_keys(reg, jcat.locale, CONIURA i18n_json_to_catalog(jcat), CONIURA i18n_json_entry_keys(jcat))
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

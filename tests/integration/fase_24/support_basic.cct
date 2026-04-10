@@ -1,0 +1,112 @@
+INCIPIT grimoire "fase24_support_basic"
+
+ADVOCARE "../../../lib/civitas/cookie.cct"
+ADVOCARE "../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/router.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_router_ok_or_fail(SPECULUM NIHIL res, REX code) REDDE NIHIL
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(res)
+    REDDE
+  FIN SI
+  CONIURA println(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res))
+  IACE CONIURA stringify_int(code)
+EXPLICIT RITUALE
+
+RITUALE phase24_home_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("home-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_redirect_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_redirect("/target"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_target_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("target-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_json_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL json_res AD CONIURA json_try_parse((*req).body)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(json_res)
+    CONIURA response_fill(out, CONIURA response_bad_request("json invalido"))
+    REDDE
+  FIN SI
+  CONIURA response_fill(out, CONIURA response_json_text(CONIURA json_stringify(CONIURA result_unwrap GENUS(Json, JsonError)(json_res))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_form_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL form_res AD CONIURA request_as_form(*req)
+  SI CONIURA result_is_err GENUS(SPECULUM NIHIL, VERBUM)(form_res)
+    CONIURA response_fill(out, CONIURA response_bad_request("form invalido"))
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL fd AD CONIURA result_unwrap GENUS(SPECULUM NIHIL, VERBUM)(form_res)
+  EVOCA SPECULUM NIHIL name_opt AD CONIURA form_get(fd, "name")
+  EVOCA SPECULUM NIHIL count_opt AD CONIURA form_get(fd, "count")
+  EVOCA Json obj AD CONIURA json_obj()
+  SI CONIURA option_is_some GENUS(VERBUM)(name_opt)
+    CONIURA json_obj_push(obj, "name", CONIURA json_str(CONIURA option_unwrap GENUS(VERBUM)(name_opt)))
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(count_opt)
+    CONIURA json_obj_push(obj, "count", CONIURA json_str(CONIURA option_unwrap GENUS(VERBUM)(count_opt)))
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(name_opt)
+  CONIURA option_free GENUS(VERBUM)(count_opt)
+  CONIURA response_fill(out, CONIURA response_json_text(CONIURA json_stringify(obj)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_login_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SetCookie ck AD CONIURA cookie_default_set("sessionid", "sess-abc")
+  VINCIRE ck.http_only AD VERUM
+  CONIURA response_fill(out, CONIURA response_json_text("{\"ok\":true}"))
+  CONIURA response_set_cookie(out, ck)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_me_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL sess_opt AD CONIURA request_cookie(*req, "sessionid")
+  SI CONIURA option_is_none GENUS(VERBUM)(sess_opt)
+    CONIURA option_free GENUS(VERBUM)(sess_opt)
+    CONIURA response_fill(out, CONIURA response_unauthorized("sem sessao"))
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(sess_opt)
+  CONIURA response_fill(out, CONIURA response_json_text("{\"user\":\"alice\"}"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_basic_router() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/", "home", "phase24_home_handler", phase24_home_handler), 1)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/redirect", "redirect", "phase24_redirect_handler", phase24_redirect_handler), 2)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/target", "target", "phase24_target_handler", phase24_target_handler), 3)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "POST", "/json", "json", "phase24_json_handler", phase24_json_handler), 4)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "POST", "/form", "form", "phase24_form_handler", phase24_form_handler), 5)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "POST", "/login", "login", "phase24_login_handler", phase24_login_handler), 6)
+  CONIURA phase24_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/me", "me", "phase24_me_handler", phase24_me_handler), 7)
+  REDDE router
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,26 @@
+INCIPIT grimoire "civitas_admin_dashboard_task"
+
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../scheduled/scheduled.cct"
+ADVOCARE "../tasks/tasks.cct"
+ADVOCARE "admin_dashboard.cct"
+ADVOCARE "admin_dashboard_schema.cct"
+
+RITUALE admin_dashboard_refresh_task_callback(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  CONIURA admin_dashboard_schema_up(dbh)
+  EVOCA DashboardSnapshot snapshot AD CONIURA dashboard_snapshot_compute(dbh)
+  CONIURA dashboard_snapshot_save(dbh, snapshot)
+  REDDE CONIURA task_callback_result_ok("{\"status\":\"snapshot_saved\"}")
+EXPLICIT RITUALE
+
+RITUALE admin_dashboard_schedule_refresh(DbHandle dbh) REDDE NIHIL
+  CONIURA scheduled_register_interval(dbh, "admin_dashboard.refresh", "admin_dashboard.refresh", "@every 10m", "{}")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_dashboard_register_callbacks(SPECULUM TaskRegistry registry) REDDE NIHIL
+  CONIURA task_register(registry, "admin_dashboard.refresh", admin_dashboard_refresh_task_callback)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

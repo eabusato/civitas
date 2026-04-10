@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase10_10e_comment_approve_list"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "../../../../lib/civitas/social/social_comment.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10e_comment_approve_list")
+  EVOCA Comment c AD CONIURA comment_create(db, "post", 3, "Ana", "ana@example.com", "Hello")
+  CONIURA comment_approve(db, c.id)
+  EVOCA SPECULUM NIHIL approved AD CONIURA comment_list_approved(db, "post", 3)
+  SI CONIURA fluxus_len(approved) != 1
+    REDDE 1
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

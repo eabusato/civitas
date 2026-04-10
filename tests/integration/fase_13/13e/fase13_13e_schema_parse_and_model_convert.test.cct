@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase13_13e_schema_parse_and_model_convert"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_schema_map.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL models AD CONIURA django_schema_parse(CONIURA phase13_13e_schema_json())
+  SI CONIURA fluxus_len(models) != 1
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM DjangoModel dmp AD CONIURA fluxus_get(models, 0)
+  SI CONIURA compare((*dmp).db_table, "blog_post") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA fluxus_len((*dmp).campos) != 4
+    REDDE 3
+  FIN SI
+  EVOCA ModelDef def AD CONIURA django_model_to_civitas(*dmp)
+  SI CONIURA compare(def.tabela, "blog_post") != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

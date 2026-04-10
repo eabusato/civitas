@@ -1,0 +1,24 @@
+INCIPIT grimoire "rede_social_accounts_urls"
+
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE rede_accounts_route_assert(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE accounts_urls_register(SPECULUM Router router) REDDE NIHIL
+  -- Account routes stay isolated so a new project can split auth from public surfaces early.
+  CONIURA rede_accounts_route_assert(CONIURA router_add(router, "GET", "/entrar", "login_page", "login_page_handler", middleware_run))
+  CONIURA rede_accounts_route_assert(CONIURA router_add(router, "POST", "/entrar", "login_submit", "login_submit_handler", middleware_run))
+  CONIURA rede_accounts_route_assert(CONIURA router_add(router, "POST", "/sair", "logout_submit", "logout_submit_handler", middleware_run))
+  CONIURA router_add_middleware(router, "login_submit", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "logout_submit", CONIURA middleware_binding_named("csrf", middleware_run))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

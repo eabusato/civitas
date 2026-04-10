@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase9_9a_missing_boundary_error"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload_types.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_tmp_dir("9a_missing_boundary")
+  EVOCA VERBUM upload_dir AD CONIURA path_join(root, "uploads")
+  CONIURA phase9_reset_dir(root)
+  CONIURA mkdir_all(upload_dir)
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase9_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "content-type", "multipart/form-data")
+  EVOCA WebRequest req AD CONIURA phase9_request("POST", "/upload", headers, "--x")
+  EVOCA UploadConfig cfg AD CONIURA phase9_upload_config(upload_dir)
+  EVOCA SPECULUM NIHIL res AD CONIURA upload_parse(req, cfg)
+  SI NON CONIURA result_is_err GENUS(MultipartResult, UploadError)(res)
+    IACE "missing boundary should fail"
+  FIN SI
+  EVOCA UploadError err AD CONIURA result_unwrap_err GENUS(MultipartResult, UploadError)(res)
+  SI err != UeBoundaryAusente
+    IACE "wrong boundary error"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

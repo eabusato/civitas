@@ -1,0 +1,93 @@
+INCIPIT grimoire "civitas_permissions_db"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "permissions.cct"
+
+RITUALE perm_registrar(SPECULUM NIHIL db, VERBUM codigo, VERBUM descricao) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO permissions (codigo, descricao) VALUES (?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, codigo)
+  CONIURA stmt_bind_text(stmt, 2, descricao)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  EVOCA SPECULUM NIHIL found AD CONIURA perm_buscar_por_codigo(db, codigo)
+  SI CONIURA option_is_none GENUS(Permission)(found)
+    CONIURA option_free GENUS(Permission)(found)
+    REDDE 0
+  FIN SI
+  EVOCA Permission p AD CONIURA option_unwrap GENUS(Permission)(found)
+  CONIURA option_free GENUS(Permission)(found)
+  REDDE p.id
+EXPLICIT RITUALE
+
+RITUALE perm_buscar_por_codigo(SPECULUM NIHIL db, VERBUM codigo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, codigo, descricao FROM permissions WHERE codigo = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, codigo)
+  CONIURA stmt_step(stmt)
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(Permission)()
+  FIN SI
+  EVOCA Permission p AD CONIURA permission_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(Permission)(p)
+EXPLICIT RITUALE
+
+RITUALE perm_listar_todas(SPECULUM NIHIL db) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL lista AD CONIURA fluxus_init(MENSURA(Permission))
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, "SELECT id, codigo, descricao FROM permissions ORDER BY codigo")
+  DUM CONIURA rows_next(rows)
+    EVOCA Permission p AD CONIURA permission_empty()
+    VINCIRE p.id AD CONIURA rows_get_int(rows, 0)
+    VINCIRE p.codigo AD CONIURA rows_get_text(rows, 1)
+    VINCIRE p.descricao AD CONIURA rows_get_text(rows, 2)
+    CONIURA fluxus_push(lista, SPECULUM p)
+  FIN DUM
+  CONIURA rows_close(rows)
+  REDDE lista
+EXPLICIT RITUALE
+
+RITUALE group_criar(SPECULUM NIHIL db, VERBUM nome) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO groups (nome) VALUES (?)")
+  CONIURA stmt_bind_text(stmt, 1, nome)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  EVOCA SPECULUM NIHIL found AD CONIURA group_buscar_por_nome(db, nome)
+  SI CONIURA option_is_none GENUS(Group)(found)
+    CONIURA option_free GENUS(Group)(found)
+    REDDE 0
+  FIN SI
+  EVOCA Group g AD CONIURA option_unwrap GENUS(Group)(found)
+  CONIURA option_free GENUS(Group)(found)
+  REDDE g.id
+EXPLICIT RITUALE
+
+RITUALE group_buscar_por_nome(SPECULUM NIHIL db, VERBUM nome) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, nome FROM groups WHERE nome = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, nome)
+  CONIURA stmt_step(stmt)
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(Group)()
+  FIN SI
+  EVOCA Group g AD CONIURA group_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(Group)(g)
+EXPLICIT RITUALE
+
+RITUALE group_adicionar_permissao(SPECULUM NIHIL db, REX group_id, VERBUM permissao) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO group_permissions (group_id, permissao) VALUES (?, ?)")
+  CONIURA stmt_bind_int(stmt, 1, group_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE group_remover_permissao(SPECULUM NIHIL db, REX group_id, VERBUM permissao) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM group_permissions WHERE group_id = ? AND permissao = ?")
+  CONIURA stmt_bind_int(stmt, 1, group_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

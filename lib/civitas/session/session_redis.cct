@@ -1,0 +1,21 @@
+INCIPIT grimoire "civitas_session_redis"
+
+ADVOCARE "session.cct"
+
+RITUALE session_redis_handle(SessionStore store) REDDE SPECULUM NIHIL
+  SI store.kind != SbkRedis
+    IACE "session_redis_handle exige backend redis"
+  FIN SI
+  EVOCA SPECULUM SessionRedisState rs AD store.state
+  REDDE (*rs).redis
+EXPLICIT RITUALE
+
+RITUALE session_redis_store_config(SessionStore store) REDDE SessionRedisConfig
+  SI store.kind != SbkRedis
+    REDDE CONIURA session_redis_config_default()
+  FIN SI
+  EVOCA SPECULUM SessionRedisState rs AD store.state
+  REDDE (*rs).config
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

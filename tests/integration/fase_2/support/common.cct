@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase2_support_common"
+
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase2_empty_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE phase2_request(VERBUM method, VERBUM target) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    method,
+    target,
+    "HTTP/1.1",
+    CONIURA phase2_empty_headers(),
+    "",
+    "127.0.0.1",
+    "http",
+    "example.test",
+    "req-phase2",
+    "",
+    "127.0.0.1:50000",
+    "127.0.0.1:8080"
+  )
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase2_request_with_headers(VERBUM method, VERBUM target, SPECULUM NIHIL headers) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(
+    method,
+    target,
+    "HTTP/1.1",
+    headers,
+    "",
+    "127.0.0.1",
+    "http",
+    "example.test",
+    "req-phase2",
+    "",
+    "127.0.0.1:50000",
+    "127.0.0.1:8080"
+  )
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

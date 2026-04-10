@@ -1,0 +1,6 @@
+INCIPIT grimoire "civitas_query_prefetch"
+
+ADVOCARE "query.cct"
+ADVOCARE "query_exec.cct"
+
+EXPLICIT grimoire

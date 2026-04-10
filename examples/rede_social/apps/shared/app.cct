@@ -1,0 +1,2084 @@
+INCIPIT grimoire "rede_social_app"
+
+ADVOCARE "types.cct"
+ADVOCARE "repository.cct"
+ADVOCARE "html.cct"
+ADVOCARE "../../project/config.cct"
+ADVOCARE "../../project/urls.cct"
+ADVOCARE "../public/views/feed.cct"
+ADVOCARE "../accounts/views/auth.cct"
+ADVOCARE "../social/views/social.cct"
+ADVOCARE "../ops/views/ops.cct"
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "../../../../lib/civitas/dep_review/dep_review.cct"
+ADVOCARE "../../../../lib/civitas/doc_gen/doc_gen.cct"
+ADVOCARE "../../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/mem_watch/mem_watch.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "../../../../lib/civitas/release/release.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/security.cct"
+ADVOCARE "../../../../lib/civitas/security_audit/security_audit.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/trace_collector/trace_collector.cct"
+ADVOCARE "../../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "../../../../lib/civitas/trace_panel/trace_panel.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/regex.cct"
+ADVOCARE "cct/signal.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+
+SIGILLUM RedeCurrentUser
+  authenticated: VERUM
+  user: RedeUser
+FIN SIGILLUM
+
+SIGILLUM RedeCsrfRender
+  hidden_html: VERBUM
+  needs_cookie: VERUM
+  cookie: SetCookie
+FIN SIGILLUM
+
+SIGILLUM RedeAppState
+  cfg: RedeConfig
+  db: SPECULUM NIHIL
+  router: Router
+  static_index: StaticIndex
+  media_index: StaticIndex
+  trace_store: TraceStore
+  trace_cfg: TraceCollectorConfig
+  security_cfg: SecurityConfig
+  session_store: SessionStore
+  mem_state: MemProfilerState
+  request_ordinal: REX
+FIN SIGILLUM
+
+RITUALE rede_current_user_empty() REDDE RedeCurrentUser
+  EVOCA RedeCurrentUser out
+  VINCIRE out.authenticated AD FALSUM
+  VINCIRE out.user AD CONIURA rede_empty_user()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_app_route_name(Router router, RouteMatch match) REDDE VERBUM
+  SI match.route_index < 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, match.route_index)
+  REDDE (*route_ptr).name
+EXPLICIT RITUALE
+
+RITUALE rede_app_route_sigilo_id(Router router, RouteMatch match) REDDE VERBUM
+  SI match.route_index < 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, match.route_index)
+  REDDE (*route_ptr).sigilo_id
+EXPLICIT RITUALE
+
+RITUALE rede_app_response_to_raw(WebResponse res, WebRequest req) REDDE HttpRawResponse
+  EVOCA WebResponse wire AD res
+  SI NON CONIURA response_body_is_permitted(wire.status)
+    EVOCA WebResponse no_body AD CONIURA response_without_body(wire)
+    CONIURA response_fill(SPECULUM wire, no_body)
+  ALITER
+    SI CONIURA compare(req.method, "HEAD") == 0
+      EVOCA WebResponse head_body AD CONIURA response_without_body(wire)
+      CONIURA response_fill(SPECULUM wire, head_body)
+    FIN SI
+  FIN SI
+  EVOCA HttpRawResponse raw AD CONIURA http_server_response_new(wire.status, wire.body)
+  EVOCA SPECULUM NIHIL header_keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(wire.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(header_keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(header_keys, i)
+    CONIURA http_server_headers_set(raw.headers, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(wire.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA len(CONIURA response_header_or(wire, "content-type", "")) == 0 ET CONIURA response_body_is_permitted(wire.status)
+    EVOCA VERBUM default_ct AD CONIURA response_body_kind_default_content_type(wire.body_kind)
+    SI CONIURA len(default_ct) > 0
+      CONIURA http_server_headers_set(raw.headers, "content-type", default_ct)
+    FIN SI
+  FIN SI
+  EVOCA REX cookie_i AD 0
+  EVOCA REX cookie_n AD CONIURA fluxus_len(wire.set_cookies)
+  DUM cookie_i < cookie_n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(wire.set_cookies, cookie_i)
+    CONIURA http_server_headers_set(raw.headers, "set-cookie", CONIURA cookie_build_set(*cookie_ptr))
+    VINCIRE cookie_i AD cookie_i + 1
+  FIN DUM
+  CONIURA http_server_headers_set(raw.headers, "connection", "close")
+  VINCIRE raw.close_connection AD VERUM
+  SI CONIURA compare(req.method, "HEAD") == 0
+    SI NON CONIURA http_server_headers_has(raw.headers, "content-length")
+      CONIURA http_server_headers_set(raw.headers, "content-length", CONIURA stringify_int(CONIURA len(raw.body)))
+    FIN SI
+    VINCIRE raw.body AD ""
+  FIN SI
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE rede_request_from_raw(HttpRawRequest raw_req) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build_with_raw_body(
+    raw_req.method,
+    raw_req.target,
+    raw_req.version,
+    CONIURA request_copy_string_map(raw_req.headers),
+    raw_req.body,
+    raw_req.body_socket,
+    raw_req.client_ip,
+    raw_req.scheme,
+    raw_req.original_host,
+    raw_req.request_id,
+    raw_req.proxy_addr,
+    raw_req.remote_addr,
+    raw_req.local_addr
+  )
+EXPLICIT RITUALE
+
+RITUALE rede_http_to_web_response(HttpResponse http_res) REDDE WebResponse
+  EVOCA WebResponse out AD CONIURA response_with_body(CONIURA http_response_status(http_res), CONIURA http_response_body(http_res), WEB_RESPONSE_HTML)
+  EVOCA REX headers_handle AD CONIURA http_response_headers_handle(http_res)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(headers_handle)
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header_ptr AD CONIURA http_headers_get_ptr(headers_handle, i)
+    CONIURA response_set_header(SPECULUM out, (*header_ptr).nome, (*header_ptr).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_trace_render_cfg(RedeAppState state) REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg AD CONIURA trace_render_default_config()
+  VINCIRE cfg.sigil_path AD state.cfg.sigil_path
+  VINCIRE cfg.sigil_view AD "system"
+  VINCIRE cfg.hide_timeline AD FALSUM
+  VINCIRE cfg.animate AD VERUM
+  VINCIRE cfg.animation_loop AD VERUM
+  VINCIRE cfg.work_dir AD CONIURA path_join(state.cfg.root_dir, ".civitas/trace_render")
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE rede_trace_embed_render_cfg(RedeAppState state) REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg AD CONIURA rede_trace_render_cfg(state)
+  VINCIRE cfg.hide_timeline AD VERUM
+  VINCIRE cfg.animate AD FALSUM
+  VINCIRE cfg.animation_loop AD FALSUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE rede_trace_session_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS rede_trace_session_index (trace_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, request_id TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_rede_trace_session_session ON rede_trace_session_index(session_id, created_at DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_rede_trace_session_created ON rede_trace_session_index(created_at DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_trace_session_index_trace(SPECULUM NIHIL db, VERBUM trace_id, VERBUM session_id, VERBUM request_id, REX created_at) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO rede_trace_session_index (trace_id, session_id, request_id, created_at) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, trace_id)
+  CONIURA stmt_bind_text(stmt, 2, session_id)
+  CONIURA stmt_bind_text(stmt, 3, request_id)
+  CONIURA stmt_bind_int(stmt, 4, created_at)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_trace_session_prune_orphans(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DELETE FROM rede_trace_session_index WHERE trace_id NOT IN (SELECT trace_id FROM trace_index)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_app_prepare_security(RedeConfig cfg) REDDE SecurityConfig
+  EVOCA SecurityConfig sec AD CONIURA security_config_default()
+  VINCIRE sec.allowed_hosts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(sec.allowed_hosts, SPECULUM cfg.host)
+  EVOCA VERBUM loopback AD "127.0.0.1"
+  EVOCA VERBUM localhost AD "localhost"
+  EVOCA VERBUM all_ifaces AD "0.0.0.0"
+  CONIURA fluxus_push(sec.allowed_hosts, SPECULUM loopback)
+  CONIURA fluxus_push(sec.allowed_hosts, SPECULUM localhost)
+  CONIURA fluxus_push(sec.allowed_hosts, SPECULUM all_ifaces)
+  VINCIRE sec.csp.default_src AD "'self' https: data:"
+  VINCIRE sec.csp.img_src AD "'self' https: data:"
+  VINCIRE sec.csp.connect_src AD "'self'"
+  REDDE sec
+EXPLICIT RITUALE
+
+RITUALE rede_app_open_state(RedeConfig cfg) REDDE RedeAppState
+  EVOCA RedeAppState state
+  EVOCA SPECULUM NIHIL db AD CONIURA rede_db_open(cfg)
+  EVOCA Router router AD CONIURA rede_router_build()
+  EVOCA StaticConfig static_cfg AD CONIURA static_config_new(cfg.static_dir, "/static/", SmDesenvolvimento)
+  EVOCA StaticConfig media_cfg AD CONIURA static_config_new(cfg.topo.media_processed_dir, "/media/", SmDesenvolvimento)
+  EVOCA TraceCollectorConfig trace_cfg AD CONIURA trace_collector_config_default()
+  EVOCA SessionStore sess_store AD CONIURA session_store_file_init(cfg.sessions_dir)
+  EVOCA MemProfilerState mem_state AD CONIURA mem_profiler_state_new(db, 4)
+
+  CONIURA rede_repository_schema_up(db)
+  CONIURA rede_repository_seed_if_empty(cfg, db)
+  CONIURA mem_profiler_schema_up(db)
+  CONIURA mem_profiler_enable(SPECULUM mem_state)
+
+  VINCIRE trace_cfg.trace_dir AD cfg.trace_dir
+  VINCIRE trace_cfg.sample_rate AD 1
+  VINCIRE trace_cfg.max_spans_per_trace AD 1024
+  VINCIRE trace_cfg.add_trace_header AD VERUM
+
+  VINCIRE state.cfg AD cfg
+  VINCIRE state.db AD db
+  VINCIRE state.router.routes AD router.routes
+  VINCIRE state.router.named_routes AD router.named_routes
+  VINCIRE state.router.global_middlewares AD router.global_middlewares
+  EVOCA StaticIndex static_index AD CONIURA static_index_build(static_cfg)
+  VINCIRE state.static_index.config AD static_index.config
+  VINCIRE state.static_index.arquivos AD static_index.arquivos
+  VINCIRE state.static_index.urls_hash AD static_index.urls_hash
+  EVOCA StaticIndex media_index AD CONIURA static_index_build(media_cfg)
+  VINCIRE state.media_index.config AD media_index.config
+  VINCIRE state.media_index.arquivos AD media_index.arquivos
+  VINCIRE state.media_index.urls_hash AD media_index.urls_hash
+  EVOCA TraceStore trace_store AD CONIURA trace_store_open(cfg.trace_db_path, cfg.trace_dir, 300, 72)
+  CONIURA rede_trace_session_schema_up(trace_store.db)
+  VINCIRE state.trace_store.db AD trace_store.db
+  VINCIRE state.trace_store.trace_dir AD trace_store.trace_dir
+  VINCIRE state.trace_store.max_traces AD trace_store.max_traces
+  VINCIRE state.trace_store.max_hours AD trace_store.max_hours
+  VINCIRE state.trace_cfg.enabled AD trace_cfg.enabled
+  VINCIRE state.trace_cfg.trace_dir AD trace_cfg.trace_dir
+  VINCIRE state.trace_cfg.sample_rate AD trace_cfg.sample_rate
+  VINCIRE state.trace_cfg.max_spans_per_trace AD trace_cfg.max_spans_per_trace
+  VINCIRE state.trace_cfg.add_trace_header AD trace_cfg.add_trace_header
+  EVOCA SecurityConfig sec_cfg AD CONIURA rede_app_prepare_security(cfg)
+  VINCIRE state.security_cfg.hsts AD sec_cfg.hsts
+  VINCIRE state.security_cfg.csp AD sec_cfg.csp
+  VINCIRE state.security_cfg.x_frame_options AD sec_cfg.x_frame_options
+  VINCIRE state.security_cfg.x_content_type_options AD sec_cfg.x_content_type_options
+  VINCIRE state.security_cfg.referrer_policy AD sec_cfg.referrer_policy
+  VINCIRE state.security_cfg.allowed_hosts AD sec_cfg.allowed_hosts
+  VINCIRE state.security_cfg.enforce_https AD sec_cfg.enforce_https
+  VINCIRE state.security_cfg.rate_limit_enabled AD sec_cfg.rate_limit_enabled
+  VINCIRE state.security_cfg.rate_limit_max_rps AD sec_cfg.rate_limit_max_rps
+  VINCIRE state.security_cfg.rate_limit_burst AD sec_cfg.rate_limit_burst
+  VINCIRE state.session_store.kind AD sess_store.kind
+  VINCIRE state.session_store.state AD sess_store.state
+  VINCIRE state.mem_state.active AD mem_state.active
+  VINCIRE state.mem_state.leak_live_threshold AD mem_state.leak_live_threshold
+  VINCIRE state.mem_state.db AD mem_state.db
+  VINCIRE state.request_ordinal AD 0
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE rede_app_request_ordinal_next(SPECULUM RedeAppState state) REDDE REX
+  VINCIRE (*state).request_ordinal AD (*state).request_ordinal + 1
+  REDDE (*state).request_ordinal
+EXPLICIT RITUALE
+
+RITUALE rede_app_current_user(SPECULUM NIHIL db, SPECULUM Session sess) REDDE RedeCurrentUser
+  EVOCA RedeCurrentUser out AD CONIURA rede_current_user_empty()
+  EVOCA SPECULUM NIHIL user_id_opt AD CONIURA session_get(sess, "user_id")
+  SI CONIURA option_is_none GENUS(VERBUM)(user_id_opt)
+    CONIURA option_free GENUS(VERBUM)(user_id_opt)
+    REDDE out
+  FIN SI
+  EVOCA VERBUM raw_id AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(user_id_opt))
+  CONIURA option_free GENUS(VERBUM)(user_id_opt)
+  EVOCA REX user_id AD CONIURA fmt_parse_int(raw_id)
+  EVOCA RedeMaybeUser maybe_user AD CONIURA rede_repository_find_user_by_id(db, user_id)
+  SI maybe_user.found
+    VINCIRE out.authenticated AD VERUM
+    VINCIRE out.user AD maybe_user.user
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_app_form_value(WebRequest req, VERBUM key) REDDE VERBUM
+  EVOCA SPECULUM NIHIL form AD CONIURA form_decode(req.body)
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA form_get(form, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    REDDE ""
+  FIN SI
+  EVOCA VERBUM value AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(value_opt))
+  CONIURA option_free GENUS(VERBUM)(value_opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE rede_app_param_or(WebRequest req, VERBUM key, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA request_param(req, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE fallback
+  FIN SI
+  EVOCA VERBUM value AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(opt))
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE rede_app_redirect_back(WebRequest req, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL next_opt AD CONIURA request_query_first(req, "next")
+  SI CONIURA option_is_some GENUS(VERBUM)(next_opt)
+    EVOCA VERBUM next_path AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(next_opt))
+    EVOCA VERBUM next_copy AD ""
+    SI CONIURA starts_with(next_path, "/")
+      VINCIRE next_copy AD CONIURA concat("", next_path)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(next_opt)
+    SI CONIURA len(next_copy) > 0
+      REDDE next_copy
+    FIN SI
+  ALITER
+    CONIURA option_free GENUS(VERBUM)(next_opt)
+  FIN SI
+  EVOCA VERBUM form_next AD CONIURA rede_app_form_value(req, "next")
+  SI CONIURA starts_with(form_next, "/")
+    REDDE form_next
+  FIN SI
+  EVOCA SPECULUM NIHIL ref_opt AD CONIURA request_header(req, "referer")
+  SI CONIURA option_is_some GENUS(VERBUM)(ref_opt)
+    EVOCA VERBUM ref AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(ref_opt))
+    CONIURA option_free GENUS(VERBUM)(ref_opt)
+    SI CONIURA starts_with(ref, "/")
+      REDDE ref
+    FIN SI
+    EVOCA REX slash_idx AD CONIURA find(ref, "://")
+    SI slash_idx != -1
+      EVOCA REX path_idx AD CONIURA find(CONIURA substring(ref, slash_idx + 3, CONIURA len(ref)), "/")
+      SI path_idx != -1
+        REDDE CONIURA concat("/", CONIURA substring(ref, slash_idx + 4 + path_idx, CONIURA len(ref)))
+      FIN SI
+    FIN SI
+  ALITER
+    CONIURA option_free GENUS(VERBUM)(ref_opt)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE rede_app_require_basic_admin(WebRequest req, RedeConfig cfg) REDDE VERUM
+  EVOCA SPECULUM NIHIL auth_res AD CONIURA request_basic_auth(req)
+  SI CONIURA result_is_err GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA WebRequestBasicAuth auth AD CONIURA result_unwrap GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+  REDDE CONIURA compare(auth.username, cfg.admin_user) == 0 ET CONIURA compare(auth.password, cfg.admin_password) == 0
+EXPLICIT RITUALE
+
+RITUALE rede_app_ops_session_active(SPECULUM Session sess) REDDE VERUM
+  EVOCA SPECULUM NIHIL flag_opt AD CONIURA session_get(sess, "ops_admin")
+  SI CONIURA option_is_none GENUS(VERBUM)(flag_opt)
+    CONIURA option_free GENUS(VERBUM)(flag_opt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM value AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(flag_opt))
+  CONIURA option_free GENUS(VERBUM)(flag_opt)
+  REDDE CONIURA compare(value, "1") == 0
+EXPLICIT RITUALE
+
+RITUALE rede_app_csrf_render(WebRequest req, RedeConfig cfg) REDDE RedeCsrfRender
+  EVOCA RedeCsrfRender out
+  EVOCA SPECULUM NIHIL binding_opt AD CONIURA request_cookie(req, cfg.csrf_cfg.cookie_name)
+  EVOCA VERBUM binding AD ""
+  SI CONIURA option_is_some GENUS(VERBUM)(binding_opt)
+    VINCIRE binding AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(binding_opt))
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(binding_opt)
+  EVOCA CsrfToken token AD CONIURA csrf_token_for_request(SPECULUM cfg.csrf_cfg, cfg.session_cfg.segredo, binding)
+  VINCIRE out.hidden_html AD CONIURA csrf_input_field(SPECULUM cfg.csrf_cfg, token.token)
+  VINCIRE out.needs_cookie AD token.is_new_binding
+  VINCIRE out.cookie AD CONIURA csrf_binding_cookie(SPECULUM cfg.csrf_cfg, token.binding_cookie, FALSUM)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_app_response_to_http(WebResponse res, WebRequest req) REDDE HttpResponse
+  EVOCA WebResponse wire AD res
+  SI NON CONIURA response_body_is_permitted(wire.status)
+    EVOCA WebResponse no_body AD CONIURA response_without_body(wire)
+    CONIURA response_fill(SPECULUM wire, no_body)
+  ALITER
+    SI CONIURA compare(req.method, "HEAD") == 0
+      EVOCA WebResponse head_body AD CONIURA response_without_body(wire)
+      CONIURA response_fill(SPECULUM wire, head_body)
+    FIN SI
+  FIN SI
+
+  EVOCA HttpResponse out AD CONIURA http_response_new(wire.status, wire.body)
+  EVOCA REX headers_handle AD CONIURA http_response_headers_handle(out)
+  EVOCA SPECULUM NIHIL header_keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(wire.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(header_keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(header_keys, i)
+    CONIURA http_headers_set_or_push(headers_handle, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(wire.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA len(CONIURA response_header_or(wire, "content-type", "")) == 0 ET CONIURA response_body_is_permitted(wire.status)
+    EVOCA VERBUM default_ct AD CONIURA response_body_kind_default_content_type(wire.body_kind)
+    SI CONIURA len(default_ct) > 0
+      CONIURA http_headers_set_or_push(headers_handle, "Content-Type", default_ct)
+    FIN SI
+  FIN SI
+
+  EVOCA REX cookie_i AD 0
+  EVOCA REX cookie_n AD CONIURA fluxus_len(wire.set_cookies)
+  DUM cookie_i < cookie_n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(wire.set_cookies, cookie_i)
+    EVOCA HttpHeader cookie_header
+    VINCIRE cookie_header.nome AD "Set-Cookie"
+    VINCIRE cookie_header.valor AD CONIURA cookie_build_set(*cookie_ptr)
+    CONIURA http_headers_push(headers_handle, SPECULUM cookie_header)
+    VINCIRE cookie_i AD cookie_i + 1
+  FIN DUM
+
+  CONIURA http_headers_set_or_push(headers_handle, "Connection", "close")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_app_csrf_attach(SPECULUM WebResponse res, RedeCsrfRender csrf) REDDE NIHIL
+  SI csrf.needs_cookie
+    CONIURA response_set_cookie(res, csrf.cookie)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_app_validate_csrf(WebRequest req, RedeConfig cfg) REDDE VERUM
+  EVOCA SPECULUM NIHIL check AD CONIURA csrf_validate_request(SPECULUM cfg.csrf_cfg, cfg.session_cfg.segredo, req.headers, req.body)
+  REDDE CONIURA result_is_ok GENUS(REX, CsrfError)(check)
+EXPLICIT RITUALE
+
+RITUALE rede_app_apply_security(SPECULUM RedeAppState state, SPECULUM WebResponse res) REDDE NIHIL
+  CONIURA security_headers_apply(SPECULUM (*state).security_cfg, CONIURA csp_nonce_generate(), (*res).headers)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_activity_json(SPECULUM NIHIL activity, REX online_count) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(activity)
+  DUM i < n
+    EVOCA SPECULUM RedeActivity item_ptr AD CONIURA fluxus_get(activity, i)
+    EVOCA Json item AD CONIURA json_obj()
+    CONIURA json_set_key(item, "kind", CONIURA json_str((*item_ptr).kind))
+    CONIURA json_set_key(item, "title", CONIURA json_str((*item_ptr).title))
+    CONIURA json_set_key(item, "body", CONIURA json_str((*item_ptr).body))
+    CONIURA json_set_key(item, "created_at", CONIURA json_str((*item_ptr).created_at))
+    CONIURA json_arr_push(arr, item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_set_key(root, "online_count", CONIURA json_num(cast GENUS(UMBRA)(online_count)))
+  CONIURA json_set_key(root, "items", arr)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE rede_feed_json(SPECULUM NIHIL posts) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(posts)
+  DUM i < n
+    EVOCA SPECULUM RedePost post_ptr AD CONIURA fluxus_get(posts, i)
+    EVOCA Json item AD CONIURA json_obj()
+    CONIURA json_set_key(item, "slug", CONIURA json_str((*post_ptr).slug))
+    CONIURA json_set_key(item, "title", CONIURA json_str((*post_ptr).title))
+    CONIURA json_set_key(item, "body", CONIURA json_str((*post_ptr).body))
+    CONIURA json_set_key(item, "author_handle", CONIURA json_str((*post_ptr).author_handle))
+    CONIURA json_set_key(item, "likes_count", CONIURA json_num(cast GENUS(UMBRA)((*post_ptr).likes_count)))
+    CONIURA json_set_key(item, "comments_count", CONIURA json_num(cast GENUS(UMBRA)((*post_ptr).comments_count)))
+    CONIURA json_arr_push(arr, item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_set_key(root, "items", arr)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE rede_security_report_html(ScanResult report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<div class=\"card\"><p>Total findings: ")
+  CONIURA builder_append(b, CONIURA stringify_int(report.total))
+  CONIURA builder_append(b, " • approved: ")
+  SI report.approved
+    CONIURA builder_append(b, "yes")
+  ALITER
+    CONIURA builder_append(b, "no")
+  FIN SI
+  CONIURA builder_append(b, "</p></div>")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(report.vulns)
+    EVOCA SPECULUM Vuln vuln_ptr AD CONIURA fluxus_get(report.vulns, i)
+    CONIURA builder_append(b, "<article class=\"card\"><h3>")
+    CONIURA builder_append(b, CONIURA html_encode((*vuln_ptr).titulo))
+    CONIURA builder_append(b, "</h3><p>")
+    CONIURA builder_append(b, CONIURA html_encode((*vuln_ptr).descricao))
+    CONIURA builder_append(b, "</p><p class=\"muted\">")
+    CONIURA builder_append(b, CONIURA html_encode((*vuln_ptr).evidencia))
+    CONIURA builder_append(b, "</p><p>")
+    CONIURA builder_append(b, CONIURA html_encode((*vuln_ptr).remediacao))
+    CONIURA builder_append(b, "</p></article>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_dep_report_html(DepReport report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<div class=\"card\"><p>Total dependencies: ")
+  CONIURA builder_append(b, CONIURA stringify_int(report.total_deps))
+  CONIURA builder_append(b, " • approved: ")
+  SI report.aprovado
+    CONIURA builder_append(b, "yes")
+  ALITER
+    CONIURA builder_append(b, "no")
+  FIN SI
+  CONIURA builder_append(b, "</p></div>")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(report.deps)
+    EVOCA SPECULUM DepInfo dep_ptr AD CONIURA fluxus_get(report.deps, i)
+    CONIURA builder_append(b, "<article class=\"card\"><h3>")
+    CONIURA builder_append(b, CONIURA html_encode((*dep_ptr).nome))
+    CONIURA builder_append(b, "</h3><p class=\"muted\">Detected ")
+    CONIURA builder_append(b, CONIURA html_encode((*dep_ptr).versao_detectada))
+    CONIURA builder_append(b, " • minimum ")
+    CONIURA builder_append(b, CONIURA html_encode((*dep_ptr).versao_minima))
+    CONIURA builder_append(b, "</p><p>")
+    CONIURA builder_append(b, CONIURA html_encode((*dep_ptr).surface))
+    CONIURA builder_append(b, "</p></article>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_trace_store_latest_row(SPECULUM TraceStore store) REDDE SPECULUM NIHIL
+  EVOCA TraceResultSet rs AD CONIURA trace_store_query_recent(store, 1)
+  SI CONIURA fluxus_len(rs.rows) == 0
+    CONIURA trace_store_result_set_free(SPECULUM rs)
+    REDDE CONIURA None GENUS(TraceRow)()
+  FIN SI
+  EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, 0)
+  EVOCA TraceRow row AD *row_ptr
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+  REDDE CONIURA Some GENUS(TraceRow)(row)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_row_is_live_candidate(TraceRow row) REDDE VERUM
+  SI CONIURA starts_with(row.path, "/sigilos-vivos")
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA starts_with(row.path, "/ops")
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA starts_with(row.path, "/civitas/traces")
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA starts_with(row.path, "/static")
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA starts_with(row.path, "/media")
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE rede_trace_store_latest_live_row(SPECULUM TraceStore store) REDDE SPECULUM NIHIL
+  EVOCA TraceResultSet rs AD CONIURA trace_store_query_recent(store, 24)
+  EVOCA REX i AD 0
+  DUM i < rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, i)
+    SI CONIURA rede_trace_row_is_live_candidate(*row_ptr)
+      EVOCA TraceRow row AD *row_ptr
+      CONIURA trace_store_result_set_free(SPECULUM rs)
+      REDDE CONIURA Some GENUS(TraceRow)(row)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+  REDDE CONIURA None GENUS(TraceRow)()
+EXPLICIT RITUALE
+
+RITUALE rede_trace_store_session_rows(SPECULUM TraceStore store, VERBUM session_id, REX limit_count) REDDE TraceResultSet
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    (*store).db,
+    "SELECT ti.trace_id, ti.path, ti.method, ti.status, ti.duration_ms, ti.span_count, ti.user_id, ti.file_path, ti.created_at FROM trace_index ti INNER JOIN rede_trace_session_index si ON si.trace_id = ti.trace_id WHERE si.session_id = ? ORDER BY ti.created_at ASC LIMIT ?"
+  )
+  CONIURA stmt_bind_text(stmt, 1, session_id)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  REDDE CONIURA trace_store_collect_stmt(stmt)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_store_session_live_rows(SPECULUM TraceStore store, VERBUM session_id, REX limit_count) REDDE TraceResultSet
+  EVOCA TraceResultSet raw_rs AD CONIURA rede_trace_store_session_rows(store, session_id, limit_count)
+  EVOCA TraceResultSet out AD CONIURA trace_store_result_set_empty()
+  EVOCA REX i AD 0
+  DUM i < raw_rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(raw_rs.rows, i)
+    SI CONIURA rede_trace_row_is_live_candidate(*row_ptr)
+      EVOCA TraceRow copied AD *row_ptr
+      CONIURA fluxus_push(out.rows, SPECULUM copied)
+      VINCIRE out.count AD out.count + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM raw_rs)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_session_journey_trace_path(RedeConfig cfg, VERBUM session_id) REDDE VERBUM
+  EVOCA VERBUM dir AD CONIURA path_join(cfg.root_dir, ".civitas/trace_render/journeys")
+  CONIURA mkdir_all(dir)
+  REDDE CONIURA path_join(dir, CONIURA concat(CONIURA concat("session_", session_id), ".ctrace"))
+EXPLICIT RITUALE
+
+RITUALE rede_session_journey_trace_existing_path(RedeConfig cfg, VERBUM session_id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM path AD CONIURA rede_session_journey_trace_path(cfg, session_id)
+  SI NON CONIURA exists(path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(path)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_svg_cache_dir(RedeConfig cfg) REDDE VERBUM
+  EVOCA VERBUM dir AD CONIURA path_join(cfg.root_dir, ".civitas/trace_render/svg")
+  CONIURA mkdir_all(dir)
+  REDDE dir
+EXPLICIT RITUALE
+
+RITUALE rede_trace_svg_cache_path(RedeConfig cfg, VERBUM cache_key) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA rede_trace_svg_cache_dir(cfg), CONIURA concat(cache_key, ".v3.svg"))
+EXPLICIT RITUALE
+
+RITUALE rede_trace_embed_cache_path(RedeConfig cfg, VERBUM cache_key) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA rede_trace_svg_cache_dir(cfg), CONIURA concat(cache_key, ".embed.v2.svg"))
+EXPLICIT RITUALE
+
+RITUALE rede_svg_with_backdrop(VERBUM svg) REDDE VERBUM
+  EVOCA VERBUM cleaned AD svg
+  VINCIRE cleaned AD CONIURA replace(cleaned, "fill:rgba(255,252,246,0.80)", "fill:#fffaf2")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "fill:rgba(255,252,246,0.72)", "fill:#fffaf2")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "fill:rgba(255,250,242,0.92)", "fill:#fffaf2")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "fill:rgba(255,250,242,0.94)", "fill:#fffaf2")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "fill:rgba(255,250,242,0.96)", "fill:#fffaf2")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "filter:drop-shadow(0 0 4px rgba(28,56,84,.18))", "")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "filter:drop-shadow(0 0 3px rgba(28,56,84,.16))", "")
+  VINCIRE cleaned AD CONIURA replace(cleaned, "filter:drop-shadow(0 0 3px rgba(28,56,84,.18))", "")
+  EVOCA REX svg_start AD CONIURA find(cleaned, "<svg")
+  SI svg_start == -1
+    REDDE cleaned
+  FIN SI
+  EVOCA REX open_end AD CONIURA find(CONIURA substring(cleaned, svg_start, CONIURA len(cleaned)), ">")
+  SI open_end == -1
+    REDDE cleaned
+  FIN SI
+  VINCIRE open_end AD svg_start + open_end
+  EVOCA VERBUM prefix AD CONIURA substring(cleaned, 0, open_end + 1)
+  EVOCA VERBUM suffix AD CONIURA substring(cleaned, open_end + 1, CONIURA len(cleaned))
+  EVOCA VERBUM out AD prefix
+  VINCIRE out AD CONIURA concat(out, "<style>svg{background:#f6f0e5;color-scheme:light} text{color:#111827}</style>")
+  VINCIRE out AD CONIURA concat(out, "<rect x=\"-100000\" y=\"-100000\" width=\"200000\" height=\"200000\" fill=\"#f6f0e5\"/>")
+  VINCIRE out AD CONIURA concat(out, suffix)
+  EVOCA REX close_idx AD CONIURA find(out, "</svg>")
+  SI close_idx != -1
+    EVOCA VERBUM close_prefix AD CONIURA substring(out, 0, close_idx)
+    EVOCA VERBUM close_suffix AD CONIURA substring(out, close_idx, CONIURA len(out))
+    VINCIRE out AD close_prefix
+    VINCIRE out AD CONIURA concat(out, "<style><![CDATA[svg{background:#f6f0e5 !important;color-scheme:light}.bg{fill:#f6f0e6 !important}.panel-bg,.legend-box,.trace-caption-box,.trace-summary-box,.anim-button{fill:#fffaf2 !important;stroke:#d6cabc !important}.trace-caption-title,.trace-summary-title,.legend,.anim-button-text,.hash,.label,.module-label,.module-hash,.overlay-meta,.trace-summary-line,.trace-caption-subtitle,.step-label,.anim-button-subtitle{fill:#211812 !important}.trace-packet,.slow,.pulse{filter:none !important}]]></style>")
+    VINCIRE out AD CONIURA concat(out, close_suffix)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_svg_for_embed(VERBUM svg) REDDE VERBUM
+  EVOCA VERBUM out AD svg
+  EVOCA REX start_idx AD -1
+  EVOCA REX end_rel AD -1
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<g id=\"trace-caption-wrap\"")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "</g></g>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 8
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<g id=\"trace-summary-wrap\"")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "</g>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 4
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<g class=\"trace-legend-wrap\"")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "</g></g>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 8
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<g id=\"trace-anim-controls\"")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "</g>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 4
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<g id=\"trace-anim-status\"")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "</g>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 4
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  DUM VERUM
+    VINCIRE start_idx AD CONIURA find(out, "<script><![CDATA[")
+    SI start_idx == -1
+      FRANGE
+    FIN SI
+    VINCIRE end_rel AD CONIURA find(CONIURA substring(out, start_idx, CONIURA len(out)), "]]></script>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX block_end AD start_idx + end_rel + 12
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, start_idx), CONIURA substring(out, block_end, CONIURA len(out)))
+  FIN DUM
+  VINCIRE out AD CONIURA replace(out, "trace-caption-wrap", "embed-removed-caption")
+  VINCIRE out AD CONIURA replace(out, "trace-summary-wrap", "embed-removed-summary")
+  VINCIRE out AD CONIURA replace(out, "trace-legend-wrap", "embed-removed-legend")
+  VINCIRE out AD CONIURA replace(out, "trace-anim-controls", "embed-removed-anim-controls")
+  VINCIRE out AD CONIURA replace(out, "trace-anim-status", "embed-removed-anim-status")
+  VINCIRE out AD CONIURA replace(out, "anim-control-wrap", "embed-removed-anim-wrap")
+  VINCIRE out AD CONIURA replace(out, "#trace_caption", "#embed_removed_caption")
+  VINCIRE out AD CONIURA replace(out, "#trace_summary", "#embed_removed_summary")
+  VINCIRE out AD CONIURA replace(out, "#legend", "#embed_removed_legend")
+  EVOCA REX close_idx AD CONIURA find(out, "</svg>")
+  SI close_idx == -1
+    REDDE out
+  FIN SI
+  EVOCA VERBUM prefix AD CONIURA substring(out, 0, close_idx)
+  EVOCA VERBUM suffix AD CONIURA substring(out, close_idx, CONIURA len(out))
+  VINCIRE out AD prefix
+  VINCIRE out AD CONIURA concat(out, "<style><![CDATA[.trace-caption-wrap,.trace-summary-wrap,.trace-legend-wrap,.anim-control-wrap,#trace-anim-status,#trace_caption,#trace_summary,#legend,#trace-anim-controls{display:none !important}.trace-caption-box,.trace-summary-box,.legend-box,.anim-button{fill:none !important;stroke:none !important}.trace-caption-title,.trace-caption-subtitle,.trace-summary-title,.trace-summary-line,.legend,.legend-entry text,.anim-button-text,.anim-button-subtitle{display:none !important}]]></style>")
+  VINCIRE out AD CONIURA concat(out, suffix)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_svg_for_preview(VERBUM svg) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA rede_svg_for_embed(svg)
+  DUM VERUM
+    EVOCA REX fill_idx AD CONIURA find(out, "fill=\"#f6f0e6\"")
+    SI fill_idx == -1
+      FRANGE
+    FIN SI
+    EVOCA REX rect_idx AD fill_idx
+    DUM rect_idx > 0
+      SI CONIURA compare(CONIURA substring(out, rect_idx, rect_idx + 5), "<rect") == 0
+        FRANGE
+      FIN SI
+      VINCIRE rect_idx AD rect_idx - 1
+    FIN DUM
+    SI rect_idx <= 0
+      FRANGE
+    FIN SI
+    EVOCA REX end_rel AD CONIURA find(CONIURA substring(out, rect_idx, CONIURA len(out)), "/>")
+    SI end_rel == -1
+      FRANGE
+    FIN SI
+    EVOCA REX rect_end AD rect_idx + end_rel + 2
+    VINCIRE out AD CONIURA concat(CONIURA substring(out, 0, rect_idx), CONIURA substring(out, rect_end, CONIURA len(out)))
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_trace_cached_svg_read(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA rede_trace_svg_cache_path((*state).cfg, cache_key)
+  SI NON CONIURA exists(cache_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  SI CONIURA exists(trace_path) ET CONIURA modified_time(cache_path) < CONIURA modified_time(trace_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA read_all(cache_path))
+EXPLICIT RITUALE
+
+RITUALE rede_trace_cached_svg_from_file(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA rede_trace_svg_cache_path((*state).cfg, cache_key)
+  SI CONIURA exists(cache_path) ET CONIURA modified_time(cache_path) >= CONIURA modified_time(trace_path)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(CONIURA read_all(cache_path))
+  FIN SI
+  EVOCA SPECULUM NIHIL render_res AD CONIURA trace_render_file(trace_path, CONIURA rede_trace_render_cfg(*state))
+  SI CONIURA result_is_err GENUS(TraceRenderResult, VERBUM)(render_res)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA result_unwrap_err GENUS(TraceRenderResult, VERBUM)(render_res))
+  FIN SI
+  EVOCA TraceRenderResult rendered AD CONIURA result_unwrap GENUS(TraceRenderResult, VERBUM)(render_res)
+  EVOCA VERBUM normalized AD CONIURA rede_svg_with_backdrop(rendered.svg)
+  CONIURA write_all(cache_path, normalized)
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(normalized)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_embed_cached_read(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA rede_trace_embed_cache_path((*state).cfg, cache_key)
+  SI NON CONIURA exists(cache_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  SI CONIURA exists(trace_path) ET CONIURA modified_time(cache_path) < CONIURA modified_time(trace_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA read_all(cache_path))
+EXPLICIT RITUALE
+
+RITUALE rede_trace_embed_cached_from_file(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA rede_trace_embed_cache_path((*state).cfg, cache_key)
+  SI CONIURA exists(cache_path) ET CONIURA modified_time(cache_path) >= CONIURA modified_time(trace_path)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(CONIURA read_all(cache_path))
+  FIN SI
+  EVOCA SPECULUM NIHIL render_res AD CONIURA trace_render_file(trace_path, CONIURA rede_trace_embed_render_cfg(*state))
+  SI CONIURA result_is_err GENUS(TraceRenderResult, VERBUM)(render_res)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA result_unwrap_err GENUS(TraceRenderResult, VERBUM)(render_res))
+  FIN SI
+  EVOCA TraceRenderResult rendered AD CONIURA result_unwrap GENUS(TraceRenderResult, VERBUM)(render_res)
+  EVOCA VERBUM normalized AD CONIURA rede_svg_for_embed(CONIURA rede_svg_with_backdrop(rendered.svg))
+  CONIURA write_all(cache_path, normalized)
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(normalized)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_preview_cached_from_file(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA path_join(CONIURA rede_trace_svg_cache_dir((*state).cfg), CONIURA concat(cache_key, ".preview.v2.svg"))
+  SI CONIURA exists(cache_path) ET CONIURA modified_time(cache_path) >= CONIURA modified_time(trace_path)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(CONIURA read_all(cache_path))
+  FIN SI
+  EVOCA SPECULUM NIHIL embed_res AD CONIURA rede_trace_embed_cached_from_file(state, trace_path, cache_key)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(embed_res)
+    REDDE embed_res
+  FIN SI
+  EVOCA VERBUM preview_svg AD CONIURA rede_svg_for_preview(CONIURA result_unwrap GENUS(VERBUM, VERBUM)(embed_res))
+  CONIURA write_all(cache_path, preview_svg)
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(preview_svg)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_preview_cached_read(SPECULUM RedeAppState state, VERBUM trace_path, VERBUM cache_key) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cache_path AD CONIURA path_join(CONIURA rede_trace_svg_cache_dir((*state).cfg), CONIURA concat(cache_key, ".preview.v2.svg"))
+  SI NON CONIURA exists(cache_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  SI CONIURA exists(trace_path) ET CONIURA modified_time(cache_path) < CONIURA modified_time(trace_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA read_all(cache_path))
+EXPLICIT RITUALE
+
+RITUALE rede_trace_span_attr_get(Span sp, VERBUM key) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(sp.attributes_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE ""
+  FIN SI
+  EVOCA Json obj AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(obj)
+    REDDE ""
+  FIN SI
+  SI NON CONIURA json_has_key(obj, key)
+    REDDE ""
+  FIN SI
+  EVOCA Json value AD CONIURA json_get_key(obj, key)
+  SI NON CONIURA json_is_str(value)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA json_expect_str(value)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_span_attr_ensure(SPECULUM Span sp, VERBUM key, VERBUM value) REDDE NIHIL
+  SI CONIURA len(value) == 0
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse((*sp).attributes_json)
+  EVOCA Json obj AD CONIURA json_obj()
+  SI CONIURA result_is_ok GENUS(Json, JsonError)(parsed)
+    VINCIRE obj AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+    SI NON CONIURA json_is_obj(obj)
+      VINCIRE obj AD CONIURA json_obj()
+    FIN SI
+  FIN SI
+  SI NON CONIURA json_has_key(obj, key)
+    CONIURA json_set_key(obj, key, CONIURA json_str(value))
+    VINCIRE (*sp).attributes_json AD CONIURA json_stringify(obj)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_trace_copy_into_journey(SPECULUM Trace aggregated, Trace source, VERBUM journey_root_id, VERBUM inherited_route_id, VERBUM inherited_module) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX copied AD 0
+  DUM i < CONIURA trace_span_count(source)
+    EVOCA Span sp AD CONIURA trace_get_span(source, i)
+    VINCIRE sp.trace_id AD (*aggregated).trace_id
+    SI CONIURA len(sp.parent_id) == 0
+      VINCIRE sp.parent_id AD journey_root_id
+    FIN SI
+    CONIURA rede_trace_span_attr_ensure(SPECULUM sp, "route_id", inherited_route_id)
+    CONIURA rede_trace_span_attr_ensure(SPECULUM sp, "module", inherited_module)
+    CONIURA fluxus_push((*aggregated).spans, SPECULUM sp)
+    VINCIRE copied AD copied + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE copied
+EXPLICIT RITUALE
+
+RITUALE rede_trace_aggregate_session(SPECULUM RedeAppState state, VERBUM session_id) REDDE SPECULUM NIHIL
+  EVOCA TraceResultSet rs AD CONIURA rede_trace_store_session_live_rows(SPECULUM (*state).trace_store, session_id, 48)
+  SI rs.count == 0
+    CONIURA trace_store_result_set_free(SPECULUM rs)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA Trace aggregated AD CONIURA trace_new_with_id(CONIURA concat("journey-", session_id))
+  EVOCA Span journey_root AD CONIURA trace_new_span(aggregated.trace_id, "", "rede_social:session_journey")
+  EVOCA VERBUM journey_root_id AD journey_root.span_id
+  VINCIRE journey_root.start_time_ms AD 9223372036854775807
+  VINCIRE journey_root.end_time_ms AD 0
+  CONIURA fluxus_push(aggregated.spans, SPECULUM journey_root)
+  CONIURA span_set_attribute(SPECULUM aggregated, journey_root_id, "module", "examples/rede_social/project/main.cct")
+  CONIURA span_set_attribute(SPECULUM aggregated, journey_root_id, "journey.kind", "session")
+  CONIURA span_set_attribute(SPECULUM aggregated, journey_root_id, "session_id", session_id)
+
+  EVOCA REX i AD 0
+  EVOCA REX copied_total AD 0
+  EVOCA REX request_count AD 0
+  DUM i < rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, i)
+    EVOCA SPECULUM NIHIL loaded AD CONIURA trace_store_load_trace(SPECULUM (*state).trace_store, (*row_ptr).trace_id)
+    SI CONIURA result_is_ok GENUS(Trace, TraceError)(loaded)
+      EVOCA Trace source AD CONIURA result_unwrap GENUS(Trace, TraceError)(loaded)
+      EVOCA VERBUM inherited_route_id AD ""
+      EVOCA VERBUM inherited_module AD ""
+      SI CONIURA trace_span_count(source) > 0
+        EVOCA REX root_i AD 0
+        DUM root_i < CONIURA trace_span_count(source)
+          EVOCA Span root_candidate AD CONIURA trace_get_span(source, root_i)
+          SI CONIURA len(root_candidate.parent_id) == 0
+            VINCIRE inherited_route_id AD CONIURA rede_trace_span_attr_get(root_candidate, "route_id")
+            VINCIRE inherited_module AD CONIURA rede_trace_span_attr_get(root_candidate, "module")
+            VINCIRE root_i AD CONIURA trace_span_count(source)
+          ALITER
+            VINCIRE root_i AD root_i + 1
+          FIN SI
+        FIN DUM
+      FIN SI
+      VINCIRE copied_total AD copied_total + CONIURA rede_trace_copy_into_journey(SPECULUM aggregated, source, journey_root_id, inherited_route_id, inherited_module)
+      VINCIRE request_count AD request_count + 1
+      SI CONIURA trace_render_trace_start(source) < CONIURA trace_render_trace_start(aggregated)
+        EVOCA SPECULUM Span root_ptr AD CONIURA fluxus_get(aggregated.spans, 0)
+        VINCIRE (*root_ptr).start_time_ms AD CONIURA trace_render_trace_start(source)
+      FIN SI
+      SI CONIURA trace_render_trace_end(source) > CONIURA trace_render_trace_end(aggregated)
+        EVOCA SPECULUM Span root_ptr AD CONIURA fluxus_get(aggregated.spans, 0)
+        VINCIRE (*root_ptr).end_time_ms AD CONIURA trace_render_trace_end(source)
+      FIN SI
+      CONIURA trace_free(SPECULUM source)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+
+  SI copied_total == 0
+    CONIURA trace_free(SPECULUM aggregated)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA SPECULUM Span root_ptr AD CONIURA fluxus_get(aggregated.spans, 0)
+  SI (*root_ptr).start_time_ms == 9223372036854775807
+    VINCIRE (*root_ptr).start_time_ms AD CONIURA trace_now_ms()
+  FIN SI
+  SI (*root_ptr).end_time_ms <= (*root_ptr).start_time_ms
+    VINCIRE (*root_ptr).end_time_ms AD (*root_ptr).start_time_ms + 1
+  FIN SI
+  CONIURA span_set_attribute(SPECULUM aggregated, journey_root_id, "journey.requests", CONIURA stringify_int(request_count))
+  CONIURA span_set_attribute(SPECULUM aggregated, journey_root_id, "journey.spans", CONIURA stringify_int(copied_total))
+
+  EVOCA VERBUM out_path AD CONIURA rede_session_journey_trace_path((*state).cfg, session_id)
+  EVOCA SPECULUM NIHIL write_res AD CONIURA trace_write_file(aggregated, out_path)
+  CONIURA trace_free(SPECULUM aggregated)
+  SI CONIURA result_is_err GENUS(REX, TraceError)(write_res)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(out_path)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_custom_begin(VERBUM name) REDDE REX
+  REDDE CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), name)
+EXPLICIT RITUALE
+
+RITUALE rede_trace_custom_attr(REX span_id, VERBUM key, VERBUM value) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_trace_end(REX span_id) REDDE NIHIL
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_sigilos_list_html(RedeConfig cfg, SPECULUM NIHIL rows, VERBUM session_id, REX session_count, VERBUM csrf_html, VERUM app_ready) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"hero\"><div><p class=\"eyebrow\">Sigilos vivos</p><h1>Current session system sigil</h1><p>This surface aggregates the pages you traversed in this browser session and renders them on top of the complete CCT system sigil.</p></div></section><section class=\"sigil-grid\">")
+  CONIURA builder_append(b, "<article class=\"card sigil-card\"><div class=\"sigil-meta\"><strong>Current session system sigil</strong><span class=\"muted\">session ")
+  CONIURA builder_append(b, CONIURA html_encode(session_id))
+  CONIURA builder_append(b, " • requests ")
+  CONIURA builder_append(b, CONIURA stringify_int(session_count))
+  CONIURA builder_append(b, " • animated system overlay</span><div class=\"sigil-links\"><a href=\"/sigilos-vivos/app\">Open interactive sigil</a>")
+  SI app_ready
+    CONIURA builder_append(b, "<a href=\"/sigilos-vivos/app\" target=\"_blank\" rel=\"noreferrer\">Open viewer in new tab</a><a href=\"/sigilos-vivos/app/svg\">Download saved SVG</a>")
+  FIN SI
+  CONIURA builder_append(b, "</div><form method=\"POST\" action=\"/sigilos-vivos/app/generate\" class=\"inline-form\">")
+  CONIURA builder_append(b, csrf_html)
+  CONIURA builder_append(b, "<button type=\"submit\" class=\"secondary\">Generate session sigil</button></form></div></article>")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(rows)
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rows, i)
+    CONIURA builder_append(b, "<article class=\"card sigil-card\"><div class=\"sigil-meta\"><strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).method))
+    CONIURA builder_append(b, " ")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).path))
+    CONIURA builder_append(b, "</strong><span class=\"muted\">status ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).status))
+    CONIURA builder_append(b, " • ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).duration_ms))
+    CONIURA builder_append(b, "ms • spans ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).span_count))
+    CONIURA builder_append(b, "</span><div class=\"sigil-links\"><a href=\"/sigilos-vivos/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "\">Open interactive sigil</a><a href=\"/sigilos-vivos/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "\" target=\"_blank\" rel=\"noreferrer\">Open viewer in new tab</a><a href=\"/sigilos-vivos/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "/svg\">Download saved SVG</a></div><form method=\"POST\" action=\"/sigilos-vivos/")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).trace_id))
+    CONIURA builder_append(b, "/generate\" class=\"inline-form\">")
+    CONIURA builder_append(b, csrf_html)
+    CONIURA builder_append(b, "<button type=\"submit\" class=\"secondary\">Generate saved sigil</button></form></div></article>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA fluxus_len(rows) == 0
+    CONIURA builder_append(b, "<div class=\"card\">No live request trace has been persisted yet. Open the feed, a post, a profile, or the lounge, then come back here.</div>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_sigilo_detail_html(TraceRow row, VERBUM svg_url, VERBUM viewer_url, VERBUM csrf_html, VERUM ready) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"hero\"><div><p class=\"eyebrow\">Sigilo</p><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(row.method))
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, CONIURA html_encode(row.path))
+  CONIURA builder_append(b, "</h1><p>trace ")
+  CONIURA builder_append(b, CONIURA html_encode(row.trace_id))
+  CONIURA builder_append(b, "</p><p class=\"muted\">Generate once, then inspect the saved interactive SVG without blocking normal navigation.</p><div class=\"sigil-links\">")
+  SI ready
+    CONIURA builder_append(b, "<a href=\"")
+    CONIURA builder_append(b, CONIURA html_encode(viewer_url))
+    CONIURA builder_append(b, "\">Open viewer page</a>")
+    CONIURA builder_append(b, "<a href=\"")
+    CONIURA builder_append(b, CONIURA html_encode(svg_url))
+    CONIURA builder_append(b, "\">Download saved SVG</a>")
+  FIN SI
+  CONIURA builder_append(b, "</div><form method=\"POST\" action=\"/sigilos-vivos/")
+  CONIURA builder_append(b, CONIURA html_encode(row.trace_id))
+  CONIURA builder_append(b, "/generate\" class=\"inline-form\">")
+  CONIURA builder_append(b, csrf_html)
+  CONIURA builder_append(b, "<button type=\"submit\" class=\"secondary\">Generate saved sigil</button></form></div></section>")
+  SI ready
+    CONIURA builder_append(b, "<section class=\"card\"><p>The saved system sigil is ready. Open the dedicated viewer page when you want to inspect it without forcing the heavy SVG into the detail page itself.</p></section>")
+  ALITER
+    CONIURA builder_append(b, "<section class=\"card\"><p>No saved SVG yet for this trace.</p></section>")
+  FIN SI
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_sigilo_journey_detail_html(VERBUM session_id, SPECULUM NIHIL rows, VERBUM svg_url, VERBUM viewer_url, VERBUM csrf_html, VERUM ready) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"hero\"><div><p class=\"eyebrow\">Sigilo</p><h1>Current session system sigil</h1><p>session ")
+  CONIURA builder_append(b, CONIURA html_encode(session_id))
+  CONIURA builder_append(b, " • requests ")
+  CONIURA builder_append(b, CONIURA stringify_int(CONIURA fluxus_len(rows)))
+  CONIURA builder_append(b, "</p><p class=\"muted\">This is the complete system sigil with the pages traversed in the current session coupled into one saved animated trace.</p><div class=\"sigil-links\">")
+  SI ready
+    CONIURA builder_append(b, "<a href=\"")
+    CONIURA builder_append(b, CONIURA html_encode(viewer_url))
+    CONIURA builder_append(b, "\">Open viewer page</a>")
+    CONIURA builder_append(b, "<a href=\"")
+    CONIURA builder_append(b, CONIURA html_encode(svg_url))
+    CONIURA builder_append(b, "\">Download saved SVG</a>")
+  FIN SI
+  CONIURA builder_append(b, "</div><form method=\"POST\" action=\"/sigilos-vivos/app/generate\" class=\"inline-form\">")
+  CONIURA builder_append(b, csrf_html)
+  CONIURA builder_append(b, "<button type=\"submit\" class=\"secondary\">Generate session sigil</button></form></div></section>")
+  SI ready
+    CONIURA builder_append(b, "<section class=\"card\"><p>The saved system sigil is ready. Open the dedicated viewer page when you want to inspect the heavy SVG. The detail page stays lightweight on purpose.</p></section>")
+  ALITER
+    CONIURA builder_append(b, "<section class=\"card\"><p>No saved session SVG yet. Generate it explicitly when you want to inspect the full journey.</p></section>")
+  FIN SI
+  CONIURA builder_append(b, "<section class=\"card\"><h2>Traversed pages</h2>")
+  EVOCA REX i AD 0
+  SI CONIURA fluxus_len(rows) == 0
+    CONIURA builder_append(b, "<p class=\"muted\">No captured page traversal yet for this session.</p>")
+  FIN SI
+  DUM i < CONIURA fluxus_len(rows)
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rows, i)
+    CONIURA builder_append(b, "<p><strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).method))
+    CONIURA builder_append(b, " ")
+    CONIURA builder_append(b, CONIURA html_encode((*row_ptr).path))
+    CONIURA builder_append(b, "</strong><br><span class=\"muted\">status ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).status))
+    CONIURA builder_append(b, " • ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).duration_ms))
+    CONIURA builder_append(b, "ms • spans ")
+    CONIURA builder_append(b, CONIURA stringify_int((*row_ptr).span_count))
+    CONIURA builder_append(b, "</span></p>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_sigilo_viewer_html(VERBUM title, VERBUM subtitle, VERBUM preview_url, VERBUM svg_url) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"hero\"><div><p class=\"eyebrow\">Sigilo viewer</p><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(title))
+  CONIURA builder_append(b, "</h1><p class=\"muted\">")
+  CONIURA builder_append(b, CONIURA html_encode(subtitle))
+  CONIURA builder_append(b, "</p><div class=\"sigil-links\"><a href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(svg_url))
+  CONIURA builder_append(b, "\">Download saved SVG</a></div></div></section>")
+  CONIURA builder_append(b, "<section class=\"card sigilo-embed\"><img class=\"sigilo-large\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(preview_url))
+  CONIURA builder_append(b, "\" alt=\"Saved sigil preview\"></section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_perf_probe(SPECULUM RedeAppState state) REDDE BenchResult
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/", "GET")
+  EVOCA BenchResult out AD CONIURA bench_result_empty(cfg)
+  EVOCA SPECULUM NIHIL durations AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX started_suite AD CONIURA now_ms()
+  EVOCA REX i AD 0
+  VINCIRE cfg.n_requests AD 12
+  DUM i < cfg.n_requests
+    EVOCA REX started_ms AD CONIURA now_ms()
+    EVOCA SPECULUM NIHIL posts AD CONIURA rede_repository_feed((*state).db, 8)
+    EVOCA SPECULUM NIHIL activity AD CONIURA rede_repository_recent_activity((*state).db)
+    CONIURA rede_render_home(posts, "", "", CONIURA rede_repository_presence_count((*state).db), activity, 0)
+    EVOCA REX duration_ms AD CONIURA now_ms() - started_ms
+    CONIURA fluxus_push(durations, SPECULUM duration_ms)
+    VINCIRE out.n_success AD out.n_success + 1
+    SI i == 0 VEL duration_ms < out.min_ms
+      VINCIRE out.min_ms AD duration_ms
+    FIN SI
+    SI duration_ms > out.max_ms
+      VINCIRE out.max_ms AD duration_ms
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out.n_requests AD cfg.n_requests
+  VINCIRE out.duration_total_ms AD CONIURA now_ms() - started_suite
+  SI out.duration_total_ms > 0
+    VINCIRE out.throughput AD (cast GENUS(UMBRA)(out.n_requests) * 1000.0) / cast GENUS(UMBRA)(out.duration_total_ms)
+  FIN SI
+  VINCIRE out.p50_ms AD CONIURA bench_percentile(durations, 50.0)
+  VINCIRE out.p95_ms AD CONIURA bench_percentile(durations, 95.0)
+  VINCIRE out.p99_ms AD CONIURA bench_percentile(durations, 99.0)
+  VINCIRE out.mean_ms AD cast GENUS(UMBRA)(out.duration_total_ms) / cast GENUS(UMBRA)(out.n_requests)
+  CONIURA fluxus_free(durations)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_handle_static(WebRequest req, StaticIndex idx, VERBUM path_value, VERBUM missing_message) REDDE WebResponse
+  EVOCA StaticServeResult served AD CONIURA static_serve(idx, req, path_value)
+  SI served.kind == SrOk VEL served.kind == SrNaoModificado
+    REDDE CONIURA option_unwrap GENUS(WebResponse)(served.response)
+  FIN SI
+  SI served.kind == SrProibido
+    REDDE CONIURA response_bad_request("invalid path")
+  FIN SI
+  REDDE CONIURA response_bad_request(missing_message)
+EXPLICIT RITUALE
+
+RITUALE rede_handle_ops_or_sigilo(SPECULUM RedeAppState state, WebRequest req, SPECULUM Session sess, RedeCsrfRender csrf, VERBUM route_name) REDDE WebResponse
+  SI CONIURA compare(route_name, "ops_login_page") == 0
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_ops_login("", csrf.hidden_html, CONIURA rede_app_redirect_back(req, "/ops")))
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_login_submit") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    EVOCA VERBUM username AD CONIURA rede_app_form_value(req, "username")
+    EVOCA VERBUM password AD CONIURA rede_app_form_value(req, "password")
+    SI CONIURA compare(username, (*state).cfg.admin_user) == 0 ET CONIURA compare(password, (*state).cfg.admin_password) == 0
+      CONIURA session_set(sess, "ops_admin", "1")
+      REDDE CONIURA response_redirect(CONIURA rede_app_redirect_back(req, "/ops"))
+    FIN SI
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_ops_login("Invalid ops credentials", csrf.hidden_html, CONIURA rede_app_redirect_back(req, "/ops")))
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_logout_submit") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    CONIURA session_delete(sess, "ops_admin")
+    REDDE CONIURA response_redirect("/ops/login")
+  FIN SI
+
+  SI CONIURA rede_app_require_basic_admin(req, (*state).cfg)
+    CONIURA session_set(sess, "ops_admin", "1")
+  FIN SI
+
+  SI NON CONIURA rede_app_ops_session_active(sess)
+    REDDE CONIURA response_redirect(CONIURA concat("/ops/login?next=", req.path))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_dashboard") == 0
+    REDDE CONIURA response_html(CONIURA rede_render_ops_dashboard("admin", csrf.hidden_html))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilos_list") == 0
+    EVOCA TraceResultSet rs AD CONIURA trace_store_query_recent(SPECULUM (*state).trace_store, 24)
+    EVOCA TraceResultSet session_rs AD CONIURA rede_trace_store_session_live_rows(SPECULUM (*state).trace_store, (*sess).id, 48)
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    EVOCA VERUM app_ready AD FALSUM
+    SI CONIURA option_is_some GENUS(VERBUM)(journey_path_opt)
+      EVOCA VERBUM journey_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+      VINCIRE app_ready AD CONIURA option_is_some GENUS(VERBUM)(CONIURA rede_trace_embed_cached_read(state, journey_path, CONIURA concat("journey_", (*sess).id)))
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    ALITER
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    FIN SI
+    EVOCA VERBUM body AD CONIURA rede_sigilos_list_html((*state).cfg, rs.rows, (*sess).id, session_rs.count, csrf.hidden_html, app_ready)
+    CONIURA trace_store_result_set_free(SPECULUM session_rs)
+    CONIURA trace_store_result_set_free(SPECULUM rs)
+    REDDE CONIURA response_html(CONIURA rede_layout("Sigilos vivos", "admin", "", body))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_detail") == 0
+    EVOCA TraceResultSet session_rs AD CONIURA rede_trace_store_session_live_rows(SPECULUM (*state).trace_store, (*sess).id, 48)
+    SI session_rs.count == 0
+      CONIURA trace_store_result_set_free(SPECULUM session_rs)
+      REDDE CONIURA response_html(CONIURA rede_layout("Live application sigil", "admin", "", "<section class=\"card\"><p>No live request trace has been captured yet. Open the feed, a post, or the lounge, then come back here.</p></section>"))
+    FIN SI
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      EVOCA VERBUM empty_body AD CONIURA rede_sigilo_journey_detail_html((*sess).id, session_rs.rows, "/sigilos-vivos/app/svg", "/sigilos-vivos/app/viewer", csrf.hidden_html, FALSUM)
+      CONIURA trace_store_result_set_free(SPECULUM session_rs)
+      REDDE CONIURA response_html(CONIURA rede_layout("Live application sigil", "admin", "", empty_body))
+    FIN SI
+    EVOCA VERBUM journey_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, journey_path, CONIURA concat("journey_", (*sess).id))
+    EVOCA VERUM ready AD CONIURA option_is_some GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA VERBUM body AD CONIURA rede_sigilo_journey_detail_html((*sess).id, session_rs.rows, "/sigilos-vivos/app/svg", "/sigilos-vivos/app/viewer", csrf.hidden_html, ready)
+    CONIURA trace_store_result_set_free(SPECULUM session_rs)
+    REDDE CONIURA response_html(CONIURA rede_layout("Live application sigil", "admin", "", body))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_viewer") == 0
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM file_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, file_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA SPECULUM NIHIL preview_res AD CONIURA rede_trace_preview_cached_from_file(state, file_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(preview_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(preview_res))
+    FIN SI
+    REDDE CONIURA response_html(CONIURA rede_layout("Live application sigil viewer", "admin", "", CONIURA rede_sigilo_viewer_html("Current session system sigil", CONIURA concat("session ", (*sess).id), "/sigilos-vivos/app/preview", "/sigilos-vivos/app/svg")))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_generate") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_trace_aggregate_session(state, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      REDDE CONIURA response_redirect("/sigilos-vivos/app")
+    FIN SI
+    EVOCA VERBUM journey_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL svg_res AD CONIURA rede_trace_cached_svg_from_file(state, journey_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(svg_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(svg_res))
+    FIN SI
+    EVOCA SPECULUM NIHIL embed_res AD CONIURA rede_trace_embed_cached_from_file(state, journey_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(embed_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(embed_res))
+    FIN SI
+    REDDE CONIURA response_redirect("/sigilos-vivos/app")
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_svg") == 0
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      EVOCA WebResponse empty_out AD CONIURA response_with_body(200, CONIURA trace_render_error_svg("no current session sigil yet", "capture feed, post, profile, or lounge requests first"), WEB_RESPONSE_TEXT)
+      CONIURA response_set_header(SPECULUM empty_out, "content-type", "image/svg+xml; charset=utf-8")
+      REDDE empty_out
+    FIN SI
+    EVOCA VERBUM file_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_cached_svg_read(state, file_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM svg_markup AD CONIURA option_unwrap GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, svg_markup, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "content-disposition", CONIURA concat("attachment; filename=\"journey_", CONIURA concat((*sess).id, ".svg\"")))
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_embed") == 0
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM file_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, file_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM svg_markup AD CONIURA option_unwrap GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, svg_markup, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "cache-control", "no-store")
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_app_preview") == 0
+    EVOCA SPECULUM NIHIL journey_path_opt AD CONIURA rede_session_journey_trace_existing_path((*state).cfg, (*sess).id)
+    SI CONIURA option_is_none GENUS(VERBUM)(journey_path_opt)
+      CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM file_path AD CONIURA option_unwrap GENUS(VERBUM)(journey_path_opt)
+    CONIURA option_free GENUS(VERBUM)(journey_path_opt)
+    EVOCA SPECULUM NIHIL preview_opt AD CONIURA rede_trace_preview_cached_read(state, file_path, CONIURA concat("journey_", (*sess).id))
+    SI CONIURA option_is_none GENUS(VERBUM)(preview_opt)
+      CONIURA option_free GENUS(VERBUM)(preview_opt)
+      EVOCA SPECULUM NIHIL preview_res AD CONIURA rede_trace_preview_cached_from_file(state, file_path, CONIURA concat("journey_", (*sess).id))
+      SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(preview_res)
+        REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(preview_res))
+      FIN SI
+      EVOCA VERBUM preview_svg_new AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(preview_res)
+      EVOCA WebResponse out_new AD CONIURA response_with_body(200, preview_svg_new, WEB_RESPONSE_TEXT)
+      CONIURA response_set_header(SPECULUM out_new, "content-type", "image/svg+xml; charset=utf-8")
+      CONIURA response_set_header(SPECULUM out_new, "cache-control", "no-store")
+      REDDE out_new
+    FIN SI
+    EVOCA VERBUM preview_svg AD CONIURA option_unwrap GENUS(VERBUM)(preview_opt)
+    CONIURA option_free GENUS(VERBUM)(preview_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, preview_svg, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "cache-control", "no-store")
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_detail") == 0
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA SPECULUM NIHIL row_opt AD CONIURA trace_store_find_by_id(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA option_is_none GENUS(TraceRow)(row_opt)
+      CONIURA option_free GENUS(TraceRow)(row_opt)
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA TraceRow row AD CONIURA option_unwrap GENUS(TraceRow)(row_opt)
+    CONIURA option_free GENUS(TraceRow)(row_opt)
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, file_path, trace_id)
+    EVOCA VERUM ready AD CONIURA option_is_some GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    REDDE CONIURA response_html(CONIURA rede_layout("Sigilo", "admin", "", CONIURA rede_sigilo_detail_html(row, CONIURA concat(CONIURA concat("/sigilos-vivos/", trace_id), "/svg"), CONIURA concat(CONIURA concat("/sigilos-vivos/", trace_id), "/viewer"), csrf.hidden_html, ready)))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_viewer") == 0
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, file_path, trace_id)
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA SPECULUM NIHIL preview_res AD CONIURA rede_trace_preview_cached_from_file(state, file_path, trace_id)
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(preview_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(preview_res))
+    FIN SI
+    REDDE CONIURA response_html(CONIURA rede_layout("Sigilo viewer", "admin", "", CONIURA rede_sigilo_viewer_html(CONIURA concat("Trace ", trace_id), "Saved system sigil viewer", CONIURA concat(CONIURA concat("/sigilos-vivos/", trace_id), "/preview"), CONIURA concat(CONIURA concat("/sigilos-vivos/", trace_id), "/svg"))))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_generate") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL svg_res AD CONIURA rede_trace_cached_svg_from_file(state, file_path, trace_id)
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(svg_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(svg_res))
+    FIN SI
+    EVOCA SPECULUM NIHIL embed_res AD CONIURA rede_trace_embed_cached_from_file(state, file_path, trace_id)
+    SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(embed_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(embed_res))
+    FIN SI
+    REDDE CONIURA response_redirect(CONIURA concat("/sigilos-vivos/", trace_id))
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_svg") == 0
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_cached_svg_read(state, file_path, trace_id)
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM svg_markup AD CONIURA option_unwrap GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, svg_markup, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "content-disposition", CONIURA concat("attachment; filename=\"", CONIURA concat(trace_id, ".svg\"")))
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_embed") == 0
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL cached_svg_opt AD CONIURA rede_trace_embed_cached_read(state, file_path, trace_id)
+    SI CONIURA option_is_none GENUS(VERBUM)(cached_svg_opt)
+      CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+      REDDE CONIURA response_bad_request("saved svg not generated yet")
+    FIN SI
+    EVOCA VERBUM svg_markup AD CONIURA option_unwrap GENUS(VERBUM)(cached_svg_opt)
+    CONIURA option_free GENUS(VERBUM)(cached_svg_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, svg_markup, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "cache-control", "no-store")
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilo_preview") == 0
+    EVOCA VERBUM trace_id AD CONIURA rede_app_param_or(req, "trace_id", "")
+    EVOCA VERBUM file_path AD CONIURA trace_store_find_file_path(SPECULUM (*state).trace_store, trace_id)
+    SI CONIURA len(file_path) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL preview_opt AD CONIURA rede_trace_preview_cached_read(state, file_path, trace_id)
+    SI CONIURA option_is_none GENUS(VERBUM)(preview_opt)
+      CONIURA option_free GENUS(VERBUM)(preview_opt)
+      EVOCA SPECULUM NIHIL preview_res AD CONIURA rede_trace_preview_cached_from_file(state, file_path, trace_id)
+      SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(preview_res)
+        REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(preview_res))
+      FIN SI
+      EVOCA VERBUM preview_svg_new AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(preview_res)
+      EVOCA WebResponse out_new AD CONIURA response_with_body(200, preview_svg_new, WEB_RESPONSE_TEXT)
+      CONIURA response_set_header(SPECULUM out_new, "content-type", "image/svg+xml; charset=utf-8")
+      CONIURA response_set_header(SPECULUM out_new, "cache-control", "no-store")
+      REDDE out_new
+    FIN SI
+    EVOCA VERBUM preview_svg AD CONIURA option_unwrap GENUS(VERBUM)(preview_opt)
+    CONIURA option_free GENUS(VERBUM)(preview_opt)
+    EVOCA WebResponse out AD CONIURA response_with_body(200, preview_svg, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "image/svg+xml; charset=utf-8")
+    CONIURA response_set_header(SPECULUM out, "cache-control", "no-store")
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "sigilos_export") == 0
+    EVOCA TraceExportConfig export_cfg AD CONIURA trace_export_default_config(SPECULUM (*state).trace_store, CONIURA path_join((*state).cfg.trace_dir, "exports"), (*state).cfg.app_name)
+    VINCIRE export_cfg.render_cfg AD CONIURA rede_trace_render_cfg(*state)
+    CONIURA mkdir_all(export_cfg.output_dir)
+    EVOCA VERBUM zip_path AD CONIURA path_join(export_cfg.output_dir, "rede-social-sigilos.zip")
+    EVOCA SPECULUM NIHIL export_res AD CONIURA trace_export_write_zip(export_cfg, zip_path)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(export_res)
+      REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(REX, VERBUM)(export_res))
+    FIN SI
+    EVOCA WebResponse out AD CONIURA response_with_body(200, CONIURA read_all(zip_path), WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM out, "content-type", "application/zip")
+    CONIURA response_set_header(SPECULUM out, "content-disposition", "attachment; filename=\"rede-social-sigilos.zip\"")
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_traces") == 0 VEL CONIURA starts_with(route_name, "trace_panel_")
+    EVOCA HttpRequest http_req AD CONIURA http_request_with_body(req.method, req.raw_target, req.body)
+    EVOCA REX headers_handle AD CONIURA http_request_headers_handle(http_req)
+    EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(req.headers)
+    EVOCA REX i AD 0
+    DUM i < CONIURA fluxus_len(keys)
+      EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+      CONIURA http_headers_set_or_push(headers_handle, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(req.headers, *key_ptr, ""))
+      VINCIRE i AD i + 1
+    FIN DUM
+    SI CONIURA compare(route_name, "ops_traces") == 0
+      VINCIRE http_req AD CONIURA http_request_with_body("GET", "/civitas/traces", "")
+    FIN SI
+    EVOCA TracePanelConfig panel_cfg AD CONIURA trace_panel_default_config(SPECULUM (*state).trace_store)
+    VINCIRE panel_cfg.dev_host AD (*state).cfg.host
+    VINCIRE panel_cfg.dev_port AD (*state).cfg.port
+    VINCIRE panel_cfg.render_cfg AD CONIURA rede_trace_render_cfg(*state)
+    REDDE CONIURA rede_http_to_web_response(CONIURA trace_panel_handle(http_req, panel_cfg))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_security") == 0
+    EVOCA WebResponse sample AD CONIURA response_html("<p>rede_social</p>")
+    CONIURA rede_app_apply_security(state, SPECULUM sample)
+    EVOCA ScanResult report AD CONIURA security_audit_scan_all((*state).router, sample, (*state).cfg.static_dir, CONIURA security_audit_scan_config_default())
+    REDDE CONIURA response_html(CONIURA rede_render_ops_report("Security audit", "Headers, CSRF coverage and static path traversal checks.", CONIURA rede_security_report_html(report)))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_deps") == 0
+    EVOCA DepReport report AD CONIURA dep_review_run((*state).cfg.dep_db_path)
+    REDDE CONIURA response_html(CONIURA rede_render_ops_report("Dependency review", "System libraries and external binaries used by the framework surface.", CONIURA rede_dep_report_html(report)))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_backup") == 0
+    EVOCA BackupConfig backup_cfg AD CONIURA backup_config_new((*state).cfg.topo, 5, 5)
+    EVOCA BackupResult db_backup AD CONIURA backup_sqlite(CONIURA storage_topology_main_db_path((*state).cfg.topo), backup_cfg, "rede_social")
+    EVOCA BackupResult media_backup AD CONIURA backup_media_snapshot(backup_cfg, "processed")
+    EVOCA VERBUM body AD "<section class=\"ops-grid\"><div class=\"card\"><h3>SQLite</h3><p>"
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode(db_backup.message))
+    VINCIRE body AD CONIURA concat(body, "</p><p class=\"muted\">")
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode(db_backup.backup_path))
+    VINCIRE body AD CONIURA concat(body, "</p></div><div class=\"card\"><h3>Media snapshot</h3><p>")
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode(media_backup.message))
+    VINCIRE body AD CONIURA concat(body, "</p><p class=\"muted\">")
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode(media_backup.backup_path))
+    VINCIRE body AD CONIURA concat(body, "</p></div></section>")
+    REDDE CONIURA response_html(CONIURA rede_render_ops_report("Backup", "Fresh runtime snapshots of the example database and processed media.", body))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_docs") == 0
+    EVOCA DocConfig doc_cfg AD CONIURA doc_gen_config_default((*state).cfg.docs_dir)
+    CONIURA doc_gen_build(doc_cfg)
+    EVOCA VERBUM body AD "<div class=\"card\"><p>Generated documentation bundle in:</p><p class=\"muted\">"
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode((*state).cfg.docs_dir))
+    VINCIRE body AD CONIURA concat(body, "</p><p><a href=\"/media/../not-available\">The generated files stay on disk for local inspection.</a></p></div>")
+    REDDE CONIURA response_html(CONIURA rede_render_ops_report("Docs bundle", "Quickstart, guides and curated references generated by Civitas.", body))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_release") == 0
+    EVOCA ReleaseConfig release_cfg AD CONIURA release_config_default((*state).cfg.releases_dir, "1.0.0-rede-social")
+    CONIURA release_finalize(release_cfg)
+    EVOCA VERBUM notes_path AD CONIURA path_join((*state).cfg.releases_dir, "release-notes-v1.0.0-rede-social.md")
+    EVOCA VERBUM body AD "<div class=\"card\"><p>Release bundle updated in:</p><p class=\"muted\">"
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode((*state).cfg.releases_dir))
+    VINCIRE body AD CONIURA concat(body, "</p></div><div class=\"card\"><pre>")
+    VINCIRE body AD CONIURA concat(body, CONIURA html_encode(CONIURA read_all(notes_path)))
+    VINCIRE body AD CONIURA concat(body, "</pre></div>")
+    REDDE CONIURA response_html(CONIURA rede_render_ops_report("Release bundle", "Generated notes and changelog for this example project.", body))
+  FIN SI
+
+  SI CONIURA compare(route_name, "ops_perf") == 0
+    EVOCA BenchResult bench AD CONIURA rede_perf_probe(state)
+    EVOCA SPECULUM NIHIL profiles AD CONIURA fluxus_init(MENSURA(RequestProfile))
+    EVOCA MemReport mem_report AD CONIURA mem_profiler_report(SPECULUM (*state).mem_state, 60)
+    EVOCA PerfReport report AD CONIURA perf_report_build((*state).cfg.app_name, bench, profiles, mem_report)
+    EVOCA VERBUM html_path AD CONIURA path_join((*state).cfg.reports_dir, "perf.html")
+    CONIURA perf_report_write_html(report, html_path)
+    REDDE CONIURA response_html(CONIURA read_all(html_path))
+  FIN SI
+
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+RITUALE rede_app_handle_dynamic(
+  SPECULUM RedeAppState state,
+  WebRequest req,
+  SPECULUM Session sess,
+  RedeCurrentUser current_user,
+  RouteMatch match,
+  VERBUM route_name
+) REDDE WebResponse
+  SI CONIURA starts_with(req.path, "/ops") VEL CONIURA starts_with(req.path, "/sigilos-vivos") VEL CONIURA starts_with(req.path, "/civitas/traces")
+    EVOCA RedeCsrfRender ops_csrf AD CONIURA rede_app_csrf_render(req, (*state).cfg)
+    REDDE CONIURA rede_handle_ops_or_sigilo(state, req, sess, ops_csrf, route_name)
+  FIN SI
+
+  SI CONIURA compare(route_name, "api_feed") == 0
+    EVOCA REX span_id AD CONIURA rede_trace_custom_begin("rede_social:api_feed")
+    EVOCA SPECULUM NIHIL posts AD CONIURA rede_repository_feed((*state).db, 12)
+    CONIURA rede_trace_custom_attr(span_id, "feed.count", CONIURA stringify_int(CONIURA fluxus_len(posts)))
+    CONIURA rede_trace_end(span_id)
+    REDDE CONIURA response_json_text(CONIURA rede_feed_json(posts))
+  FIN SI
+
+  SI CONIURA compare(route_name, "api_activity") == 0
+    EVOCA REX span_id AD CONIURA rede_trace_custom_begin("rede_social:api_activity")
+    EVOCA SPECULUM NIHIL activity AD CONIURA rede_repository_recent_activity((*state).db)
+    EVOCA REX online_count AD CONIURA rede_repository_presence_count((*state).db)
+    CONIURA rede_trace_custom_attr(span_id, "activity.count", CONIURA stringify_int(CONIURA fluxus_len(activity)))
+    CONIURA rede_trace_custom_attr(span_id, "presence.online", CONIURA stringify_int(online_count))
+    CONIURA rede_trace_end(span_id)
+    REDDE CONIURA response_json_text(CONIURA rede_activity_json(activity, online_count))
+  FIN SI
+
+  SI CONIURA compare(route_name, "static_asset") == 0
+    REDDE CONIURA rede_handle_static(req, (*state).static_index, CONIURA rede_app_param_or(req, "asset", ""), "static not found")
+  FIN SI
+
+  SI CONIURA compare(route_name, "media_asset") == 0
+    REDDE CONIURA rede_handle_static(req, (*state).media_index, CONIURA rede_app_param_or(req, "asset", ""), "media not found")
+  FIN SI
+
+  SI current_user.authenticated
+    CONIURA rede_repository_presence_touch((*state).db, current_user.user.id, req.request_id)
+  FIN SI
+
+  EVOCA RedeCsrfRender csrf AD CONIURA rede_app_csrf_render(req, (*state).cfg)
+
+  SI CONIURA compare(route_name, "home") == 0
+    EVOCA REX load_span AD CONIURA rede_trace_custom_begin("rede_social:feed_load")
+    EVOCA SPECULUM NIHIL posts AD CONIURA rede_repository_feed((*state).db, 12)
+    EVOCA REX online_count AD CONIURA rede_repository_presence_count((*state).db)
+    EVOCA SPECULUM NIHIL activity AD CONIURA rede_repository_recent_activity((*state).db)
+    CONIURA rede_trace_custom_attr(load_span, "feed.count", CONIURA stringify_int(CONIURA fluxus_len(posts)))
+    CONIURA rede_trace_custom_attr(load_span, "activity.count", CONIURA stringify_int(CONIURA fluxus_len(activity)))
+    CONIURA rede_trace_custom_attr(load_span, "presence.online", CONIURA stringify_int(online_count))
+    CONIURA rede_trace_end(load_span)
+    EVOCA REX render_span AD CONIURA rede_trace_custom_begin("rede_social:home_render")
+    EVOCA WebResponse out AD CONIURA response_html(
+      CONIURA rede_render_home(
+        posts,
+        current_user.user.handle,
+        csrf.hidden_html,
+        online_count,
+        activity,
+        0
+      )
+    )
+    CONIURA rede_trace_end(render_span)
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "profile_detail") == 0
+    EVOCA REX load_span AD CONIURA rede_trace_custom_begin("rede_social:profile_load")
+    EVOCA RedeMaybeProfile maybe_profile AD CONIURA rede_repository_profile_by_handle((*state).db, CONIURA rede_app_param_or(req, "handle", ""))
+    SI NON maybe_profile.found
+      CONIURA rede_trace_end(load_span)
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA SPECULUM NIHIL posts AD CONIURA rede_repository_posts_by_author((*state).db, maybe_profile.profile.user.id, 12)
+    CONIURA rede_trace_custom_attr(load_span, "profile.posts", CONIURA stringify_int(CONIURA fluxus_len(posts)))
+    CONIURA rede_trace_end(load_span)
+    EVOCA REX render_span AD CONIURA rede_trace_custom_begin("rede_social:profile_render")
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_profile(maybe_profile.profile, posts, current_user.user.handle, csrf.hidden_html))
+    CONIURA rede_trace_end(render_span)
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "post_detail") == 0
+    EVOCA REX load_span AD CONIURA rede_trace_custom_begin("rede_social:post_load")
+    EVOCA RedeMaybePost maybe_post AD CONIURA rede_repository_post_by_slug((*state).db, CONIURA rede_app_param_or(req, "slug", ""))
+    SI NON maybe_post.found
+      CONIURA rede_trace_end(load_span)
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA VERUM liked AD FALSUM
+    EVOCA VERBUM liked_value AD "0"
+    SI current_user.authenticated
+      VINCIRE liked AD CONIURA rede_repository_has_like((*state).db, current_user.user.id, maybe_post.post.id)
+    FIN SI
+    SI liked
+      VINCIRE liked_value AD "1"
+    FIN SI
+    EVOCA SPECULUM NIHIL comments AD CONIURA rede_repository_post_comments((*state).db, maybe_post.post.id, 20)
+    CONIURA rede_trace_custom_attr(load_span, "post.comments", CONIURA stringify_int(CONIURA fluxus_len(comments)))
+    CONIURA rede_trace_custom_attr(load_span, "post.liked", liked_value)
+    CONIURA rede_trace_end(load_span)
+    EVOCA REX render_span AD CONIURA rede_trace_custom_begin("rede_social:post_render")
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_post_detail(maybe_post.post, comments, current_user.user.handle, csrf.hidden_html, liked))
+    CONIURA rede_trace_end(render_span)
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "login_page") == 0
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_login("", csrf.hidden_html))
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(route_name, "login_submit") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    EVOCA RedeMaybeUser maybe_user AD CONIURA rede_repository_find_user_by_email((*state).db, CONIURA rede_app_form_value(req, "email"))
+    SI NON maybe_user.found VEL CONIURA compare(maybe_user.user.password_hash, CONIURA rede_password_hash(CONIURA rede_app_form_value(req, "password"))) != 0
+      EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_login("Invalid credentials", csrf.hidden_html))
+      CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+      REDDE out
+    FIN SI
+    CONIURA session_set(sess, "user_id", CONIURA stringify_int(maybe_user.user.id))
+    CONIURA rede_repository_emit_activity((*state).db, "login", maybe_user.user.display_name, "signed in")
+    REDDE CONIURA response_redirect("/")
+  FIN SI
+
+  SI CONIURA compare(route_name, "logout_submit") == 0
+    SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+      REDDE CONIURA response_bad_request("invalid csrf")
+    FIN SI
+    CONIURA session_delete(sess, "user_id")
+    REDDE CONIURA response_redirect("/")
+  FIN SI
+
+  SI NON current_user.authenticated
+    REDDE CONIURA response_redirect(CONIURA concat("/entrar?next=", req.path))
+  FIN SI
+
+  SI CONIURA compare(route_name, "lounge_page") == 0
+    EVOCA REX load_span AD CONIURA rede_trace_custom_begin("rede_social:lounge_load")
+    EVOCA SPECULUM NIHIL events AD CONIURA rede_repository_lounge_events((*state).db, 20)
+    CONIURA rede_trace_custom_attr(load_span, "lounge.events", CONIURA stringify_int(CONIURA fluxus_len(events)))
+    CONIURA rede_trace_end(load_span)
+    EVOCA REX render_span AD CONIURA rede_trace_custom_begin("rede_social:lounge_render")
+    EVOCA WebResponse out AD CONIURA response_html(CONIURA rede_render_lounge(events, current_user.user.handle, csrf.hidden_html))
+    CONIURA rede_trace_end(render_span)
+    CONIURA rede_app_csrf_attach(SPECULUM out, csrf)
+    REDDE out
+  FIN SI
+
+  SI NON CONIURA rede_app_validate_csrf(req, (*state).cfg)
+    REDDE CONIURA response_bad_request("invalid csrf")
+  FIN SI
+
+  SI CONIURA compare(route_name, "post_like") == 0
+    EVOCA REX action_span AD CONIURA rede_trace_custom_begin("rede_social:post_like")
+    EVOCA RedeMaybePost maybe_post AD CONIURA rede_repository_post_by_slug((*state).db, CONIURA rede_app_param_or(req, "slug", ""))
+    SI maybe_post.found
+      CONIURA rede_repository_like_post((*state).db, current_user.user.id, maybe_post.post.id)
+      CONIURA rede_repository_emit_activity((*state).db, "like", current_user.user.display_name, CONIURA concat("liked ", maybe_post.post.title))
+      CONIURA rede_trace_custom_attr(action_span, "post.slug", maybe_post.post.slug)
+    FIN SI
+    CONIURA rede_trace_end(action_span)
+    REDDE CONIURA response_redirect(CONIURA rede_app_redirect_back(req, "/"))
+  FIN SI
+
+  SI CONIURA compare(route_name, "post_comment") == 0
+    EVOCA REX action_span AD CONIURA rede_trace_custom_begin("rede_social:post_comment")
+    EVOCA RedeMaybePost maybe_post AD CONIURA rede_repository_post_by_slug((*state).db, CONIURA rede_app_param_or(req, "slug", ""))
+    EVOCA VERBUM body AD CONIURA trim(CONIURA rede_app_form_value(req, "body"))
+    SI maybe_post.found ET CONIURA len(body) > 0
+      CONIURA rede_repository_add_comment((*state).db, maybe_post.post.id, current_user.user.id, body)
+      CONIURA rede_repository_emit_activity((*state).db, "comment", current_user.user.display_name, CONIURA concat("replied on ", maybe_post.post.title))
+      CONIURA rede_trace_custom_attr(action_span, "post.slug", maybe_post.post.slug)
+      CONIURA rede_trace_custom_attr(action_span, "comment.length", CONIURA stringify_int(CONIURA len(body)))
+    FIN SI
+    CONIURA rede_trace_end(action_span)
+    REDDE CONIURA response_redirect(CONIURA rede_app_redirect_back(req, CONIURA concat("/posts/", CONIURA rede_app_param_or(req, "slug", ""))))
+  FIN SI
+
+  SI CONIURA compare(route_name, "profile_follow") == 0
+    EVOCA REX action_span AD CONIURA rede_trace_custom_begin("rede_social:profile_follow")
+    EVOCA RedeMaybeUser maybe_target AD CONIURA rede_repository_find_user_by_handle((*state).db, CONIURA rede_app_param_or(req, "handle", ""))
+    SI maybe_target.found
+      CONIURA rede_repository_follow((*state).db, current_user.user.id, maybe_target.user.id)
+      CONIURA rede_repository_emit_activity((*state).db, "follow", current_user.user.display_name, CONIURA concat("followed @", maybe_target.user.handle))
+      CONIURA rede_trace_custom_attr(action_span, "profile.handle", maybe_target.user.handle)
+    FIN SI
+    CONIURA rede_trace_end(action_span)
+    REDDE CONIURA response_redirect(CONIURA concat("/perfil/", CONIURA rede_app_param_or(req, "handle", "")))
+  FIN SI
+
+  SI CONIURA compare(route_name, "lounge_send") == 0
+    EVOCA REX action_span AD CONIURA rede_trace_custom_begin("rede_social:lounge_send")
+    EVOCA VERBUM body AD CONIURA trim(CONIURA rede_app_form_value(req, "body"))
+    SI CONIURA len(body) > 0
+      CONIURA rede_repository_lounge_send((*state).db, current_user.user.id, body)
+      CONIURA rede_repository_emit_activity((*state).db, "room", current_user.user.display_name, "sent a lounge message")
+      CONIURA rede_trace_custom_attr(action_span, "message.length", CONIURA stringify_int(CONIURA len(body)))
+    FIN SI
+    CONIURA rede_trace_end(action_span)
+    REDDE CONIURA response_redirect("/lounge")
+  FIN SI
+
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+RITUALE rede_app_dispatch_request(SPECULUM RedeAppState state, HttpRawRequest raw_req) REDDE HttpResponse
+  EVOCA SPECULUM NIHIL req_res AD CONIURA rede_request_from_raw(raw_req)
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    EVOCA HttpResponse bad_req AD CONIURA http_response_new(400, CONIURA result_unwrap_err GENUS(WebRequest, VERBUM)(req_res))
+    CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(bad_req), "Content-Type", "text/plain; charset=utf-8")
+    REDDE bad_req
+  FIN SI
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+
+  SI NON CONIURA security_host_is_allowed((*state).security_cfg.allowed_hosts, req.host)
+    REDDE CONIURA rede_app_response_to_http(CONIURA response_bad_request("invalid host"), req)
+  FIN SI
+
+  EVOCA REX ordinal AD CONIURA rede_app_request_ordinal_next(state)
+  EVOCA TraceRequestContext trace_ctx AD CONIURA trace_collector_begin((*state).trace_cfg, req, ordinal)
+  EVOCA MemSnapshot mem_before AD CONIURA mem_snap_begin()
+  EVOCA Session sess AD CONIURA session_load(req, (*state).session_store, (*state).cfg.session_cfg)
+  EVOCA RedeCurrentUser current_user AD CONIURA rede_app_current_user((*state).db, SPECULUM sess)
+  EVOCA RouteMatch match AD CONIURA router_match((*state).router, req)
+  SI match.status == ROUTE_MATCH
+    CONIURA request_set_path_params(SPECULUM req, match.params)
+    CONIURA instrument_span_attr(trace_ctx.root_span_id, "route_id", CONIURA rede_app_route_sigilo_id((*state).router, match))
+    CONIURA instrument_span_attr(trace_ctx.root_span_id, "http.route_name", CONIURA rede_app_route_name((*state).router, match))
+    CONIURA instrument_span_attr(trace_ctx.root_span_id, "module", "examples/rede_social/project/main.cct")
+  FIN SI
+  CONIURA instrument_span_attr(trace_ctx.root_span_id, "session_id", sess.id)
+  EVOCA WebResponse res AD CONIURA response_not_found()
+
+  SI match.status == ROUTE_NOT_FOUND
+    EVOCA WebResponse not_found_res AD CONIURA response_not_found()
+    CONIURA response_fill(SPECULUM res, not_found_res)
+  ALITER
+    SI match.status == ROUTE_METHOD_NOT_ALLOWED
+      EVOCA WebResponse method_res AD CONIURA response_method_not_allowed(match.allow_methods)
+      CONIURA response_fill(SPECULUM res, method_res)
+    ALITER
+      EVOCA WebResponse handled_res AD CONIURA rede_app_handle_dynamic(state, req, SPECULUM sess, current_user, match, CONIURA rede_app_route_name((*state).router, match))
+      CONIURA response_fill(SPECULUM res, handled_res)
+    FIN SI
+  FIN SI
+
+  CONIURA rede_app_apply_security(state, SPECULUM res)
+  CONIURA session_finalize(SPECULUM sess, (*state).session_store, (*state).cfg.session_cfg, res)
+
+  EVOCA VERBUM route_label AD req.path
+  SI match.status == ROUTE_MATCH
+    VINCIRE route_label AD CONIURA rede_app_route_name((*state).router, match)
+  FIN SI
+  CONIURA mem_profiler_record(SPECULUM (*state).mem_state, CONIURA mem_snap_end(mem_before, route_label, req.request_id, (*state).mem_state.leak_live_threshold))
+
+  EVOCA TracePersistResult persisted AD CONIURA trace_collector_end((*state).trace_cfg, SPECULUM trace_ctx, req, SPECULUM res)
+  SI persisted.persisted
+    EVOCA VERBUM indexed_user_id AD ""
+    EVOCA REX finished_unix_ms AD (CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000)
+    SI current_user.authenticated
+      VINCIRE indexed_user_id AD CONIURA stringify_int(current_user.user.id)
+    FIN SI
+    CONIURA trace_store_index_trace(
+      SPECULUM (*state).trace_store,
+      persisted.trace_id,
+      req.path,
+      req.method,
+      res.status,
+      finished_unix_ms - trace_ctx.start_ms,
+      persisted.span_count,
+      indexed_user_id,
+      persisted.file_path,
+      finished_unix_ms / 1000
+    )
+    CONIURA rede_trace_session_index_trace((*state).trace_store.db, persisted.trace_id, sess.id, req.request_id, finished_unix_ms / 1000)
+    CONIURA rede_trace_session_prune_orphans((*state).trace_store.db)
+    CONIURA trace_store_prune_by_count(SPECULUM (*state).trace_store)
+    CONIURA trace_store_prune_by_hours(SPECULUM (*state).trace_store)
+  FIN SI
+
+  REDDE CONIURA rede_app_response_to_http(res, req)
+EXPLICIT RITUALE
+
+RITUALE rede_app_should_ignore_server_error(VERBUM message) REDDE VERUM
+  SI CONIURA compare(message, "accept interrupted") == 0
+    REDDE VERUM
+  FIN SI
+  SI CONIURA compare(message, "server stopped") == 0
+    REDDE VERUM
+  FIN SI
+  SI CONIURA compare(message, "server stopping") == 0
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "sock_recv falhou") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "sock_send falhou") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "timeout na leitura dos headers") != -1
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE rede_app_run_server(SPECULUM RedeAppState state) REDDE NIHIL
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  EVOCA REX max_requests AD 0
+  EVOCA REX handled_requests AD 0
+  EVOCA VERBUM ready_file AD ""
+  EVOCA VERBUM done_file AD ""
+  VINCIRE opts.host AD (*state).cfg.host
+  VINCIRE opts.port AD (*state).cfg.port
+  VINCIRE opts.keepalive_timeout_ms AD 250
+  VINCIRE opts.idle_timeout_ms AD 250
+  VINCIRE opts.read_header_timeout_ms AD 250
+  VINCIRE opts.read_body_timeout_ms AD 2000
+  VINCIRE opts.enable_access_log AD VERUM
+  EVOCA SPECULUM NIHIL server_res AD CONIURA http_server_create(opts)
+  SI CONIURA result_is_err GENUS(HttpServer, VERBUM)(server_res)
+    IACE CONIURA result_unwrap_err GENUS(HttpServer, VERBUM)(server_res)
+  FIN SI
+  EVOCA HttpServer server AD CONIURA result_unwrap GENUS(HttpServer, VERBUM)(server_res)
+  CONIURA println(CONIURA concat("rede_social listening on http://", CONIURA concat((*state).cfg.host, CONIURA concat(":", CONIURA stringify_int((*state).cfg.port)))))
+  SI CONIURA has_env("REDE_SOCIAL_READY_FILE")
+    VINCIRE ready_file AD CONIURA getenv("REDE_SOCIAL_READY_FILE")
+    SI CONIURA len(ready_file) > 0
+      CONIURA write_all(ready_file, "ready")
+    FIN SI
+  FIN SI
+  SI CONIURA has_env("REDE_SOCIAL_DONE_FILE")
+    VINCIRE done_file AD CONIURA getenv("REDE_SOCIAL_DONE_FILE")
+  FIN SI
+  SI CONIURA has_env("REDE_SOCIAL_MAX_REQUESTS")
+    EVOCA VERBUM raw_max AD CONIURA trim(CONIURA getenv("REDE_SOCIAL_MAX_REQUESTS"))
+    SI CONIURA len(raw_max) > 0
+      VINCIRE max_requests AD CONIURA fmt_parse_int(raw_max)
+    FIN SI
+  FIN SI
+  DUM VERUM
+    SI CONIURA signal_is_supported() ET CONIURA signal_check_shutdown()
+      FRANGE
+    FIN SI
+    EVOCA SPECULUM NIHIL req_res AD CONIURA civitas_http_server_accept(server)
+    SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+      EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+      SI CONIURA rede_app_should_ignore_server_error(err.message)
+        SI CONIURA signal_is_supported() ET CONIURA signal_check_shutdown()
+          FRANGE
+        FIN SI
+        SI CONIURA compare(err.message, "accept interrupted") == 0 VEL CONIURA compare(err.message, "server stopped") == 0 VEL CONIURA compare(err.message, "server stopping") == 0
+          FRANGE
+        FIN SI
+        RECEDE
+      FIN SI
+      IACE err.message
+    FIN SI
+    EVOCA HttpRawRequest raw_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+    EVOCA SPECULUM NIHIL respond_res AD CONIURA http_server_respond_http(server, CONIURA rede_app_dispatch_request(state, raw_req), VERUM)
+    SI CONIURA result_is_err GENUS(REX, HttpServerError)(respond_res)
+      EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(REX, HttpServerError)(respond_res)
+      SI NON CONIURA rede_app_should_ignore_server_error(err.message)
+        IACE err.message
+      FIN SI
+      VINCIRE handled_requests AD handled_requests + 1
+      SI max_requests > 0 ET handled_requests >= max_requests
+        FRANGE
+      FIN SI
+    ALITER
+      VINCIRE handled_requests AD handled_requests + 1
+      SI max_requests > 0 ET handled_requests >= max_requests
+        FRANGE
+      FIN SI
+    FIN SI
+  FIN DUM
+  CONIURA http_server_stop(server)
+  SI CONIURA len(done_file) > 0
+    CONIURA write_all(done_file, "done")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

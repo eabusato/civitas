@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase25_25e_force_overwrite_preserves_new_entry_layout"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase25e_reset_root("25e_force_overwrite_preserves_new_entry_layout")
+  CONIURA mkdir_all(CONIURA path_join(root, "nova25/project"))
+  CONIURA write_all(CONIURA path_join(root, "nova25/project/main.cct"), "INCIPIT grimoire \"stale\"\nEXPLICIT grimoire\n")
+  CONIURA write_all(CONIURA path_join(root, "nova25/README.md"), "stale")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg("nova25", TemplateWeb, root, VERUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(cfg))
+    REDDE 1
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "nova25/README.md"), "project/")
+    REDDE 2
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "nova25/project/main.cct")) != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "nova25/project/urls.cct")) != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "nova25/apps/core/urls.cct")) != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

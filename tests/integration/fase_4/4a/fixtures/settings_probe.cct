@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase4_settings_probe"
+
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "cct/args.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM project_root AD CONIURA arg(1)
+  EVOCA VERBUM env_name AD CONIURA arg(2)
+  EVOCA VERBUM action AD CONIURA arg(3)
+  EVOCA VERBUM key AD CONIURA arg(4)
+  EVOCA VERBUM out_path AD CONIURA arg(5)
+  SI CONIURA compare(env_name, "__civitas_empty__") == 0
+    VINCIRE env_name AD ""
+  FIN SI
+  SI CONIURA compare(key, "__civitas_empty__") == 0
+    VINCIRE key AD ""
+  FIN SI
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_inspect_with_env(project_root, env_name, action, key)
+
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(res)
+    CONIURA write_all(out_path, CONIURA concat("ERR:", CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(res)))
+    REDDE 0
+  FIN SI
+
+  CONIURA write_all(out_path, CONIURA result_unwrap GENUS(VERBUM, VERBUM)(res))
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

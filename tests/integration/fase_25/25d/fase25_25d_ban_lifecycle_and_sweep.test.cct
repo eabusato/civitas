@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase25_25d_ban_lifecycle_and_sweep"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/ws_room/ws_room.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25d_ban_lifecycle_and_sweep")
+  CONIURA ws_room_ban(db, "room:ban", 501, "abuse", 1000, CONIURA now_ms() + 60000)
+
+  SI NON CONIURA ws_room_is_banned(db, "room:ban", 501)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(CONIURA ws_room_ban_list(db, "room:ban")) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_exec(db, "UPDATE ws_room_bans SET expira_em = 1")
+  SI CONIURA ws_room_ban_sweep(db) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA ws_room_is_banned(db, "room:ban", 501)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA ws_room_ban(db, "room:ban", 501, "abuse", 1000, 0)
+  CONIURA ws_room_unban(db, "room:ban", 501)
+  SI CONIURA ws_room_is_banned(db, "room:ban", 501)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase2_2c_recovery_inner_middleware_error_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE explode(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  IACE "explode"
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "recovery", middleware_recovery)
+  CONIURA middleware_bindings_push(middlewares, "explode", explode)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/explode"), terminal)
+  SI out.status != 500
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

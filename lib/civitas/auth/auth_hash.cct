@@ -1,0 +1,58 @@
+INCIPIT grimoire "civitas_auth_hash"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth.cct"
+
+RITUALE auth_hash_senha(AuthConfig cfg, VERBUM senha) REDDE VERBUM
+  EVOCA SPECULUM NIHIL salt_bytes AD CONIURA csprng_bytes(cfg.salt_bytes)
+  EVOCA VERBUM salt_hex AD CONIURA bytes_to_hex(salt_bytes)
+  EVOCA VERBUM hash_hex AD CONIURA pbkdf2_sha256(senha, salt_hex, cfg.iteracoes, cfg.key_bytes)
+  EVOCA VERBUM out AD "pbkdf2:sha256:"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(cfg.iteracoes))
+  VINCIRE out AD CONIURA concat(out, ":")
+  VINCIRE out AD CONIURA concat(out, salt_hex)
+  VINCIRE out AD CONIURA concat(out, ":")
+  VINCIRE out AD CONIURA concat(out, hash_hex)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE auth_verificar_senha(VERBUM senha, VERBUM hash_armazenado) REDDE VERUM
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(hash_armazenado, ":")
+  SI CONIURA fluxus_len(partes) != 5
+    CONIURA fluxus_free(partes)
+    REDDE FALSUM
+  FIN SI
+
+  EVOCA SPECULUM VERBUM algoritmo_ptr AD CONIURA fluxus_get(partes, 0)
+  EVOCA SPECULUM VERBUM func_ptr AD CONIURA fluxus_get(partes, 1)
+  EVOCA SPECULUM VERBUM iter_ptr AD CONIURA fluxus_get(partes, 2)
+  EVOCA SPECULUM VERBUM salt_ptr AD CONIURA fluxus_get(partes, 3)
+  EVOCA SPECULUM VERBUM hash_ptr AD CONIURA fluxus_get(partes, 4)
+
+  SI CONIURA compare(*algoritmo_ptr, "pbkdf2") != 0 VEL CONIURA compare(*func_ptr, "sha256") != 0
+    CONIURA fluxus_free(partes)
+    REDDE FALSUM
+  FIN SI
+
+  EVOCA SPECULUM NIHIL iter_opt AD CONIURA try_int(*iter_ptr)
+  SI CONIURA option_is_none GENUS(REX)(iter_opt)
+    CONIURA option_free GENUS(REX)(iter_opt)
+    CONIURA fluxus_free(partes)
+    REDDE FALSUM
+  FIN SI
+
+  EVOCA REX iteracoes AD CONIURA option_unwrap GENUS(REX)(iter_opt)
+  CONIURA option_free GENUS(REX)(iter_opt)
+  EVOCA REX key_bytes AD CONIURA len(*hash_ptr) / 2
+  EVOCA VERBUM hash_calculado AD CONIURA pbkdf2_sha256(senha, *salt_ptr, iteracoes, key_bytes)
+  EVOCA VERUM ok AD CONIURA constant_time_compare(hash_calculado, *hash_ptr)
+  CONIURA fluxus_free(partes)
+  REDDE ok
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

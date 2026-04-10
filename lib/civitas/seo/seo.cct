@@ -1,0 +1,350 @@
+INCIPIT grimoire "civitas_seo_public"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../template_extras/seo.cct"
+
+SIGILLUM RobotsRule
+  user_agent: VERBUM
+  disallow: SPECULUM NIHIL
+  allow: SPECULUM NIHIL
+  crawl_delay: REX
+FIN SIGILLUM
+
+SIGILLUM RobotsConfig
+  rules: SPECULUM NIHIL
+  sitemap_url: VERBUM
+  host: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SeoPublicConfig
+  base_url: VERBUM
+  sitemap_path: VERBUM
+  feed_path: VERBUM
+  atom_path: VERBUM
+  hreflang_locales: VERBUM
+  default_locale: VERBUM
+  items_per_feed: REX
+FIN SIGILLUM
+
+SIGILLUM LegacyRedirect
+  from_path: VERBUM
+  to_path: VERBUM
+  status_code: REX
+  active: VERUM
+FIN SIGILLUM
+
+SIGILLUM SeoStaticPage
+  path: VERBUM
+  template_name: VERBUM
+  title: VERBUM
+  meta_description: VERBUM
+  canonical_override: VERBUM
+  locale: VERBUM
+  published: VERUM
+FIN SIGILLUM
+
+RITUALE seo_public_config_default(VERBUM base_url) REDDE SeoPublicConfig
+  EVOCA SeoPublicConfig cfg
+  VINCIRE cfg.base_url AD base_url
+  VINCIRE cfg.sitemap_path AD "/sitemap.xml"
+  VINCIRE cfg.feed_path AD "/feed.xml"
+  VINCIRE cfg.atom_path AD "/feed.atom"
+  VINCIRE cfg.hreflang_locales AD "pt-BR,en"
+  VINCIRE cfg.default_locale AD "pt-BR"
+  VINCIRE cfg.items_per_feed AD 20
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE seo_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS seo_redirects (from_path TEXT PRIMARY KEY, to_path TEXT NOT NULL, status_code INTEGER NOT NULL DEFAULT 301, active INTEGER NOT NULL DEFAULT 1)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS seo_static_pages (path TEXT PRIMARY KEY, template_name TEXT NOT NULL, title TEXT NOT NULL, meta_description TEXT NOT NULL DEFAULT '', canonical_override TEXT NOT NULL DEFAULT '', locale TEXT NOT NULL DEFAULT 'pt-BR', published INTEGER NOT NULL DEFAULT 1)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE seo_robots_config_default(VERBUM base_url) REDDE RobotsConfig
+  EVOCA RobotsConfig cfg
+  EVOCA RobotsRule rule
+  EVOCA SPECULUM NIHIL disallow AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL rules AD CONIURA fluxus_init(MENSURA(RobotsRule))
+  EVOCA VERBUM admin_path AD "/admin"
+  EVOCA VERBUM api_path AD "/api"
+  CONIURA fluxus_push(disallow, SPECULUM admin_path)
+  CONIURA fluxus_push(disallow, SPECULUM api_path)
+  VINCIRE rule.user_agent AD "*"
+  VINCIRE rule.disallow AD disallow
+  VINCIRE rule.allow AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE rule.crawl_delay AD 0
+  CONIURA fluxus_push(rules, SPECULUM rule)
+  VINCIRE cfg.rules AD rules
+  VINCIRE cfg.sitemap_url AD CONIURA concat(base_url, "/sitemap.xml")
+  VINCIRE cfg.host AD base_url
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE seo_robots_generate(RobotsConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.rules)
+  DUM i < n
+    EVOCA SPECULUM RobotsRule rule_ptr AD CONIURA fluxus_get(cfg.rules, i)
+    VINCIRE out AD CONIURA concat(out, "User-agent: ")
+    VINCIRE out AD CONIURA concat(out, (*rule_ptr).user_agent)
+    VINCIRE out AD CONIURA concat(out, "\n")
+    EVOCA REX j AD 0
+    EVOCA REX m AD CONIURA fluxus_len((*rule_ptr).disallow)
+    DUM j < m
+      EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get((*rule_ptr).disallow, j)
+      VINCIRE out AD CONIURA concat(out, "Disallow: ")
+      VINCIRE out AD CONIURA concat(out, *path_ptr)
+      VINCIRE out AD CONIURA concat(out, "\n")
+      VINCIRE j AD j + 1
+    FIN DUM
+    VINCIRE i AD i + 1
+    VINCIRE out AD CONIURA concat(out, "\n")
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "Sitemap: ")
+  VINCIRE out AD CONIURA concat(out, cfg.sitemap_url)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_redirect_upsert(SPECULUM NIHIL db, VERBUM from_path, VERBUM to_path, REX status_code, VERUM active) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO seo_redirects (from_path, to_path, status_code, active) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, from_path)
+  CONIURA stmt_bind_text(stmt, 2, to_path)
+  CONIURA stmt_bind_int(stmt, 3, status_code)
+  SI active
+    CONIURA stmt_bind_int(stmt, 4, 1)
+  ALITER
+    CONIURA stmt_bind_int(stmt, 4, 0)
+  FIN SI
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE seo_redirect_lookup(SPECULUM NIHIL db, VERBUM from_path) REDDE LegacyRedirect
+  EVOCA LegacyRedirect redir
+  VINCIRE redir.from_path AD ""
+  VINCIRE redir.to_path AD ""
+  VINCIRE redir.status_code AD 0
+  VINCIRE redir.active AD FALSUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT from_path, to_path, status_code, active FROM seo_redirects WHERE from_path = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, from_path)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE redir.from_path AD CONIURA stmt_get_text(stmt, 0)
+    VINCIRE redir.to_path AD CONIURA stmt_get_text(stmt, 1)
+    VINCIRE redir.status_code AD CONIURA stmt_get_int(stmt, 2)
+    VINCIRE redir.active AD CONIURA stmt_get_int(stmt, 3) != 0
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE redir
+EXPLICIT RITUALE
+
+RITUALE seo_redirect_response_or_empty(SPECULUM NIHIL db, VERBUM path) REDDE WebResponse
+  EVOCA LegacyRedirect redir AD CONIURA seo_redirect_lookup(db, path)
+  SI NON redir.active VEL CONIURA len(redir.to_path) == 0
+    REDDE CONIURA response_new(0)
+  FIN SI
+  SI redir.status_code == 301
+    REDDE CONIURA response_redirect_permanent(redir.to_path)
+  FIN SI
+  REDDE CONIURA response_redirect(redir.to_path)
+EXPLICIT RITUALE
+
+RITUALE seo_static_page_upsert(SPECULUM NIHIL db, SeoStaticPage page) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO seo_static_pages (path, template_name, title, meta_description, canonical_override, locale, published) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, page.path)
+  CONIURA stmt_bind_text(stmt, 2, page.template_name)
+  CONIURA stmt_bind_text(stmt, 3, page.title)
+  CONIURA stmt_bind_text(stmt, 4, page.meta_description)
+  CONIURA stmt_bind_text(stmt, 5, page.canonical_override)
+  CONIURA stmt_bind_text(stmt, 6, page.locale)
+  SI page.published
+    CONIURA stmt_bind_int(stmt, 7, 1)
+  ALITER
+    CONIURA stmt_bind_int(stmt, 7, 0)
+  FIN SI
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE seo_static_page_load(SPECULUM NIHIL db, VERBUM path) REDDE SeoStaticPage
+  EVOCA SeoStaticPage page
+  VINCIRE page.path AD ""
+  VINCIRE page.template_name AD ""
+  VINCIRE page.title AD ""
+  VINCIRE page.meta_description AD ""
+  VINCIRE page.canonical_override AD ""
+  VINCIRE page.locale AD ""
+  VINCIRE page.published AD FALSUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT path, template_name, title, meta_description, canonical_override, locale, published FROM seo_static_pages WHERE path = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, path)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE page.path AD CONIURA stmt_get_text(stmt, 0)
+    VINCIRE page.template_name AD CONIURA stmt_get_text(stmt, 1)
+    VINCIRE page.title AD CONIURA stmt_get_text(stmt, 2)
+    VINCIRE page.meta_description AD CONIURA stmt_get_text(stmt, 3)
+    VINCIRE page.canonical_override AD CONIURA stmt_get_text(stmt, 4)
+    VINCIRE page.locale AD CONIURA stmt_get_text(stmt, 5)
+    VINCIRE page.published AD CONIURA stmt_get_int(stmt, 6) != 0
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE page
+EXPLICIT RITUALE
+
+RITUALE seo_canonical_url(SeoPublicConfig cfg, VERBUM path) REDDE VERBUM
+  REDDE CONIURA seo_absolute_url(cfg.base_url, path)
+EXPLICIT RITUALE
+
+RITUALE seo_hreflang_tags_for_path(SeoPublicConfig cfg, VERBUM path) REDDE VERBUM
+  EVOCA SPECULUM NIHIL locales AD CONIURA split(cfg.hreflang_locales, ",")
+  EVOCA SPECULUM NIHIL entries AD CONIURA fluxus_init(MENSURA(HreflangEntry))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(locales)
+  DUM i < n
+    EVOCA SPECULUM VERBUM locale_ptr AD CONIURA fluxus_get(locales, i)
+    EVOCA HreflangEntry entry
+    VINCIRE entry.locale AD CONIURA trim(*locale_ptr)
+    VINCIRE entry.url AD CONIURA seo_absolute_url(cfg.base_url, path)
+    CONIURA fluxus_push(entries, SPECULUM entry)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA seo_hreflang_tags(entries)
+EXPLICIT RITUALE
+
+RITUALE seo_sitemap_xml(SPECULUM NIHIL db, SeoPublicConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset>"
+  EVOCA SPECULUM NIHIL stmt_pages AD CONIURA db_prepare(db, "SELECT canonical_url, slug FROM civitas_pages WHERE state = 2 ORDER BY id ASC")
+  SI stmt_pages != NIHIL
+    DUM CONIURA stmt_step(stmt_pages)
+      SI CONIURA stmt_has_row(stmt_pages)
+        VINCIRE out AD CONIURA concat(out, "<url><loc>")
+        SI CONIURA len(CONIURA stmt_get_text(stmt_pages, 0)) > 0
+          VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA stmt_get_text(stmt_pages, 0)))
+        ALITER
+          VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA seo_absolute_url(cfg.base_url, CONIURA concat("/", CONIURA stmt_get_text(stmt_pages, 1)))))
+        FIN SI
+        VINCIRE out AD CONIURA concat(out, "</loc></url>")
+      FIN SI
+    FIN DUM
+    CONIURA stmt_finalize(stmt_pages)
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt_static AD CONIURA db_prepare(db, "SELECT path FROM seo_static_pages WHERE published = 1 ORDER BY path ASC")
+  DUM CONIURA stmt_step(stmt_static)
+    SI CONIURA stmt_has_row(stmt_static)
+      VINCIRE out AD CONIURA concat(out, "<url><loc>")
+      VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA seo_absolute_url(cfg.base_url, CONIURA stmt_get_text(stmt_static, 0))))
+      VINCIRE out AD CONIURA concat(out, "</loc></url>")
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt_static)
+  VINCIRE out AD CONIURA concat(out, "</urlset>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_feed_rss(SPECULUM NIHIL db, SeoPublicConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>"
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT title, slug, canonical_url FROM civitas_pages WHERE state = 2 ORDER BY published_at DESC, id DESC LIMIT 20")
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out AD CONIURA concat(out, "<item><title>")
+      VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA stmt_get_text(stmt, 0)))
+      VINCIRE out AD CONIURA concat(out, "</title><link>")
+      SI CONIURA len(CONIURA stmt_get_text(stmt, 2)) > 0
+        VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA stmt_get_text(stmt, 2)))
+      ALITER
+        VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA seo_absolute_url(cfg.base_url, CONIURA concat("/", CONIURA stmt_get_text(stmt, 1)))))
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, "</link></item>")
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  VINCIRE out AD CONIURA concat(out, "</channel></rss>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_feed_atom(SPECULUM NIHIL db, SeoPublicConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><feed xmlns=\"http://www.w3.org/2005/Atom\">"
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT title, slug, canonical_url FROM civitas_pages WHERE state = 2 ORDER BY published_at DESC, id DESC LIMIT 20")
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out AD CONIURA concat(out, "<entry><title>")
+      VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA stmt_get_text(stmt, 0)))
+      VINCIRE out AD CONIURA concat(out, "</title><link href=\"")
+      SI CONIURA len(CONIURA stmt_get_text(stmt, 2)) > 0
+        VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA stmt_get_text(stmt, 2)))
+      ALITER
+        VINCIRE out AD CONIURA concat(out, CONIURA html_encode(CONIURA seo_absolute_url(cfg.base_url, CONIURA concat("/", CONIURA stmt_get_text(stmt, 1)))))
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, "\"></link></entry>")
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  VINCIRE out AD CONIURA concat(out, "</feed>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_static_page_html(SeoPublicConfig cfg, SeoStaticPage page) REDDE VERBUM
+  EVOCA SeoConfig tag_cfg
+  VINCIRE tag_cfg.base_url AD cfg.base_url
+  VINCIRE tag_cfg.site_name AD "Civitas"
+  EVOCA VERBUM canonical_path AD page.path
+  SI CONIURA len(page.canonical_override) > 0
+    VINCIRE canonical_path AD page.canonical_override
+  FIN SI
+  EVOCA VERBUM out AD "<!doctype html><html><head><meta charset=\"utf-8\">"
+  VINCIRE out AD CONIURA concat(out, "<title>")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(page.title))
+  VINCIRE out AD CONIURA concat(out, "</title>")
+  VINCIRE out AD CONIURA concat(out, CONIURA seo_meta_description(page.meta_description))
+  VINCIRE out AD CONIURA concat(out, CONIURA seo_canonical_tag(tag_cfg, canonical_path))
+  VINCIRE out AD CONIURA concat(out, CONIURA seo_hreflang_tags_for_path(cfg, page.path))
+  VINCIRE out AD CONIURA concat(out, "</head><body><main data-template=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(page.template_name))
+  VINCIRE out AD CONIURA concat(out, "\"><h1>")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(page.title))
+  VINCIRE out AD CONIURA concat(out, "</h1></main></body></html>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_robots_handler(RobotsConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_text(CONIURA seo_robots_generate(cfg))
+  CONIURA response_set_header(SPECULUM res, "content-type", "text/plain; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE seo_sitemap_handler(SPECULUM NIHIL db, SeoPublicConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, CONIURA seo_sitemap_xml(db, cfg), WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM res, "content-type", "application/xml; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE seo_feed_rss_handler(SPECULUM NIHIL db, SeoPublicConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, CONIURA seo_feed_rss(db, cfg), WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM res, "content-type", "application/rss+xml; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE seo_feed_atom_handler(SPECULUM NIHIL db, SeoPublicConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, CONIURA seo_feed_atom(db, cfg), WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM res, "content-type", "application/atom+xml; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE seo_static_page_handler(SPECULUM NIHIL db, SeoPublicConfig cfg, WebRequest req) REDDE WebResponse
+  EVOCA SeoStaticPage page AD CONIURA seo_static_page_load(db, req.path)
+  SI NON page.published
+    REDDE CONIURA response_not_found()
+  FIN SI
+  REDDE CONIURA response_html(CONIURA seo_static_page_html(cfg, page))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

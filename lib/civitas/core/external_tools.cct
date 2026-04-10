@@ -1,0 +1,59 @@
+INCIPIT grimoire "civitas_core_external_tools"
+
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "settings.cct"
+ADVOCARE "settings_schema.cct"
+
+RITUALE external_tools_get_verbum_or_empty(SPECULUM Settings settings, VERBUM key) REDDE VERBUM
+  SI NON CONIURA settings_has(settings, key)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, key))
+EXPLICIT RITUALE
+
+SIGILLUM MediaToolSettings
+  ffmpeg_path: VERBUM
+  ffprobe_path: VERBUM
+  ffmpeg_required: VERUM
+  ffprobe_required: VERUM
+  ffmpeg_available: VERUM
+  ffprobe_available: VERUM
+FIN SIGILLUM
+
+RITUALE media_tools_ok(MediaToolSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MediaToolSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE media_tools_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MediaToolSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE media_tool_check_path(VERBUM path_value, VERBUM command_name) REDDE VERUM
+  SI CONIURA len(path_value) != 0
+    REDDE CONIURA run(CONIURA concat(CONIURA concat("test -x \"", path_value), "\"")) == 0
+  FIN SI
+  REDDE CONIURA run(CONIURA concat("command -v ", command_name)) == 0
+EXPLICIT RITUALE
+
+RITUALE settings_media_tools(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA MediaToolSettings out
+  VINCIRE out.ffmpeg_path AD CONIURA external_tools_get_verbum_or_empty(settings, "media.ffmpeg_path")
+  VINCIRE out.ffprobe_path AD CONIURA external_tools_get_verbum_or_empty(settings, "media.ffprobe_path")
+  VINCIRE out.ffmpeg_required AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "media.ffmpeg_required"))
+  VINCIRE out.ffprobe_required AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "media.ffprobe_required"))
+  VINCIRE out.ffmpeg_available AD CONIURA media_tool_check_path(out.ffmpeg_path, "ffmpeg")
+  VINCIRE out.ffprobe_available AD CONIURA media_tool_check_path(out.ffprobe_path, "ffprobe")
+
+  SI out.ffmpeg_required ET NON out.ffmpeg_available
+    REDDE CONIURA media_tools_err("ffmpeg obrigatorio nao encontrado")
+  FIN SI
+  SI out.ffprobe_required ET NON out.ffprobe_available
+    REDDE CONIURA media_tools_err("ffprobe obrigatorio nao encontrado")
+  FIN SI
+
+  REDDE CONIURA media_tools_ok(out)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

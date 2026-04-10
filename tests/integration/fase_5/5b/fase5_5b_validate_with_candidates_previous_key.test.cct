@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase5_5b_validate_with_candidates_previous_key_test"
+
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "../../../../lib/civitas/csrf_runtime.cct"
+ADVOCARE "../../../../lib/civitas/core/keyring.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL candidates AD CONIURA fluxus_init(MENSURA(SecretKey))
+  EVOCA SPECULUM SecretKey current_ptr AD OBSECRO mem_alloc(MENSURA(SecretKey))
+  EVOCA SPECULUM SecretKey previous_ptr AD OBSECRO mem_alloc(MENSURA(SecretKey))
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase5_headers()
+  EVOCA VERBUM binding AD "binding-fixed"
+  EVOCA VERBUM token AD CONIURA csrf_token_derive("segredo-anterior", binding)
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  EVOCA SPECULUM NIHIL res
+
+  CONIURA secret_key_fill(current_ptr, CONIURA secret_key_make("current", "segredo-atual", "test", "", "active"))
+  CONIURA secret_key_fill(previous_ptr, CONIURA secret_key_make("previous", "segredo-anterior", "test", "", "previous"))
+  CONIURA fluxus_push(candidates, current_ptr)
+  CONIURA fluxus_push(candidates, previous_ptr)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat("civitas_csrf_binding=", binding))
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "content-type", "application/x-www-form-urlencoded")
+  EVOCA SPECULUM WebRequest req AD OBSECRO mem_alloc(MENSURA(WebRequest))
+  CONIURA phase5_request_with_body_fill(req, "POST", "/submit", headers, CONIURA concat("civitas_csrf_token=", token), "http", "example.test", "127.0.0.1")
+  VINCIRE res AD CONIURA csrf_validate_with_candidates(SPECULUM cfg, candidates, req)
+
+  SI CONIURA result_is_err GENUS(REX, CsrfError)(res)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

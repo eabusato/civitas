@@ -1,0 +1,226 @@
+INCIPIT grimoire "mural_main"
+
+ADVOCARE "../../lib/civitas/http/server.cct"
+ADVOCARE "../../lib/civitas/static/static_index.cct"
+ADVOCARE "lib/config.cct"
+ADVOCARE "lib/raw_server.cct"
+ADVOCARE "lib/repository.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    REDDE CONIURA getenv(name)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE env_or_int(VERBUM name, REX fallback) REDDE REX
+  SI CONIURA has_env(name)
+    REDDE CONIURA fmt_parse_int(CONIURA getenv(name))
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE maybe_write_marker(VERBUM path, VERBUM content) REDDE NIHIL
+  SI CONIURA len(path) == 0
+    REDDE
+  FIN SI
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE maybe_mark_skip(VERBUM ready_file, VERBUM done_file, VERBUM msg) REDDE VERUM
+  SI CONIURA compare(msg, "sock_bind falhou") == 0 VEL CONIURA compare(msg, "socket tcp create falhou") == 0
+    CONIURA maybe_write_marker(ready_file, "skip")
+    CONIURA maybe_write_marker(done_file, "skip")
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE mural_runtime_doc(VERBUM root) REDDE TomlDocument
+  EVOCA VERBUM config_path AD CONIURA path_join(root, "civitas.toml")
+  EVOCA TomlDocument doc AD CONIURA toml_parse_file(config_path)
+  SI NON CONIURA toml_is_valid(doc)
+    IACE CONIURA concat("invalid TOML: ", config_path)
+  FIN SI
+  REDDE doc
+EXPLICIT RITUALE
+
+RITUALE mural_http_host(VERBUM root) REDDE VERBUM
+  SI CONIURA has_env("CIVITAS_HTTP__HOST")
+    REDDE CONIURA getenv("CIVITAS_HTTP__HOST")
+  FIN SI
+  EVOCA TomlDocument doc AD CONIURA mural_runtime_doc(root)
+  EVOCA TomlDocument http_doc AD CONIURA toml_get_table(doc, "http")
+  SI CONIURA toml_is_valid(http_doc) ET CONIURA toml_has(http_doc, "host")
+    EVOCA VERBUM host AD CONIURA toml_get_string(http_doc, "host")
+    SI CONIURA len(CONIURA trim(host)) > 0
+      REDDE host
+    FIN SI
+  FIN SI
+  REDDE CONIURA http_server_default_host()
+EXPLICIT RITUALE
+
+RITUALE mural_http_port(VERBUM root) REDDE REX
+  SI CONIURA has_env("CIVITAS_HTTP__PORT")
+    REDDE CONIURA fmt_parse_int(CONIURA getenv("CIVITAS_HTTP__PORT"))
+  FIN SI
+  EVOCA TomlDocument doc AD CONIURA mural_runtime_doc(root)
+  EVOCA TomlDocument http_doc AD CONIURA toml_get_table(doc, "http")
+  SI CONIURA toml_is_valid(http_doc)
+    EVOCA SPECULUM NIHIL port_opt AD CONIURA toml_get_int(http_doc, "port")
+    SI CONIURA option_is_some GENUS(REX)(port_opt)
+      EVOCA REX port AD CONIURA option_unwrap GENUS(REX)(port_opt)
+      CONIURA option_free GENUS(REX)(port_opt)
+      REDDE port
+    FIN SI
+    CONIURA option_free GENUS(REX)(port_opt)
+  FIN SI
+  REDDE CONIURA http_server_default_port()
+EXPLICIT RITUALE
+
+RITUALE mural_allowed_hosts_from_csv(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL items AD CONIURA split(raw, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA VERBUM host AD CONIURA trim(*item_ptr)
+    SI CONIURA len(host) > 0
+      CONIURA fluxus_push(out, SPECULUM host)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mural_allowed_hosts(VERBUM root) REDDE SPECULUM NIHIL
+  SI CONIURA has_env("CIVITAS_APP__ALLOWED_HOSTS")
+    REDDE CONIURA mural_allowed_hosts_from_csv(CONIURA getenv("CIVITAS_APP__ALLOWED_HOSTS"))
+  FIN SI
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA TomlDocument doc AD CONIURA mural_runtime_doc(root)
+  EVOCA TomlDocument app_doc AD CONIURA toml_get_table(doc, "app")
+  SI CONIURA toml_is_valid(app_doc)
+    EVOCA SPECULUM NIHIL len_opt AD CONIURA toml_array_len(app_doc, "allowed_hosts")
+    SI CONIURA option_is_some GENUS(REX)(len_opt)
+      EVOCA REX i AD 0
+      EVOCA REX n AD CONIURA option_unwrap GENUS(REX)(len_opt)
+      CONIURA option_free GENUS(REX)(len_opt)
+      DUM i < n
+        EVOCA VERBUM host AD CONIURA trim(CONIURA toml_array_get_string(app_doc, "allowed_hosts", i))
+        SI CONIURA len(host) > 0
+          CONIURA fluxus_push(out, SPECULUM host)
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      REDDE out
+    FIN SI
+    CONIURA option_free GENUS(REX)(len_opt)
+  FIN SI
+  EVOCA VERBUM localhost AD "127.0.0.1"
+  EVOCA VERBUM loopback AD "localhost"
+  CONIURA fluxus_push(out, SPECULUM localhost)
+  CONIURA fluxus_push(out, SPECULUM loopback)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mural_environment_name(VERBUM root) REDDE VERBUM
+  SI CONIURA has_env("CIVITAS_APP__ENVIRONMENT")
+    REDDE CONIURA to_lower(CONIURA trim(CONIURA getenv("CIVITAS_APP__ENVIRONMENT")))
+  FIN SI
+  SI CONIURA has_env("CIVITAS_ENV")
+    REDDE CONIURA to_lower(CONIURA trim(CONIURA getenv("CIVITAS_ENV")))
+  FIN SI
+  EVOCA TomlDocument doc AD CONIURA mural_runtime_doc(root)
+  EVOCA TomlDocument app_doc AD CONIURA toml_get_table(doc, "app")
+  SI CONIURA toml_is_valid(app_doc) ET CONIURA toml_has(app_doc, "environment")
+    EVOCA VERBUM env_name AD CONIURA to_lower(CONIURA trim(CONIURA toml_get_string(app_doc, "environment")))
+    SI CONIURA len(env_name) > 0
+      REDDE env_name
+    FIN SI
+  FIN SI
+  REDDE "development"
+EXPLICIT RITUALE
+
+RITUALE mural_static_index_runtime(VERBUM root, MuralConfig cfg) REDDE StaticIndex
+  EVOCA StaticConfig static_cfg AD CONIURA static_config_new(
+    CONIURA mural_resolve_path(root, cfg.static_dir),
+    "/static/",
+    SmDesenvolvimento
+  )
+  SI CONIURA compare(CONIURA mural_environment_name(root), "production") == 0
+    VINCIRE static_cfg.modo AD SmProducao
+  FIN SI
+  REDDE CONIURA static_index_build(static_cfg)
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA mural_project_root()
+  EVOCA VERBUM ready_file AD CONIURA env_or("CIVITAS_READY_FILE", "")
+  EVOCA VERBUM done_file AD CONIURA env_or("CIVITAS_DONE_FILE", "")
+  EVOCA REX max_requests AD CONIURA env_or_int("CIVITAS_MAX_REQUESTS", 0)
+  EVOCA SPECULUM MuralConfig cfg_ptr AD OBSECRO mem_alloc(MENSURA(MuralConfig))
+  EVOCA VERBUM host AD ""
+  EVOCA REX port AD 0
+  EVOCA SPECULUM NIHIL allowed_hosts
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  EVOCA SPECULUM NIHIL create_res
+
+  TEMPTA
+    EVOCA SPECULUM NIHIL cfg_load_res AD CONIURA mural_config_load_fill(cfg_ptr, root)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(cfg_load_res)
+      IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(cfg_load_res)
+    FIN SI
+    CONIURA mural_repository_init_schema(*cfg_ptr)
+
+    VINCIRE host AD CONIURA mural_http_host(root)
+    VINCIRE port AD CONIURA mural_http_port(root)
+    VINCIRE allowed_hosts AD CONIURA mural_allowed_hosts(root)
+
+    VINCIRE opts.host AD host
+    VINCIRE opts.port AD port
+    VINCIRE opts.max_body_bytes AD 1048576
+    VINCIRE opts.max_request_bytes AD 1048576
+    VINCIRE opts.max_header_bytes AD 65536
+    VINCIRE opts.max_header_count AD 128
+
+    VINCIRE create_res AD CONIURA http_server_create(opts)
+    SI CONIURA result_is_err GENUS(HttpServer, HttpServerError)(create_res)
+      EVOCA HttpServerError create_err AD CONIURA result_unwrap_err GENUS(HttpServer, HttpServerError)(create_res)
+      SI CONIURA maybe_mark_skip(ready_file, done_file, create_err.message)
+        REDDE 0
+      FIN SI
+      IACE create_err.message
+    FIN SI
+
+    EVOCA HttpServer srv AD CONIURA result_unwrap GENUS(HttpServer, HttpServerError)(create_res)
+    CONIURA maybe_write_marker(ready_file, "ready")
+    CONIURA println(CONIURA concat("Mural listening on http://", CONIURA concat(host, CONIURA concat(":", CONIURA stringify_int(port)))))
+    CONIURA mural_run_server_limit(srv, *cfg_ptr, CONIURA mural_static_index_runtime(root, *cfg_ptr), allowed_hosts, max_requests)
+    CONIURA http_server_stop(srv)
+    CONIURA maybe_write_marker(done_file, "ok")
+    REDDE 0
+  CAPE FRACTUM erro
+    EVOCA VERBUM msg AD OBSECRO fractum_to_verbum(erro)
+    SI CONIURA maybe_mark_skip(ready_file, done_file, msg)
+      REDDE 0
+    FIN SI
+    IACE msg
+  FIN TEMPTA
+
+  REDDE 91
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

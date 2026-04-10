@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase11_11e_lock_key_cron_model"
+
+ADVOCARE "../../../../lib/civitas/locks/locks_keys.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PgLockKey cron_key AD CONIURA lock_key_cron("publish")
+  EVOCA PgLockKey model_key AD CONIURA lock_key_model("post", "42")
+  SI CONIURA compare(cron_key.raw_name, "cron:publish") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(model_key.raw_name, "model:post:42") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

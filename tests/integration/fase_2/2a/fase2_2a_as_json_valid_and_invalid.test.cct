@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase2_2a_as_json_valid_and_invalid_test"
+
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest good_raw AD CONIURA http_request_with_body("POST", "/api", "{\"ok\":true}")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(good_raw), "Content-Type", "application/json")
+  EVOCA SPECULUM NIHIL good_req_res AD CONIURA request_from_http(good_raw, "127.0.0.1", "http", "example.test", "req-7")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(good_req_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(Json, VERBUM)(CONIURA request_as_json(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(good_req_res)))
+    REDDE 2
+  FIN SI
+
+  EVOCA HttpRequest bad_raw AD CONIURA http_request_with_body("POST", "/api", "{\"ok\":")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(bad_raw), "Content-Type", "application/json")
+  EVOCA SPECULUM NIHIL bad_req_res AD CONIURA request_from_http(bad_raw, "127.0.0.1", "http", "example.test", "req-8")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(bad_req_res)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(Json, VERBUM)(CONIURA request_as_json(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(bad_req_res)))
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

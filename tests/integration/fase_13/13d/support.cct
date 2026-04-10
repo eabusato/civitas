@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase13_13d_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_ddl.cct"
+
+RITUALE phase13_13d_model_asset() REDDE ModelDef
+  EVOCA ModelDef def AD CONIURA model_def_new("assets")
+  CONIURA model_def_add_int(def, "id", VERUM, VERUM, VERUM)
+  CONIURA model_def_add_blob(def, "arquivo", VERUM)
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE phase13_13d_seed_asset_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA model_def_create_table(db, CONIURA phase13_13d_model_asset())
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

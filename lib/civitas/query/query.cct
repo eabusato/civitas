@@ -1,0 +1,308 @@
+INCIPIT grimoire "civitas_query"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../model/model.cct"
+
+ORDO QueryOp
+  Eq,
+  Ne,
+  Lt,
+  Lte,
+  Gt,
+  Gte,
+  Like,
+  NotLike,
+  In,
+  NotIn,
+  IsNull,
+  IsNotNull
+FIN ORDO
+
+SIGILLUM QueryFilter
+  campo: VERBUM
+  op: QueryOp
+  valor_texto: VERBUM
+  valor_int: REX
+  valor_real: UMBRA
+  kind: FieldKind
+FIN SIGILLUM
+
+ORDO OrderDir
+  Asc,
+  Desc
+FIN ORDO
+
+SIGILLUM OrderBy
+  campo: VERBUM
+  dir: OrderDir
+FIN SIGILLUM
+
+ORDO JoinKind
+  Inner,
+  Left
+FIN ORDO
+
+SIGILLUM Join
+  kind: JoinKind
+  tabela: VERBUM
+  on_esquerda: VERBUM
+  on_direita: VERBUM
+FIN SIGILLUM
+
+SIGILLUM PrefetchSpec
+  campo_from: VERBUM
+  tabela_to: VERBUM
+  campo_to: VERBUM
+  alias: VERBUM
+FIN SIGILLUM
+
+SIGILLUM Query
+  tabela: VERBUM
+  colunas: SPECULUM NIHIL
+  filtros: SPECULUM NIHIL
+  ordens: SPECULUM NIHIL
+  joins: SPECULUM NIHIL
+  prefetchs: SPECULUM NIHIL
+  limite: REX
+  deslocamento: REX
+  distinto: VERUM
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE query_from(VERBUM tabela) REDDE Query
+  EVOCA Query q
+  VINCIRE q.tabela AD tabela
+  VINCIRE q.colunas AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE q.filtros AD CONIURA fluxus_init(MENSURA(QueryFilter))
+  VINCIRE q.ordens AD CONIURA fluxus_init(MENSURA(OrderBy))
+  VINCIRE q.joins AD CONIURA fluxus_init(MENSURA(Join))
+  VINCIRE q.prefetchs AD CONIURA fluxus_init(MENSURA(PrefetchSpec))
+  VINCIRE q.limite AD 0
+  VINCIRE q.deslocamento AD 0
+  VINCIRE q.distinto AD FALSUM
+  VINCIRE q.logger AD NIHIL
+  REDDE q
+EXPLICIT RITUALE
+
+RITUALE query_select(Query q, VERBUM coluna) REDDE NIHIL
+  CONIURA fluxus_push(q.colunas, SPECULUM coluna)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_filter_push(Query q, QueryFilter filter) REDDE NIHIL
+  CONIURA fluxus_push(q.filtros, SPECULUM filter)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_filter(Query q, VERBUM campo, QueryOp op, VERBUM valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD valor
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkText
+  CONIURA query_filter_push(q, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_filter_int(Query q, VERBUM campo, QueryOp op, REX valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD valor
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkInt
+  CONIURA query_filter_push(q, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_filter_real(Query q, VERBUM campo, QueryOp op, UMBRA valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD valor
+  VINCIRE f.kind AD FkReal
+  CONIURA query_filter_push(q, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_order_by(Query q, VERBUM campo, OrderDir dir) REDDE NIHIL
+  EVOCA OrderBy ob
+  VINCIRE ob.campo AD campo
+  VINCIRE ob.dir AD dir
+  CONIURA fluxus_push(q.ordens, SPECULUM ob)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_join(Query q, JoinKind kind, VERBUM tabela, VERBUM on_esq, VERBUM on_dir) REDDE NIHIL
+  EVOCA Join j
+  VINCIRE j.kind AD kind
+  VINCIRE j.tabela AD tabela
+  VINCIRE j.on_esquerda AD on_esq
+  VINCIRE j.on_direita AD on_dir
+  CONIURA fluxus_push(q.joins, SPECULUM j)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE prefetch_spec_new(VERBUM campo_from, VERBUM tabela_to, VERBUM campo_to) REDDE PrefetchSpec
+  EVOCA PrefetchSpec ps
+  VINCIRE ps.campo_from AD campo_from
+  VINCIRE ps.tabela_to AD tabela_to
+  VINCIRE ps.campo_to AD campo_to
+  VINCIRE ps.alias AD tabela_to
+  REDDE ps
+EXPLICIT RITUALE
+
+RITUALE query_prefetch(Query q, PrefetchSpec ps) REDDE NIHIL
+  CONIURA fluxus_push(q.prefetchs, SPECULUM ps)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_set_logger(SPECULUM Query q, SPECULUM NIHIL logger_ptr) REDDE NIHIL
+  VINCIRE (*q).logger AD logger_ptr
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_set_limit(SPECULUM Query q, REX limite) REDDE NIHIL
+  VINCIRE (*q).limite AD limite
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_set_offset(SPECULUM Query q, REX deslocamento) REDDE NIHIL
+  VINCIRE (*q).deslocamento AD deslocamento
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_set_distinct(SPECULUM Query q, VERUM distinto) REDDE NIHIL
+  VINCIRE (*q).distinto AD distinto
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE query_filter_sql(QueryFilter f) REDDE VERBUM
+  ELIGE f.op
+    CASUS Eq:
+      REDDE CONIURA concat(f.campo, " = ?")
+    CASUS Ne:
+      REDDE CONIURA concat(f.campo, " != ?")
+    CASUS Lt:
+      REDDE CONIURA concat(f.campo, " < ?")
+    CASUS Lte:
+      REDDE CONIURA concat(f.campo, " <= ?")
+    CASUS Gt:
+      REDDE CONIURA concat(f.campo, " > ?")
+    CASUS Gte:
+      REDDE CONIURA concat(f.campo, " >= ?")
+    CASUS Like:
+      REDDE CONIURA concat(f.campo, " LIKE ?")
+    CASUS NotLike:
+      REDDE CONIURA concat(f.campo, " NOT LIKE ?")
+    CASUS In:
+      REDDE CONIURA concat(f.campo, " IN (?)")
+    CASUS NotIn:
+      REDDE CONIURA concat(f.campo, " NOT IN (?)")
+    CASUS IsNull:
+      REDDE CONIURA concat(f.campo, " IS NULL")
+    CASUS IsNotNull:
+      REDDE CONIURA concat(f.campo, " IS NOT NULL")
+    ALIOQUIN:
+      REDDE CONIURA concat(f.campo, " = ?")
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE query_build_sql(Query q) REDDE VERBUM
+  EVOCA VERBUM sql AD "SELECT "
+  SI q.distinto
+    VINCIRE sql AD CONIURA concat(sql, "DISTINCT ")
+  FIN SI
+
+  EVOCA REX nc AD CONIURA fluxus_len(q.colunas)
+  SI nc == 0
+    VINCIRE sql AD CONIURA concat(sql, "*")
+  ALITER
+    EVOCA REX ci AD 0
+    DUM ci < nc
+      EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(q.colunas, ci)
+      VINCIRE sql AD CONIURA concat(sql, *ptr)
+      SI ci < nc - 1
+        VINCIRE sql AD CONIURA concat(sql, ", ")
+      FIN SI
+      VINCIRE ci AD ci + 1
+    FIN DUM
+  FIN SI
+
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, q.tabela)
+
+  EVOCA REX ji AD 0
+  EVOCA REX nj AD CONIURA fluxus_len(q.joins)
+  DUM ji < nj
+    EVOCA SPECULUM Join jptr AD CONIURA fluxus_get(q.joins, ji)
+    ELIGE (*jptr).kind
+      CASUS Inner:
+        VINCIRE sql AD CONIURA concat(sql, " INNER JOIN ")
+      CASUS Left:
+        VINCIRE sql AD CONIURA concat(sql, " LEFT JOIN ")
+      ALIOQUIN:
+        VINCIRE sql AD CONIURA concat(sql, " INNER JOIN ")
+    FIN ELIGE
+    VINCIRE sql AD CONIURA concat(sql, (*jptr).tabela)
+    VINCIRE sql AD CONIURA concat(sql, " ON ")
+    VINCIRE sql AD CONIURA concat(sql, (*jptr).on_esquerda)
+    VINCIRE sql AD CONIURA concat(sql, " = ")
+    VINCIRE sql AD CONIURA concat(sql, (*jptr).on_direita)
+    VINCIRE ji AD ji + 1
+  FIN DUM
+
+  EVOCA REX nf AD CONIURA fluxus_len(q.filtros)
+  SI nf > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    EVOCA REX fi AD 0
+    DUM fi < nf
+      EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(q.filtros, fi)
+      VINCIRE sql AD CONIURA concat(sql, CONIURA query_filter_sql(*fptr))
+      SI fi < nf - 1
+        VINCIRE sql AD CONIURA concat(sql, " AND ")
+      FIN SI
+      VINCIRE fi AD fi + 1
+    FIN DUM
+  FIN SI
+
+  EVOCA REX no AD CONIURA fluxus_len(q.ordens)
+  SI no > 0
+    VINCIRE sql AD CONIURA concat(sql, " ORDER BY ")
+    EVOCA REX oi AD 0
+    DUM oi < no
+      EVOCA SPECULUM OrderBy optr AD CONIURA fluxus_get(q.ordens, oi)
+      VINCIRE sql AD CONIURA concat(sql, (*optr).campo)
+      SI (*optr).dir == Desc
+        VINCIRE sql AD CONIURA concat(sql, " DESC")
+      ALITER
+        VINCIRE sql AD CONIURA concat(sql, " ASC")
+      FIN SI
+      SI oi < no - 1
+        VINCIRE sql AD CONIURA concat(sql, ", ")
+      FIN SI
+      VINCIRE oi AD oi + 1
+    FIN DUM
+  FIN SI
+
+  SI q.limite > 0
+    VINCIRE sql AD CONIURA concat(sql, " LIMIT ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(q.limite))
+  FIN SI
+  SI q.deslocamento > 0
+    VINCIRE sql AD CONIURA concat(sql, " OFFSET ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(q.deslocamento))
+  FIN SI
+
+  REDDE sql
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

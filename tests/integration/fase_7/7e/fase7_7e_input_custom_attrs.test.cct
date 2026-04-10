@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase7_7e_input_custom_attrs_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldDef field AD CONIURA field_def_new("email", "E-mail", IkEmail)
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA VERBUM html
+
+  CONIURA field_def_add_attr(SPECULUM field, "autocomplete", "email")
+  CONIURA field_def_add_data(SPECULUM field, "mask", "cpf")
+  VINCIRE html AD CONIURA render_field(field, vr, fd)
+
+  SI CONIURA find(html, "autocomplete=\"email\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "data-mask=\"cpf\"") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

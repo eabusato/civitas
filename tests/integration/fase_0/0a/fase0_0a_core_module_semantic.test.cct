@@ -1,0 +1,12 @@
+INCIPIT grimoire "fase0_0a_core_module_semantic_test"
+
+ADVOCARE "../support/common.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compiler_check("lib/civitas/core/version.cct") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

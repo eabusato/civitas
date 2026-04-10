@@ -1,0 +1,381 @@
+INCIPIT grimoire "civitas_admin"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../model/model.cct"
+
+ORDO AdminFieldKind
+  ADMIN_FIELD_TEXT
+  ADMIN_FIELD_INT
+  ADMIN_FIELD_REAL
+  ADMIN_FIELD_BOOL
+  ADMIN_FIELD_DATE
+  ADMIN_FIELD_DATETIME
+  ADMIN_FIELD_FKEY
+  ADMIN_FIELD_UUID
+  ADMIN_FIELD_BLOB
+FIN ORDO
+
+ORDO AdminAuditAction
+  ADMIN_AUDIT_CREATE
+  ADMIN_AUDIT_UPDATE
+  ADMIN_AUDIT_DELETE
+  ADMIN_AUDIT_BULK
+FIN ORDO
+
+SIGILLUM AdminFieldConfig
+  name: VERBUM
+  label: VERBUM
+  kind: AdminFieldKind
+  required: VERUM
+  list_display: VERUM
+  searchable: VERUM
+  sortable: VERUM
+  filterable: VERUM
+  unique: VERUM
+  pk: VERUM
+  auto_increment: VERUM
+  fk_table: VERBUM
+  fk_column: VERBUM
+  max_length: REX
+FIN SIGILLUM
+
+SIGILLUM AdminRouteInfo
+  method: VERBUM
+  pattern: VERBUM
+  name: VERBUM
+  handler_symbol: VERBUM
+FIN SIGILLUM
+
+SIGILLUM AdminModelConfig
+  model_name: VERBUM
+  table_name: VERBUM
+  pk_field: VERBUM
+  ordering_default: VERBUM
+  page_size: REX
+  permissions_prefix: VERBUM
+  model_def: ModelDef
+  fields: SPECULUM NIHIL
+  list_display: SPECULUM NIHIL
+  list_filter: SPECULUM NIHIL
+  search_fields: SPECULUM NIHIL
+  routes: SPECULUM NIHIL
+  inlines: SPECULUM NIHIL
+  computed_fields: SPECULUM NIHIL
+  custom_actions: SPECULUM NIHIL
+  widgets: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AdminRegistry
+  models: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AdminListQuery
+  page: REX
+  page_size: REX
+  search_term: VERBUM
+  order_by: VERBUM
+  descending: VERUM
+  filters_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM AdminListResult
+  rows_json: VERBUM
+  total_count: REX
+  page: REX
+  page_size: REX
+  total_pages: REX
+FIN SIGILLUM
+
+SIGILLUM AdminLookup
+  found: VERUM
+  row_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM AdminAuditEntry
+  id: VERBUM
+  model_name: VERBUM
+  record_pk: VERBUM
+  action: AdminAuditAction
+  actor_id: VERBUM
+  payload_json: VERBUM
+  created_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM AdminBulkResult
+  matched: REX
+  changed: REX
+  failed: REX
+FIN SIGILLUM
+
+RITUALE admin_field_kind_from_model(FieldKind kind) REDDE AdminFieldKind
+  ELIGE kind
+    CASUS FkInt:
+      REDDE ADMIN_FIELD_INT
+    CASUS FkReal:
+      REDDE ADMIN_FIELD_REAL
+    CASUS FkBool:
+      REDDE ADMIN_FIELD_BOOL
+    CASUS FkDate:
+      REDDE ADMIN_FIELD_DATE
+    CASUS FkDateTime:
+      REDDE ADMIN_FIELD_DATETIME
+    CASUS FkUUID:
+      REDDE ADMIN_FIELD_UUID
+    CASUS FkBlob:
+      REDDE ADMIN_FIELD_BLOB
+    ALIOQUIN:
+      REDDE ADMIN_FIELD_TEXT
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE admin_audit_action_to_string(AdminAuditAction action) REDDE VERBUM
+  ELIGE action
+    CASUS ADMIN_AUDIT_CREATE:
+      REDDE "create"
+    CASUS ADMIN_AUDIT_UPDATE:
+      REDDE "update"
+    CASUS ADMIN_AUDIT_DELETE:
+      REDDE "delete"
+    ALIOQUIN:
+      REDDE "bulk"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE admin_field_config_from_model(FieldDef field) REDDE AdminFieldConfig
+  EVOCA AdminFieldConfig out
+  EVOCA VERUM is_blob AD FALSUM
+  EVOCA VERUM is_text AD FALSUM
+  EVOCA VERUM is_filterable_kind AD FALSUM
+  VINCIRE out.name AD field.nome
+  VINCIRE out.label AD field.nome
+  VINCIRE out.kind AD CONIURA admin_field_kind_from_model(field.kind)
+  ELIGE out.kind
+    CASUS ADMIN_FIELD_TEXT:
+      VINCIRE is_text AD VERUM
+    CASUS ADMIN_FIELD_INT:
+      VINCIRE is_filterable_kind AD FALSUM
+    CASUS ADMIN_FIELD_REAL:
+      VINCIRE is_filterable_kind AD FALSUM
+    CASUS ADMIN_FIELD_BOOL:
+      VINCIRE is_filterable_kind AD VERUM
+    CASUS ADMIN_FIELD_DATE:
+      VINCIRE is_filterable_kind AD VERUM
+    CASUS ADMIN_FIELD_DATETIME:
+      VINCIRE is_filterable_kind AD VERUM
+    CASUS ADMIN_FIELD_FKEY:
+      VINCIRE is_filterable_kind AD FALSUM
+    CASUS ADMIN_FIELD_UUID:
+      VINCIRE is_filterable_kind AD FALSUM
+    CASUS ADMIN_FIELD_BLOB:
+      VINCIRE is_blob AD VERUM
+  FIN ELIGE
+  VINCIRE out.required AD field.required
+  VINCIRE out.list_display AD NON field.auto_increment ET NON is_blob
+  VINCIRE out.searchable AD is_text
+  VINCIRE out.sortable AD NON is_blob
+  VINCIRE out.filterable AD CONIURA compare(field.fk_tabela, "") != 0 VEL is_filterable_kind
+  VINCIRE out.unique AD field.unique
+  VINCIRE out.pk AD field.pk
+  VINCIRE out.auto_increment AD field.auto_increment
+  VINCIRE out.fk_table AD field.fk_tabela
+  VINCIRE out.fk_column AD field.fk_col
+  VINCIRE out.max_length AD 0
+  SI CONIURA compare(field.fk_tabela, "") != 0
+    VINCIRE out.kind AD ADMIN_FIELD_FKEY
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_route_info_new(VERBUM method, VERBUM pattern, VERBUM name, VERBUM handler_symbol) REDDE AdminRouteInfo
+  EVOCA AdminRouteInfo out
+  VINCIRE out.method AD method
+  VINCIRE out.pattern AD pattern
+  VINCIRE out.name AD name
+  VINCIRE out.handler_symbol AD handler_symbol
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_registry_new() REDDE AdminRegistry
+  EVOCA AdminRegistry out
+  VINCIRE out.models AD CONIURA fluxus_init(MENSURA(AdminModelConfig))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_registry_fill(SPECULUM AdminRegistry out) REDDE NIHIL
+  VINCIRE (*out).models AD CONIURA fluxus_init(MENSURA(AdminModelConfig))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_list_query_default() REDDE AdminListQuery
+  EVOCA AdminListQuery out
+  VINCIRE out.page AD 1
+  VINCIRE out.page_size AD 20
+  VINCIRE out.search_term AD ""
+  VINCIRE out.order_by AD ""
+  VINCIRE out.descending AD FALSUM
+  VINCIRE out.filters_json AD "{}"
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_list_result_empty() REDDE AdminListResult
+  EVOCA AdminListResult out
+  VINCIRE out.rows_json AD "[]"
+  VINCIRE out.total_count AD 0
+  VINCIRE out.page AD 1
+  VINCIRE out.page_size AD 20
+  VINCIRE out.total_pages AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_lookup_empty() REDDE AdminLookup
+  EVOCA AdminLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.row_json AD "{}"
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_bulk_result_empty() REDDE AdminBulkResult
+  EVOCA AdminBulkResult out
+  VINCIRE out.matched AD 0
+  VINCIRE out.changed AD 0
+  VINCIRE out.failed AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_model_field_count(AdminModelConfig cfg) REDDE REX
+  REDDE CONIURA fluxus_len(cfg.fields)
+EXPLICIT RITUALE
+
+RITUALE admin_model_find_field(AdminModelConfig cfg, VERBUM field_name) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI CONIURA compare((*field_ptr).name, field_name) == 0
+      REDDE field_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE admin_model_pk_field(AdminModelConfig cfg) REDDE SPECULUM NIHIL
+  REDDE CONIURA admin_model_find_field(cfg, cfg.pk_field)
+EXPLICIT RITUALE
+
+RITUALE admin_registry_find(SPECULUM AdminRegistry registry, VERBUM model_name) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*registry).models)
+  DUM i < n
+    EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA fluxus_get((*registry).models, i)
+    SI CONIURA compare((*cfg_ptr).model_name, model_name) == 0
+      REDDE cfg_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_new(VERBUM model_name, ModelDef model_def) REDDE AdminModelConfig
+  EVOCA AdminModelConfig out
+  CONIURA admin_model_config_fill(SPECULUM out, model_name, model_def)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_fill(SPECULUM AdminModelConfig out, VERBUM model_name, ModelDef model_def) REDDE NIHIL
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(AdminFieldConfig))
+  EVOCA SPECULUM NIHIL list_display AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL list_filter AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL search_fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL routes AD CONIURA fluxus_init(MENSURA(AdminRouteInfo))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(model_def.campos)
+  EVOCA VERBUM pk_field AD "id"
+  DUM i < n
+    EVOCA SPECULUM FieldDef field_ptr AD CONIURA fluxus_get(model_def.campos, i)
+    EVOCA AdminFieldConfig field_cfg AD CONIURA admin_field_config_from_model(*field_ptr)
+    CONIURA fluxus_push(fields, SPECULUM field_cfg)
+    SI field_cfg.list_display
+      CONIURA fluxus_push(list_display, SPECULUM field_cfg.name)
+    FIN SI
+    SI field_cfg.filterable
+      CONIURA fluxus_push(list_filter, SPECULUM field_cfg.name)
+    FIN SI
+    SI field_cfg.searchable
+      CONIURA fluxus_push(search_fields, SPECULUM field_cfg.name)
+    FIN SI
+    SI field_cfg.pk
+      VINCIRE pk_field AD field_cfg.name
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE (*out).model_name AD model_name
+  VINCIRE (*out).table_name AD model_def.tabela
+  VINCIRE (*out).pk_field AD pk_field
+  VINCIRE (*out).ordering_default AD pk_field
+  VINCIRE (*out).page_size AD 20
+  VINCIRE (*out).permissions_prefix AD CONIURA to_lower(model_name)
+  VINCIRE (*out).model_def.tabela AD model_def.tabela
+  VINCIRE (*out).model_def.campos AD model_def.campos
+  VINCIRE (*out).model_def.indices AD model_def.indices
+  VINCIRE (*out).model_def.hook_before_save AD model_def.hook_before_save
+  VINCIRE (*out).model_def.hook_after_save AD model_def.hook_after_save
+  VINCIRE (*out).model_def.hook_before_delete AD model_def.hook_before_delete
+  VINCIRE (*out).model_def.hook_after_delete AD model_def.hook_after_delete
+  VINCIRE (*out).model_def.storage_policy AD model_def.storage_policy
+  VINCIRE (*out).fields AD fields
+  VINCIRE (*out).list_display AD list_display
+  VINCIRE (*out).list_filter AD list_filter
+  VINCIRE (*out).search_fields AD search_fields
+  VINCIRE (*out).routes AD routes
+  VINCIRE (*out).inlines AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*out).computed_fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*out).custom_actions AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*out).widgets AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_set_page_size(SPECULUM AdminModelConfig cfg, REX page_size) REDDE NIHIL
+  VINCIRE (*cfg).page_size AD page_size
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_set_permissions_prefix(SPECULUM AdminModelConfig cfg, VERBUM permissions_prefix) REDDE NIHIL
+  VINCIRE (*cfg).permissions_prefix AD permissions_prefix
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_set_ordering(SPECULUM AdminModelConfig cfg, VERBUM ordering_default) REDDE NIHIL
+  VINCIRE (*cfg).ordering_default AD ordering_default
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_model_config_generate_routes(SPECULUM AdminModelConfig cfg) REDDE NIHIL
+  EVOCA VERBUM lower_name AD CONIURA to_lower((*cfg).model_name)
+  EVOCA VERBUM base_path AD CONIURA concat("/admin/", lower_name)
+  VINCIRE (*cfg).routes AD CONIURA fluxus_init(MENSURA(AdminRouteInfo))
+  EVOCA AdminRouteInfo route_info
+  VINCIRE route_info AD CONIURA admin_route_info_new("GET", CONIURA concat(base_path, "/"), CONIURA concat(lower_name, ".admin.list"), "admin_list_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("GET", CONIURA concat(base_path, "/new"), CONIURA concat(lower_name, ".admin.new"), "admin_create_form_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("POST", CONIURA concat(base_path, "/new"), CONIURA concat(lower_name, ".admin.create"), "admin_create_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("GET", CONIURA concat(base_path, "/{id:int}/edit"), CONIURA concat(lower_name, ".admin.edit_form"), "admin_edit_form_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("POST", CONIURA concat(base_path, "/{id:int}/edit"), CONIURA concat(lower_name, ".admin.update"), "admin_update_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("POST", CONIURA concat(base_path, "/{id:int}/delete"), CONIURA concat(lower_name, ".admin.delete"), "admin_delete_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  VINCIRE route_info AD CONIURA admin_route_info_new("POST", CONIURA concat(base_path, "/bulk"), CONIURA concat(lower_name, ".admin.bulk"), "admin_bulk_handler")
+  CONIURA fluxus_push((*cfg).routes, SPECULUM route_info)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_json_has_text_key(Json obj, VERBUM key) REDDE VERUM
+  REDDE CONIURA json_has_key(obj, key) ET CONIURA json_is_str(CONIURA json_get_key(obj, key))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,57 @@
+INCIPIT grimoire "fase4_4b_start_failure_partial_shutdown_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/app_module.cct"
+ADVOCARE "../../../../lib/civitas/core/lifecycle.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4b_tmp_dir("4b_start_failure_partial_shutdown")
+  EVOCA Application app AD CONIURA phase4_4b_new_app(
+    root,
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"127.0.0.1\"]\n"
+  )
+  EVOCA Phase4AppProbe probe AD CONIURA phase4_4b_new_probe()
+  EVOCA AppModule alpha AD CONIURA app_module_new("alpha", "desviados.core")
+  EVOCA AppModule bravo AD CONIURA app_module_new("bravo", "desviados.core")
+  EVOCA SPECULUM NIHIL start_res
+  EVOCA SPECULUM NIHIL shutdown_res
+
+  VINCIRE probe.startup_fail AD VERUM
+  CONIURA app_service_set(SPECULUM app, "probe", SPECULUM probe)
+  VINCIRE alpha.on_start_name AD "alpha.start"
+  VINCIRE alpha.on_start_ref AD phase4_4b_start_alpha
+  VINCIRE alpha.on_shutdown_name AD "alpha.stop"
+  VINCIRE alpha.on_shutdown_ref AD phase4_4b_shutdown_alpha
+  VINCIRE bravo.on_start_name AD "bravo.start"
+  VINCIRE bravo.on_start_ref AD phase4_4b_start_bravo
+  VINCIRE bravo.on_shutdown_name AD "bravo.stop"
+  VINCIRE bravo.on_shutdown_ref AD phase4_4b_shutdown_bravo
+
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA app_register_module(SPECULUM app, alpha))
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA app_register_module(SPECULUM app, bravo))
+    REDDE 2
+  FIN SI
+
+  VINCIRE start_res AD CONIURA app_start(SPECULUM app)
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(start_res)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA app_lifecycle_state_name(app.state), "failed") != 0
+    REDDE 4
+  FIN SI
+  VINCIRE shutdown_res AD CONIURA app_shutdown(SPECULUM app)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(shutdown_res)
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA phase4_4b_probe_join(probe), "start:alpha,start:bravo,shutdown:alpha") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

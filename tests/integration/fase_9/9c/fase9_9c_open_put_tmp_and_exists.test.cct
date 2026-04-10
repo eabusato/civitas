@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase9_9c_open_put_tmp_and_exists"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9c_root("open_put")
+  EVOCA MediaStore store AD CONIURA phase9_9c_open_store(root)
+  EVOCA VERBUM source_path AD CONIURA phase9_9c_source_file(root, "hello.txt", "hello storage")
+  EVOCA SPECULUM NIHIL put_res AD CONIURA storage_put_tmp(store, source_path, "hello.txt")
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(put_res)
+    IACE CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(put_res)
+  FIN SI
+  EVOCA MediaArtifact artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(put_res)
+
+  SI artifact.zone != MEDIA_ZONE_TMP
+    IACE "tmp upload should stay in tmp zone"
+  FIN SI
+  SI NON CONIURA storage_exists(store, artifact)
+    IACE "tmp artifact should exist after put"
+  FIN SI
+  SI CONIURA exists(source_path)
+    IACE "source path should be removed after tmp ingest"
+  FIN SI
+  SI NON CONIURA contains(CONIURA storage_absolute_path(store, artifact), "/tmp/")
+    IACE "tmp artifact absolute path should point to tmp zone"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

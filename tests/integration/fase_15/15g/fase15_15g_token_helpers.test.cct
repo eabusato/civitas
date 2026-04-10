@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase15_15g_token_helpers"
+
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_user.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  EVOCA VERBUM user_id AD ""
+  EVOCA VERBUM token AD ""
+  EVOCA VERBUM refresh_id AD ""
+  CONIURA auth_test_schema_up(tdb)
+  VINCIRE user_id AD CONIURA auth_test_criar_usuario_unico_id(tdb)
+  VINCIRE token AD CONIURA auth_test_gerar_token(user_id, "alpha beta")
+  SI CONIURA compare(CONIURA auth_test_token_payload_user_id(token), user_id) != 0
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA auth_test_token_payload_scopes(token), "alpha beta") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  VINCIRE refresh_id AD CONIURA auth_test_gerar_refresh_id(tdb, user_id)
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(*) FROM refresh_tokens") != 1
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  SI CONIURA db_scalar_int(tdb.db, CONIURA concat("SELECT COUNT(*) FROM refresh_tokens WHERE id = '", CONIURA concat(refresh_id, "'"))) != 1
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

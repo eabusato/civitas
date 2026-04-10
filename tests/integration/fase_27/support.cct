@@ -1,0 +1,63 @@
+INCIPIT grimoire "fase27_support"
+
+ADVOCARE "../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE phase27_root(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_27", name)
+EXPLICIT RITUALE
+
+RITUALE phase27_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase27_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase27_reset_root(VERBUM name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase27_root(name)
+  SI CONIURA exists(root)
+    CONIURA phase27_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase27_topology(VERBUM name) REDDE StorageTopology
+  EVOCA VERBUM root AD CONIURA phase27_reset_root(name)
+  REDDE CONIURA storage_topology_new("phase27", root, CONIURA path_join(root, "logs"))
+EXPLICIT RITUALE
+
+RITUALE phase27_backup_cfg(VERBUM name, REX keep_db, REX keep_media) REDDE BackupConfig
+  REDDE CONIURA backup_config_new(CONIURA phase27_topology(name), keep_db, keep_media)
+EXPLICIT RITUALE
+
+RITUALE phase27_seed_sqlite(VERBUM db_path) REDDE NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(db_path)
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS entries(id INTEGER PRIMARY KEY, title TEXT NOT NULL)")
+  CONIURA db_exec(db, "DELETE FROM entries")
+  CONIURA db_exec(db, "INSERT INTO entries(id, title) VALUES(1, 'alpha')")
+  CONIURA db_close(db)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

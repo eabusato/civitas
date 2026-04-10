@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase15_15d_cookie_roundtrip_and_clear"
+
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_cookie.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.cookie_nome AD "my_session"
+  VINCIRE cfg.ttl_segundos AD 120
+  VINCIRE cfg.http_only AD VERUM
+  VINCIRE cfg.secure AD VERUM
+  VINCIRE cfg.samesite AD "Strict"
+  EVOCA VERBUM header AD CONIURA session_cookie_header(cfg, "sess-123")
+  SI CONIURA find(header, "my_session=sess-123") == -1 VEL CONIURA find(header, "HttpOnly") == -1 VEL CONIURA find(header, "Secure") == -1
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_id_from_cookie_header("a=1; my_session=sess-123; b=2", "my_session")
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(opt), "sess-123") != 0
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE 3
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(opt)
+  EVOCA VERBUM cleared AD CONIURA session_cookie_clear(cfg)
+  SI CONIURA find(cleared, "Max-Age=0") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

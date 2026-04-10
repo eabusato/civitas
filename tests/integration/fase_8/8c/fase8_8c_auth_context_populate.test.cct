@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase8_8c_auth_context_populate_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/auth_context/auth_context.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA session_set(SPECULUM sess, "user_id", "42")
+  CONIURA session_set(SPECULUM sess, "locale", "pt-BR")
+  CONIURA auth_context_populate(SPECULUM ctx, sess)
+  SI NON CONIURA auth_context_is_authenticated(ctx)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL uid_opt AD CONIURA auth_context_user_id(ctx)
+  SI CONIURA option_is_none GENUS(VERBUM)(uid_opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(uid_opt), "42") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA auth_context_locale(ctx), "pt-BR") != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

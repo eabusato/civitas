@@ -1,0 +1,111 @@
+INCIPIT grimoire "civitas_settings_env"
+
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "settings_schema.cct"
+
+RITUALE settings_env_name_for_key(VERBUM key) REDDE VERBUM
+  EVOCA VERBUM out AD "CIVITAS_"
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(key)
+
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(key, i)
+    SI c == 46
+      VINCIRE out AD CONIURA concat(out, "__")
+    ALITER
+      VINCIRE out AD CONIURA concat(out, CONIURA to_upper(CONIURA from_char(c)))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_env_lookup(SettingSpec spec) REDDE SPECULUM NIHIL
+  EVOCA VERBUM env_name AD spec.env_name
+  SI CONIURA len(env_name) == 0
+    VINCIRE env_name AD CONIURA settings_env_name_for_key(spec.key)
+  FIN SI
+  SI NON CONIURA has_env(env_name)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA getenv(env_name))
+EXPLICIT RITUALE
+
+RITUALE settings_env_bool_is_valid(VERBUM value) REDDE VERUM
+  EVOCA VERBUM lower AD CONIURA to_lower(CONIURA trim(value))
+  REDDE CONIURA compare(lower, "true") == 0 VEL CONIURA compare(lower, "false") == 0 VEL CONIURA compare(lower, "1") == 0 VEL CONIURA compare(lower, "0") == 0 VEL CONIURA compare(lower, "yes") == 0 VEL CONIURA compare(lower, "no") == 0 VEL CONIURA compare(lower, "on") == 0 VEL CONIURA compare(lower, "off") == 0
+EXPLICIT RITUALE
+
+RITUALE settings_env_bool_normalize(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM lower AD CONIURA to_lower(CONIURA trim(value))
+  SI CONIURA compare(lower, "true") == 0 VEL CONIURA compare(lower, "1") == 0 VEL CONIURA compare(lower, "yes") == 0 VEL CONIURA compare(lower, "on") == 0
+    REDDE "true"
+  FIN SI
+  REDDE "false"
+EXPLICIT RITUALE
+
+RITUALE settings_env_split_csv(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(raw, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM item AD CONIURA trim(*part_ptr)
+    SI CONIURA len(item) != 0
+      CONIURA fluxus_push(out, SPECULUM item)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_env_list_is_valid(VERBUM raw, SettingsValueKind kind) REDDE VERUM
+  EVOCA SPECULUM NIHIL items AD CONIURA settings_env_split_csv(raw)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    SI kind == SETTINGS_VALUE_LIST_REX ET NON CONIURA is_int(*item_ptr)
+      REDDE FALSUM
+    FIN SI
+    SI kind == SETTINGS_VALUE_LIST_BOOL ET NON CONIURA settings_env_bool_is_valid(*item_ptr)
+      REDDE FALSUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE settings_env_list_serialize(VERBUM raw, SettingsValueKind kind) REDDE VERBUM
+  EVOCA SPECULUM NIHIL items AD CONIURA settings_env_split_csv(raw)
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA VERBUM item AD CONIURA trim(*item_ptr)
+    SI kind == SETTINGS_VALUE_LIST_BOOL
+      VINCIRE item AD CONIURA settings_env_bool_normalize(item)
+    FIN SI
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, "\n")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, item)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

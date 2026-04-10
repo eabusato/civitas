@@ -1,0 +1,85 @@
+INCIPIT grimoire "fase17_17e_integrated_background_gate"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/retention/retention.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17e_integrated_background_gate")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA SchedulerConfig sched_cfg AD CONIURA phase17_scheduler_cfg()
+  EVOCA RetentionConfig retention_cfg AD CONIURA retention_config_default()
+
+  CONIURA pages_ensure_schema(stack.db)
+  CONIURA social_ensure_schema(stack.db)
+  CONIURA phase17_insert_page(stack.db, "pt-BR", "ola", "Ola", 2, "https://example.test/pt-BR/ola", 10)
+  CONIURA phase17_insert_view_counter(stack.db, "page", 1, 42)
+  CONIURA phase17_insert_reaction(stack.db, "page", 1, "u1", 0)
+
+  EVOCA VERBUM source_path AD CONIURA phase17_write_file(stack.root, "uploads/source.txt", "payload")
+  EVOCA UploadDescriptor descriptor AD CONIURA phase17_descriptor_from_file(source_path, "text/plain", "source.txt")
+  EVOCA VERBUM media_out AD CONIURA path_join(stack.root, "derived/thumb.txt")
+  CONIURA media_job_enqueue(stack.dbh, descriptor, "page:1", MEDIA_JOB_THUMB, "thumb", media_out, "", CONIURA media_policy_default(), task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "worker-media")
+  SI NON CONIURA exists(media_out)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+
+  EVOCA VERBUM sitemap_path AD CONIURA path_join(stack.root, "public/sitemap.xml")
+  CONIURA scheduled_register_interval(stack.dbh, "job.sitemap", "editorial.process", "@every 5s", CONIURA concat("sitemap\n", sitemap_path))
+  CONIURA db_exec(stack.db, "UPDATE scheduled_jobs SET next_run_at_unix = 0 WHERE job_name = 'job.sitemap'")
+  SI CONIURA scheduler_tick(stack.dbh, task_cfg, sched_cfg, CONIURA datetime_now()) != 1
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "worker-editorial")
+  SI NON CONIURA exists(sitemap_path)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 3
+  FIN SI
+
+  CONIURA editorial_enqueue_rankings(stack.dbh, task_cfg)
+  CONIURA editorial_enqueue_counters(stack.dbh, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "worker-editorial")
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "worker-editorial")
+  SI CONIURA db_scalar_int(stack.db, "SELECT score FROM editorial_rankings WHERE resource_name = 'page:1'") != 42
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 4
+  FIN SI
+  SI CONIURA db_scalar_int(stack.db, "SELECT total FROM editorial_counters WHERE resource_name = 'page:1'") != 1
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 5
+  FIN SI
+
+  CONIURA db_exec(stack.db, "UPDATE scheduled_runs SET finished_at_unix = 1")
+  EVOCA RetentionReport report AD CONIURA retention_purge_scheduled_runs(stack.dbh, retention_cfg, retention_cfg.scheduler_run_max_age_seconds + 100)
+  SI report.deleted_count != 1
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 6
+  FIN SI
+
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

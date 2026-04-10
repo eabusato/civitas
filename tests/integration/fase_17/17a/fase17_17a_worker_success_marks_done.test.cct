@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase17_17a_worker_success_marks_done"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17a_worker_success_marks_done")
+  EVOCA TaskConfig cfg AD CONIURA phase17_task_cfg()
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  EVOCA VERBUM payload AD "{\"job\":\"ok\"}"
+  EVOCA VERBUM task_id AD CONIURA task_enqueue_json(stack.dbh, cfg.queue_name, "echo", payload, options, cfg)
+  EVOCA TaskWorkerRun run AD CONIURA task_worker_run_once(stack.dbh, cfg, registry, "worker-a")
+  SI CONIURA compare(run.task_id, task_id) != 0
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI run.state_after != TASK_DONE
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  EVOCA TaskLookup lookup AD CONIURA task_find_by_id(stack.dbh, task_id)
+  SI NON lookup.found VEL lookup.task.state != TASK_DONE
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(lookup.task.result_json, payload) != 0
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 4
+  FIN SI
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

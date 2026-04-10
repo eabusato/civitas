@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase5_5b_app_dispatch_valid_token_passes_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5b_tmp_dir("5b_valid_token")
+  EVOCA Application app AD CONIURA phase5_5b_new_app(
+    root,
+    "[app]\nname = \"f5\"\nallowed_hosts = [\"example.test\"]\n"
+  )
+  EVOCA VERBUM binding AD "binding-fixed"
+  EVOCA VERBUM token AD CONIURA csrf_token_derive("segredo-csrf", binding)
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase5_headers()
+
+  CONIURA phase5_5b_register_submit_route(SPECULUM app)
+  CONIURA phase5_5b_install_csrf_secret(SPECULUM app, "segredo-csrf")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat("civitas_csrf_binding=", binding))
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "x-csrf-token", token)
+  EVOCA SPECULUM WebRequest req AD OBSECRO mem_alloc(MENSURA(WebRequest))
+  EVOCA SPECULUM WebResponse res AD OBSECRO mem_alloc(MENSURA(WebResponse))
+  CONIURA phase5_request_with_body_fill(req, "POST", "/submit", headers, "", "http", "example.test", "127.0.0.1")
+  CONIURA phase5_response_init(res, 500)
+  CONIURA app_dispatch_fill(SPECULUM app, req, res)
+
+  SI (*res).status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*res).body, "submitted") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

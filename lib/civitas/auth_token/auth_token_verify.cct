@@ -1,0 +1,108 @@
+INCIPIT grimoire "civitas_auth_token_verify"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth_token.cct"
+ADVOCARE "auth_token_revoke.cct"
+
+RITUALE token_parse_payload(VERBUM token) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(token, ".")
+  SI CONIURA fluxus_len(partes) != 3
+    CONIURA fluxus_free(partes)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+
+  EVOCA SPECULUM VERBUM payload_ptr AD CONIURA fluxus_get(partes, 1)
+  EVOCA VERBUM payload_b64 AD *payload_ptr
+  EVOCA SPECULUM NIHIL payload_opt AD CONIURA base64url_decode(payload_b64)
+  CONIURA fluxus_free(partes)
+  SI CONIURA option_is_none GENUS(VERBUM)(payload_opt)
+    CONIURA option_free GENUS(VERBUM)(payload_opt)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+
+  EVOCA VERBUM payload_json AD CONIURA option_unwrap GENUS(VERBUM)(payload_opt)
+  CONIURA option_free GENUS(VERBUM)(payload_opt)
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(payload_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+  REDDE CONIURA token_payload_from_json(CONIURA result_unwrap GENUS(Json, JsonError)(parsed))
+EXPLICIT RITUALE
+
+RITUALE token_verify(SPECULUM NIHIL db, TokenConfig cfg, VERBUM token) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL partes AD CONIURA split(token, ".")
+  SI CONIURA fluxus_len(partes) != 3
+    CONIURA fluxus_free(partes)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+
+  EVOCA SPECULUM VERBUM header_ptr AD CONIURA fluxus_get(partes, 0)
+  EVOCA SPECULUM VERBUM payload_ptr AD CONIURA fluxus_get(partes, 1)
+  EVOCA SPECULUM VERBUM sig_ptr AD CONIURA fluxus_get(partes, 2)
+  EVOCA VERBUM header AD *header_ptr
+  EVOCA VERBUM payload AD *payload_ptr
+  EVOCA VERBUM sig_b64 AD *sig_ptr
+  CONIURA fluxus_free(partes)
+
+  EVOCA VERBUM message AD CONIURA concat(CONIURA concat(header, "."), payload)
+  EVOCA VERBUM sig_expected_b64 AD CONIURA base64url_encode(CONIURA hmac_sha256(cfg.segredo, message))
+  SI NON CONIURA constant_time_compare(sig_b64, sig_expected_b64)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenAssinaturaInvalida)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL parsed AD CONIURA token_parse_payload(token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(parsed)
+    REDDE parsed
+  FIN SI
+  EVOCA TokenPayload p AD CONIURA result_unwrap GENUS(TokenPayload, TokenError)(parsed)
+
+  SI CONIURA compare(p.issuer, cfg.issuer) != 0
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenIssuerInvalido)
+  FIN SI
+  SI CONIURA token_now_unix() > p.expira_em
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenExpirado)
+  FIN SI
+  SI CONIURA token_is_revoked(db, p.jti)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenRevogado)
+  FIN SI
+  REDDE CONIURA Ok GENUS(TokenPayload, TokenError)(p)
+EXPLICIT RITUALE
+
+RITUALE token_from_bearer_header(VERBUM authorization) REDDE SPECULUM NIHIL
+  SI NON CONIURA starts_with(authorization, "Bearer ")
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA REX prefix_len AD CONIURA len("Bearer ")
+  SI CONIURA len(authorization) <= prefix_len
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA substring(authorization, prefix_len, CONIURA len(authorization)))
+EXPLICIT RITUALE
+
+RITUALE token_tem_escopo(TokenPayload p, VERBUM escopo) REDDE VERUM
+  SI CONIURA compare(p.escopos, "*") == 0
+    REDDE VERUM
+  FIN SI
+  EVOCA SPECULUM NIHIL lista AD CONIURA split(p.escopos, " ")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lista)
+  DUM i < n
+    EVOCA SPECULUM VERBUM atual_ptr AD CONIURA fluxus_get(lista, i)
+    EVOCA VERBUM atual AD CONIURA trim(*atual_ptr)
+    SI CONIURA len(atual) != 0 ET CONIURA compare(atual, escopo) == 0
+      CONIURA fluxus_free(lista)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(lista)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

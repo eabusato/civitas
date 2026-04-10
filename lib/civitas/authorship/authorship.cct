@@ -1,0 +1,146 @@
+INCIPIT grimoire "civitas_authorship"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/context_local.cct"
+
+SIGILLUM AuthorshipFields
+  created_by: VERBUM
+  updated_by: VERBUM
+  request_id: VERBUM
+  locale: VERBUM
+  created_at: REX
+  updated_at: REX
+FIN SIGILLUM
+
+ORDO ReviewState
+  RsPending,
+  RsNeedsRevision,
+  RsApproved,
+  RsRejected
+FIN ORDO
+
+SIGILLUM ReviewRecord
+  id: REX
+  object_type: VERBUM
+  object_id: REX
+  reviewer_id: VERBUM
+  reviewer_name: VERBUM
+  state: ReviewState
+  notes: VERBUM
+  reviewed_at: REX
+FIN SIGILLUM
+
+SIGILLUM ContentOrigin
+  user_id: VERBUM
+  request_id: VERBUM
+  locale: VERBUM
+FIN SIGILLUM
+
+SIGILLUM AuthorshipConfig
+  audit_path: VERBUM
+FIN SIGILLUM
+
+RITUALE authorship_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE authorship_config_default() REDDE AuthorshipConfig
+  EVOCA AuthorshipConfig cfg
+  VINCIRE cfg.audit_path AD "tests/tmp/fase_10/authorship.audit.log"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE content_origin_empty() REDDE ContentOrigin
+  EVOCA ContentOrigin origin
+  VINCIRE origin.user_id AD ""
+  VINCIRE origin.request_id AD ""
+  VINCIRE origin.locale AD ""
+  REDDE origin
+EXPLICIT RITUALE
+
+RITUALE authorship_origin_from_ctx(LocalContext ctx) REDDE ContentOrigin
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA local_context_user_id(ctx)
+  EVOCA SPECULUM NIHIL request_opt AD CONIURA local_context_request_id(ctx)
+  EVOCA SPECULUM NIHIL locale_opt AD CONIURA local_context_locale(ctx)
+  SI CONIURA option_is_some GENUS(VERBUM)(user_opt)
+    VINCIRE origin.user_id AD CONIURA option_unwrap GENUS(VERBUM)(user_opt)
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(request_opt)
+    VINCIRE origin.request_id AD CONIURA option_unwrap GENUS(VERBUM)(request_opt)
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(locale_opt)
+    VINCIRE origin.locale AD CONIURA option_unwrap GENUS(VERBUM)(locale_opt)
+  FIN SI
+  REDDE origin
+EXPLICIT RITUALE
+
+RITUALE authorship_fields_empty() REDDE AuthorshipFields
+  EVOCA AuthorshipFields fields
+  VINCIRE fields.created_by AD ""
+  VINCIRE fields.updated_by AD ""
+  VINCIRE fields.request_id AD ""
+  VINCIRE fields.locale AD ""
+  VINCIRE fields.created_at AD 0
+  VINCIRE fields.updated_at AD 0
+  REDDE fields
+EXPLICIT RITUALE
+
+RITUALE authorship_populate_create(SPECULUM AuthorshipFields fields, ContentOrigin origin) REDDE NIHIL
+  EVOCA REX now AD CONIURA authorship_now()
+  VINCIRE (*fields).created_by AD origin.user_id
+  VINCIRE (*fields).updated_by AD origin.user_id
+  VINCIRE (*fields).request_id AD origin.request_id
+  VINCIRE (*fields).locale AD origin.locale
+  VINCIRE (*fields).created_at AD now
+  VINCIRE (*fields).updated_at AD now
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE authorship_populate_update(SPECULUM AuthorshipFields fields, ContentOrigin origin) REDDE NIHIL
+  VINCIRE (*fields).updated_by AD origin.user_id
+  VINCIRE (*fields).request_id AD origin.request_id
+  VINCIRE (*fields).locale AD origin.locale
+  VINCIRE (*fields).updated_at AD CONIURA authorship_now()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_state_to_int(ReviewState state) REDDE REX
+  ELIGE state
+    CASUS RsPending: REDDE 0
+    CASUS RsNeedsRevision: REDDE 1
+    CASUS RsApproved: REDDE 2
+    CASUS RsRejected: REDDE 3
+    ALIOQUIN: REDDE 0
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE review_state_from_int(REX state) REDDE ReviewState
+  SI state == 1
+    REDDE RsNeedsRevision
+  FIN SI
+  SI state == 2
+    REDDE RsApproved
+  FIN SI
+  SI state == 3
+    REDDE RsRejected
+  FIN SI
+  REDDE RsPending
+EXPLICIT RITUALE
+
+RITUALE review_record_default() REDDE ReviewRecord
+  EVOCA ReviewRecord review
+  VINCIRE review.id AD 0
+  VINCIRE review.object_type AD ""
+  VINCIRE review.object_id AD 0
+  VINCIRE review.reviewer_id AD ""
+  VINCIRE review.reviewer_name AD ""
+  VINCIRE review.state AD RsPending
+  VINCIRE review.notes AD ""
+  VINCIRE review.reviewed_at AD 0
+  REDDE review
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

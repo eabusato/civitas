@@ -1,0 +1,133 @@
+INCIPIT grimoire "civitas_template_extras_qs"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../url.cct"
+
+SIGILLUM QsUrlParts
+  base: VERBUM
+  query: VERBUM
+  fragment: VERBUM
+FIN SIGILLUM
+
+RITUALE qs_string_map_find_key(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE qs_map_put(SPECULUM NIHIL params, VERBUM key, VERBUM value) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA qs_string_map_find_key(params, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(params, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt), value)
+    REDDE
+  FIN SI
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(params, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE qs_map_remove(SPECULUM NIHIL params, VERBUM key) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA qs_string_map_find_key(params, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    CONIURA map_remove GENUS(VERBUM, VERBUM)(params, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE qs_split_url(VERBUM url) REDDE QsUrlParts
+  EVOCA QsUrlParts parts
+  EVOCA REX hash_idx AD CONIURA find(url, "#")
+  EVOCA REX query_idx AD -1
+  EVOCA VERBUM body AD url
+
+  VINCIRE parts.base AD url
+  VINCIRE parts.query AD ""
+  VINCIRE parts.fragment AD ""
+
+  SI hash_idx != -1
+    VINCIRE body AD CONIURA substring(url, 0, hash_idx)
+    VINCIRE parts.fragment AD CONIURA substring(url, hash_idx + 1, CONIURA len(url))
+  FIN SI
+
+  VINCIRE query_idx AD CONIURA find(body, "?")
+  SI query_idx == -1
+    VINCIRE parts.base AD body
+    REDDE parts
+  FIN SI
+
+  VINCIRE parts.base AD CONIURA substring(body, 0, query_idx)
+  VINCIRE parts.query AD CONIURA substring(body, query_idx + 1, CONIURA len(body))
+  REDDE parts
+EXPLICIT RITUALE
+
+RITUALE qs_rebuild_url(QsUrlParts parts, SPECULUM NIHIL params) REDDE VERBUM
+  EVOCA VERBUM out AD parts.base
+  EVOCA VERBUM query AD CONIURA url_build_query(params)
+
+  SI CONIURA len(query) != 0
+    VINCIRE out AD CONIURA concat(out, "?")
+    VINCIRE out AD CONIURA concat(out, query)
+  FIN SI
+  SI CONIURA len(parts.fragment) != 0
+    VINCIRE out AD CONIURA concat(out, "#")
+    VINCIRE out AD CONIURA concat(out, parts.fragment)
+  FIN SI
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE qs_set(VERBUM url, VERBUM chave, VERBUM valor) REDDE VERBUM
+  EVOCA QsUrlParts parts AD CONIURA qs_split_url(url)
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(parts.query)
+  CONIURA qs_map_put(params, chave, valor)
+  REDDE CONIURA qs_rebuild_url(parts, params)
+EXPLICIT RITUALE
+
+RITUALE qs_remove(VERBUM url, VERBUM chave) REDDE VERBUM
+  EVOCA QsUrlParts parts AD CONIURA qs_split_url(url)
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(parts.query)
+  CONIURA qs_map_remove(params, chave)
+  REDDE CONIURA qs_rebuild_url(parts, params)
+EXPLICIT RITUALE
+
+RITUALE qs_merge(VERBUM url, SPECULUM NIHIL params_in) REDDE VERBUM
+  EVOCA QsUrlParts parts AD CONIURA qs_split_url(url)
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(parts.query)
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(params_in)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(params_in, key, "")
+    CONIURA qs_map_put(params, key, value)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA qs_rebuild_url(parts, params)
+EXPLICIT RITUALE
+
+RITUALE qs_get(VERBUM url, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA QsUrlParts parts AD CONIURA qs_split_url(url)
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(parts.query)
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA qs_string_map_find_key(params, chave)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(params, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt))
+  FIN SI
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

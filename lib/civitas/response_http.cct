@@ -1,0 +1,106 @@
+INCIPIT grimoire "civitas_response_http"
+
+ADVOCARE "cct/compress.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cookie.cct"
+ADVOCARE "request.cct"
+ADVOCARE "response.cct"
+
+RITUALE response_http_ok(HttpResponse value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(HttpResponse, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE response_http_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(HttpResponse, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE response_accepts_gzip(WebRequest req) REDDE VERUM
+  EVOCA SPECULUM NIHIL accept_opt AD CONIURA request_header(req, "accept-encoding")
+  SI CONIURA option_is_none GENUS(VERBUM)(accept_opt)
+    CONIURA option_free GENUS(VERBUM)(accept_opt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM value AD CONIURA to_lower(CONIURA option_unwrap GENUS(VERBUM)(accept_opt))
+  CONIURA option_free GENUS(VERBUM)(accept_opt)
+  REDDE CONIURA find(value, "gzip") != -1
+EXPLICIT RITUALE
+
+RITUALE response_copy_headers_to_http(REX headers_handle, SPECULUM NIHIL headers) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    CONIURA http_headers_set_or_push(headers_handle, key, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, key, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_push_set_cookies(REX headers_handle, SPECULUM NIHIL set_cookies) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(set_cookies)
+
+  DUM i < n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(set_cookies, i)
+    EVOCA HttpHeader header
+    VINCIRE header.nome AD "set-cookie"
+    VINCIRE header.valor AD CONIURA cookie_build_set(*cookie_ptr)
+    CONIURA http_headers_push(headers_handle, SPECULUM header)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_wire_body(WebResponse res, VERUM client_accepts_gzip, VERUM head_request) REDDE WebResponse
+  EVOCA WebResponse out AD res
+
+  SI NON CONIURA response_body_is_permitted(out.status)
+    REDDE CONIURA response_without_body(out)
+  FIN SI
+  SI head_request
+    REDDE CONIURA response_without_body(out)
+  FIN SI
+
+  SI CONIURA response_should_use_gzip(out, client_accepts_gzip)
+    VINCIRE out.body AD CONIURA gzip_compress(out.body)
+    CONIURA response_set_header(SPECULUM out, "content-encoding", "gzip")
+    CONIURA response_append_vary(SPECULUM out, "Accept-Encoding")
+  FIN SI
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE response_to_http_with_request(WebResponse res, WebRequest req) REDDE SPECULUM NIHIL
+  REDDE CONIURA response_to_http_options(res, CONIURA response_accepts_gzip(req), CONIURA compare(req.method, "HEAD") == 0)
+EXPLICIT RITUALE
+
+RITUALE response_to_http_options(WebResponse res, VERUM client_accepts_gzip, VERUM head_request) REDDE SPECULUM NIHIL
+  EVOCA WebResponse wire AD CONIURA response_wire_body(res, client_accepts_gzip, head_request)
+  EVOCA HttpResponse out AD CONIURA http_response_new(wire.status, wire.body)
+  EVOCA REX headers_handle AD CONIURA http_response_headers_handle(out)
+  EVOCA VERBUM default_ct AD CONIURA response_body_kind_default_content_type(wire.body_kind)
+
+  CONIURA response_copy_headers_to_http(headers_handle, wire.headers)
+  SI CONIURA len(default_ct) != 0 ET CONIURA len(CONIURA http_response_header(out, "content-type", "")) == 0 ET CONIURA response_body_is_permitted(wire.status)
+    CONIURA http_headers_set_or_push(headers_handle, "content-type", default_ct)
+  FIN SI
+  CONIURA response_push_set_cookies(headers_handle, wire.set_cookies)
+
+  REDDE CONIURA response_http_ok(out)
+EXPLICIT RITUALE
+
+RITUALE response_to_http(WebResponse res) REDDE SPECULUM NIHIL
+  REDDE CONIURA response_to_http_options(res, FALSUM, FALSUM)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

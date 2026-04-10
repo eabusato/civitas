@@ -1,0 +1,67 @@
+-- Generated from index.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_index"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../lib/template_contexts.cct"
+
+RITUALE render_index(MuralIndexPageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.css_url))
+  CONIURA builder_append(b, "\">\n</head>\n<body>\n  <main class=\"shell\">\n    <header class=\"hero\">\n      <p class=\"eyebrow\">Civitas canonical example</p>\n      <h1>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</h1>\n      <p class=\"lead\">A minimal guestbook proving the framework can serve HTML, validate forms, persist data and serve static assets.</p>\n      <p><a class=\"admin-link\" href=\"/admin-lite\">Open admin-lite</a></p>\n    </header>\n\n    ")
+  SI ctx.has_flash
+    CONIURA builder_append(b, "\n      <div class=\"flash flash-success\"><p>")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.flash_message))
+    CONIURA builder_append(b, "</p></div>\n    ")
+  FIN SI
+  CONIURA builder_append(b, "\n\n    <section class=\"card\">\n      <h2>Leave a message</h2>\n      ")
+  CONIURA builder_append(b, ctx.form_html)
+  CONIURA builder_append(b, "\n    </section>\n\n    <section class=\"card\">\n      <div class=\"section-head\">\n        <h2>Latest messages</h2>\n        <span class=\"badge\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.message_count)))
+  CONIURA builder_append(b, "</span>\n      </div>\n      ")
+  SI ctx.message_count == 0
+    CONIURA builder_append(b, "\n        <p class=\"empty\">")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.empty_text))
+    CONIURA builder_append(b, "</p>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <ol class=\"messages\">\n          ")
+    EVOCA REX i_item AD 0
+    EVOCA REX n_item AD CONIURA fluxus_len(ctx.messages)
+    DUM i_item < n_item
+      EVOCA SPECULUM MuralMessageItemContext item_item AD CONIURA fluxus_get(ctx.messages, i_item)
+      EVOCA LoopContext loop_item AD CONIURA tpl_loop_context(i_item, n_item)
+      CONIURA builder_append(b, "\n            <li class=\"message-card\">\n              <div class=\"message-head\">\n                <strong>")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).name))
+      CONIURA builder_append(b, "</strong>\n                ")
+      SI (*item_item).has_email
+        CONIURA builder_append(b, "\n                  <span class=\"muted\">")
+        CONIURA builder_append(b, CONIURA html_encode((*item_item).email))
+        CONIURA builder_append(b, "</span>\n                ")
+      FIN SI
+      CONIURA builder_append(b, "\n                <time>")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).created_at))
+      CONIURA builder_append(b, "</time>\n              </div>\n              <p>")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).body))
+      CONIURA builder_append(b, "</p>\n            </li>\n          ")
+      VINCIRE i_item AD i_item + 1
+    FIN DUM
+    CONIURA builder_append(b, "\n        </ol>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </section>\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

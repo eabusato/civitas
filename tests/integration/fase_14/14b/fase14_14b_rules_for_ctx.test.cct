@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase14_14b_rules_for_ctx"
+
+ADVOCARE "../../../../lib/civitas/l10n/l10n.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_rules.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA L10nRulesRegistry reg AD CONIURA l10n_rules_registry_default()
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA local_context_set(SPECULUM ctx, CONIURA local_context_key_locale(), "en-US")
+  EVOCA LocaleRules rules AD CONIURA l10n_rules_for_ctx(reg, ctx)
+  SI CONIURA compare(rules.locale, "en-US") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,40 @@
+INCIPIT grimoire "civitas_social_counter"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "social.cct"
+
+RITUALE view_counter_increment(SPECULUM NIHIL db, VERBUM object_type, REX object_id) REDDE NIHIL
+  CONIURA social_ensure_schema(db)
+  EVOCA ViewCounter current AD CONIURA view_counter_get(db, object_type, object_id)
+  SI current.total == 0 ET current.updated_at == 0
+    EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_view_counters (object_type, object_id, total, updated_at) VALUES (?, ?, 1, ?)")
+    CONIURA stmt_bind_text(stmt, 1, object_type)
+    CONIURA stmt_bind_int(stmt, 2, object_id)
+    CONIURA stmt_bind_int(stmt, 3, CONIURA social_now())
+    CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_view_counters SET total = total + 1, updated_at = ? WHERE object_type = ? AND object_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA social_now())
+  CONIURA stmt_bind_text(stmt, 2, object_type)
+  CONIURA stmt_bind_int(stmt, 3, object_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE view_counter_get(SPECULUM NIHIL db, VERBUM object_type, REX object_id) REDDE ViewCounter
+  EVOCA ViewCounter counter AD CONIURA view_counter_empty(object_type, object_id)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT total, updated_at FROM civitas_view_counters WHERE object_type = ? AND object_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE counter.total AD CONIURA stmt_get_int(stmt, 0)
+    VINCIRE counter.updated_at AD CONIURA stmt_get_int(stmt, 1)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE counter
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

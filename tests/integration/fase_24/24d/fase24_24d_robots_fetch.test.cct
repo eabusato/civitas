@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase24_24d_robots_fetch"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase24_robots_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("User-agent: *\nDisallow: /admin/\nAllow: /\n"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/robots.txt", "robots", "phase24_robots_handler", phase24_robots_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA RobotsDoc doc AD CONIURA test_robots_fetch(SPECULUM client)
+  CONIURA assert_robots_contains(doc, "Disallow: /admin/")
+  CONIURA assert_robots_not_contains(doc, "Disallow: /public/")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

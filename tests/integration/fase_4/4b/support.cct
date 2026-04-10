@@ -1,0 +1,182 @@
+INCIPIT grimoire "fase4_4b_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/app_module.cct"
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Phase4AppProbe
+  logs: SPECULUM NIHIL
+  startup_fail: VERUM
+FIN SIGILLUM
+
+RITUALE phase4_4b_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase4_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA phase4_write(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_load_settings(VERBUM root, VERBUM content) REDDE Settings
+  EVOCA SPECULUM NIHIL res
+  CONIURA phase4_4b_reset_dir(root)
+  CONIURA phase4_4b_write(CONIURA path_join(root, "civitas.toml"), content)
+  VINCIRE res AD CONIURA settings_load(root)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(res)
+    IACE CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(res))
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Settings, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_new_app(VERBUM root, VERBUM content) REDDE Application
+  EVOCA Settings settings AD CONIURA phase4_4b_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA app_new(settings)
+  SI CONIURA result_is_err GENUS(Application, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(Application, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Application, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_new_probe() REDDE Phase4AppProbe
+  EVOCA Phase4AppProbe probe
+  VINCIRE probe.logs AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE probe.startup_fail AD FALSUM
+  REDDE probe
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_probe_push(SPECULUM Phase4AppProbe probe, VERBUM line) REDDE NIHIL
+  CONIURA fluxus_push((*probe).logs, SPECULUM line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_probe_join(Phase4AppProbe probe) REDDE VERBUM
+  REDDE CONIURA join(probe.logs, ",")
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_service_probe(SPECULUM Application app) REDDE SPECULUM Phase4AppProbe
+  EVOCA SPECULUM Phase4AppProbe probe
+  VINCIRE probe AD CONIURA app_service_get(*app, "probe")
+  REDDE probe
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_health_route(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("module-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_register_routes(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM NIHIL res
+  VINCIRE app AD app_ref
+  VINCIRE res AD CONIURA app_add_route(app, "GET", "/module", "module.index", "phase4_4b_health_route", phase4_4b_health_route)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_module_middleware(
+  SPECULUM NIHIL req_ref,
+  SPECULUM NIHIL ctx_ref,
+  SPECULUM NIHIL next_ref,
+  SPECULUM NIHIL out_ref
+) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  CONIURA response_set_header(out, "x-module-middleware", "1")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_register_middleware(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  VINCIRE app AD app_ref
+  CONIURA app_add_global_middleware(app, CONIURA middleware_binding_named("phase4.module", phase4_4b_module_middleware))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_start_alpha(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM Phase4AppProbe probe
+  VINCIRE app AD app_ref
+  VINCIRE probe AD CONIURA phase4_4b_service_probe(app)
+  CONIURA phase4_4b_probe_push(probe, "start:alpha")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_start_bravo(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM Phase4AppProbe probe
+  VINCIRE app AD app_ref
+  VINCIRE probe AD CONIURA phase4_4b_service_probe(app)
+  CONIURA phase4_4b_probe_push(probe, "start:bravo")
+  SI (*probe).startup_fail
+    IACE "startup bravo falhou"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_shutdown_alpha(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM Phase4AppProbe probe
+  VINCIRE app AD app_ref
+  VINCIRE probe AD CONIURA phase4_4b_service_probe(app)
+  CONIURA phase4_4b_probe_push(probe, "shutdown:alpha")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_shutdown_bravo(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM Phase4AppProbe probe
+  VINCIRE app AD app_ref
+  VINCIRE probe AD CONIURA phase4_4b_service_probe(app)
+  CONIURA phase4_4b_probe_push(probe, "shutdown:bravo")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_health_degraded(SPECULUM NIHIL app_ref, SPECULUM NIHIL status_ref) REDDE NIHIL
+  EVOCA SPECULUM HealthStatus status
+  VINCIRE status AD status_ref
+  CONIURA app_health_mark_degraded(status, "cache", "latency high")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_signal_started(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM NIHIL env AD env_ref
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4b_register_signals(SPECULUM NIHIL app_ref) REDDE NIHIL
+  EVOCA SPECULUM Application app
+  EVOCA SPECULUM RequestSignals signals
+  EVOCA SPECULUM NIHIL res
+  VINCIRE app AD app_ref
+  VINCIRE signals AD (*app).signals_ref
+  VINCIRE res AD CONIURA signal_connect(SPECULUM (*signals).request_started, "test.started", phase4_4b_signal_started)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

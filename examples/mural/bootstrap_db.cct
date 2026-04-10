@@ -1,0 +1,22 @@
+INCIPIT grimoire "mural_bootstrap_db"
+
+ADVOCARE "lib/config.cct"
+ADVOCARE "lib/repository.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA mural_project_root()
+  EVOCA SPECULUM MuralConfig cfg_ptr AD OBSECRO mem_alloc(MENSURA(MuralConfig))
+  EVOCA SPECULUM NIHIL cfg_res AD CONIURA mural_config_load_fill(cfg_ptr, root)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(cfg_res)
+    CONIURA eprintln(CONIURA result_unwrap_err GENUS(REX, VERBUM)(cfg_res))
+    REDDE 1
+  FIN SI
+  CONIURA mural_repository_init_schema(*cfg_ptr)
+  CONIURA println(CONIURA concat("database ready: ", (*cfg_ptr).database_path))
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

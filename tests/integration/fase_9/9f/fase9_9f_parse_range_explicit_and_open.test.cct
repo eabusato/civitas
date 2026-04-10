@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase9_9f_parse_range_explicit_and_open"
+
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA SPECULUM NIHIL explicit_res AD CONIURA delivery_parse_range("bytes=0-99", 200)
+  SI CONIURA result_is_err GENUS(RangeRequest, DeliveryError)(explicit_res)
+    IACE "explicit range should parse"
+  FIN SI
+  EVOCA RangeRequest explicit_rr AD CONIURA result_unwrap GENUS(RangeRequest, DeliveryError)(explicit_res)
+  SI explicit_rr.start != 0 VEL explicit_rr.end != 99 VEL explicit_rr.total != 200
+    IACE "explicit range values are wrong"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL open_res AD CONIURA delivery_parse_range("bytes=150-", 200)
+  SI CONIURA result_is_err GENUS(RangeRequest, DeliveryError)(open_res)
+    IACE "open range should parse"
+  FIN SI
+  EVOCA RangeRequest open_rr AD CONIURA result_unwrap GENUS(RangeRequest, DeliveryError)(open_res)
+  SI open_rr.start != 150 VEL open_rr.end != 199
+    IACE "open range should extend to end of file"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

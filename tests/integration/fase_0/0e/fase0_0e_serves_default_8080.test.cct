@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase0_0e_serves_default_8080_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM build_log AD CONIURA tmp_file("fase0_0e_default_build.log")
+  EVOCA VERBUM ready AD CONIURA tmp_file("fase0_0e_default.ready")
+  EVOCA VERBUM done AD CONIURA tmp_file("fase0_0e_default.done")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase0_0e_default.server.log")
+  EVOCA VERBUM cmd AD "CIVITAS_MAX_REQUESTS=1 "
+
+  CONIURA cleanup_file(ready)
+  CONIURA cleanup_file(done)
+  CONIURA cleanup_file(log)
+
+  SI CONIURA run_to_log("make examples", build_log) != 0
+    REDDE 1
+  FIN SI
+
+  VINCIRE cmd AD CONIURA concat(cmd, "CIVITAS_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, ready)
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_DONE_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, done)
+  VINCIRE cmd AD CONIURA concat(cmd, " ./examples/salve_civitas/dist/salve_civitas")
+
+  SI CONIURA spawn_to_log(cmd, log) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 4000)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(ready), "skip") == 0
+    REDDE 0
+  FIN SI
+  CONIURA sleep_ms(50)
+
+  EVOCA HttpResponse res AD CONIURA http_get("http://127.0.0.1:8080/")
+  SI CONIURA http_response_status(res) != 200
+    REDDE 4
+  FIN SI
+  SI NON CONIURA wait_for_file(done, 4000)
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

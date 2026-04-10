@@ -1,0 +1,40 @@
+INCIPIT grimoire "civitas_auth_middleware_bearer"
+
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "../auth_token/auth_token.cct"
+ADVOCARE "../auth_token/auth_token_verify.cct"
+ADVOCARE "auth_context.cct"
+
+RITUALE auth_resolve_bearer(SPECULUM NIHIL db, TokenConfig tok_cfg, VERBUM authorization) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt_token AD CONIURA token_from_bearer_header(authorization)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_token)
+    CONIURA option_free GENUS(VERBUM)(opt_token)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(opt_token)
+  CONIURA option_free GENUS(VERBUM)(opt_token)
+
+  EVOCA SPECULUM NIHIL verified AD CONIURA token_verify(db, tok_cfg, token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(verified)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  EVOCA TokenPayload payload AD CONIURA result_unwrap GENUS(TokenPayload, TokenError)(verified)
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_usuario_ativo(db, payload.user_id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  CONIURA option_free GENUS(User)(user_opt)
+
+  EVOCA AuthContext ac AD CONIURA auth_context_empty()
+  VINCIRE ac.autenticado AD VERUM
+  VINCIRE ac.user_id AD payload.user_id
+  VINCIRE ac.escopos AD payload.escopos
+  VINCIRE ac.via AD "bearer"
+  REDDE CONIURA Some GENUS(AuthContext)(ac)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

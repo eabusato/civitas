@@ -1,0 +1,173 @@
+INCIPIT grimoire "civitas_upload_types"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../forms/multipart.cct"
+ADVOCARE "../request_core.cct"
+
+ORDO UploadError
+  UeExcedeuLimite,
+  UeTipoNaoPermitido,
+  UeMagicBytesInvalido,
+  UeBoundaryAusente,
+  UeBoundaryMalformado,
+  UePartHeaderMalformado,
+  UeDestinoNaoGravavel,
+  UeWriteFalhou,
+  UeRequestTruncado,
+  UeContentTypeInvalido
+FIN ORDO
+
+SIGILLUM UploadConfig
+  destino: VERBUM
+  max_tamanho_campo: REX
+  max_tamanho_total: REX
+  tipos_permitidos: SPECULUM NIHIL
+  validar_magic_bytes: VERUM
+  tamanho_bloco: REX
+FIN SIGILLUM
+
+SIGILLUM UploadedFile
+  nome_original: VERBUM
+  extensao_original: VERBUM
+  nome_salvo: VERBUM
+  caminho: VERBUM
+  tamanho: REX
+  mime_type: VERBUM
+  file_kind: FileType
+FIN SIGILLUM
+
+SIGILLUM UploadField
+  nome: VERBUM
+  valor: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MultipartResult
+  arquivos: SPECULUM NIHIL
+  campos: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE upload_result_ok(MultipartResult value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MultipartResult, UploadError)(value)
+EXPLICIT RITUALE
+
+RITUALE upload_result_err(UploadError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MultipartResult, UploadError)(err)
+EXPLICIT RITUALE
+
+RITUALE upload_file_ok(UploadedFile value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(UploadedFile, UploadError)(value)
+EXPLICIT RITUALE
+
+RITUALE upload_file_err(UploadError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(UploadedFile, UploadError)(err)
+EXPLICIT RITUALE
+
+RITUALE upload_new_result() REDDE MultipartResult
+  EVOCA MultipartResult out
+  VINCIRE out.arquivos AD CONIURA map_init GENUS(VERBUM, UploadedFile)()
+  VINCIRE out.campos AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE upload_config_new(VERBUM destino) REDDE UploadConfig
+  EVOCA UploadConfig cfg
+  VINCIRE cfg.destino AD CONIURA normalize(destino)
+  VINCIRE cfg.max_tamanho_campo AD 10485760
+  VINCIRE cfg.max_tamanho_total AD 52428800
+  VINCIRE cfg.tipos_permitidos AD NIHIL
+  VINCIRE cfg.validar_magic_bytes AD VERUM
+  VINCIRE cfg.tamanho_bloco AD 65536
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE upload_config_allow_type(SPECULUM UploadConfig cfg, VERBUM mime_type) REDDE NIHIL
+  SI (*cfg).tipos_permitidos == NIHIL
+    VINCIRE (*cfg).tipos_permitidos AD CONIURA fluxus_init(MENSURA(VERBUM))
+  FIN SI
+  CONIURA fluxus_push((*cfg).tipos_permitidos, SPECULUM mime_type)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE upload_tipo_permitido(VERBUM mime_type, SPECULUM NIHIL permitidos) REDDE VERUM
+  SI permitidos == NIHIL
+    REDDE VERUM
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(permitidos)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(permitidos, i)
+    SI CONIURA compare(*item_ptr, mime_type) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE upload_extract_boundary(VERBUM content_type) REDDE VERBUM
+  REDDE CONIURA multipart_extract_boundary(content_type)
+EXPLICIT RITUALE
+
+RITUALE upload_extensao_de(VERBUM nome_original) REDDE VERBUM
+  EVOCA VERBUM ext AD CONIURA path_ext(nome_original)
+  SI CONIURA len(ext) == 0
+    REDDE ""
+  FIN SI
+  SI CONIURA starts_with(ext, ".")
+    REDDE CONIURA to_lower(ext)
+  FIN SI
+  REDDE CONIURA concat(".", CONIURA to_lower(ext))
+EXPLICIT RITUALE
+
+RITUALE upload_nome_salvo(FileType kind) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA uuid_to_string(CONIURA uuid_v4()), CONIURA filetype_extension(kind))
+EXPLICIT RITUALE
+
+RITUALE upload_get_file(MultipartResult resultado, VERBUM nome_campo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, UploadedFile)(resultado.arquivos)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, nome_campo) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, UploadedFile)(resultado.arquivos, *key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(UploadedFile)()
+EXPLICIT RITUALE
+
+RITUALE upload_get_field(MultipartResult resultado, VERBUM nome_campo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(resultado.campos)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, nome_campo) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(resultado.campos, *key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE upload_delete(UploadedFile arq) REDDE NIHIL
+  SI CONIURA exists(arq.caminho)
+    CONIURA delete_file(arq.caminho)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

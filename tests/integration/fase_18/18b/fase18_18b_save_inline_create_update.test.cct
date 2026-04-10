@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase18_18b_save_inline_create_update"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_save.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_query.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_inline_save_create_update() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18b_save_one")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA AdminInlineConfig inline_cfg AD CONIURA phase18_register_comment_inline(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Post A", "draft", "u1", 1000)
+  EVOCA InlineFormData create_form AD CONIURA inline_form_data_empty()
+  VINCIRE create_form.prefix AD "comments-0"
+  VINCIRE create_form.fields_json AD "{\"body\":\"Created\",\"state\":\"visible\"}"
+  EVOCA VERBUM created_pk AD CONIURA admin_inline_save_one(inline_cfg, stack.dbh, "1", create_form, "actor-1")
+  SI CONIURA compare(created_pk, "1") != 0
+    IACE "inline create pk mismatch"
+  FIN SI
+  EVOCA InlineFormData update_form AD CONIURA inline_form_data_empty()
+  VINCIRE update_form.prefix AD "comments-0"
+  VINCIRE update_form.object_pk AD created_pk
+  VINCIRE update_form.fields_json AD "{\"body\":\"Updated\",\"state\":\"hidden\"}"
+  CONIURA admin_inline_save_one(inline_cfg, stack.dbh, "1", update_form, "actor-1")
+  EVOCA VERBUM rows_json AD CONIURA admin_inline_list_for_parent(inline_cfg, stack.dbh, "1")
+  SI CONIURA find(rows_json, "\"body\":\"Updated\"") == -1
+    IACE "inline update body missing"
+  FIN SI
+  SI CONIURA find(rows_json, "\"state\":\"hidden\"") == -1
+    IACE "inline update state missing"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_inline_save_create_update()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

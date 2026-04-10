@@ -1,0 +1,15 @@
+INCIPIT grimoire "fase11_11e_lock_key_translation"
+
+ADVOCARE "../../../../lib/civitas/locks/locks_keys.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PgLockKey key AD CONIURA lock_key_translation("page", "abc", "pt-BR")
+  SI CONIURA compare(key.raw_name, "translation:page:abc:pt-BR") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

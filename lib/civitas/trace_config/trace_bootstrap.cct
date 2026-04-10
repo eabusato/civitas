@@ -1,0 +1,15 @@
+INCIPIT grimoire "civitas_trace_bootstrap"
+
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "trace_config.cct"
+
+RITUALE trace_bootstrap(TraceConfig cfg) REDDE NIHIL
+  SI cfg.enabled
+    CONIURA instrument_enable(cfg.mode)
+  ALITER
+    CONIURA instrument_disable()
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

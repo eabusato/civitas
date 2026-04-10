@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase2_2c_recovery_handler_error_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  IACE "boom"
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "recovery", middleware_recovery)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/boom"), terminal)
+  SI out.status != 500
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(out, "x-civitas-recovered", ""), "1") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

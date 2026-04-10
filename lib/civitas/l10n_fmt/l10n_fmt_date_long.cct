@@ -1,0 +1,30 @@
+INCIPIT grimoire "civitas_l10n_fmt_date_long"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n_fmt.cct"
+
+RITUALE l10n_month_name(REX mes, SPECULUM L10nFmtRules rules, VERUM abreviado) REDDE VERBUM
+  SI mes < 1 VEL mes > 12
+    REDDE ""
+  FIN SI
+  SI abreviado
+    EVOCA SPECULUM VERBUM ptr_a AD CONIURA fluxus_get((*rules).meses.abreviados, mes)
+    REDDE *ptr_a
+  FIN SI
+  EVOCA SPECULUM VERBUM ptr_c AD CONIURA fluxus_get((*rules).meses.completos, mes)
+  REDDE *ptr_c
+EXPLICIT RITUALE
+
+RITUALE l10n_format_date_long(Date d, SPECULUM L10nFmtRules rules) REDDE VERBUM
+  EVOCA VERBUM out AD (*rules).formato_data_longa
+  VINCIRE out AD CONIURA replace(out, "{dia}", CONIURA stringify_int(d.dia))
+  VINCIRE out AD CONIURA replace(out, "{dia2}", CONIURA pad_left(CONIURA stringify_int(d.dia), 2, 48))
+  VINCIRE out AD CONIURA replace(out, "{mes}", CONIURA l10n_month_name(d.mes, rules, FALSUM))
+  VINCIRE out AD CONIURA replace(out, "{ano}", CONIURA stringify_int(d.ano))
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

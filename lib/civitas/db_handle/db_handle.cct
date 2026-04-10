@@ -1,0 +1,410 @@
+INCIPIT grimoire "civitas_db_handle"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO PoolBackendKind
+  PbkSqlite,
+  PbkPostgres
+FIN ORDO
+
+ORDO DbParamKind
+  DpkNull,
+  DpkText,
+  DpkInt,
+  DpkReal,
+  DpkBool,
+  DpkUuid,
+  DpkJson
+FIN ORDO
+
+SIGILLUM DbParam
+  kind: DbParamKind
+  text_value: VERBUM
+  int_value: REX
+  real_value: UMBRA
+  bool_value: VERUM
+FIN SIGILLUM
+
+SIGILLUM DbTextValue
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DbParams
+  valores: SPECULUM NIHIL
+  tipos: SPECULUM NIHIL
+  n: REX
+FIN SIGILLUM
+
+SIGILLUM DbRows
+  kind: PoolBackendKind
+  raw_rows: SPECULUM NIHIL
+  sqlite_rows: SPECULUM NIHIL
+  pg_rows: SPECULUM NIHIL
+  next_fn: SPECULUM NIHIL
+  get_text_fn: SPECULUM NIHIL
+  get_int_fn: SPECULUM NIHIL
+  get_real_fn: SPECULUM NIHIL
+  get_bool_fn: SPECULUM NIHIL
+  is_null_fn: SPECULUM NIHIL
+  close_fn: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM DbHandle
+  kind: PoolBackendKind
+  sqlite_conn: SPECULUM NIHIL
+  pg_conn: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+  exec_fn: SPECULUM NIHIL
+  query_fn: SPECULUM NIHIL
+  scalar_int_fn: SPECULUM NIHIL
+  begin_fn: SPECULUM NIHIL
+  commit_fn: SPECULUM NIHIL
+  rollback_fn: SPECULUM NIHIL
+  savepoint_fn: SPECULUM NIHIL
+  rollback_to_fn: SPECULUM NIHIL
+  release_savepoint_fn: SPECULUM NIHIL
+  is_alive_fn: SPECULUM NIHIL
+  close_fn: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE dbh_empty() REDDE DbHandle
+  EVOCA DbHandle h
+  VINCIRE h.kind AD PbkSqlite
+  VINCIRE h.sqlite_conn AD NIHIL
+  VINCIRE h.pg_conn AD NIHIL
+  VINCIRE h.logger AD NIHIL
+  VINCIRE h.exec_fn AD NIHIL
+  VINCIRE h.query_fn AD NIHIL
+  VINCIRE h.scalar_int_fn AD NIHIL
+  VINCIRE h.begin_fn AD NIHIL
+  VINCIRE h.commit_fn AD NIHIL
+  VINCIRE h.rollback_fn AD NIHIL
+  VINCIRE h.savepoint_fn AD NIHIL
+  VINCIRE h.rollback_to_fn AD NIHIL
+  VINCIRE h.release_savepoint_fn AD NIHIL
+  VINCIRE h.is_alive_fn AD NIHIL
+  VINCIRE h.close_fn AD NIHIL
+  REDDE h
+EXPLICIT RITUALE
+
+RITUALE dbrows_empty(PoolBackendKind kind) REDDE DbRows
+  EVOCA DbRows rows
+  VINCIRE rows.kind AD kind
+  VINCIRE rows.raw_rows AD NIHIL
+  VINCIRE rows.sqlite_rows AD NIHIL
+  VINCIRE rows.pg_rows AD NIHIL
+  VINCIRE rows.next_fn AD NIHIL
+  VINCIRE rows.get_text_fn AD NIHIL
+  VINCIRE rows.get_int_fn AD NIHIL
+  VINCIRE rows.get_real_fn AD NIHIL
+  VINCIRE rows.get_bool_fn AD NIHIL
+  VINCIRE rows.is_null_fn AD NIHIL
+  VINCIRE rows.close_fn AD NIHIL
+  REDDE rows
+EXPLICIT RITUALE
+
+RITUALE dbh_set_logger(SPECULUM DbHandle h, SPECULUM NIHIL logger) REDDE NIHIL
+  VINCIRE (*h).logger AD logger
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_fill(SPECULUM DbHandle dest, DbHandle src) REDDE NIHIL
+  VINCIRE (*dest).kind AD src.kind
+  VINCIRE (*dest).sqlite_conn AD src.sqlite_conn
+  VINCIRE (*dest).pg_conn AD src.pg_conn
+  VINCIRE (*dest).logger AD src.logger
+  VINCIRE (*dest).exec_fn AD src.exec_fn
+  VINCIRE (*dest).query_fn AD src.query_fn
+  VINCIRE (*dest).scalar_int_fn AD src.scalar_int_fn
+  VINCIRE (*dest).begin_fn AD src.begin_fn
+  VINCIRE (*dest).commit_fn AD src.commit_fn
+  VINCIRE (*dest).rollback_fn AD src.rollback_fn
+  VINCIRE (*dest).savepoint_fn AD src.savepoint_fn
+  VINCIRE (*dest).rollback_to_fn AD src.rollback_to_fn
+  VINCIRE (*dest).release_savepoint_fn AD src.release_savepoint_fn
+  VINCIRE (*dest).is_alive_fn AD src.is_alive_fn
+  VINCIRE (*dest).close_fn AD src.close_fn
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_params_new() REDDE DbParams
+  EVOCA DbParams p
+  VINCIRE p.valores AD CONIURA fluxus_init(MENSURA(DbParam))
+  VINCIRE p.tipos AD CONIURA fluxus_init(MENSURA(DbParamKind))
+  VINCIRE p.n AD 0
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE dbh_params_free(SPECULUM DbParams p) REDDE NIHIL
+  CONIURA fluxus_free((*p).valores)
+  CONIURA fluxus_free((*p).tipos)
+  VINCIRE (*p).n AD 0
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbparam_make(DbParamKind kind, VERBUM text_value, REX int_value, UMBRA real_value, VERUM bool_value) REDDE DbParam
+  EVOCA DbParam p
+  VINCIRE p.kind AD kind
+  VINCIRE p.text_value AD text_value
+  VINCIRE p.int_value AD int_value
+  VINCIRE p.real_value AD real_value
+  VINCIRE p.bool_value AD bool_value
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE dbh_params_push(SPECULUM DbParams p, DbParam value) REDDE NIHIL
+  CONIURA fluxus_push((*p).valores, SPECULUM value)
+  CONIURA fluxus_push((*p).tipos, SPECULUM value.kind)
+  VINCIRE (*p).n AD (*p).n + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_text(SPECULUM DbParams p, VERBUM value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkText, value, 0, 0.0, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_int(SPECULUM DbParams p, REX value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkInt, "", value, 0.0, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_real(SPECULUM DbParams p, UMBRA value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkReal, "", 0, value, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_bool(SPECULUM DbParams p, VERUM value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkBool, "", 0, 0.0, value))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_uuid(SPECULUM DbParams p, VERBUM value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkUuid, value, 0, 0.0, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_json(SPECULUM DbParams p, VERBUM value) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkJson, value, 0, 0.0, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_param_null(SPECULUM DbParams p) REDDE NIHIL
+  CONIURA dbh_params_push(p, CONIURA dbparam_make(DpkNull, "", 0, 0.0, FALSUM))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbv_text(VERBUM v) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkText, v, 0, 0.0, FALSUM)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbv_int(REX v) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkInt, "", v, 0.0, FALSUM)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbv_bool(VERUM v) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkBool, "", 0, 0.0, v)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbv_uuid(VERBUM v) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkUuid, v, 0, 0.0, FALSUM)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbv_json(VERBUM v) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkJson, v, 0, 0.0, FALSUM)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbv_null() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbParam ptr AD OBSECRO mem_alloc(MENSURA(DbParam))
+  VINCIRE (*ptr) AD CONIURA dbparam_make(DpkNull, "", 0, 0.0, FALSUM)
+  REDDE ptr
+EXPLICIT RITUALE
+
+RITUALE dbh_param_from_value(SPECULUM DbParams p, SPECULUM NIHIL value_ptr) REDDE NIHIL
+  SI value_ptr == NIHIL
+    CONIURA dbh_param_null(p)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM DbParam typed AD value_ptr
+  CONIURA dbh_params_push(p, *typed)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_log_sql(DbHandle h, VERBUM sql, VERBUM backend, VERBUM op) REDDE NIHIL
+  SI h.logger == NIHIL
+    REDDE
+  FIN SI
+  EVOCA VERBUM fields AD "{\"backend\":\""
+  VINCIRE fields AD CONIURA concat(fields, backend)
+  VINCIRE fields AD CONIURA concat(fields, "\",\"op\":\"")
+  VINCIRE fields AD CONIURA concat(fields, op)
+  VINCIRE fields AD CONIURA concat(fields, "\"}")
+  CONIURA log_debug(h.logger, sql, fields)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_raw_conn(DbHandle h) REDDE SPECULUM NIHIL
+  SI h.kind == PbkSqlite
+    REDDE h.sqlite_conn
+  FIN SI
+  REDDE h.pg_conn
+EXPLICIT RITUALE
+
+RITUALE dbh_exec(DbHandle h, VERBUM sql, DbParams params) REDDE NIHIL
+  SI h.exec_fn == NIHIL
+    REDDE
+  FIN SI
+  SI h.kind == PbkSqlite
+    CONIURA dbh_log_sql(h, sql, "sqlite", "exec")
+  ALITER
+    CONIURA dbh_log_sql(h, sql, "postgres", "exec")
+  FIN SI
+  CONIURA callback_invoke3_void GENUS(SPECULUM NIHIL, VERBUM, DbParams)(h.exec_fn, CONIURA dbh_raw_conn(h), sql, params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_query(DbHandle h, VERBUM sql, DbParams params) REDDE DbRows
+  SI h.query_fn == NIHIL
+    REDDE CONIURA dbrows_empty(h.kind)
+  FIN SI
+  SI h.kind == PbkSqlite
+    CONIURA dbh_log_sql(h, sql, "sqlite", "query")
+  ALITER
+    CONIURA dbh_log_sql(h, sql, "postgres", "query")
+  FIN SI
+  REDDE CONIURA callback_invoke3 GENUS(SPECULUM NIHIL, VERBUM, DbParams, DbRows)(h.query_fn, CONIURA dbh_raw_conn(h), sql, params)
+EXPLICIT RITUALE
+
+RITUALE dbh_scalar_int(DbHandle h, VERBUM sql) REDDE REX
+  SI h.scalar_int_fn == NIHIL
+    REDDE 0
+  FIN SI
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX value AD CONIURA callback_invoke3 GENUS(SPECULUM NIHIL, VERBUM, DbParams, REX)(h.scalar_int_fn, CONIURA dbh_raw_conn(h), sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE dbrows_next(SPECULUM DbRows rows) REDDE VERUM
+  SI (*rows).next_fn == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA callback_invoke1 GENUS(SPECULUM NIHIL, VERUM)((*rows).next_fn, (*rows).raw_rows)
+EXPLICIT RITUALE
+
+RITUALE dbrows_get_text(DbRows rows, REX col) REDDE VERBUM
+  SI rows.get_text_fn == NIHIL
+    REDDE ""
+  FIN SI
+  EVOCA DbTextValue boxed AD CONIURA callback_invoke2 GENUS(SPECULUM NIHIL, REX, DbTextValue)(rows.get_text_fn, rows.raw_rows, col)
+  REDDE boxed.value
+EXPLICIT RITUALE
+
+RITUALE dbrows_get_int(DbRows rows, REX col) REDDE REX
+  SI rows.get_int_fn == NIHIL
+    REDDE 0
+  FIN SI
+  REDDE CONIURA callback_invoke2 GENUS(SPECULUM NIHIL, REX, REX)(rows.get_int_fn, rows.raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbrows_get_real(DbRows rows, REX col) REDDE UMBRA
+  SI rows.get_real_fn == NIHIL
+    REDDE 0.0
+  FIN SI
+  REDDE CONIURA callback_invoke2 GENUS(SPECULUM NIHIL, REX, UMBRA)(rows.get_real_fn, rows.raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbrows_get_bool(DbRows rows, REX col) REDDE VERUM
+  SI rows.get_bool_fn == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA callback_invoke2 GENUS(SPECULUM NIHIL, REX, VERUM)(rows.get_bool_fn, rows.raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbrows_is_null(DbRows rows, REX col) REDDE VERUM
+  SI rows.is_null_fn == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA callback_invoke2 GENUS(SPECULUM NIHIL, REX, VERUM)(rows.is_null_fn, rows.raw_rows, col)
+EXPLICIT RITUALE
+
+RITUALE dbrows_close(DbRows rows) REDDE NIHIL
+  SI rows.close_fn == NIHIL
+    REDDE
+  FIN SI
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(rows.close_fn, rows.raw_rows)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_begin(DbHandle h) REDDE NIHIL
+  SI h.begin_fn != NIHIL
+    CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(h.begin_fn, CONIURA dbh_raw_conn(h))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_commit(DbHandle h) REDDE NIHIL
+  SI h.commit_fn != NIHIL
+    CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(h.commit_fn, CONIURA dbh_raw_conn(h))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_rollback(DbHandle h) REDDE NIHIL
+  SI h.rollback_fn != NIHIL
+    CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(h.rollback_fn, CONIURA dbh_raw_conn(h))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_savepoint(DbHandle h, VERBUM name) REDDE NIHIL
+  SI h.savepoint_fn != NIHIL
+    CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, VERBUM)(h.savepoint_fn, CONIURA dbh_raw_conn(h), name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_rollback_to(DbHandle h, VERBUM name) REDDE NIHIL
+  SI h.rollback_to_fn != NIHIL
+    CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, VERBUM)(h.rollback_to_fn, CONIURA dbh_raw_conn(h), name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_release_savepoint(DbHandle h, VERBUM name) REDDE NIHIL
+  SI h.release_savepoint_fn != NIHIL
+    CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, VERBUM)(h.release_savepoint_fn, CONIURA dbh_raw_conn(h), name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_is_alive(DbHandle h) REDDE VERUM
+  SI h.is_alive_fn == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA callback_invoke1 GENUS(SPECULUM NIHIL, VERUM)(h.is_alive_fn, CONIURA dbh_raw_conn(h))
+EXPLICIT RITUALE
+
+RITUALE dbh_close(SPECULUM DbHandle h) REDDE NIHIL
+  SI (*h).close_fn != NIHIL
+    CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*h).close_fn, CONIURA dbh_raw_conn(*h))
+  FIN SI
+  VINCIRE (*h).sqlite_conn AD NIHIL
+  VINCIRE (*h).pg_conn AD NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

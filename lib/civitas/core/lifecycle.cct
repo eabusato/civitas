@@ -1,0 +1,35 @@
+INCIPIT grimoire "civitas_core_lifecycle"
+
+ADVOCARE "cct/verbum.cct"
+
+ORDO AppLifecycleState
+  APP_LIFECYCLE_CREATED,
+  APP_LIFECYCLE_STARTING,
+  APP_LIFECYCLE_STARTED,
+  APP_LIFECYCLE_STOPPING,
+  APP_LIFECYCLE_STOPPED,
+  APP_LIFECYCLE_FAILED
+FIN ORDO
+
+RITUALE app_lifecycle_state_name(AppLifecycleState state) REDDE VERBUM
+  ELIGE state
+    CASUS APP_LIFECYCLE_CREATED:
+      REDDE "created"
+    CASUS APP_LIFECYCLE_STARTING:
+      REDDE "starting"
+    CASUS APP_LIFECYCLE_STARTED:
+      REDDE "started"
+    CASUS APP_LIFECYCLE_STOPPING:
+      REDDE "stopping"
+    CASUS APP_LIFECYCLE_STOPPED:
+      REDDE "stopped"
+    ALIOQUIN:
+      REDDE "failed"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE app_lifecycle_is_started(AppLifecycleState state) REDDE VERUM
+  REDDE state == APP_LIFECYCLE_STARTED
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

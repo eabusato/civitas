@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase19_19c_field_mapping"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/openapi/openapi.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_field_mapping() REDDE NIHIL
+  SI CONIURA compare(CONIURA openapi_field_kind_to_type(API_FIELD_INT), "integer") != 0
+    IACE "int type mismatch"
+  FIN SI
+  SI CONIURA compare(CONIURA openapi_field_kind_to_type(API_FIELD_BOOL), "boolean") != 0
+    IACE "bool type mismatch"
+  FIN SI
+  SI CONIURA compare(CONIURA openapi_field_kind_to_format(API_FIELD_DATE), "date") != 0
+    IACE "date format mismatch"
+  FIN SI
+  SI CONIURA compare(CONIURA openapi_field_kind_to_format(API_FIELD_DATETIME), "date-time") != 0
+    IACE "datetime format mismatch"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_field_mapping()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

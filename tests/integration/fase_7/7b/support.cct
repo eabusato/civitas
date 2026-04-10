@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase7_7b_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE phase7_validation_fd() REDDE FormData
+  REDDE CONIURA form_data_new()
+EXPLICIT RITUALE
+
+RITUALE phase7_validation_put(SPECULUM FormData fd, VERBUM key, VERBUM value) REDDE NIHIL
+  CONIURA form_data_put_text(fd, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase7_validation_error_count(ValidationResult vr, VERBUM campo) REDDE REX
+  EVOCA SPECULUM NIHIL erros AD CONIURA validation_get_errors(vr, campo)
+  REDDE CONIURA fluxus_len(erros)
+EXPLICIT RITUALE
+
+RITUALE phase7_validation_error_at(ValidationResult vr, VERBUM campo, REX idx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL erros AD CONIURA validation_get_errors(vr, campo)
+  EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(erros, idx)
+  REDDE *msg_ptr
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

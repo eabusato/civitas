@@ -1,0 +1,54 @@
+INCIPIT grimoire "civitas_mem_watch"
+
+ADVOCARE "../memory_profiler.cct"
+ADVOCARE "../memory_profiler/memory_profiler.cct"
+
+SIGILLUM MemWatchConfig
+  max_suspected: REX
+  max_peak_live_bytes: REX
+  sample_limit: REX
+FIN SIGILLUM
+
+SIGILLUM MemWatchResult
+  report: MemReport
+  approved: VERUM
+FIN SIGILLUM
+
+RITUALE mem_watch_config_default() REDDE MemWatchConfig
+  EVOCA MemWatchConfig cfg
+  VINCIRE cfg.max_suspected AD 0
+  VINCIRE cfg.max_peak_live_bytes AD 512
+  VINCIRE cfg.sample_limit AD 200
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE mem_watch_copy_report(SPECULUM MemReport dest, MemReport src) REDDE NIHIL
+  VINCIRE (*dest).n_requests AD src.n_requests
+  VINCIRE (*dest).allocs_total AD src.allocs_total
+  VINCIRE (*dest).bytes_alloc_total AD src.bytes_alloc_total
+  VINCIRE (*dest).mean_allocs_per_request AD src.mean_allocs_per_request
+  VINCIRE (*dest).mean_bytes_per_request AD src.mean_bytes_per_request
+  VINCIRE (*dest).peak_live_bytes_delta AD src.peak_live_bytes_delta
+  VINCIRE (*dest).suspected_count AD src.suspected_count
+  VINCIRE (*dest).deltas AD src.deltas
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_watch_fill_from_report(SPECULUM MemWatchResult out, MemReport report, MemWatchConfig cfg) REDDE NIHIL
+  CONIURA mem_watch_copy_report(SPECULUM (*out).report, report)
+  VINCIRE (*out).approved AD VERUM
+  SI report.suspected_count > cfg.max_suspected
+    VINCIRE (*out).approved AD FALSUM
+  FIN SI
+  SI report.peak_live_bytes_delta > cfg.max_peak_live_bytes
+    VINCIRE (*out).approved AD FALSUM
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_watch_fill_from_state(SPECULUM MemWatchResult out, SPECULUM MemProfilerState state, MemWatchConfig cfg) REDDE NIHIL
+  CONIURA mem_watch_fill_from_report(out, CONIURA mem_profiler_report(state, cfg.sample_limit), cfg)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

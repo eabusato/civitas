@@ -1,0 +1,373 @@
+INCIPIT grimoire "mural_example_server_smoke_test"
+
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE mural_smoke_root() REDDE VERBUM
+  REDDE "tests/tmp/examples/mural/server_smoke"
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_file(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA mural_smoke_root(), name)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_db_path() REDDE VERBUM
+  REDDE CONIURA resolve(CONIURA path_join(CONIURA cwd(), CONIURA mural_smoke_file("mural.db")))
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    TEMPTA
+      CONIURA delete_file(path)
+    CAPE FRACTUM erro
+      SI CONIURA exists(path)
+        IACE OBSECRO fractum_to_verbum(erro)
+      FIN SI
+    FIN TEMPTA
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_stop_existing_server() REDDE NIHIL
+  EVOCA VERBUM pid_path AD CONIURA mural_smoke_file("pid.txt")
+  EVOCA VERBUM cmd AD ""
+  SI CONIURA exists(pid_path)
+    VINCIRE cmd AD "kill -0 "
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_path)))
+    VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1 && kill -TERM ")
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_path)))
+    VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1 || true")
+    CONIURA run(cmd)
+    CONIURA sleep_ms(100)
+    CONIURA mural_smoke_cleanup_file(pid_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_pick_port() REDDE REX
+  REDDE 22000 + (CONIURA now_ms() % 8000)
+EXPLICIT RITUALE
+
+RITUALE mural_extract_cookie_value(VERBUM set_cookie_header, VERBUM cookie_name) REDDE VERBUM
+  EVOCA VERBUM prefix AD CONIURA concat(cookie_name, "=")
+  EVOCA REX semi AD 0
+  SI NON CONIURA starts_with(set_cookie_header, prefix)
+    REDDE ""
+  FIN SI
+  VINCIRE semi AD CONIURA find(set_cookie_header, ";")
+  SI semi == -1
+    REDDE CONIURA substring(set_cookie_header, CONIURA len(prefix), CONIURA len(set_cookie_header))
+  FIN SI
+  REDDE CONIURA substring(set_cookie_header, CONIURA len(prefix), semi)
+EXPLICIT RITUALE
+
+RITUALE mural_status_line(VERBUM raw_response) REDDE VERBUM
+  EVOCA REX crlf AD CONIURA find(raw_response, CONIURA crlf())
+  SI crlf == -1
+    REDDE raw_response
+  FIN SI
+  REDDE CONIURA substring(raw_response, 0, crlf)
+EXPLICIT RITUALE
+
+RITUALE mural_head_body(VERBUM raw_response) REDDE VERBUM
+  EVOCA VERBUM sep AD CONIURA concat(CONIURA crlf(), CONIURA crlf())
+  EVOCA REX idx AD CONIURA find(raw_response, sep)
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(raw_response, idx + CONIURA len(sep), CONIURA len(raw_response))
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_raw_http(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  REDDE CONIURA http_read_response_raw(sock)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_raw_http_headers(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  REDDE CONIURA http_read_headers(sock)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_compile_or_fail(VERBUM source_path, VERBUM log_name) REDDE NIHIL
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, source_path)
+  SI CONIURA run_to_log(cmd, CONIURA mural_smoke_file(log_name)) != 0
+    IACE CONIURA concat("compile failed: ", source_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_prepare() REDDE NIHIL
+  CONIURA mkdir_all(CONIURA mural_smoke_root())
+  CONIURA mural_smoke_stop_existing_server()
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("ready.txt"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("done.txt"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("pid.txt"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("server.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("build_templates.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("build_templates_run.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("bootstrap_build.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("bootstrap_run.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("main_build.log"))
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_db_path())
+  CONIURA mural_smoke_cleanup_file(CONIURA mural_smoke_file("manual.db"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_bootstrap_db() REDDE NIHIL
+  EVOCA VERBUM cmd AD "MURAL_PROJECT_ROOT=examples/mural MURAL_DATABASE_PATH="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA mural_smoke_db_path())
+  VINCIRE cmd AD CONIURA concat(cmd, " examples/mural/bootstrap_db >")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA mural_smoke_file("bootstrap_run.log"))
+  VINCIRE cmd AD CONIURA concat(cmd, " 2>&1")
+  SI CONIURA run(cmd) != 0
+    IACE "bootstrap_db failed"
+  FIN SI
+  SI NON CONIURA exists(CONIURA mural_smoke_db_path())
+    IACE "bootstrap_db did not create database"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_start_server(REX port) REDDE NIHIL
+  EVOCA VERBUM cmd AD "MURAL_PROJECT_ROOT=examples/mural MURAL_DATABASE_PATH="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA mural_smoke_db_path())
+  VINCIRE cmd AD CONIURA concat(cmd, " MURAL_ADMIN_SECRET=test-admin")
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__HOST=127.0.0.1")
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__PORT=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA mural_smoke_file("ready.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_DONE_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA mural_smoke_file("done.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_REQUESTS=14 examples/mural/main")
+  SI CONIURA spawn_to_log_with_pid(cmd, CONIURA mural_smoke_file("server.log"), CONIURA mural_smoke_file("pid.txt")) != 0
+    IACE "failed to start mural server"
+  FIN SI
+  SI NON CONIURA wait_for_file(CONIURA mural_smoke_file("ready.txt"), 4000)
+    IACE "mural server did not become ready"
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA mural_smoke_file("ready.txt")), "skip") == 0
+    REDDE
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_get(VERBUM url) REDDE HttpResponse
+  REDDE CONIURA http_get(url)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_post_form(VERBUM url, VERBUM body) REDDE HttpResponse
+  EVOCA HttpRequest req AD CONIURA http_request_with_body("POST", url, body)
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "content-type", "application/x-www-form-urlencoded")
+  REDDE CONIURA http_request(req)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_get_with_headers(VERBUM url, VERBUM cookie_header, VERBUM auth_header) REDDE HttpResponse
+  EVOCA HttpRequest req AD CONIURA http_request_new("GET", url)
+  SI CONIURA len(cookie_header) > 0
+    CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "cookie", cookie_header)
+  FIN SI
+  SI CONIURA len(auth_header) > 0
+    CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "authorization", auth_header)
+  FIN SI
+  REDDE CONIURA http_request(req)
+EXPLICIT RITUALE
+
+RITUALE mural_smoke_post_with_headers(VERBUM url, VERBUM body, VERBUM cookie_header, VERBUM auth_header) REDDE HttpResponse
+  EVOCA HttpRequest req AD CONIURA http_request_with_body("POST", url, body)
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "content-type", "application/x-www-form-urlencoded")
+  SI CONIURA len(cookie_header) > 0
+    CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "cookie", cookie_header)
+  FIN SI
+  SI CONIURA len(auth_header) > 0
+    CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "authorization", auth_header)
+  FIN SI
+  REDDE CONIURA http_request(req)
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA REX port AD CONIURA mural_smoke_pick_port()
+  EVOCA VERBUM base_url AD CONIURA concat("http://127.0.0.1:", CONIURA stringify_int(port))
+  EVOCA VERBUM admin_auth AD CONIURA concat("Basic ", CONIURA base64_encode("admin:test-admin"))
+  EVOCA HttpResponse home_res
+  EVOCA HttpResponse post_res
+  EVOCA HttpResponse follow_res
+  EVOCA HttpResponse admin_res
+  EVOCA HttpResponse delete_res
+  EVOCA HttpResponse reload_res
+  EVOCA HttpResponse css_res
+  EVOCA VERBUM raw_home AD ""
+  EVOCA VERBUM raw_head_home AD ""
+  EVOCA VERBUM raw_admin AD ""
+  EVOCA VERBUM raw_head_admin AD ""
+  EVOCA VERBUM raw_missing AD ""
+  EVOCA VERBUM raw_405 AD ""
+  EVOCA VERBUM raw_head_static AD ""
+  EVOCA VERBUM flash_cookie AD ""
+
+  CONIURA mural_smoke_prepare()
+  CONIURA mural_smoke_compile_or_fail("examples/mural/build_templates.cct", "build_templates.log")
+  SI CONIURA run("cd examples/mural && ./build_templates > ../../tests/tmp/examples/mural/server_smoke/build_templates_run.log 2>&1") != 0
+    IACE "build_templates run failed"
+  FIN SI
+  CONIURA mural_smoke_compile_or_fail("examples/mural/bootstrap_db.cct", "bootstrap_build.log")
+  CONIURA mural_smoke_bootstrap_db()
+  CONIURA mural_smoke_compile_or_fail("examples/mural/main.cct", "main_build.log")
+  CONIURA mural_smoke_start_server(port)
+
+  SI CONIURA compare(CONIURA read_all(CONIURA mural_smoke_file("ready.txt")), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE raw_home AD CONIURA mural_smoke_raw_http(
+    port,
+    CONIURA concat("GET / HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_home), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK status line on GET /"
+  FIN SI
+
+  VINCIRE raw_head_home AD CONIURA mural_smoke_raw_http_headers(
+    port,
+    CONIURA concat("HEAD / HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_head_home), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK status line on HEAD /"
+  FIN SI
+  SI CONIURA len(CONIURA mural_head_body(raw_head_home)) != 0
+    IACE "HEAD / should not return a body"
+  FIN SI
+
+  VINCIRE raw_admin AD CONIURA mural_smoke_raw_http(
+    port,
+    CONIURA concat("GET /admin-lite HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_admin), "HTTP/1.1 401 Unauthorized") != 0
+    IACE "expected 401 Unauthorized status line on admin-lite without auth"
+  FIN SI
+
+  VINCIRE raw_head_admin AD CONIURA mural_smoke_raw_http_headers(
+    port,
+    CONIURA concat("HEAD /admin-lite HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_head_admin), "HTTP/1.1 401 Unauthorized") != 0
+    IACE "expected 401 Unauthorized status line on HEAD /admin-lite without auth"
+  FIN SI
+  SI CONIURA len(CONIURA mural_head_body(raw_head_admin)) != 0
+    IACE "HEAD /admin-lite should not return a body"
+  FIN SI
+
+  VINCIRE raw_missing AD CONIURA mural_smoke_raw_http(
+    port,
+    CONIURA concat("GET /nao-existe HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_missing), "HTTP/1.1 404 Not Found") != 0
+    IACE "expected 404 Not Found status line on missing route"
+  FIN SI
+
+  VINCIRE raw_405 AD CONIURA mural_smoke_raw_http(
+    port,
+    CONIURA concat("GET /mensagens HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_405), "HTTP/1.1 405 Method Not Allowed") != 0
+    IACE "expected 405 Method Not Allowed on GET /mensagens"
+  FIN SI
+
+  VINCIRE raw_head_static AD CONIURA mural_smoke_raw_http_headers(
+    port,
+    CONIURA concat("HEAD /static/app.css HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+  SI CONIURA compare(CONIURA mural_status_line(raw_head_static), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK status line on HEAD /static/app.css"
+  FIN SI
+  SI CONIURA len(CONIURA mural_head_body(raw_head_static)) != 0
+    IACE "HEAD /static/app.css should not return a body"
+  FIN SI
+
+  VINCIRE home_res AD CONIURA mural_smoke_get(CONIURA concat(base_url, "/"))
+  SI CONIURA http_response_status(home_res) != 200
+    IACE "expected 200 on home"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(home_res), "Leave a message") == -1
+    IACE "home page missing form"
+  FIN SI
+
+  VINCIRE post_res AD CONIURA mural_smoke_post_form(CONIURA concat(base_url, "/mensagens"), "name=Alice&email=alice%40example.test&body=Hello+from+smoke")
+  SI CONIURA http_response_status(post_res) != 302
+    IACE "expected redirect after successful POST"
+  FIN SI
+  VINCIRE flash_cookie AD CONIURA mural_extract_cookie_value(CONIURA http_response_header(post_res, "Set-Cookie", ""), "mural_flash")
+  SI CONIURA compare(flash_cookie, "posted") != 0
+    IACE "missing flash cookie after POST"
+  FIN SI
+
+  VINCIRE follow_res AD CONIURA mural_smoke_get_with_headers(CONIURA concat(base_url, "/"), CONIURA concat("mural_flash=", flash_cookie), "")
+  SI CONIURA find(CONIURA http_response_body(follow_res), "Message posted.") == -1
+    IACE "flash banner missing on follow-up GET"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(follow_res), "Hello from smoke") == -1
+    IACE "stored message missing on follow-up GET"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(follow_res), "1970-01-01") != -1
+    IACE "message timestamp should not render as epoch"
+  FIN SI
+
+  VINCIRE admin_res AD CONIURA mural_smoke_get_with_headers(CONIURA concat(base_url, "/admin-lite"), "", admin_auth)
+  SI CONIURA http_response_status(admin_res) != 200
+    IACE "expected 200 on admin-lite"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(admin_res), "Hello from smoke") == -1
+    IACE "admin-lite missing stored message"
+  FIN SI
+
+  VINCIRE delete_res AD CONIURA mural_smoke_post_with_headers(CONIURA concat(base_url, "/admin-lite/mensagens/1/delete"), "", "", admin_auth)
+  SI CONIURA http_response_status(delete_res) != 302
+    IACE "expected redirect after delete"
+  FIN SI
+
+  VINCIRE reload_res AD CONIURA mural_smoke_get_with_headers(
+    CONIURA concat(base_url, "/admin-lite"),
+    CONIURA concat("mural_flash=", CONIURA mural_extract_cookie_value(CONIURA http_response_header(delete_res, "Set-Cookie", ""), "mural_flash")),
+    admin_auth
+  )
+  SI CONIURA find(CONIURA http_response_body(reload_res), "Message deleted.") == -1
+    IACE "delete flash missing"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(reload_res), "Hello from smoke") != -1
+    IACE "deleted message still visible"
+  FIN SI
+
+  VINCIRE css_res AD CONIURA mural_smoke_get(CONIURA concat(base_url, "/static/app.css"))
+  SI CONIURA http_response_status(css_res) != 200
+    IACE "expected 200 on static css"
+  FIN SI
+  SI CONIURA find(CONIURA http_response_header(css_res, "Content-Type", ""), "text/css") == -1
+    IACE "static css missing content type"
+  FIN SI
+
+  SI NON CONIURA wait_for_file(CONIURA mural_smoke_file("done.txt"), 4000)
+    IACE "server did not finish expected request budget"
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA mural_smoke_file("done.txt")), "ok") != 0
+    IACE "server did not finish cleanly"
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

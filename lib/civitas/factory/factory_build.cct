@@ -1,0 +1,46 @@
+INCIPIT grimoire "civitas_factory_build"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "factory.cct"
+ADVOCARE "factory_seq.cct"
+
+RITUALE factory_build(FactoryDef def) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FactoryField fp AD CONIURA fluxus_get(def.campos, i)
+    ELIGE (*fp).kind
+      CASUS FfkConst:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_str((*fp).const_valor))
+      CASUS FfkSeq:
+        EVOCA REX num AD CONIURA factory_seq_next((*fp).seq_nome)
+        EVOCA VERBUM val AD CONIURA concat((*fp).seq_prefixo, CONIURA stringify_int(num))
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_str(val))
+      CASUS FfkNulo:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_null())
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE factory_build_with(FactoryDef def, Json overrides) REDDE Json
+  EVOCA Json obj AD CONIURA factory_build(def)
+  EVOCA REX no AD CONIURA json_obj_len(overrides)
+  EVOCA REX oi AD 0
+  DUM oi < no
+    EVOCA VERBUM chave AD CONIURA json_obj_key_at(overrides, oi)
+    CONIURA json_set_key(obj, chave, CONIURA json_obj_value_at(overrides, oi))
+    VINCIRE oi AD oi + 1
+  FIN DUM
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE factory_override_has(Json overrides, VERBUM campo) REDDE VERUM
+  REDDE CONIURA json_has_key(overrides, campo)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

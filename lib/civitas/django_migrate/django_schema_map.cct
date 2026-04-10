@@ -1,0 +1,163 @@
+INCIPIT grimoire "civitas_django_schema_map"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "django_migrate.cct"
+ADVOCARE "../model/model.cct"
+
+RITUALE django_field_type_parse(VERBUM tipo_str) REDDE DjangoFieldType
+  SI CONIURA compare(tipo_str, "AutoField") == 0 VEL CONIURA compare(tipo_str, "BigAutoField") == 0
+    REDDE DftAutoField
+  FIN SI
+  SI CONIURA compare(tipo_str, "CharField") == 0
+    REDDE DftCharField
+  FIN SI
+  SI CONIURA compare(tipo_str, "TextField") == 0
+    REDDE DftTextField
+  FIN SI
+  SI CONIURA compare(tipo_str, "IntegerField") == 0 VEL CONIURA compare(tipo_str, "SmallIntegerField") == 0 VEL CONIURA compare(tipo_str, "BigIntegerField") == 0
+    REDDE DftIntegerField
+  FIN SI
+  SI CONIURA compare(tipo_str, "FloatField") == 0
+    REDDE DftFloatField
+  FIN SI
+  SI CONIURA compare(tipo_str, "BooleanField") == 0
+    REDDE DftBooleanField
+  FIN SI
+  SI CONIURA compare(tipo_str, "DateField") == 0
+    REDDE DftDateField
+  FIN SI
+  SI CONIURA compare(tipo_str, "DateTimeField") == 0
+    REDDE DftDateTimeField
+  FIN SI
+  SI CONIURA compare(tipo_str, "ForeignKey") == 0
+    REDDE DftForeignKey
+  FIN SI
+  SI CONIURA compare(tipo_str, "OneToOneField") == 0
+    REDDE DftOneToOneField
+  FIN SI
+  SI CONIURA compare(tipo_str, "ManyToManyField") == 0
+    REDDE DftManyToManyField
+  FIN SI
+  SI CONIURA compare(tipo_str, "ImageField") == 0
+    REDDE DftImageField
+  FIN SI
+  SI CONIURA compare(tipo_str, "FileField") == 0
+    REDDE DftFileField
+  FIN SI
+  SI CONIURA compare(tipo_str, "UUIDField") == 0
+    REDDE DftUUIDField
+  FIN SI
+  SI CONIURA compare(tipo_str, "JSONField") == 0
+    REDDE DftJSONField
+  FIN SI
+  REDDE DftUnknown
+EXPLICIT RITUALE
+
+RITUALE django_field_to_civitas(DjangoFieldType tipo) REDDE FieldKind
+  ELIGE tipo
+    CASUS DftAutoField: REDDE FkInt
+    CASUS DftCharField: REDDE FkText
+    CASUS DftTextField: REDDE FkText
+    CASUS DftIntegerField: REDDE FkInt
+    CASUS DftFloatField: REDDE FkReal
+    CASUS DftBooleanField: REDDE FkBool
+    CASUS DftDateField: REDDE FkDate
+    CASUS DftDateTimeField: REDDE FkDateTime
+    CASUS DftForeignKey: REDDE FkInt
+    CASUS DftOneToOneField: REDDE FkInt
+    CASUS DftManyToManyField: REDDE FkInt
+    CASUS DftImageField: REDDE FkBlob
+    CASUS DftFileField: REDDE FkBlob
+    CASUS DftUUIDField: REDDE FkUUID
+    CASUS DftJSONField: REDDE FkText
+    CASUS DftUnknown: REDDE FkText
+  FIN ELIGE
+  REDDE FkText
+EXPLICIT RITUALE
+
+RITUALE django_field_parse_json(Json fj) REDDE DjangoField
+  EVOCA DjangoField df
+  VINCIRE df.nome AD CONIURA json_expect_str(CONIURA json_get_key(fj, "name"))
+  VINCIRE df.tipo AD CONIURA django_field_type_parse(CONIURA json_expect_str(CONIURA json_get_key(fj, "type")))
+  VINCIRE df.null AD CONIURA json_has_key(fj, "null") ET CONIURA json_expect_bool(CONIURA json_get_key(fj, "null"))
+  VINCIRE df.blank AD CONIURA json_has_key(fj, "blank") ET CONIURA json_expect_bool(CONIURA json_get_key(fj, "blank"))
+  VINCIRE df.unique AD CONIURA json_has_key(fj, "unique") ET CONIURA json_expect_bool(CONIURA json_get_key(fj, "unique"))
+  VINCIRE df.primary_key AD CONIURA json_has_key(fj, "primary_key") ET CONIURA json_expect_bool(CONIURA json_get_key(fj, "primary_key"))
+  VINCIRE df.max_length AD 0
+  SI CONIURA json_has_key(fj, "max_length")
+    VINCIRE df.max_length AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(fj, "max_length")))
+  FIN SI
+  VINCIRE df.rel_modelo AD ""
+  SI CONIURA json_has_key(fj, "rel_model")
+    VINCIRE df.rel_modelo AD CONIURA json_expect_str(CONIURA json_get_key(fj, "rel_model"))
+  FIN SI
+  VINCIRE df.rel_campo AD "id"
+  SI CONIURA json_has_key(fj, "rel_field")
+    VINCIRE df.rel_campo AD CONIURA json_expect_str(CONIURA json_get_key(fj, "rel_field"))
+  FIN SI
+  REDDE df
+EXPLICIT RITUALE
+
+RITUALE django_schema_parse(VERBUM json_str) REDDE SPECULUM NIHIL
+  EVOCA Json root AD CONIURA json_parse(json_str)
+  EVOCA Json models_arr AD CONIURA json_get_key(root, "models")
+  EVOCA SPECULUM NIHIL resultado AD CONIURA fluxus_init(MENSURA(DjangoModel))
+  EVOCA REX nm AD CONIURA json_arr_len(models_arr)
+  EVOCA REX mi AD 0
+  DUM mi < nm
+    EVOCA Json mj AD CONIURA json_arr_get(models_arr, mi)
+    EVOCA DjangoModel dm
+    VINCIRE dm.nome AD CONIURA json_expect_str(CONIURA json_get_key(mj, "name"))
+    VINCIRE dm.app AD CONIURA json_expect_str(CONIURA json_get_key(mj, "app"))
+    VINCIRE dm.db_table AD CONIURA json_expect_str(CONIURA json_get_key(mj, "db_table"))
+    VINCIRE dm.campos AD CONIURA fluxus_init(MENSURA(DjangoField))
+    EVOCA Json fields_arr AD CONIURA json_get_key(mj, "fields")
+    EVOCA REX nf AD CONIURA json_arr_len(fields_arr)
+    EVOCA REX fi AD 0
+    DUM fi < nf
+      EVOCA DjangoField df AD CONIURA django_field_parse_json(CONIURA json_arr_get(fields_arr, fi))
+      CONIURA fluxus_push(dm.campos, SPECULUM df)
+      VINCIRE fi AD fi + 1
+    FIN DUM
+    CONIURA fluxus_push(resultado, SPECULUM dm)
+    VINCIRE mi AD mi + 1
+  FIN DUM
+  REDDE resultado
+EXPLICIT RITUALE
+
+RITUALE django_model_to_civitas(DjangoModel dm) REDDE ModelDef
+  EVOCA ModelDef def AD CONIURA model_def_new(dm.db_table)
+  EVOCA REX nf AD CONIURA fluxus_len(dm.campos)
+  EVOCA REX fi AD 0
+  DUM fi < nf
+    EVOCA SPECULUM DjangoField dfp AD CONIURA fluxus_get(dm.campos, fi)
+    ELIGE CONIURA django_field_to_civitas((*dfp).tipo)
+      CASUS FkInt:
+        SI (*dfp).tipo == DftForeignKey VEL (*dfp).tipo == DftOneToOneField
+          CONIURA model_def_add_fk(def, (*dfp).nome, (*dfp).rel_modelo, (*dfp).rel_campo, NON (*dfp).null)
+        ALITER
+          CONIURA model_def_add_int(def, (*dfp).nome, NON (*dfp).null, (*dfp).primary_key, (*dfp).primary_key)
+        FIN SI
+      CASUS FkText:
+        CONIURA model_def_add_text(def, (*dfp).nome, NON (*dfp).null, (*dfp).unique)
+      CASUS FkReal:
+        CONIURA model_def_add_real(def, (*dfp).nome, NON (*dfp).null)
+      CASUS FkBool:
+        CONIURA model_def_add_bool(def, (*dfp).nome, FALSUM)
+      CASUS FkDate:
+        CONIURA model_def_add_date(def, (*dfp).nome, NON (*dfp).null)
+      CASUS FkDateTime:
+        CONIURA model_def_add_datetime(def, (*dfp).nome, NON (*dfp).null, FALSUM)
+      CASUS FkUUID:
+        CONIURA model_def_add_uuid(def, (*dfp).nome, (*dfp).primary_key)
+      CASUS FkBlob:
+        CONIURA model_def_add_blob(def, (*dfp).nome, NON (*dfp).null)
+    FIN ELIGE
+    VINCIRE fi AD fi + 1
+  FIN DUM
+  REDDE def
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

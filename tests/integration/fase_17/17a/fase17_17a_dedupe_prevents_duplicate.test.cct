@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase17_17a_dedupe_prevents_duplicate"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17a_dedupe_prevents_duplicate")
+  EVOCA TaskConfig cfg AD CONIURA phase17_task_cfg()
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "dedupe-1"
+  SI CONIURA len(CONIURA task_enqueue_json(stack.dbh, cfg.queue_name, "echo", "{\"n\":1}", options, cfg)) == 0
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA len(CONIURA task_enqueue_json(stack.dbh, cfg.queue_name, "echo", "{\"n\":2}", options, cfg)) != 0
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  SI CONIURA task_count_by_state(stack.dbh, "queued") != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 3
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

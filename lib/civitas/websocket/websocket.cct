@@ -1,0 +1,425 @@
+INCIPIT grimoire "civitas_websocket"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/bit.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../../civitas/router.cct"
+
+ORDO WsOpcode
+  WS_CONTINUATION
+  WS_TEXT
+  WS_BINARY
+  WS_CLOSE
+  WS_PING
+  WS_PONG
+FIN ORDO
+
+SIGILLUM WsFrame
+  opcode: WsOpcode
+  payload: VERBUM
+  fin: VERUM
+FIN SIGILLUM
+
+SIGILLUM WsConn
+  sock: SPECULUM NIHIL
+  canal: VERBUM
+  conn_id: VERBUM
+  user_id: REX
+  conectado: VERUM
+  db: SPECULUM NIHIL
+  last_bus_id: REX
+FIN SIGILLUM
+
+SIGILLUM WsHandlers
+  on_connect: SPECULUM NIHIL
+  on_message: SPECULUM NIHIL
+  on_close: SPECULUM NIHIL
+  on_error: SPECULUM NIHIL
+  ctx: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM WsReadResult
+  has_frame: VERUM
+  frame: WsFrame
+  closed: VERUM
+  close_code: REX
+  close_reason: VERBUM
+FIN SIGILLUM
+
+RITUALE ws_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE ws_bus_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS ws_bus_frames (id INTEGER PRIMARY KEY AUTOINCREMENT, canal TEXT NOT NULL, opcode INTEGER NOT NULL, payload TEXT NOT NULL, criado_em INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_ws_bus_frames_canal_id ON ws_bus_frames(canal, id)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_opcode_to_int(WsOpcode opcode) REDDE REX
+  ELIGE opcode
+    CASUS WS_CONTINUATION:
+      REDDE 0
+    CASUS WS_TEXT:
+      REDDE 1
+    CASUS WS_BINARY:
+      REDDE 2
+    CASUS WS_CLOSE:
+      REDDE 8
+    CASUS WS_PING:
+      REDDE 9
+    ALIOQUIN:
+      REDDE 10
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE ws_opcode_from_int(REX opcode) REDDE WsOpcode
+  SI opcode == 0
+    REDDE WS_CONTINUATION
+  FIN SI
+  SI opcode == 1
+    REDDE WS_TEXT
+  FIN SI
+  SI opcode == 2
+    REDDE WS_BINARY
+  FIN SI
+  SI opcode == 8
+    REDDE WS_CLOSE
+  FIN SI
+  SI opcode == 9
+    REDDE WS_PING
+  FIN SI
+  REDDE WS_PONG
+EXPLICIT RITUALE
+
+RITUALE ws_frame_new(WsOpcode opcode, VERBUM payload, VERUM fin) REDDE WsFrame
+  EVOCA WsFrame frame
+  VINCIRE frame.opcode AD opcode
+  VINCIRE frame.payload AD payload
+  VINCIRE frame.fin AD fin
+  REDDE frame
+EXPLICIT RITUALE
+
+RITUALE ws_conn_new(SPECULUM NIHIL db, SPECULUM NIHIL sock, VERBUM canal, REX user_id) REDDE SPECULUM WsConn
+  EVOCA SPECULUM WsConn conn AD CONIURA http_alloc(MENSURA(WsConn))
+  CONIURA ws_bus_schema_up(db)
+  VINCIRE (*conn).sock AD sock
+  VINCIRE (*conn).canal AD canal
+  VINCIRE (*conn).conn_id AD CONIURA uuid_to_string(CONIURA uuid_v7())
+  VINCIRE (*conn).user_id AD user_id
+  VINCIRE (*conn).conectado AD VERUM
+  VINCIRE (*conn).db AD db
+  VINCIRE (*conn).last_bus_id AD 0
+  REDDE conn
+EXPLICIT RITUALE
+
+RITUALE ws_handlers_new(SPECULUM NIHIL on_connect, SPECULUM NIHIL on_message, SPECULUM NIHIL on_close, SPECULUM NIHIL on_error, SPECULUM NIHIL ctx) REDDE WsHandlers
+  EVOCA WsHandlers handlers
+  VINCIRE handlers.on_connect AD on_connect
+  VINCIRE handlers.on_message AD on_message
+  VINCIRE handlers.on_close AD on_close
+  VINCIRE handlers.on_error AD on_error
+  VINCIRE handlers.ctx AD ctx
+  REDDE handlers
+EXPLICIT RITUALE
+
+RITUALE ws_is_upgrade_request(HttpRequest req) REDDE VERUM
+  EVOCA VERBUM upgrade AD CONIURA http_request_header(req, "Upgrade", "")
+  EVOCA VERBUM conn AD CONIURA http_request_header(req, "Connection", "")
+  EVOCA VERBUM ver AD CONIURA http_request_header(req, "Sec-WebSocket-Version", "")
+  EVOCA VERBUM key AD CONIURA http_request_header(req, "Sec-WebSocket-Key", "")
+  REDDE CONIURA compare(CONIURA to_lower(CONIURA trim(upgrade)), "websocket") == 0 ET CONIURA contains(CONIURA to_lower(conn), "upgrade") ET CONIURA compare(ver, "13") == 0 ET CONIURA len(key) > 0
+EXPLICIT RITUALE
+
+RITUALE ws_handshake(SPECULUM NIHIL sock, HttpRequest req) REDDE VERUM
+  EVOCA VERBUM client_key AD CONIURA http_request_header(req, "Sec-WebSocket-Key", "")
+  SI CONIURA len(client_key) == 0
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM accept_key AD CONIURA ws_accept_key(client_key)
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA VERBUM crlf AD CONIURA ws_crlf()
+  CONIURA builder_append(b, "HTTP/1.1 101 Switching Protocols")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Upgrade: websocket")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Connection: Upgrade")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Sec-WebSocket-Accept: ")
+  CONIURA builder_append(b, accept_key)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, crlf)
+  EVOCA VERBUM raw AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE CONIURA sock_send(sock, raw) == CONIURA len(raw)
+EXPLICIT RITUALE
+
+RITUALE ws_reject(SPECULUM NIHIL sock, VERBUM motivo) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA VERBUM crlf AD CONIURA ws_crlf()
+  CONIURA builder_append(b, "HTTP/1.1 400 Bad Request")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Connection: close")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Content-Type: text/plain; charset=utf-8")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Content-Length: ")
+  CONIURA builder_append(b, CONIURA stringify_int(CONIURA len(motivo)))
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, motivo)
+  CONIURA sock_send(sock, CONIURA builder_to_verbum(b))
+  CONIURA builder_free(b)
+  CONIURA net_close(sock)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_len_byte(REX value) REDDE VERBUM
+  REDDE CONIURA from_char(cast GENUS(MILES)(value))
+EXPLICIT RITUALE
+
+RITUALE ws_pow256(REX exp) REDDE REX
+  EVOCA REX out AD 1
+  EVOCA REX i AD 0
+  DUM i < exp
+    VINCIRE out AD out * 256
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_frame_encode(WsFrame frame) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX opcode_val AD CONIURA ws_opcode_to_int(frame.opcode)
+  EVOCA REX byte0 AD opcode_val
+  EVOCA REX plen AD CONIURA len(frame.payload)
+  SI frame.fin
+    VINCIRE byte0 AD byte0 VEL_BIT 128
+  FIN SI
+  CONIURA builder_append(b, CONIURA ws_len_byte(byte0))
+  SI plen < 126
+    CONIURA builder_append(b, CONIURA ws_len_byte(plen))
+  ALITER
+    SI plen < 65536
+      CONIURA builder_append(b, CONIURA ws_len_byte(126))
+      CONIURA builder_append(b, CONIURA ws_len_byte(plen / 256))
+      CONIURA builder_append(b, CONIURA ws_len_byte(plen % 256))
+    ALITER
+      EVOCA REX shi AD 7
+      CONIURA builder_append(b, CONIURA ws_len_byte(127))
+      DUM shi >= 0
+        CONIURA builder_append(b, CONIURA ws_len_byte(CONIURA modulo(plen / CONIURA ws_pow256(shi), 256)))
+        VINCIRE shi AD shi - 1
+      FIN DUM
+    FIN SI
+  FIN SI
+  CONIURA builder_append(b, frame.payload)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_unmask_payload(VERBUM payload, VERBUM mask_key) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(payload)
+  DUM i < n
+    EVOCA REX p AD CONIURA verbum_byte_value(payload, i)
+    EVOCA REX m AD CONIURA verbum_byte_value(mask_key, CONIURA modulo(i, 4))
+    CONIURA builder_append(b, CONIURA from_char(cast GENUS(MILES)(p XOR m)))
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_frame_decode(SPECULUM NIHIL sock) REDDE WsFrame
+  EVOCA VERBUM byte0_raw AD CONIURA net_read_exact(sock, 1)
+  EVOCA VERBUM byte1_raw AD CONIURA net_read_exact(sock, 1)
+  EVOCA REX byte0 AD CONIURA verbum_byte_value(byte0_raw, 0)
+  EVOCA REX byte1 AD CONIURA verbum_byte_value(byte1_raw, 0)
+  EVOCA VERUM fin AD CONIURA bit_get(byte0, 7)
+  EVOCA REX opcode_val AD CONIURA bit_extract(byte0, 0, 4)
+  EVOCA VERUM masked AD CONIURA bit_get(byte1, 7)
+  EVOCA REX plen AD CONIURA bit_extract(byte1, 0, 7)
+  EVOCA VERBUM mask_key AD ""
+  EVOCA VERBUM payload AD ""
+
+  SI plen == 126
+    EVOCA VERBUM ext2 AD CONIURA net_read_exact(sock, 2)
+    VINCIRE plen AD CONIURA verbum_byte_value(ext2, 0) * 256 + CONIURA verbum_byte_value(ext2, 1)
+  ALITER
+    SI plen == 127
+      EVOCA VERBUM ext8 AD CONIURA net_read_exact(sock, 8)
+      EVOCA REX i AD 0
+      VINCIRE plen AD 0
+      DUM i < 8
+        VINCIRE plen AD plen * 256 + CONIURA verbum_byte_value(ext8, i)
+        VINCIRE i AD i + 1
+      FIN DUM
+    FIN SI
+  FIN SI
+
+  SI masked
+    VINCIRE mask_key AD CONIURA net_read_exact(sock, 4)
+  FIN SI
+  SI plen > 0
+    VINCIRE payload AD CONIURA net_read_exact(sock, plen)
+  FIN SI
+  SI masked
+    VINCIRE payload AD CONIURA ws_unmask_payload(payload, mask_key)
+  FIN SI
+  REDDE CONIURA ws_frame_new(CONIURA ws_opcode_from_int(opcode_val), payload, fin)
+EXPLICIT RITUALE
+
+RITUALE ws_frame_write(SPECULUM WsConn conn, WsFrame frame) REDDE VERUM
+  EVOCA VERBUM raw AD CONIURA ws_frame_encode(frame)
+  SI CONIURA sock_send((*conn).sock, raw) != CONIURA len(raw)
+    VINCIRE (*conn).conectado AD FALSUM
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE ws_send_text(SPECULUM WsConn conn, VERBUM payload) REDDE VERUM
+  REDDE CONIURA ws_frame_write(conn, CONIURA ws_frame_new(WS_TEXT, payload, VERUM))
+EXPLICIT RITUALE
+
+RITUALE ws_send_binary(SPECULUM WsConn conn, VERBUM payload) REDDE VERUM
+  REDDE CONIURA ws_frame_write(conn, CONIURA ws_frame_new(WS_BINARY, payload, VERUM))
+EXPLICIT RITUALE
+
+RITUALE ws_send_pong(SPECULUM WsConn conn, VERBUM payload) REDDE VERUM
+  REDDE CONIURA ws_frame_write(conn, CONIURA ws_frame_new(WS_PONG, payload, VERUM))
+EXPLICIT RITUALE
+
+RITUALE ws_close(SPECULUM WsConn conn, REX code, VERBUM reason) REDDE VERUM
+  EVOCA VERBUM payload AD ""
+  SI code > 0
+    VINCIRE payload AD CONIURA concat(CONIURA ws_len_byte(code / 256), CONIURA ws_len_byte(code % 256))
+  FIN SI
+  VINCIRE payload AD CONIURA concat(payload, reason)
+  VINCIRE (*conn).conectado AD FALSUM
+  REDDE CONIURA ws_frame_write(conn, CONIURA ws_frame_new(WS_CLOSE, payload, VERUM))
+EXPLICIT RITUALE
+
+RITUALE ws_try_read_frame(SPECULUM WsConn conn) REDDE WsReadResult
+  EVOCA WsReadResult out
+  VINCIRE out.has_frame AD FALSUM
+  VINCIRE out.frame AD CONIURA ws_frame_new(WS_TEXT, "", VERUM)
+  VINCIRE out.closed AD FALSUM
+  VINCIRE out.close_code AD 1000
+  VINCIRE out.close_reason AD ""
+  TEMPTA
+    VINCIRE out.frame AD CONIURA ws_frame_decode((*conn).sock)
+    VINCIRE out.has_frame AD VERUM
+    SI out.frame.opcode == WS_CLOSE
+      VINCIRE out.closed AD VERUM
+      SI CONIURA len(out.frame.payload) >= 2
+        VINCIRE out.close_code AD CONIURA verbum_byte_value(out.frame.payload, 0) * 256 + CONIURA verbum_byte_value(out.frame.payload, 1)
+        VINCIRE out.close_reason AD CONIURA substring(out.frame.payload, 2, CONIURA len(out.frame.payload))
+      FIN SI
+    FIN SI
+  CAPE FRACTUM error
+    VINCIRE (*conn).conectado AD FALSUM
+    VINCIRE out.closed AD VERUM
+    VINCIRE out.close_code AD 1006
+  FIN TEMPTA
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_channel_publish(SPECULUM WsConn conn, WsOpcode opcode, VERBUM payload) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*conn).db, "INSERT INTO ws_bus_frames(canal, opcode, payload, criado_em) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, (*conn).canal)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA ws_opcode_to_int(opcode))
+  CONIURA stmt_bind_text(stmt, 3, payload)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_channel_poll(SPECULUM WsConn conn) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(WsFrame))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*conn).db, "SELECT id, opcode, payload FROM ws_bus_frames WHERE canal = ? AND id > ? ORDER BY id LIMIT 50")
+  CONIURA stmt_bind_text(stmt, 1, (*conn).canal)
+  CONIURA stmt_bind_int(stmt, 2, (*conn).last_bus_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX row_id AD CONIURA stmt_get_int(stmt, 0)
+      EVOCA REX opcode AD CONIURA stmt_get_int(stmt, 1)
+      EVOCA VERBUM payload AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+      EVOCA WsFrame frame AD CONIURA ws_frame_new(CONIURA ws_opcode_from_int(opcode), payload, VERUM)
+      CONIURA fluxus_push(out, SPECULUM frame)
+      VINCIRE (*conn).last_bus_id AD row_id
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_channel_broadcast(SPECULUM WsConn conn, VERBUM payload) REDDE NIHIL
+  CONIURA ws_channel_publish(conn, WS_TEXT, payload)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_conn_run(SPECULUM WsConn conn, WsHandlers handlers) REDDE NIHIL
+  SI handlers.on_connect != NIHIL
+    CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL)(handlers.on_connect, conn, handlers.ctx)
+  FIN SI
+  DUM (*conn).conectado
+    EVOCA WsReadResult res AD CONIURA ws_try_read_frame(conn)
+    SI res.closed
+      RECEDE
+    FIN SI
+    SI res.has_frame
+      SI res.frame.opcode == WS_PING
+        CONIURA ws_send_pong(conn, res.frame.payload)
+      ALITER
+        SI res.frame.opcode == WS_TEXT VEL res.frame.opcode == WS_BINARY
+          SI handlers.on_message != NIHIL
+            CONIURA callback_invoke3_void GENUS(SPECULUM NIHIL, WsFrame, SPECULUM NIHIL)(handlers.on_message, conn, res.frame, handlers.ctx)
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+
+    EVOCA SPECULUM NIHIL pending AD CONIURA ws_channel_poll(conn)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(pending)
+    DUM i < n
+      EVOCA SPECULUM WsFrame frame_ptr AD CONIURA fluxus_get(pending, i)
+      CONIURA ws_frame_write(conn, *frame_ptr)
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA fluxus_free(pending)
+  FIN DUM
+  SI handlers.on_close != NIHIL
+    CONIURA callback_invoke4_void GENUS(SPECULUM NIHIL, REX, VERBUM, SPECULUM NIHIL)(handlers.on_close, conn, 1000, "", handlers.ctx)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_handler_add(SPECULUM Router router, VERBUM path, SPECULUM NIHIL on_connect, SPECULUM NIHIL on_message, SPECULUM NIHIL on_close, SPECULUM NIHIL on_error, SPECULUM NIHIL ctx) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM WsHandlers handlers_ptr AD CONIURA http_alloc(MENSURA(WsHandlers))
+  VINCIRE (*handlers_ptr).on_connect AD on_connect
+  VINCIRE (*handlers_ptr).on_message AD on_message
+  VINCIRE (*handlers_ptr).on_close AD on_close
+  VINCIRE (*handlers_ptr).on_error AD on_error
+  VINCIRE (*handlers_ptr).ctx AD ctx
+  REDDE CONIURA router_add_ws(router, "GET", path, "", "ws_handler", NIHIL, handlers_ptr)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

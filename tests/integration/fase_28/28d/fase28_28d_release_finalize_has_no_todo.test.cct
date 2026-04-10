@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase28_28d_release_finalize_has_no_todo"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/release.cct"
+ADVOCARE "../../../../lib/civitas/release/release.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28d_release_finalize")
+  EVOCA ReleaseConfig cfg AD CONIURA release_config_default(root, "1.0.0")
+  CONIURA release_finalize(cfg)
+  EVOCA VERBUM docs_index AD CONIURA read_all(CONIURA path_join(root, "docs/index.md"))
+  EVOCA VERBUM changelog AD CONIURA read_all(CONIURA path_join(root, "CHANGELOG.md"))
+  SI CONIURA find(docs_index, "TODO") != -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(changelog, "TODO") != -1
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "release-notes-v1.0.0.md"))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

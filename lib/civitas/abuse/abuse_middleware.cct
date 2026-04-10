@@ -1,0 +1,87 @@
+INCIPIT grimoire "civitas_abuse_middleware"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "abuse.cct"
+
+RITUALE abuse_context_route_store_key() REDDE VERBUM
+  REDDE "civitas.abuse.route_store"
+EXPLICIT RITUALE
+
+RITUALE abuse_context_route_rules_key() REDDE VERBUM
+  REDDE "civitas.abuse.route_rules"
+EXPLICIT RITUALE
+
+RITUALE abuse_context_set_route_limiter(SPECULUM RequestContext ctx, SPECULUM NIHIL store, SPECULUM NIHIL rules) REDDE NIHIL
+  CONIURA middleware_context_set(ctx, CONIURA abuse_context_route_store_key(), store)
+  CONIURA middleware_context_set(ctx, CONIURA abuse_context_route_rules_key(), rules)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE abuse_response_too_many_requests(REX retry_after_seconds) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(429, "too many requests", WEB_RESPONSE_TEXT)
+  SI retry_after_seconds > 0
+    CONIURA response_set_header(SPECULUM res, "retry-after", CONIURA stringify_int(retry_after_seconds))
+  FIN SI
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE abuse_quota_response(QuotaCheckResult result, REX retry_after_seconds) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(429, CONIURA quota_check_result_message(result), WEB_RESPONSE_TEXT)
+  SI retry_after_seconds > 0
+    CONIURA response_set_header(SPECULUM res, "retry-after", CONIURA stringify_int(retry_after_seconds))
+  FIN SI
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE abuse_route_middleware(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  EVOCA SPECULUM NIHIL store
+  EVOCA SPECULUM NIHIL rules
+  EVOCA SPECULUM NIHIL check_res
+  EVOCA RateLimitRule rule
+  EVOCA RateLimitKey key
+  EVOCA REX now_unix_ms AD CONIURA now_ms()
+  VINCIRE req AD req_ref
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+
+  SI NON CONIURA middleware_context_has(*ctx, CONIURA abuse_context_route_store_key())
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+  SI NON CONIURA middleware_context_has(*ctx, CONIURA abuse_context_route_rules_key())
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  VINCIRE store AD CONIURA middleware_context_get(*ctx, CONIURA abuse_context_route_store_key())
+  VINCIRE rules AD CONIURA middleware_context_get(*ctx, CONIURA abuse_context_route_rules_key())
+  VINCIRE rule AD CONIURA abuse_route_rule_for_class(rules, CONIURA middleware_context_route_rate_limit_class(*ctx))
+
+  SI rule.max_requests <= 0 VEL rule.window_seconds <= 0
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  VINCIRE key.ip AD (*req).client_ip
+  VINCIRE key.route_class AD CONIURA middleware_context_route_rate_limit_class(*ctx)
+  VINCIRE key.actor_id AD ""
+
+  VINCIRE check_res AD CONIURA rate_limit_check_route(store, key, rule, now_unix_ms)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(check_res)
+    CONIURA response_fill(out, CONIURA abuse_response_too_many_requests(CONIURA rate_limit_retry_after(store, key, rule, now_unix_ms)))
+    REDDE
+  FIN SI
+
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

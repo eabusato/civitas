@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase18_18d_report_queue_filter"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_schema.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_queue.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_report_queue_filter() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18d_report_queue")
+  CONIURA moderation_schema_up(stack.dbh)
+  EVOCA ModerationItem item
+  VINCIRE item.id AD "report-1"
+  VINCIRE item.kind AD MODERATION_REPORT
+  VINCIRE item.state AD MOD_PENDING
+  VINCIRE item.object_id AD "post-1"
+  VINCIRE item.object_type AD "post"
+  VINCIRE item.submitter_id AD "user-r"
+  VINCIRE item.content_preview_json AD "{}"
+  VINCIRE item.report_reason AD "spam"
+  VINCIRE item.assigned_to AD ""
+  VINCIRE item.priority AD 5
+  VINCIRE item.created_at_unix AD 1
+  VINCIRE item.updated_at_unix AD 1
+  CONIURA moderation_item_create(stack.dbh, item)
+  VINCIRE item.id AD "comment-1"
+  VINCIRE item.kind AD MODERATION_COMMENT
+  CONIURA moderation_item_create(stack.dbh, item)
+  EVOCA VERBUM queue_json AD CONIURA moderation_queue_list(stack.dbh, MODERATION_REPORT, MOD_PENDING)
+  SI CONIURA find(queue_json, "\"id\":\"report-1\"") == -1
+    IACE "report queue missing report"
+  FIN SI
+  SI CONIURA find(queue_json, "\"id\":\"comment-1\"") != -1
+    IACE "report queue leaked comment item"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_report_queue_filter()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

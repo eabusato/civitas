@@ -1,0 +1,68 @@
+INCIPIT grimoire "fase15_15g_asserts_and_middleware"
+
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_context.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_middleware.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_session.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_request.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_user.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  EVOCA VERBUM user_id AD ""
+  EVOCA VERBUM token AD ""
+  EVOCA VERBUM session_id AD ""
+  EVOCA SPECULUM NIHIL hdr_tok AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL hdr_sess AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL req_tok_res AD NIHIL
+  EVOCA SPECULUM NIHIL req_sess_res AD NIHIL
+  CONIURA auth_test_schema_up(tdb)
+
+  EVOCA LocalContext ctx_anon AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx_anon)
+  CONIURA auth_context_escrever(SPECULUM ctx_anon, CONIURA auth_context_empty())
+  CONIURA auth_test_assert_anonimo(ctx_anon, "fresh context should be anonymous")
+
+  VINCIRE user_id AD CONIURA auth_test_criar_usuario_unico_id(tdb)
+  VINCIRE token AD CONIURA auth_test_gerar_token(user_id, "posts.write")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(hdr_tok, "authorization", CONIURA auth_test_bearer_header(token))
+  VINCIRE req_tok_res AD CONIURA request_build("GET", "/api", "HTTP/1.1", hdr_tok, "", "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_tok_res)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA WebRequest web_tok AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_tok_res)
+  EVOCA LocalContext ctx_tok AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx_tok)
+  CONIURA auth_middleware_apply(tdb.db, CONIURA auth_middleware_config_new(CONIURA auth_test_token_config(), CONIURA auth_test_session_config()), web_tok, SPECULUM ctx_tok)
+  CONIURA auth_test_assert_autenticado(ctx_tok, "bearer request should authenticate")
+  CONIURA auth_test_assert_user_id(ctx_tok, user_id, "bearer user id should match")
+  CONIURA auth_test_assert_via(ctx_tok, "bearer", "bearer request should resolve via bearer")
+
+  VINCIRE session_id AD CONIURA auth_test_criar_sessao_id(tdb, user_id)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(hdr_sess, "cookie", CONIURA auth_test_session_cookie(session_id))
+  VINCIRE req_sess_res AD CONIURA request_build("GET", "/perfil", "HTTP/1.1", hdr_sess, "", "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_sess_res)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA WebRequest web_sess AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_sess_res)
+  EVOCA LocalContext ctx_sess AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx_sess)
+  CONIURA auth_middleware_apply(tdb.db, CONIURA auth_middleware_config_new(CONIURA auth_test_token_config(), CONIURA auth_test_session_config()), web_sess, SPECULUM ctx_sess)
+  CONIURA auth_test_assert_autenticado(ctx_sess, "session request should authenticate")
+  CONIURA auth_test_assert_user_id(ctx_sess, user_id, "session user id should match")
+  CONIURA auth_test_assert_via(ctx_sess, "session", "session request should resolve via session")
+
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

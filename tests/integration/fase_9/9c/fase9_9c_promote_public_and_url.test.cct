@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase9_9c_promote_public_and_url"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9c_root("promote_public")
+  EVOCA MediaStore store AD CONIURA phase9_9c_open_store(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9c_put_tmp(root, "avatar.png", "PNGDATA")
+  EVOCA SPECULUM NIHIL promote_res AD CONIURA storage_promote(store, artifact, MEDIA_ZONE_PUBLIC)
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(promote_res)
+    IACE CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(promote_res)
+  FIN SI
+  EVOCA MediaArtifact promoted AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(promote_res)
+  EVOCA VERBUM url AD CONIURA storage_url_for_artifact(CONIURA phase9_9c_config(root), promoted)
+
+  SI promoted.zone != MEDIA_ZONE_PUBLIC
+    IACE "artifact should be promoted to public"
+  FIN SI
+  SI NON CONIURA contains(url, "/media/public/")
+    IACE "public artifact should expose public url"
+  FIN SI
+  SI NON CONIURA storage_exists(store, promoted)
+    IACE "promoted artifact should exist"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

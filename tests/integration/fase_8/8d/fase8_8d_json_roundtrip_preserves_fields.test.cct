@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase8_8d_json_roundtrip_preserves_fields_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor_helpers.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor source AD CONIURA upload_descriptor_new(
+    "fotos/perfil/uuid.jpg",
+    "0123456789abcdef",
+    2048,
+    "image/jpeg",
+    "avatar-original.jpg"
+  )
+  CONIURA upload_descriptor_promote(SPECULUM source)
+
+  EVOCA VERBUM json AD CONIURA upload_descriptor_to_json(source)
+  EVOCA UploadDescriptor parsed AD CONIURA upload_descriptor_from_json(json)
+
+  SI CONIURA compare(parsed.path, source.path) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(parsed.hash, source.hash) != 0
+    REDDE 2
+  FIN SI
+  SI parsed.size != source.size
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(parsed.mime, source.mime) != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(parsed.original_name, source.original_name) != 0
+    REDDE 5
+  FIN SI
+  SI parsed.state != source.state
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

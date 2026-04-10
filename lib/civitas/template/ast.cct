@@ -1,0 +1,292 @@
+INCIPIT grimoire "civitas_template_ast"
+
+ADVOCARE "cct/fluxus.cct"
+
+ORDO TemplateTokenKind
+  Textum
+  AperturaExpr
+  ClausuraExpr
+  AperturaTag
+  ClausuraTag
+  Nomen
+  Fistula
+  Colon
+  Punctum
+  LitVerbum
+  LitRex
+  Maior
+  Minor
+  MaiorAequalis
+  MinorAequalis
+  Aequalis
+  Diversus
+  Evoca
+  Extende
+  Sectio
+  FinSectio
+  Si
+  Aliter
+  FinSi
+  Dum
+  In
+  FinDum
+  Advocare
+  Ad
+  Non
+  Csrf
+  Signa
+  Nexus
+  Nonce
+  Literal
+  Finis
+FIN ORDO
+
+SIGILLUM TemplateToken
+  kind: TemplateTokenKind
+  value: VERBUM
+  line: REX
+  column: REX
+FIN SIGILLUM
+
+SIGILLUM TemplateLexError
+  message: VERBUM
+  line: REX
+  column: REX
+FIN SIGILLUM
+
+ORDO TemplateNodeKind
+  TnText
+  TnExpression
+  TnContext
+  TnIf
+  TnFor
+  TnBlock
+  TnExtends
+  TnInclude
+  TnCsrfInput
+  TnFlash
+  TnStaticUrl
+  TnNonce
+  TnRoot
+FIN ORDO
+
+SIGILLUM TemplateFilter
+  name: VERBUM
+  arg: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TemplateExpr
+  path: SPECULUM NIHIL
+  filters: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM TemplateCondition
+  expr: TemplateExpr
+  op: VERBUM
+  rhs_verbum: VERBUM
+  rhs_int: REX
+  rhs_kind: VERBUM
+  is_negated: VERUM
+FIN SIGILLUM
+
+SIGILLUM TemplateNode
+  kind: TemplateNodeKind
+  text: VERBUM
+  expr: TemplateExpr
+  condition: TemplateCondition
+  iter_var: VERBUM
+  iter_field: VERBUM
+  block_name: VERBUM
+  include_path: VERBUM
+  include_with: VERBUM
+  children: SPECULUM NIHIL
+  else_children: SPECULUM NIHIL
+  line: REX
+  column: REX
+FIN SIGILLUM
+
+SIGILLUM TemplateNodeRef
+  ptr: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM TemplateCompileError
+  template_name: VERBUM
+  message: VERBUM
+  line: REX
+  column: REX
+FIN SIGILLUM
+
+SIGILLUM TemplateCompileUnit
+  template_name: VERBUM
+  template_path: VERBUM
+  templates_root: VERBUM
+  output_path: VERBUM
+  context_sigillum: VERBUM
+  context_import: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TemplateFieldSpec
+  name: VERBUM
+  type_name: VERBUM
+  kind: VERBUM
+  pointee_name: VERBUM
+  loop_item_name: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TemplateSigillumSpec
+  name: VERBUM
+  import_path: VERBUM
+  fields: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM TemplateCheckerState
+  sigilla: SPECULUM NIHIL
+  loop_hints: SPECULUM NIHIL
+  current_template: VERBUM
+  current_context: VERBUM
+  current_loop_item: VERBUM
+  current_loop_item_type: VERBUM
+  errors: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE template_expr_empty() REDDE TemplateExpr
+  EVOCA TemplateExpr expr
+  VINCIRE expr.path AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE expr.filters AD CONIURA fluxus_init(MENSURA(TemplateFilter))
+  REDDE expr
+EXPLICIT RITUALE
+
+RITUALE template_expr_fill(SPECULUM TemplateExpr dest, TemplateExpr src) REDDE NIHIL
+  VINCIRE (*dest).path AD src.path
+  VINCIRE (*dest).filters AD src.filters
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_condition_empty() REDDE TemplateCondition
+  EVOCA TemplateCondition cond
+  CONIURA template_expr_fill(SPECULUM cond.expr, CONIURA template_expr_empty())
+  VINCIRE cond.op AD ""
+  VINCIRE cond.rhs_verbum AD ""
+  VINCIRE cond.rhs_int AD 0
+  VINCIRE cond.rhs_kind AD ""
+  VINCIRE cond.is_negated AD FALSUM
+  REDDE cond
+EXPLICIT RITUALE
+
+RITUALE template_condition_fill(SPECULUM TemplateCondition dest, TemplateCondition src) REDDE NIHIL
+  CONIURA template_expr_fill(SPECULUM (*dest).expr, src.expr)
+  VINCIRE (*dest).op AD src.op
+  VINCIRE (*dest).rhs_verbum AD src.rhs_verbum
+  VINCIRE (*dest).rhs_int AD src.rhs_int
+  VINCIRE (*dest).rhs_kind AD src.rhs_kind
+  VINCIRE (*dest).is_negated AD src.is_negated
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_node_new(TemplateNodeKind kind, REX line, REX column) REDDE TemplateNode
+  EVOCA TemplateNode node
+  VINCIRE node.kind AD kind
+  VINCIRE node.text AD ""
+  CONIURA template_expr_fill(SPECULUM node.expr, CONIURA template_expr_empty())
+  CONIURA template_condition_fill(SPECULUM node.condition, CONIURA template_condition_empty())
+  VINCIRE node.iter_var AD ""
+  VINCIRE node.iter_field AD ""
+  VINCIRE node.block_name AD ""
+  VINCIRE node.include_path AD ""
+  VINCIRE node.include_with AD ""
+  VINCIRE node.children AD CONIURA fluxus_init(MENSURA(TemplateNodeRef))
+  VINCIRE node.else_children AD CONIURA fluxus_init(MENSURA(TemplateNodeRef))
+  VINCIRE node.line AD line
+  VINCIRE node.column AD column
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE template_node_ref(SPECULUM TemplateNode ptr) REDDE TemplateNodeRef
+  EVOCA TemplateNodeRef ref
+  VINCIRE ref.ptr AD ptr
+  REDDE ref
+EXPLICIT RITUALE
+
+RITUALE template_node_fill(SPECULUM TemplateNode dest, TemplateNode src) REDDE NIHIL
+  VINCIRE (*dest).kind AD src.kind
+  VINCIRE (*dest).text AD src.text
+  CONIURA template_expr_fill(SPECULUM (*dest).expr, src.expr)
+  CONIURA template_condition_fill(SPECULUM (*dest).condition, src.condition)
+  VINCIRE (*dest).iter_var AD src.iter_var
+  VINCIRE (*dest).iter_field AD src.iter_field
+  VINCIRE (*dest).block_name AD src.block_name
+  VINCIRE (*dest).include_path AD src.include_path
+  VINCIRE (*dest).include_with AD src.include_with
+  VINCIRE (*dest).children AD src.children
+  VINCIRE (*dest).else_children AD src.else_children
+  VINCIRE (*dest).line AD src.line
+  VINCIRE (*dest).column AD src.column
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_lex_error(VERBUM message, REX line, REX column) REDDE TemplateLexError
+  EVOCA TemplateLexError err
+  VINCIRE err.message AD message
+  VINCIRE err.line AD line
+  VINCIRE err.column AD column
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE template_compile_error(VERBUM template_name, VERBUM message, REX line, REX column) REDDE TemplateCompileError
+  EVOCA TemplateCompileError err
+  VINCIRE err.template_name AD template_name
+  VINCIRE err.message AD message
+  VINCIRE err.line AD line
+  VINCIRE err.column AD column
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE template_compile_unit(VERBUM template_name, VERBUM template_path, VERBUM templates_root, VERBUM output_path) REDDE TemplateCompileUnit
+  EVOCA TemplateCompileUnit unit
+  VINCIRE unit.template_name AD template_name
+  VINCIRE unit.template_path AD template_path
+  VINCIRE unit.templates_root AD templates_root
+  VINCIRE unit.output_path AD output_path
+  VINCIRE unit.context_sigillum AD ""
+  VINCIRE unit.context_import AD ""
+  REDDE unit
+EXPLICIT RITUALE
+
+RITUALE template_field_spec(VERBUM name, VERBUM type_name, VERBUM kind, VERBUM pointee_name, VERBUM loop_item_name) REDDE TemplateFieldSpec
+  EVOCA TemplateFieldSpec field
+  VINCIRE field.name AD name
+  VINCIRE field.type_name AD type_name
+  VINCIRE field.kind AD kind
+  VINCIRE field.pointee_name AD pointee_name
+  VINCIRE field.loop_item_name AD loop_item_name
+  REDDE field
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_spec(VERBUM name, VERBUM import_path) REDDE TemplateSigillumSpec
+  EVOCA TemplateSigillumSpec spec
+  VINCIRE spec.name AD name
+  VINCIRE spec.import_path AD import_path
+  VINCIRE spec.fields AD CONIURA fluxus_init(MENSURA(TemplateFieldSpec))
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE template_sigillum_spec_fill(SPECULUM TemplateSigillumSpec dest, TemplateSigillumSpec src) REDDE NIHIL
+  VINCIRE (*dest).name AD src.name
+  VINCIRE (*dest).import_path AD src.import_path
+  VINCIRE (*dest).fields AD src.fields
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_checker_state_new(VERBUM template_name) REDDE TemplateCheckerState
+  EVOCA TemplateCheckerState state
+  VINCIRE state.sigilla AD CONIURA fluxus_init(MENSURA(TemplateSigillumSpec))
+  VINCIRE state.loop_hints AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE state.current_template AD template_name
+  VINCIRE state.current_context AD ""
+  VINCIRE state.current_loop_item AD ""
+  VINCIRE state.current_loop_item_type AD ""
+  VINCIRE state.errors AD CONIURA fluxus_init(MENSURA(TemplateCompileError))
+  REDDE state
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

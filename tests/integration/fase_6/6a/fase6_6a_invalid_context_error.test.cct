@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase6_6a_invalid_context_error_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase6_tmp_dir("6a_invalid_context_error")
+  EVOCA VERBUM cmd AD ""
+  EVOCA VERBUM err_out AD ""
+
+  CONIURA phase6_init_project(root)
+  CONIURA phase6_write_template(
+    root,
+    "broken.html",
+    "{% EVOCA BlogPageContext %}\n<p>{{ inexistente }}</p>\n"
+  )
+  CONIURA phase6_build_template_compiler_or_fail()
+
+  VINCIRE cmd AD CONIURA concat("bin/cct-template-compile --template ", CONIURA phase6_template_path(root, "broken.html"))
+  VINCIRE cmd AD CONIURA concat(cmd, " --output ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase6_generated_path(root, "broken.html"))
+  VINCIRE cmd AD CONIURA concat(cmd, " --root ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase6_project_templates_dir(root))
+  VINCIRE err_out AD CONIURA phase6_run_capture_err(cmd)
+
+  SI CONIURA phase6_run(cmd) == 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(err_out, "[ERRO] broken.html:2:") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(err_out, "campo nao encontrado: inexistente") == -1
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

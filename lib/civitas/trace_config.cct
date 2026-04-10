@@ -1,0 +1,6 @@
+INCIPIT grimoire "civitas_trace_config_entry"
+
+ADVOCARE "trace_config/trace_config.cct"
+ADVOCARE "trace_config/trace_bootstrap.cct"
+
+EXPLICIT grimoire

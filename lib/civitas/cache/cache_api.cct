@@ -1,0 +1,305 @@
+INCIPIT grimoire "civitas_cache_api"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cache.cct"
+ADVOCARE "cache_arq.cct"
+
+RITUALE cache_api_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE cache_get(SPECULUM CacheHandle handle_ptr, VERBUM chave) REDDE CacheMaybeText
+  EVOCA CacheMaybeText out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.valor AD ""
+
+  ELIGE (*handle_ptr).kind
+    CASUS CbMemoria:
+      EVOCA SPECULUM CacheMemoria mem_ptr AD (*handle_ptr).state
+      EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+      EVOCA REX now AD CONIURA cache_api_now()
+      EVOCA REX i AD 0
+      DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+        EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+        SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+          SI (*entry_ptr).expira_em > 0 ET now >= (*entry_ptr).expira_em
+            CONIURA fluxus_remove((*mem_ptr).entradas, i)
+            VINCIRE (*mem_ptr).falhas AD (*mem_ptr).falhas + 1
+            REDDE out
+          FIN SI
+          VINCIRE (*entry_ptr).ultimo_acesso AD now
+          VINCIRE (*mem_ptr).acertos AD (*mem_ptr).acertos + 1
+          VINCIRE out.found AD VERUM
+          VINCIRE out.valor AD (*entry_ptr).valor
+          REDDE out
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      VINCIRE (*mem_ptr).falhas AD (*mem_ptr).falhas + 1
+      REDDE out
+    CASUS CbArquivo:
+      EVOCA SPECULUM CacheArquivo arq_ptr AD (*handle_ptr).state
+      EVOCA VERBUM file_path AD CONIURA cache_arq_caminho(arq_ptr, chave)
+      SI NON CONIURA is_file(file_path)
+        VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+        REDDE out
+      FIN SI
+      EVOCA VERBUM raw AD CONIURA read_all(file_path)
+      EVOCA REX nl AD CONIURA find(raw, "\n")
+      SI nl < 0
+        CONIURA delete_file(file_path)
+        VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+        REDDE out
+      FIN SI
+      EVOCA REX expires AD CONIURA parse_int(CONIURA substring(raw, 0, nl))
+      SI expires > 0 ET CONIURA cache_api_now() >= expires
+        CONIURA delete_file(file_path)
+        VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+        REDDE out
+      FIN SI
+      VINCIRE (*arq_ptr).acertos AD (*arq_ptr).acertos + 1
+      VINCIRE out.found AD VERUM
+      VINCIRE out.valor AD CONIURA substring(raw, nl + 1, CONIURA len(raw))
+      REDDE out
+    CASUS CbRedis:
+      EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+      EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+      EVOCA VERBUM full_key AD CONIURA cache_namespace_key((*red_ptr).namespace, chave)
+      EVOCA SPECULUM NIHIL res AD CONIURA redis_get(*redis_ptr, full_key)
+      SI CONIURA result_is_err GENUS(RedisMaybeText, VERBUM)(res)
+        VINCIRE (*red_ptr).falhas AD (*red_ptr).falhas + 1
+        REDDE out
+      FIN SI
+      EVOCA RedisMaybeText maybe AD CONIURA result_unwrap GENUS(RedisMaybeText, VERBUM)(res)
+      SI maybe.found
+        VINCIRE (*red_ptr).acertos AD (*red_ptr).acertos + 1
+        VINCIRE out.found AD VERUM
+        VINCIRE out.valor AD maybe.value
+        REDDE out
+      FIN SI
+      VINCIRE (*red_ptr).falhas AD (*red_ptr).falhas + 1
+      REDDE out
+    ALIOQUIN:
+      REDDE out
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_set(SPECULUM CacheHandle handle_ptr, VERBUM chave, VERBUM valor, REX ttl) REDDE NIHIL
+  ELIGE (*handle_ptr).kind
+    CASUS CbMemoria:
+      EVOCA SPECULUM CacheMemoria mem_ptr AD (*handle_ptr).state
+      EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+      EVOCA REX now AD CONIURA cache_api_now()
+      EVOCA REX expires AD 0
+      EVOCA REX i AD 0
+      SI ttl > 0
+        VINCIRE expires AD now + ttl
+      FIN SI
+      DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+        EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+        SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+          VINCIRE (*entry_ptr).valor AD valor
+          VINCIRE (*entry_ptr).ultimo_acesso AD now
+          VINCIRE (*entry_ptr).expira_em AD expires
+          REDDE
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      SI (*mem_ptr).max_entradas > 0 ET CONIURA fluxus_len((*mem_ptr).entradas) >= (*mem_ptr).max_entradas
+        VINCIRE i AD 0
+        DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+          EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+          SI (*entry_ptr).expira_em > 0 ET now >= (*entry_ptr).expira_em
+            CONIURA fluxus_remove((*mem_ptr).entradas, i)
+            VINCIRE (*mem_ptr).evicoes AD (*mem_ptr).evicoes + 1
+            RECEDE
+          FIN SI
+          VINCIRE i AD i + 1
+        FIN DUM
+        SI CONIURA fluxus_len((*mem_ptr).entradas) >= (*mem_ptr).max_entradas
+          CONIURA fluxus_remove((*mem_ptr).entradas, 0)
+          VINCIRE (*mem_ptr).evicoes AD (*mem_ptr).evicoes + 1
+        FIN SI
+      FIN SI
+      EVOCA CacheEntradaMem entry
+      VINCIRE entry.chave_ns AD chave_ns
+      VINCIRE entry.valor AD valor
+      VINCIRE entry.expira_em AD expires
+      VINCIRE entry.ultimo_acesso AD now
+      CONIURA fluxus_push((*mem_ptr).entradas, SPECULUM entry)
+      REDDE
+    CASUS CbArquivo:
+      EVOCA SPECULUM CacheArquivo arq_ptr AD (*handle_ptr).state
+      EVOCA VERBUM file_path AD CONIURA cache_arq_caminho(arq_ptr, chave)
+      EVOCA REX expires AD 0
+      SI ttl > 0
+        VINCIRE expires AD CONIURA cache_api_now() + ttl
+      FIN SI
+      CONIURA write_all(file_path, CONIURA concat(CONIURA stringify_int(expires), CONIURA concat("\n", valor)))
+      REDDE
+    CASUS CbRedis:
+      EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+      EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+      EVOCA VERBUM full_key AD CONIURA cache_namespace_key((*red_ptr).namespace, chave)
+      EVOCA VERBUM index_key AD CONIURA concat((*red_ptr).namespace, ":__keys__")
+      SI ttl > 0
+        CONIURA redis_setex(*redis_ptr, full_key, ttl, valor)
+      ALITER
+        CONIURA redis_set(*redis_ptr, full_key, valor)
+      FIN SI
+      CONIURA redis_sadd(*redis_ptr, index_key, full_key)
+      REDDE
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_delete(SPECULUM CacheHandle handle_ptr, VERBUM chave) REDDE NIHIL
+  ELIGE (*handle_ptr).kind
+    CASUS CbMemoria:
+      EVOCA SPECULUM CacheMemoria mem_ptr AD (*handle_ptr).state
+      EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+      EVOCA REX i AD 0
+      DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+        EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+        SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+          CONIURA fluxus_remove((*mem_ptr).entradas, i)
+          REDDE
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      REDDE
+    CASUS CbArquivo:
+      EVOCA SPECULUM CacheArquivo arq_ptr AD (*handle_ptr).state
+      EVOCA VERBUM file_path AD CONIURA cache_arq_caminho(arq_ptr, chave)
+      SI CONIURA exists(file_path)
+        CONIURA delete_file(file_path)
+      FIN SI
+      REDDE
+    CASUS CbRedis:
+      EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+      EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+      EVOCA VERBUM full_key AD CONIURA cache_namespace_key((*red_ptr).namespace, chave)
+      EVOCA VERBUM index_key AD CONIURA concat((*red_ptr).namespace, ":__keys__")
+      CONIURA redis_del(*redis_ptr, full_key)
+      CONIURA redis_srem(*redis_ptr, index_key, full_key)
+      REDDE
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_del(SPECULUM CacheHandle handle_ptr, VERBUM chave) REDDE NIHIL
+  CONIURA cache_delete(handle_ptr, chave)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_exists(SPECULUM CacheHandle handle_ptr, VERBUM chave) REDDE VERUM
+  EVOCA CacheMaybeText maybe AD CONIURA cache_get(handle_ptr, chave)
+  REDDE maybe.found
+EXPLICIT RITUALE
+
+RITUALE cache_get_ou_set(SPECULUM CacheHandle handle_ptr, VERBUM chave, REX ttl, SPECULUM NIHIL fn) REDDE VERBUM
+  EVOCA CacheMaybeText maybe AD CONIURA cache_get(handle_ptr, chave)
+  SI maybe.found
+    REDDE maybe.valor
+  FIN SI
+  EVOCA VERBUM computed AD ""
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(fn, SPECULUM computed)
+  CONIURA cache_set(handle_ptr, chave, computed, ttl)
+  REDDE computed
+EXPLICIT RITUALE
+
+RITUALE cache_flush(SPECULUM CacheHandle handle_ptr) REDDE NIHIL
+  ELIGE (*handle_ptr).kind
+    CASUS CbMemoria:
+      EVOCA SPECULUM CacheMemoria mem_ptr AD (*handle_ptr).state
+      CONIURA fluxus_clear((*mem_ptr).entradas)
+      REDDE
+    CASUS CbArquivo:
+      EVOCA SPECULUM CacheArquivo arq_ptr AD (*handle_ptr).state
+      EVOCA VERBUM ns_dir AD CONIURA path_join((*arq_ptr).dir_base, (*arq_ptr).namespace)
+      SI CONIURA exists(ns_dir)
+        CONIURA cache_arq_delete_tree(ns_dir)
+      FIN SI
+      CONIURA mkdir_all(ns_dir)
+      REDDE
+    CASUS CbRedis:
+      EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+      EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+      EVOCA VERBUM index_key AD CONIURA concat((*red_ptr).namespace, ":__keys__")
+      EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, index_key)
+      SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+        EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+        EVOCA REX i AD 0
+        DUM i < CONIURA redis_text_list_len(list)
+          CONIURA redis_del(*redis_ptr, CONIURA redis_text_list_get(list, i))
+          VINCIRE i AD i + 1
+        FIN DUM
+      FIN SI
+      CONIURA redis_del(*redis_ptr, index_key)
+      REDDE
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_flush_namespace(SPECULUM CacheHandle handle_ptr) REDDE NIHIL
+  CONIURA cache_flush(handle_ptr)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_metrics(SPECULUM CacheHandle handle_ptr) REDDE CacheMetrics
+  EVOCA CacheMetrics out AD CONIURA cache_metrics_new()
+  ELIGE (*handle_ptr).kind
+    CASUS CbMemoria:
+      EVOCA SPECULUM CacheMemoria mem_ptr AD (*handle_ptr).state
+      VINCIRE out.acertos AD (*mem_ptr).acertos
+      VINCIRE out.falhas AD (*mem_ptr).falhas
+      VINCIRE out.evicoes AD (*mem_ptr).evicoes
+      VINCIRE out.total_entradas AD CONIURA fluxus_len((*mem_ptr).entradas)
+      REDDE out
+    CASUS CbArquivo:
+      EVOCA SPECULUM CacheArquivo arq_ptr AD (*handle_ptr).state
+      EVOCA VERBUM ns_dir AD CONIURA path_join((*arq_ptr).dir_base, (*arq_ptr).namespace)
+      VINCIRE out.acertos AD (*arq_ptr).acertos
+      VINCIRE out.falhas AD (*arq_ptr).falhas
+      SI CONIURA is_dir(ns_dir)
+        VINCIRE out.total_entradas AD CONIURA fluxus_len(CONIURA list_dir(ns_dir))
+      FIN SI
+      REDDE out
+    CASUS CbRedis:
+      EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+      EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+      EVOCA VERBUM index_key AD CONIURA concat((*red_ptr).namespace, ":__keys__")
+      VINCIRE out.acertos AD (*red_ptr).acertos
+      VINCIRE out.falhas AD (*red_ptr).falhas
+      EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, index_key)
+      SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+        EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+        VINCIRE out.total_entradas AD CONIURA redis_text_list_len(list)
+      FIN SI
+      REDDE out
+    ALIOQUIN:
+      REDDE out
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_close(SPECULUM CacheHandle handle_ptr) REDDE NIHIL
+  SI (*handle_ptr).kind == CbRedis ET (*handle_ptr).state != NIHIL
+    EVOCA SPECULUM CacheRedis red_ptr AD (*handle_ptr).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    CONIURA redis_close(redis_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

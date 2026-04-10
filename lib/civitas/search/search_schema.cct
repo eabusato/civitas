@@ -1,0 +1,85 @@
+INCIPIT grimoire "civitas_search_schema"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/db_postgres_search.cct"
+ADVOCARE "search.cct"
+
+RITUALE search_index_tsvector_expr(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM expr AD ""
+  EVOCA VERBUM dict AD CONIURA search_locale_to_dict(idx.locale)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(idx.fields)
+  DUM i < n
+    EVOCA SPECULUM SearchField field AD CONIURA fluxus_get(idx.fields, i)
+    EVOCA VERBUM part AD "setweight(to_tsvector("
+    VINCIRE part AD CONIURA concat(part, CONIURA pg_search_quote(dict))
+    VINCIRE part AD CONIURA concat(part, ", coalesce(")
+    VINCIRE part AD CONIURA concat(part, (*field).column_name)
+    VINCIRE part AD CONIURA concat(part, ", '')), ")
+    VINCIRE part AD CONIURA concat(part, CONIURA pg_search_quote((*field).weight))
+    VINCIRE part AD CONIURA concat(part, ")")
+    SI i > 0
+      VINCIRE expr AD CONIURA concat(expr, " || ")
+    FIN SI
+    VINCIRE expr AD CONIURA concat(expr, part)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE expr
+EXPLICIT RITUALE
+
+RITUALE search_index_column_sql(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "ALTER TABLE "
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " ADD COLUMN IF NOT EXISTS search_vector tsvector GENERATED ALWAYS AS (")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA search_index_tsvector_expr(idx))
+  VINCIRE sql AD CONIURA concat(sql, ") STORED;")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_index_column_trigger_sql(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "ALTER TABLE "
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " ADD COLUMN IF NOT EXISTS search_vector tsvector;")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_index_create_sql(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "CREATE INDEX IF NOT EXISTS idx_"
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, "_search ON ")
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " USING GIN (search_vector);")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_index_drop_sql(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "DROP INDEX IF EXISTS idx_"
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, "_search;")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_index_update_sql(SearchIndex idx, VERBUM record_id) REDDE VERBUM
+  EVOCA VERBUM sql AD "UPDATE "
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " SET search_vector = ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA search_index_tsvector_expr(idx))
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, idx.id_column)
+  VINCIRE sql AD CONIURA concat(sql, " = ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA pg_search_quote(record_id))
+  VINCIRE sql AD CONIURA concat(sql, ";")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_index_rebuild_sql(SearchIndex idx) REDDE VERBUM
+  EVOCA VERBUM sql AD "UPDATE "
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " SET search_vector = ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA search_index_tsvector_expr(idx))
+  VINCIRE sql AD CONIURA concat(sql, ";")
+  REDDE sql
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

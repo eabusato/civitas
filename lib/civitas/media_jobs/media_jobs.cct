@@ -1,0 +1,401 @@
+INCIPIT grimoire "civitas_media_jobs"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../tasks/tasks.cct"
+ADVOCARE "../upload_descriptor/upload_descriptor.cct"
+
+ORDO MediaJobState
+  MEDIA_JOB_QUEUED
+  MEDIA_JOB_RUNNING
+  MEDIA_JOB_WAITING_APPROVAL
+  MEDIA_JOB_DONE
+  MEDIA_JOB_FAILED
+  MEDIA_JOB_DEAD
+FIN ORDO
+
+ORDO MediaJobKind
+  MEDIA_JOB_TRANSCODE
+  MEDIA_JOB_THUMB
+  MEDIA_JOB_APPROVE
+  MEDIA_JOB_FALLBACK
+FIN ORDO
+
+SIGILLUM MediaJobPolicy
+  max_attempts: REX
+  timeout_ms: REX
+  allow_fallback: VERUM
+  require_approval: VERUM
+  no_upscale: VERUM
+FIN SIGILLUM
+
+SIGILLUM MediaJobRecord
+  id: VERBUM
+  object_id: VERBUM
+  descriptor_json: VERBUM
+  source_path: VERBUM
+  fallback_path: VERBUM
+  job_kind: MediaJobKind
+  state: MediaJobState
+  input_hash: VERBUM
+  output_variant: VERBUM
+  output_path: VERBUM
+  attempts: REX
+  max_attempts: REX
+  timeout_ms: REX
+  require_approval: VERUM
+  approved: VERUM
+  allow_fallback: VERUM
+  last_error_json: VERBUM
+  result_json: VERBUM
+  created_at_unix: REX
+  updated_at_unix: REX
+FIN SIGILLUM
+
+RITUALE media_jobs_now_unix() REDDE REX
+  REDDE CONIURA task_now_unix()
+EXPLICIT RITUALE
+
+RITUALE media_job_state_to_string(MediaJobState state) REDDE VERBUM
+  ELIGE state
+    CASUS MEDIA_JOB_RUNNING:
+      REDDE "running"
+    CASUS MEDIA_JOB_WAITING_APPROVAL:
+      REDDE "waiting_approval"
+    CASUS MEDIA_JOB_DONE:
+      REDDE "done"
+    CASUS MEDIA_JOB_FAILED:
+      REDDE "failed"
+    CASUS MEDIA_JOB_DEAD:
+      REDDE "dead"
+    ALIOQUIN:
+      REDDE "queued"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE media_job_state_from_string(VERBUM state) REDDE MediaJobState
+  SI CONIURA compare(state, "running") == 0
+    REDDE MEDIA_JOB_RUNNING
+  FIN SI
+  SI CONIURA compare(state, "waiting_approval") == 0
+    REDDE MEDIA_JOB_WAITING_APPROVAL
+  FIN SI
+  SI CONIURA compare(state, "done") == 0
+    REDDE MEDIA_JOB_DONE
+  FIN SI
+  SI CONIURA compare(state, "failed") == 0
+    REDDE MEDIA_JOB_FAILED
+  FIN SI
+  SI CONIURA compare(state, "dead") == 0
+    REDDE MEDIA_JOB_DEAD
+  FIN SI
+  REDDE MEDIA_JOB_QUEUED
+EXPLICIT RITUALE
+
+RITUALE media_job_kind_to_string(MediaJobKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS MEDIA_JOB_THUMB:
+      REDDE "thumb"
+    CASUS MEDIA_JOB_APPROVE:
+      REDDE "approve"
+    CASUS MEDIA_JOB_FALLBACK:
+      REDDE "fallback"
+    ALIOQUIN:
+      REDDE "transcode"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE media_job_kind_from_string(VERBUM kind) REDDE MediaJobKind
+  SI CONIURA compare(kind, "thumb") == 0
+    REDDE MEDIA_JOB_THUMB
+  FIN SI
+  SI CONIURA compare(kind, "approve") == 0
+    REDDE MEDIA_JOB_APPROVE
+  FIN SI
+  SI CONIURA compare(kind, "fallback") == 0
+    REDDE MEDIA_JOB_FALLBACK
+  FIN SI
+  REDDE MEDIA_JOB_TRANSCODE
+EXPLICIT RITUALE
+
+RITUALE media_policy_default() REDDE MediaJobPolicy
+  EVOCA MediaJobPolicy policy
+  VINCIRE policy.max_attempts AD 3
+  VINCIRE policy.timeout_ms AD 30000
+  VINCIRE policy.allow_fallback AD FALSUM
+  VINCIRE policy.require_approval AD FALSUM
+  VINCIRE policy.no_upscale AD VERUM
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE media_job_empty() REDDE MediaJobRecord
+  EVOCA MediaJobRecord job
+  VINCIRE job.id AD ""
+  VINCIRE job.object_id AD ""
+  VINCIRE job.descriptor_json AD ""
+  VINCIRE job.source_path AD ""
+  VINCIRE job.fallback_path AD ""
+  VINCIRE job.job_kind AD MEDIA_JOB_TRANSCODE
+  VINCIRE job.state AD MEDIA_JOB_QUEUED
+  VINCIRE job.input_hash AD ""
+  VINCIRE job.output_variant AD ""
+  VINCIRE job.output_path AD ""
+  VINCIRE job.attempts AD 0
+  VINCIRE job.max_attempts AD 0
+  VINCIRE job.timeout_ms AD 0
+  VINCIRE job.require_approval AD FALSUM
+  VINCIRE job.approved AD FALSUM
+  VINCIRE job.allow_fallback AD FALSUM
+  VINCIRE job.last_error_json AD ""
+  VINCIRE job.result_json AD ""
+  VINCIRE job.created_at_unix AD 0
+  VINCIRE job.updated_at_unix AD 0
+  REDDE job
+EXPLICIT RITUALE
+
+RITUALE media_jobs_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS media_jobs (id TEXT PRIMARY KEY, object_id TEXT NOT NULL, descriptor_json TEXT NOT NULL, source_path TEXT NOT NULL, fallback_path TEXT NOT NULL DEFAULT '', job_kind TEXT NOT NULL, state TEXT NOT NULL, input_hash TEXT NOT NULL, output_variant TEXT NOT NULL, output_path TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3, timeout_ms INTEGER NOT NULL DEFAULT 30000, require_approval INTEGER NOT NULL DEFAULT 0, approved INTEGER NOT NULL DEFAULT 0, allow_fallback INTEGER NOT NULL DEFAULT 0, last_error_json TEXT NOT NULL DEFAULT '', result_json TEXT NOT NULL DEFAULT '', created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE UNIQUE INDEX IF NOT EXISTS idx_media_jobs_dedupe ON media_jobs(input_hash, job_kind, output_variant, state)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE media_jobs_schema_down(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS media_jobs", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE media_job_from_rows(DbRows rows) REDDE MediaJobRecord
+  EVOCA MediaJobRecord job AD CONIURA media_job_empty()
+  VINCIRE job.id AD CONIURA dbrows_get_text(rows, 0)
+  VINCIRE job.object_id AD CONIURA dbrows_get_text(rows, 1)
+  VINCIRE job.descriptor_json AD CONIURA dbrows_get_text(rows, 2)
+  VINCIRE job.source_path AD CONIURA dbrows_get_text(rows, 3)
+  VINCIRE job.fallback_path AD CONIURA dbrows_get_text(rows, 4)
+  VINCIRE job.job_kind AD CONIURA media_job_kind_from_string(CONIURA dbrows_get_text(rows, 5))
+  VINCIRE job.state AD CONIURA media_job_state_from_string(CONIURA dbrows_get_text(rows, 6))
+  VINCIRE job.input_hash AD CONIURA dbrows_get_text(rows, 7)
+  VINCIRE job.output_variant AD CONIURA dbrows_get_text(rows, 8)
+  VINCIRE job.output_path AD CONIURA dbrows_get_text(rows, 9)
+  VINCIRE job.attempts AD CONIURA dbrows_get_int(rows, 10)
+  VINCIRE job.max_attempts AD CONIURA dbrows_get_int(rows, 11)
+  VINCIRE job.timeout_ms AD CONIURA dbrows_get_int(rows, 12)
+  VINCIRE job.require_approval AD CONIURA dbrows_get_int(rows, 13) != 0
+  VINCIRE job.approved AD CONIURA dbrows_get_int(rows, 14) != 0
+  VINCIRE job.allow_fallback AD CONIURA dbrows_get_int(rows, 15) != 0
+  VINCIRE job.last_error_json AD CONIURA dbrows_get_text(rows, 16)
+  VINCIRE job.result_json AD CONIURA dbrows_get_text(rows, 17)
+  VINCIRE job.created_at_unix AD CONIURA dbrows_get_int(rows, 18)
+  VINCIRE job.updated_at_unix AD CONIURA dbrows_get_int(rows, 19)
+  REDDE job
+EXPLICIT RITUALE
+
+RITUALE media_job_find(DbHandle dbh, VERBUM job_id) REDDE MediaJobRecord
+  EVOCA MediaJobRecord job AD CONIURA media_job_empty()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, job_id)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id, object_id, descriptor_json, source_path, fallback_path, job_kind, state, input_hash, output_variant, output_path, attempts, max_attempts, timeout_ms, require_approval, approved, allow_fallback, last_error_json, result_json, created_at_unix, updated_at_unix FROM media_jobs WHERE id = ?", params)
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE job AD CONIURA media_job_from_rows(rows)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE job
+EXPLICIT RITUALE
+
+RITUALE media_job_update(DbHandle dbh, MediaJobRecord job) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX approved_int AD 0
+  SI job.approved
+    VINCIRE approved_int AD 1
+  FIN SI
+  CONIURA dbh_param_text(SPECULUM params, CONIURA media_job_state_to_string(job.state))
+  CONIURA dbh_param_int(SPECULUM params, job.attempts)
+  CONIURA dbh_param_int(SPECULUM params, approved_int)
+  CONIURA dbh_param_text(SPECULUM params, job.last_error_json)
+  CONIURA dbh_param_text(SPECULUM params, job.result_json)
+  CONIURA dbh_param_int(SPECULUM params, CONIURA media_jobs_now_unix())
+  CONIURA dbh_param_text(SPECULUM params, job.id)
+  CONIURA dbh_exec(dbh, "UPDATE media_jobs SET state = ?, attempts = ?, approved = ?, last_error_json = ?, result_json = ?, updated_at_unix = ? WHERE id = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE media_jobs_find_active_duplicate(DbHandle dbh, UploadDescriptor descriptor, MediaJobKind kind, VERBUM variant) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, descriptor.hash)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA media_job_kind_to_string(kind))
+  CONIURA dbh_param_text(SPECULUM params, variant)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id FROM media_jobs WHERE input_hash = ? AND job_kind = ? AND output_variant = ? AND state IN ('queued', 'running', 'waiting_approval') LIMIT 1", params)
+  EVOCA VERBUM out AD ""
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA dbrows_get_text(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE media_job_enqueue(DbHandle dbh, UploadDescriptor descriptor, VERBUM object_id, MediaJobKind kind, VERBUM variant, VERBUM output_path, VERBUM fallback_path, MediaJobPolicy policy, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA VERBUM existing_id AD CONIURA media_jobs_find_active_duplicate(dbh, descriptor, kind, variant)
+  SI CONIURA len(existing_id) > 0
+    REDDE existing_id
+  FIN SI
+  EVOCA MediaJobRecord job AD CONIURA media_job_empty()
+  EVOCA REX now_unix AD CONIURA media_jobs_now_unix()
+  VINCIRE job.id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  VINCIRE job.object_id AD object_id
+  VINCIRE job.descriptor_json AD CONIURA upload_descriptor_to_json(descriptor)
+  VINCIRE job.source_path AD descriptor.path
+  VINCIRE job.fallback_path AD fallback_path
+  VINCIRE job.job_kind AD kind
+  VINCIRE job.state AD MEDIA_JOB_QUEUED
+  VINCIRE job.input_hash AD descriptor.hash
+  VINCIRE job.output_variant AD variant
+  VINCIRE job.output_path AD output_path
+  VINCIRE job.attempts AD 0
+  VINCIRE job.max_attempts AD policy.max_attempts
+  VINCIRE job.timeout_ms AD policy.timeout_ms
+  VINCIRE job.require_approval AD policy.require_approval
+  VINCIRE job.approved AD FALSUM
+  VINCIRE job.allow_fallback AD policy.allow_fallback
+  VINCIRE job.last_error_json AD ""
+  VINCIRE job.result_json AD ""
+  VINCIRE job.created_at_unix AD now_unix
+  VINCIRE job.updated_at_unix AD now_unix
+  EVOCA REX require_approval_int AD 0
+  EVOCA REX approved_int AD 0
+  EVOCA REX allow_fallback_int AD 0
+  SI job.require_approval
+    VINCIRE require_approval_int AD 1
+  FIN SI
+  SI job.approved
+    VINCIRE approved_int AD 1
+  FIN SI
+  SI job.allow_fallback
+    VINCIRE allow_fallback_int AD 1
+  FIN SI
+
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, job.id)
+  CONIURA dbh_param_text(SPECULUM params, job.object_id)
+  CONIURA dbh_param_text(SPECULUM params, job.descriptor_json)
+  CONIURA dbh_param_text(SPECULUM params, job.source_path)
+  CONIURA dbh_param_text(SPECULUM params, job.fallback_path)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA media_job_kind_to_string(job.job_kind))
+  CONIURA dbh_param_text(SPECULUM params, CONIURA media_job_state_to_string(job.state))
+  CONIURA dbh_param_text(SPECULUM params, job.input_hash)
+  CONIURA dbh_param_text(SPECULUM params, job.output_variant)
+  CONIURA dbh_param_text(SPECULUM params, job.output_path)
+  CONIURA dbh_param_int(SPECULUM params, job.max_attempts)
+  CONIURA dbh_param_int(SPECULUM params, job.timeout_ms)
+  CONIURA dbh_param_int(SPECULUM params, require_approval_int)
+  CONIURA dbh_param_int(SPECULUM params, approved_int)
+  CONIURA dbh_param_int(SPECULUM params, allow_fallback_int)
+  CONIURA dbh_param_int(SPECULUM params, job.created_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, job.updated_at_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO media_jobs (id, object_id, descriptor_json, source_path, fallback_path, job_kind, state, input_hash, output_variant, output_path, attempts, max_attempts, timeout_ms, require_approval, approved, allow_fallback, last_error_json, result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, '', '', ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD CONIURA concat("media:", job.id)
+  VINCIRE options.max_attempts AD job.max_attempts
+  VINCIRE options.timeout_ms AD job.timeout_ms
+  SI CONIURA len(CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "media.process", job.id, options, task_cfg)) == 0
+    REDDE existing_id
+  FIN SI
+  REDDE job.id
+EXPLICIT RITUALE
+
+RITUALE media_job_mark_approved(DbHandle dbh, VERBUM job_id, TaskConfig task_cfg) REDDE NIHIL
+  EVOCA MediaJobRecord job AD CONIURA media_job_find(dbh, job_id)
+  VINCIRE job.approved AD VERUM
+  VINCIRE job.state AD MEDIA_JOB_QUEUED
+  CONIURA media_job_update(dbh, job)
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD CONIURA concat("media:", job.id)
+  VINCIRE options.max_attempts AD job.max_attempts
+  VINCIRE options.timeout_ms AD job.timeout_ms
+  CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "media.process", job.id, options, task_cfg)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE media_job_result_json(MediaJobRecord job, UploadDescriptor descriptor, VERUM used_fallback) REDDE VERBUM
+  EVOCA VERBUM out AD "{\"job_id\":\""
+  VINCIRE out AD CONIURA concat(out, job.id)
+  VINCIRE out AD CONIURA concat(out, "\",\"variant\":\"")
+  VINCIRE out AD CONIURA concat(out, job.output_variant)
+  VINCIRE out AD CONIURA concat(out, "\",\"used_fallback\":")
+  SI used_fallback
+    VINCIRE out AD CONIURA concat(out, "true")
+  ALITER
+    VINCIRE out AD CONIURA concat(out, "false")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, ",\"descriptor\":")
+  VINCIRE out AD CONIURA concat(out, CONIURA upload_descriptor_to_json(descriptor))
+  VINCIRE out AD CONIURA concat(out, "}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE media_jobs_task_callback(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  EVOCA MediaJobRecord job AD CONIURA media_job_find(dbh, task.payload_json)
+  SI CONIURA len(job.id) == 0
+    REDDE CONIURA task_callback_result_error("media_job_not_found", "{\"error\":\"media_job_not_found\"}")
+  FIN SI
+  VINCIRE job.attempts AD task.attempts
+  VINCIRE job.state AD MEDIA_JOB_RUNNING
+  CONIURA media_job_update(dbh, job)
+
+  SI job.require_approval ET NON job.approved
+    VINCIRE job.state AD MEDIA_JOB_WAITING_APPROVAL
+    VINCIRE job.result_json AD "{\"status\":\"waiting_approval\"}"
+    CONIURA media_job_update(dbh, job)
+    REDDE CONIURA task_callback_result_ok(job.result_json)
+  FIN SI
+
+  EVOCA VERBUM input_path AD job.source_path
+  EVOCA VERUM used_fallback AD FALSUM
+  SI NON CONIURA exists(input_path)
+    SI job.allow_fallback ET CONIURA len(job.fallback_path) > 0 ET CONIURA exists(job.fallback_path)
+      VINCIRE input_path AD job.fallback_path
+      VINCIRE used_fallback AD VERUM
+    ALITER
+      VINCIRE job.state AD MEDIA_JOB_FAILED
+      VINCIRE job.last_error_json AD "{\"error\":\"source_missing\"}"
+      CONIURA media_job_update(dbh, job)
+      REDDE CONIURA task_callback_result_error("media_source_missing", job.last_error_json)
+    FIN SI
+  FIN SI
+
+  SI CONIURA len(job.output_path) == 0
+    VINCIRE job.state AD MEDIA_JOB_FAILED
+    VINCIRE job.last_error_json AD "{\"error\":\"output_path_missing\"}"
+    CONIURA media_job_update(dbh, job)
+    REDDE CONIURA task_callback_result_error("media_output_path_missing", job.last_error_json)
+  FIN SI
+
+  CONIURA mkdir_all(CONIURA path_dirname(job.output_path))
+  CONIURA copy(input_path, job.output_path)
+
+  EVOCA UploadDescriptor descriptor AD CONIURA upload_descriptor_from_json(job.descriptor_json)
+  VINCIRE descriptor.path AD job.output_path
+  VINCIRE descriptor.state AD UsFinal
+  VINCIRE job.state AD MEDIA_JOB_DONE
+  VINCIRE job.last_error_json AD ""
+  VINCIRE job.result_json AD CONIURA media_job_result_json(job, descriptor, used_fallback)
+  CONIURA media_job_update(dbh, job)
+  REDDE CONIURA task_callback_result_ok(job.result_json)
+EXPLICIT RITUALE
+
+RITUALE media_jobs_register_callbacks(SPECULUM TaskRegistry registry) REDDE NIHIL
+  CONIURA task_register(registry, "media.process", media_jobs_task_callback)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

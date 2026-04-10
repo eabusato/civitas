@@ -1,0 +1,55 @@
+INCIPIT grimoire "fase4_4b_app_new_health_and_metadata_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4b_tmp_dir("4b_app_new_health")
+  EVOCA Application app AD CONIURA phase4_4b_new_app(
+    root,
+    "[app]\nname = \"desviados\"\nversion = \"1.2.3\"\nenvironment = \"production\"\nallowed_hosts = [\"example.com\"]\n"
+  )
+  EVOCA SPECULUM NIHIL start_res AD CONIURA app_start(SPECULUM app)
+  EVOCA HttpResponse res AD CONIURA app_health_response(SPECULUM app)
+  EVOCA VERBUM body AD CONIURA http_response_body(res)
+
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(start_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA app_name(app), "desviados") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA app_version(app), "1.2.3") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA app_environment(app), "production") != 0
+    REDDE 4
+  FIN SI
+  SI NON CONIURA app_is_started(app)
+    REDDE 5
+  FIN SI
+  SI CONIURA http_response_status(res) != 200
+    REDDE 6
+  FIN SI
+  SI CONIURA compare(CONIURA http_response_header(res, "Content-Type", ""), "application/json") != 0
+    REDDE 7
+  FIN SI
+  SI CONIURA find(body, "\"app_name\":\"desviados\"") == -1
+    REDDE 8
+  FIN SI
+  SI CONIURA find(body, "\"version\":\"1.2.3\"") == -1
+    REDDE 9
+  FIN SI
+  SI CONIURA find(body, "\"environment\":\"production\"") == -1
+    REDDE 10
+  FIN SI
+  SI CONIURA find(body, "\"status\":\"ok\"") == -1
+    REDDE 11
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

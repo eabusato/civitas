@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase11_11d_build_sql_union_all"
+
+ADVOCARE "../../../../lib/civitas/search/search.cct"
+ADVOCARE "../../../../lib/civitas/search/search_registry.cct"
+ADVOCARE "../../../../lib/civitas/search/search_build.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL fields1 AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SPECULUM NIHIL fields2 AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SearchField title AD CONIURA search_field_new("title", "A")
+  EVOCA SearchField body AD CONIURA search_field_new("body", "B")
+  CONIURA fluxus_push(fields1, SPECULUM title)
+  CONIURA fluxus_push(fields2, SPECULUM body)
+  EVOCA SearchIndex a AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(CONIURA search_index_new("page", "pages", "id", "pt-BR", fields1))
+  EVOCA SearchIndex b AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(CONIURA search_index_new("post", "posts", "id", "en-US", fields2))
+  EVOCA SPECULUM NIHIL registry AD CONIURA search_registry_new()
+  CONIURA search_registry_add(registry, a)
+  CONIURA search_registry_add(registry, b)
+  EVOCA SearchQuery q AD CONIURA search_query_default("term")
+  VINCIRE q.with_headline AD FALSUM
+  EVOCA SPECULUM NIHIL sql_result AD CONIURA search_build_sql(registry, q)
+  EVOCA VERBUM sql AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(sql_result)
+  SI CONIURA find(sql, "UNION ALL") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(sql, "ORDER BY rank DESC LIMIT 20 OFFSET 0") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(sql, "'' AS headline") == -1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

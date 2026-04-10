@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase20_20c_query_by_path_and_errors"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase20_reset_root("20c_path_errors")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase20_trace_db_path("20c_path_errors"), trace_dir, 10, 24)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-api-ok", "/api/posts", "GET", 200, 10, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-api-ok", "ok"), 100)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-api-err", "/api/posts", "POST", 500, 30, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-api-err", "err"), 101)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-web", "/home", "GET", 200, 9, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-web", "home"), 102)
+  EVOCA TraceResultSet by_path AD CONIURA trace_store_query_by_path(SPECULUM store, "/api/%", 10)
+  EVOCA TraceResultSet errs AD CONIURA trace_store_query_errors(SPECULUM store, 10)
+  SI by_path.count != 2
+    CONIURA trace_store_result_set_free(SPECULUM by_path)
+    CONIURA trace_store_result_set_free(SPECULUM errs)
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 1
+  FIN SI
+  SI errs.count != 1
+    CONIURA trace_store_result_set_free(SPECULUM by_path)
+    CONIURA trace_store_result_set_free(SPECULUM errs)
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 2
+  FIN SI
+  CONIURA trace_store_result_set_free(SPECULUM by_path)
+  CONIURA trace_store_result_set_free(SPECULUM errs)
+  CONIURA trace_store_close(SPECULUM store)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

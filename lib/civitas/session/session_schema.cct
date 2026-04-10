@@ -1,0 +1,17 @@
+INCIPIT grimoire "civitas_session_schema"
+
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE session_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS sessoes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL DEFAULT '', dados TEXT NOT NULL DEFAULT '{}', criado_em INTEGER NOT NULL, expira_em INTEGER NOT NULL, ip TEXT NOT NULL DEFAULT '', user_agent TEXT NOT NULL DEFAULT '')")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_sessoes_user ON sessoes(user_id) WHERE user_id != ''")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_sessoes_expira ON sessoes(expira_em)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_schema_down(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "DROP TABLE IF EXISTS sessoes")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

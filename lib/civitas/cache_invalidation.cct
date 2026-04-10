@@ -1,0 +1,11 @@
+INCIPIT grimoire "civitas_cache_invalidation_root"
+
+ADVOCARE "cache_invalidation/invalidation.cct"
+ADVOCARE "cache_invalidation/invalidation_scope.cct"
+ADVOCARE "cache_invalidation/invalidation_exec.cct"
+ADVOCARE "cache_invalidation/invalidation_signal.cct"
+ADVOCARE "cache_invalidation/stampede.cct"
+ADVOCARE "cache_invalidation/stampede_mem.cct"
+ADVOCARE "cache_invalidation/stampede_redis.cct"
+
+EXPLICIT grimoire

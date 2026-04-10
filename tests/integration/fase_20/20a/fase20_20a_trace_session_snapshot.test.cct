@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase20_20a_trace_session_snapshot"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_spans.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_session.cct"
+ADVOCARE "../../../../lib/civitas/trace_config/trace_config.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/trace_capture.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase20_trace_dir("20a_trace_session")
+  EVOCA TraceConfig cfg AD CONIURA trace_config_default()
+  VINCIRE cfg.enabled AD VERUM
+  VINCIRE cfg.mode AD INSTR_MODE_FULL
+  VINCIRE cfg.trace_dir AD dir
+  EVOCA TraceCaptureSession sess AD CONIURA trace_session_start(cfg)
+  SI NON CONIURA trace_capture_is_active(sess)
+    REDDE 1
+  FIN SI
+  EVOCA REX span_id AD CONIURA civitas_span_handler("SessionView")
+  CONIURA civitas_span_end(span_id)
+  SI CONIURA trace_session_flush(SPECULUM sess) != 1
+    CONIURA trace_session_stop(SPECULUM sess)
+    REDDE 2
+  FIN SI
+  EVOCA VERBUM sess_dir AD CONIURA trace_capture_dir(sess)
+  SI NON CONIURA exists(sess_dir)
+    CONIURA trace_session_stop(SPECULUM sess)
+    REDDE 3
+  FIN SI
+  CONIURA trace_session_stop(SPECULUM sess)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

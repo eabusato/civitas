@@ -1,0 +1,66 @@
+INCIPIT grimoire "fase18_18c_custom_actions"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_actions.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_permissions.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_publish_action(DbHandle dbh, VERBUM pks_json, VERBUM user_id) REDDE REX
+  EVOCA Json ids AD CONIURA json_parse(pks_json)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(ids)
+  DUM i < n
+    EVOCA VERBUM pk AD CONIURA json_expect_str(CONIURA json_arr_get(ids, i))
+    EVOCA DbParams params AD CONIURA dbh_params_new()
+    CONIURA dbh_param_text(SPECULUM params, "published")
+    CONIURA dbh_param_text(SPECULUM params, pk)
+    CONIURA dbh_exec(dbh, "UPDATE posts SET state = ? WHERE id = ?", params)
+    CONIURA dbh_params_free(SPECULUM params)
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA len(user_id) == 0
+    REDDE 0
+  FIN SI
+  REDDE n
+EXPLICIT RITUALE
+
+RITUALE test_custom_action_invoke() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18c_actions")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Alpha", "draft", "u1", 1000)
+  EVOCA AdminActionRegistry registry AD CONIURA admin_actions_registry_new()
+  EVOCA AdminCustomAction action
+  VINCIRE action.model_name AD "Post"
+  VINCIRE action.name AD "publish"
+  VINCIRE action.label AD "Publish"
+  VINCIRE action.bulk AD VERUM
+  VINCIRE action.confirm_message AD "Confirm publish"
+  VINCIRE action.callback AD test_publish_action
+  CONIURA admin_actions_schema_up(stack.dbh)
+  CONIURA admin_permissions_schema_up(stack.dbh)
+  CONIURA admin_action_register(SPECULUM registry, stack.dbh, action)
+  CONIURA admin_permission_upsert(stack.dbh, "Post", "publish", "[\"editor\"]")
+  EVOCA VERBUM result_json AD CONIURA admin_action_invoke(registry, stack.dbh, "Post", "publish", "[\"1\"]", "[\"editor\"]", "actor-9")
+  SI CONIURA find(result_json, "\"changed\":1") == -1
+    IACE "custom action result missing changed count"
+  FIN SI
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT state FROM posts WHERE id = 1", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "updated post missing after action"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), "published") != 0
+    IACE "custom action did not update post"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_custom_action_invoke()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

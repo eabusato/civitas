@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase26_26d_sigilo_annot_writes_ctrace"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_26d_reset_root("sigilo_annot_writes_ctrace")
+  EVOCA PerfReport report AD CONIURA phase26_26d_report(VERUM, 1)
+  EVOCA VERBUM out_dir AD CONIURA path_join(root, "profiling")
+  EVOCA VERBUM ctrace_path AD CONIURA perf_report_sigilo_annot(report, out_dir)
+  SI NON CONIURA exists(ctrace_path)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA read_all(ctrace_path)
+  SI CONIURA find(raw, "\"hotspot\":\"true\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(raw, "\"n1_alert\":\"true\"") == -1
+    REDDE 3
+  FIN SI
+  CONIURA fluxus_free(report.mem_report.deltas)
+  CONIURA fluxus_free(report.profiles)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

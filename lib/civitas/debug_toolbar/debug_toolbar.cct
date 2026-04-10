@@ -1,0 +1,419 @@
+INCIPIT grimoire "civitas_debug_toolbar"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../request.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../trace_render/trace_render.cct"
+
+SIGILLUM SqlEntry
+  statement: VERBUM
+  normalized: VERBUM
+  duration_ms: REX
+  span_id: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheEntry
+  operation: VERBUM
+  key: VERBUM
+  hit: VERUM
+  duration_ms: REX
+FIN SIGILLUM
+
+SIGILLUM ToolbarData
+  trace_id: VERBUM
+  method: VERBUM
+  path: VERBUM
+  status: REX
+  total_ms: REX
+  sql_entries: SPECULUM NIHIL
+  cache_entries: SPECULUM NIHIL
+  sql_count: REX
+  cache_hits: REX
+  cache_misses: REX
+  n_plus_one: VERUM
+  n_plus_one_query: VERBUM
+  n_plus_one_count: REX
+FIN SIGILLUM
+
+SIGILLUM DebugToolbarConfig
+  enabled: VERUM
+  trace_base_path: VERBUM
+  render_cfg: TraceRenderConfig
+FIN SIGILLUM
+
+RITUALE debug_toolbar_config_default() REDDE DebugToolbarConfig
+  EVOCA DebugToolbarConfig cfg
+  VINCIRE cfg.enabled AD VERUM
+  VINCIRE cfg.trace_base_path AD "/civitas/traces"
+  VINCIRE cfg.render_cfg AD CONIURA trace_render_default_config()
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_empty_data() REDDE ToolbarData
+  EVOCA ToolbarData data
+  VINCIRE data.trace_id AD ""
+  VINCIRE data.method AD ""
+  VINCIRE data.path AD ""
+  VINCIRE data.status AD 0
+  VINCIRE data.total_ms AD 0
+  VINCIRE data.sql_entries AD CONIURA fluxus_init(MENSURA(SqlEntry))
+  VINCIRE data.cache_entries AD CONIURA fluxus_init(MENSURA(CacheEntry))
+  VINCIRE data.sql_count AD 0
+  VINCIRE data.cache_hits AD 0
+  VINCIRE data.cache_misses AD 0
+  VINCIRE data.n_plus_one AD FALSUM
+  VINCIRE data.n_plus_one_query AD ""
+  VINCIRE data.n_plus_one_count AD 0
+  REDDE data
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_attr_string(Span sp, VERBUM key) REDDE VERBUM
+  SI CONIURA len(sp.attributes_json) == 0 VEL CONIURA compare(sp.attributes_json, "{}") == 0
+    REDDE ""
+  FIN SI
+  EVOCA Json attrs AD CONIURA json_parse(sp.attributes_json)
+  SI NON CONIURA json_is_obj(attrs)
+    REDDE ""
+  FIN SI
+  EVOCA Json raw AD CONIURA json_get_key(attrs, key)
+  SI NON CONIURA json_is_str(raw)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA concat("", CONIURA json_expect_str(raw))
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_span_category(Span sp) REDDE VERBUM
+  EVOCA VERBUM cat AD CONIURA debug_toolbar_attr_string(sp, "span.category")
+  SI CONIURA len(cat) > 0
+    REDDE cat
+  FIN SI
+  VINCIRE cat AD CONIURA debug_toolbar_attr_string(sp, "category")
+  SI CONIURA len(cat) > 0
+    REDDE cat
+  FIN SI
+  SI CONIURA starts_with(sp.name, "db.") VEL CONIURA starts_with(sp.name, "sql.")
+    REDDE "db"
+  FIN SI
+  SI CONIURA starts_with(sp.name, "cache.")
+    REDDE "cache"
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_sql_statement(Span sp) REDDE VERBUM
+  EVOCA VERBUM stmt AD CONIURA debug_toolbar_attr_string(sp, "db.statement")
+  SI CONIURA len(stmt) > 0
+    REDDE stmt
+  FIN SI
+  REDDE sp.name
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_cache_key(Span sp) REDDE VERBUM
+  EVOCA VERBUM key AD CONIURA debug_toolbar_attr_string(sp, "cache.key")
+  SI CONIURA len(key) > 0
+    REDDE key
+  FIN SI
+  REDDE sp.name
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_cache_hit(Span sp) REDDE VERUM
+  EVOCA VERBUM raw AD CONIURA to_lower(CONIURA debug_toolbar_attr_string(sp, "cache.hit"))
+  REDDE CONIURA compare(raw, "true") == 0
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_normalize_sql(VERBUM sql) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(sql)
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(sql, i)
+    SI ch == 39
+      CONIURA builder_append(b, "?")
+      VINCIRE i AD i + 1
+      DUM i < n ET CONIURA char_at(sql, i) != 39
+        VINCIRE i AD i + 1
+      FIN DUM
+      VINCIRE i AD i + 1
+    ALITER
+      SI ch >= 48 ET ch <= 57
+        CONIURA builder_append(b, "?")
+        DUM i < n ET CONIURA char_at(sql, i) >= 48 ET CONIURA char_at(sql, i) <= 57
+          VINCIRE i AD i + 1
+        FIN DUM
+      ALITER
+        CONIURA builder_append(b, CONIURA from_char(ch))
+        VINCIRE i AD i + 1
+      FIN SI
+    FIN SI
+  FIN DUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE CONIURA to_upper(out)
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_detect_n_plus_one(SPECULUM ToolbarData data) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len((*data).sql_entries)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM SqlEntry a AD CONIURA fluxus_get((*data).sql_entries, i)
+    EVOCA REX count AD 0
+    EVOCA REX j AD 0
+    DUM j < n
+      EVOCA SPECULUM SqlEntry b AD CONIURA fluxus_get((*data).sql_entries, j)
+      SI CONIURA compare((*a).normalized, (*b).normalized) == 0
+        VINCIRE count AD count + 1
+      FIN SI
+      VINCIRE j AD j + 1
+    FIN DUM
+    SI count >= 3 ET count > (*data).n_plus_one_count
+      VINCIRE (*data).n_plus_one AD VERUM
+      VINCIRE (*data).n_plus_one_count AD count
+      VINCIRE (*data).n_plus_one_query AD (*a).normalized
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_collect(Trace trace, WebRequest req, WebResponse res, REX total_ms) REDDE ToolbarData
+  EVOCA ToolbarData data AD CONIURA debug_toolbar_empty_data()
+  VINCIRE data.trace_id AD trace.trace_id
+  VINCIRE data.method AD req.method
+  VINCIRE data.path AD req.path
+  VINCIRE data.status AD res.status
+  VINCIRE data.total_ms AD total_ms
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(trace.spans)
+  DUM i < n
+    EVOCA SPECULUM Span sp_ptr AD CONIURA fluxus_get(trace.spans, i)
+    EVOCA Span sp AD *sp_ptr
+    EVOCA VERBUM cat AD CONIURA debug_toolbar_span_category(sp)
+    EVOCA REX duration_ms AD sp.end_time_ms - sp.start_time_ms
+    SI duration_ms < 0
+      VINCIRE duration_ms AD 0
+    FIN SI
+
+    SI CONIURA compare(cat, "db") == 0
+      EVOCA SqlEntry sql
+      VINCIRE sql.statement AD CONIURA debug_toolbar_sql_statement(sp)
+      VINCIRE sql.normalized AD CONIURA debug_toolbar_normalize_sql(sql.statement)
+      VINCIRE sql.duration_ms AD duration_ms
+      VINCIRE sql.span_id AD sp.span_id
+      CONIURA fluxus_push(data.sql_entries, SPECULUM sql)
+      VINCIRE data.sql_count AD data.sql_count + 1
+    FIN SI
+
+    SI CONIURA compare(cat, "cache") == 0
+      EVOCA CacheEntry cache
+      VINCIRE cache.operation AD sp.name
+      SI CONIURA starts_with(cache.operation, "cache.")
+        VINCIRE cache.operation AD CONIURA substring(cache.operation, 6, CONIURA len(cache.operation))
+      FIN SI
+      VINCIRE cache.key AD CONIURA debug_toolbar_cache_key(sp)
+      VINCIRE cache.hit AD CONIURA debug_toolbar_cache_hit(sp)
+      VINCIRE cache.duration_ms AD duration_ms
+      CONIURA fluxus_push(data.cache_entries, SPECULUM cache)
+      SI cache.hit
+        VINCIRE data.cache_hits AD data.cache_hits + 1
+      ALITER
+        SI CONIURA compare(cache.operation, "get") == 0
+          VINCIRE data.cache_misses AD data.cache_misses + 1
+        FIN SI
+      FIN SI
+    FIN SI
+
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA debug_toolbar_detect_n_plus_one(SPECULUM data)
+  REDDE data
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_css() REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "#civitas-debug-toolbar{position:fixed;left:0;right:0;bottom:0;z-index:999999;background:#020617;color:#e2e8f0;border-top:1px solid #1e293b;font:12px/1.45 ui-monospace,monospace}")
+  CONIURA builder_append(b, "#civitas-debug-toolbar *{box-sizing:border-box}.tb-head{display:flex;gap:14px;align-items:center;padding:10px 14px;background:#0f172a}.tb-head strong{font-size:12px}.tb-pill{padding:2px 8px;border-radius:999px;background:#172554;color:#bfdbfe}")
+  CONIURA builder_append(b, ".tb-warning{color:#fca5a5;font-weight:700}.tb-grid{display:grid;grid-template-columns:1.1fr .9fr .9fr 1.4fr;gap:0;border-top:1px solid #1e293b}.tb-panel{padding:14px 16px;border-right:1px solid #1e293b;min-height:240px;overflow:auto;background:#020817}.tb-panel:last-child{border-right:none}")
+  CONIURA builder_append(b, ".tb-panel h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8}.tb-empty{color:#64748b}.tb-table{width:100%;border-collapse:collapse}.tb-table th,.tb-table td{text-align:left;padding:6px 0;border-bottom:1px solid #0f172a;vertical-align:top}.tb-table th{font-size:11px;color:#64748b}")
+  CONIURA builder_append(b, ".tb-sql{max-width:440px;word-break:break-word}.tb-hit{color:#4ade80}.tb-miss{color:#f87171}.tb-links{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 10px}.tb-links a{color:#7dd3fc;text-decoration:none}.tb-links a:hover{text-decoration:underline}.tb-sigilo{background:#000814;border:1px solid #1e293b;border-radius:14px;padding:8px;overflow:auto;min-height:150px}")
+  CONIURA builder_append(b, ".tb-sigilo svg{width:100%;height:auto;display:block}.tb-code{white-space:pre-wrap;word-break:break-word}.tb-head code{color:#cbd5e1}")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_headers_html(WebRequest req) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(req.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  SI n == 0
+    CONIURA builder_append(b, "<div class=\"tb-empty\">No request headers.</div>")
+  ALITER
+    CONIURA builder_append(b, "<table class=\"tb-table\"><thead><tr><th>Header</th><th>Value</th></tr></thead><tbody>")
+    DUM i < n
+      EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+      EVOCA VERBUM key AD *key_ptr
+      CONIURA builder_append(b, "<tr><td>")
+      CONIURA builder_append(b, CONIURA html_encode(key))
+      CONIURA builder_append(b, "</td><td class=\"tb-code\">")
+      CONIURA builder_append(b, CONIURA html_encode(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(req.headers, key, "")))
+      CONIURA builder_append(b, "</td></tr>")
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA builder_append(b, "</tbody></table>")
+  FIN SI
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_trace_panel_html(Trace trace, ToolbarData data, DebugToolbarConfig cfg) REDDE VERBUM
+  EVOCA TraceRenderResult rendered AD CONIURA trace_render_svg(trace, cfg.render_cfg)
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<div class=\"tb-links\"><a href=\"")
+  CONIURA builder_append(b, cfg.trace_base_path)
+  CONIURA builder_append(b, "/")
+  CONIURA builder_append(b, CONIURA html_encode(data.trace_id))
+  CONIURA builder_append(b, "\">Open trace page</a><a href=\"")
+  CONIURA builder_append(b, cfg.trace_base_path)
+  CONIURA builder_append(b, "/")
+  CONIURA builder_append(b, CONIURA html_encode(data.trace_id))
+  CONIURA builder_append(b, "/svg\">Open raw SVG</a></div><div class=\"tb-sigilo\">")
+  CONIURA builder_append(b, rendered.svg)
+  CONIURA builder_append(b, "</div>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_render(Trace trace, ToolbarData data, WebRequest req, DebugToolbarConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<div id=\"civitas-debug-toolbar\"><style>")
+  CONIURA builder_append(b, CONIURA debug_toolbar_css())
+  CONIURA builder_append(b, "</style><div class=\"tb-head\"><strong>")
+  CONIURA builder_append(b, CONIURA html_encode(data.method))
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, CONIURA html_encode(data.path))
+  CONIURA builder_append(b, "</strong><span class=\"tb-pill\">")
+  CONIURA builder_append(b, CONIURA stringify_int(data.status))
+  CONIURA builder_append(b, "</span><span>")
+  CONIURA builder_append(b, CONIURA stringify_int(data.total_ms))
+  CONIURA builder_append(b, "ms</span><span>sql ")
+  CONIURA builder_append(b, CONIURA stringify_int(data.sql_count))
+  CONIURA builder_append(b, "</span><span>cache ")
+  CONIURA builder_append(b, CONIURA stringify_int(data.cache_hits + data.cache_misses))
+  CONIURA builder_append(b, "</span>")
+  SI data.n_plus_one
+    CONIURA builder_append(b, "<span class=\"tb-warning\">N+1 ")
+    CONIURA builder_append(b, CONIURA stringify_int(data.n_plus_one_count))
+    CONIURA builder_append(b, "x</span>")
+  FIN SI
+  CONIURA builder_append(b, "</div><div class=\"tb-grid\">")
+
+  CONIURA builder_append(b, "<section class=\"tb-panel\"><h3>SQL</h3>")
+  SI data.n_plus_one
+    CONIURA builder_append(b, "<div class=\"tb-warning\">Repeated query: <code>")
+    CONIURA builder_append(b, CONIURA html_encode(data.n_plus_one_query))
+    CONIURA builder_append(b, "</code></div>")
+  FIN SI
+  SI data.sql_count == 0
+    CONIURA builder_append(b, "<div class=\"tb-empty\">No SQL spans in this request.</div>")
+  ALITER
+    CONIURA builder_append(b, "<table class=\"tb-table\"><thead><tr><th>Statement</th><th>ms</th></tr></thead><tbody>")
+    EVOCA REX sql_i AD 0
+    EVOCA REX sql_n AD CONIURA fluxus_len(data.sql_entries)
+    DUM sql_i < sql_n
+      EVOCA SPECULUM SqlEntry entry AD CONIURA fluxus_get(data.sql_entries, sql_i)
+      CONIURA builder_append(b, "<tr><td class=\"tb-sql\">")
+      CONIURA builder_append(b, CONIURA html_encode((*entry).statement))
+      CONIURA builder_append(b, "</td><td>")
+      CONIURA builder_append(b, CONIURA stringify_int((*entry).duration_ms))
+      CONIURA builder_append(b, "</td></tr>")
+      VINCIRE sql_i AD sql_i + 1
+    FIN DUM
+    CONIURA builder_append(b, "</tbody></table>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+
+  CONIURA builder_append(b, "<section class=\"tb-panel\"><h3>Cache</h3>")
+  SI CONIURA fluxus_len(data.cache_entries) == 0
+    CONIURA builder_append(b, "<div class=\"tb-empty\">No cache spans in this request.</div>")
+  ALITER
+    CONIURA builder_append(b, "<table class=\"tb-table\"><thead><tr><th>Operation</th><th>Key</th><th>Result</th></tr></thead><tbody>")
+    EVOCA REX cache_i AD 0
+    EVOCA REX cache_n AD CONIURA fluxus_len(data.cache_entries)
+    DUM cache_i < cache_n
+      EVOCA SPECULUM CacheEntry entry AD CONIURA fluxus_get(data.cache_entries, cache_i)
+      CONIURA builder_append(b, "<tr><td>")
+      CONIURA builder_append(b, CONIURA html_encode((*entry).operation))
+      CONIURA builder_append(b, "</td><td class=\"tb-code\">")
+      CONIURA builder_append(b, CONIURA html_encode((*entry).key))
+      CONIURA builder_append(b, "</td><td class=\"")
+      SI (*entry).hit
+        CONIURA builder_append(b, "tb-hit\">hit")
+      ALITER
+        CONIURA builder_append(b, "tb-miss\">miss")
+      FIN SI
+      CONIURA builder_append(b, "</td></tr>")
+      VINCIRE cache_i AD cache_i + 1
+    FIN DUM
+    CONIURA builder_append(b, "</tbody></table>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+
+  CONIURA builder_append(b, "<section class=\"tb-panel\"><h3>Headers</h3>")
+  CONIURA builder_append(b, CONIURA debug_toolbar_headers_html(req))
+  CONIURA builder_append(b, "</section>")
+
+  CONIURA builder_append(b, "<section class=\"tb-panel\"><h3>Sigilo Vivo</h3>")
+  CONIURA builder_append(b, CONIURA debug_toolbar_trace_panel_html(trace, data, cfg))
+  CONIURA builder_append(b, "</section></div></div>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_inject(VERBUM html_body, VERBUM snippet) REDDE VERBUM
+  SI CONIURA find(html_body, "id=\"civitas-debug-toolbar\"") != -1
+    REDDE html_body
+  FIN SI
+  EVOCA REX close_body AD CONIURA find(CONIURA to_lower(html_body), "</body>")
+  SI close_body == -1
+    REDDE html_body
+  FIN SI
+  EVOCA VERBUM before AD CONIURA substring(html_body, 0, close_body)
+  EVOCA VERBUM after AD CONIURA substring(html_body, close_body, CONIURA len(html_body))
+  REDDE CONIURA concat(CONIURA concat(before, snippet), after)
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_is_html_response(WebResponse res) REDDE VERUM
+  SI res.body_kind == WEB_RESPONSE_HTML
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA find(CONIURA to_lower(CONIURA response_header_or(res, "content-type", "")), "text/html") != -1
+EXPLICIT RITUALE
+
+RITUALE debug_toolbar_apply(WebRequest req, WebResponse res, Trace trace, REX total_ms, DebugToolbarConfig cfg) REDDE WebResponse
+  SI NON cfg.enabled
+    REDDE res
+  FIN SI
+  SI NON CONIURA debug_toolbar_is_html_response(res)
+    REDDE res
+  FIN SI
+  EVOCA ToolbarData data AD CONIURA debug_toolbar_collect(trace, req, res, total_ms)
+  EVOCA VERBUM snippet AD CONIURA debug_toolbar_render(trace, data, req, cfg)
+  EVOCA WebResponse out AD res
+  VINCIRE out.body AD CONIURA debug_toolbar_inject(res.body, snippet)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

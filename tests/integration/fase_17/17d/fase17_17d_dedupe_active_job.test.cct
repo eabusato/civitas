@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase17_17d_dedupe_active_job"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17d_dedupe_active_job")
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA VERBUM source_path AD CONIURA phase17_write_file(stack.root, "uploads/source.txt", "payload")
+  EVOCA UploadDescriptor descriptor AD CONIURA phase17_descriptor_from_file(source_path, "text/plain", "source.txt")
+  EVOCA VERBUM output_path AD CONIURA path_join(stack.root, "derived/thumb.txt")
+  EVOCA VERBUM id1 AD CONIURA media_job_enqueue(stack.dbh, descriptor, "post-1", MEDIA_JOB_THUMB, "thumb", output_path, "", CONIURA media_policy_default(), task_cfg)
+  EVOCA VERBUM id2 AD CONIURA media_job_enqueue(stack.dbh, descriptor, "post-1", MEDIA_JOB_THUMB, "thumb", output_path, "", CONIURA media_policy_default(), task_cfg)
+  SI CONIURA compare(id1, id2) != 0
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(stack.db, "SELECT COUNT(*) FROM media_jobs") != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

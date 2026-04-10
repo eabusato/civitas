@@ -1,0 +1,110 @@
+INCIPIT grimoire "fase21_common"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+
+RITUALE phase21_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_21", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase21_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase21_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase21_reset_root(VERBUM test_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase21_root(test_name)
+  SI CONIURA exists(root)
+    CONIURA phase21_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase21_trace_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase21_reset_root(test_name), "traces")
+EXPLICIT RITUALE
+
+RITUALE phase21_trace_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase21_root(test_name), "trace_store.db")
+EXPLICIT RITUALE
+
+RITUALE phase21_render_config(VERBUM test_name) REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg AD CONIURA trace_render_default_config()
+  CONIURA mkdir_all(CONIURA phase21_root(test_name))
+  SI CONIURA has_env("CCT_BIN")
+    VINCIRE cfg.cct_bin AD CONIURA getenv("CCT_BIN")
+  FIN SI
+  VINCIRE cfg.sigil_path AD "tests/integration/fase_22/22b/fase22_22b_render_html_includes_real_sigilo.test.sigil"
+  VINCIRE cfg.sigil_view AD "routes"
+  VINCIRE cfg.hide_timeline AD VERUM
+  VINCIRE cfg.animation_loop AD VERUM
+  VINCIRE cfg.work_dir AD CONIURA path_join(CONIURA phase21_root(test_name), "render")
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase21_sample_trace(VERBUM trace_id) REDDE Trace
+  EVOCA Trace trace AD CONIURA trace_new_with_id(trace_id)
+  EVOCA VERBUM root_id AD CONIURA span_start(SPECULUM trace, "request.users")
+  EVOCA VERBUM router_id AD CONIURA span_start_child(SPECULUM trace, root_id, "middleware.auth")
+  EVOCA VERBUM handler_id AD CONIURA span_start_child(SPECULUM trace, root_id, "handler.users_list")
+  EVOCA VERBUM db_id AD CONIURA span_start_child(SPECULUM trace, handler_id, "db.query.users")
+  CONIURA span_set_attribute(SPECULUM trace, root_id, "route_id", "api.users.list")
+  CONIURA span_set_attribute(SPECULUM trace, root_id, "http.method", "GET")
+  CONIURA span_set_attribute(SPECULUM trace, root_id, "http.path", "/api/users")
+  CONIURA span_set_attribute(SPECULUM trace, root_id, "category", "handler")
+  CONIURA span_set_attribute(SPECULUM trace, router_id, "middleware", "auth")
+  CONIURA span_set_attribute(SPECULUM trace, router_id, "category", "middleware")
+  CONIURA span_set_attribute(SPECULUM trace, handler_id, "handler", "users_list")
+  CONIURA span_set_attribute(SPECULUM trace, handler_id, "route_id", "api.users.list")
+  CONIURA span_set_attribute(SPECULUM trace, handler_id, "module", "tests/integration/sigilo_routes_basic_35a.cct")
+  CONIURA span_set_attribute(SPECULUM trace, handler_id, "category", "handler")
+  CONIURA span_set_attribute(SPECULUM trace, db_id, "query", "users.select")
+  CONIURA span_set_attribute(SPECULUM trace, db_id, "module", "tests/integration/sigilo_routes_basic_35a.cct")
+  CONIURA span_set_attribute(SPECULUM trace, db_id, "category", "sql")
+  EVOCA SPECULUM Span root_ptr AD CONIURA fluxus_get(trace.spans, 0)
+  EVOCA SPECULUM Span router_ptr AD CONIURA fluxus_get(trace.spans, 1)
+  EVOCA SPECULUM Span handler_ptr AD CONIURA fluxus_get(trace.spans, 2)
+  EVOCA SPECULUM Span db_ptr AD CONIURA fluxus_get(trace.spans, 3)
+  VINCIRE (*root_ptr).start_time_ms AD 1000
+  VINCIRE (*root_ptr).end_time_ms AD 1180
+  VINCIRE (*router_ptr).start_time_ms AD 1005
+  VINCIRE (*router_ptr).end_time_ms AD 1018
+  VINCIRE (*handler_ptr).start_time_ms AD 1022
+  VINCIRE (*handler_ptr).end_time_ms AD 1168
+  VINCIRE (*db_ptr).start_time_ms AD 1050
+  VINCIRE (*db_ptr).end_time_ms AD 1120
+  REDDE trace
+EXPLICIT RITUALE
+
+RITUALE phase21_write_sample_trace(VERBUM trace_dir, VERBUM trace_id) REDDE VERBUM
+  CONIURA mkdir_all(trace_dir)
+  EVOCA Trace trace AD CONIURA phase21_sample_trace(trace_id)
+  EVOCA VERBUM out_path AD CONIURA path_join(trace_dir, CONIURA concat(trace_id, ".ctrace"))
+  CONIURA trace_write_file(trace, out_path)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE out_path
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

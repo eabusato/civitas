@@ -1,0 +1,95 @@
+INCIPIT grimoire "civitas_auth_context"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../session/session.cct"
+
+SIGILLUM AuthContext
+  user_id: VERBUM
+  session_id: VERBUM
+  locale: VERBUM
+  is_authenticated: VERUM
+FIN SIGILLUM
+
+ORDO AuthContextError
+  AceContextFechado,
+  AceSessionSemUserId,
+  AceLocalContextIndisponivel
+FIN ORDO
+
+RITUALE auth_context_key_user_id() REDDE VERBUM
+  REDDE "auth:user_id"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_session_id() REDDE VERBUM
+  REDDE "auth:session_id"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_locale() REDDE VERBUM
+  REDDE "auth:locale"
+EXPLICIT RITUALE
+
+RITUALE auth_context_key_is_authenticated() REDDE VERBUM
+  REDDE "auth:is_authenticated"
+EXPLICIT RITUALE
+
+RITUALE auth_context_populate(SPECULUM LocalContext ctx, Session sess) REDDE NIHIL
+  EVOCA VERBUM uid AD CONIURA session_get_or(SPECULUM sess, "user_id", "")
+  EVOCA VERBUM locale AD CONIURA session_get_or(SPECULUM sess, "locale", "")
+  CONIURA local_context_set(ctx, CONIURA auth_context_key_user_id(), uid)
+  CONIURA local_context_set(ctx, CONIURA auth_context_key_session_id(), sess.id)
+  CONIURA local_context_set(ctx, CONIURA auth_context_key_locale(), locale)
+  SI CONIURA len(uid) > 0
+    CONIURA local_context_set(ctx, CONIURA auth_context_key_is_authenticated(), "1")
+  ALITER
+    CONIURA local_context_set(ctx, CONIURA auth_context_key_is_authenticated(), "0")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_context_user_id(LocalContext ctx) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_user_id())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA VERBUM uid AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  SI CONIURA len(uid) == 0
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(uid)
+EXPLICIT RITUALE
+
+RITUALE auth_context_session_id(LocalContext ctx) REDDE SPECULUM NIHIL
+  REDDE CONIURA local_context_get(ctx, CONIURA auth_context_key_session_id())
+EXPLICIT RITUALE
+
+RITUALE auth_context_locale(LocalContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_locale())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA option_unwrap GENUS(VERBUM)(opt)
+EXPLICIT RITUALE
+
+RITUALE auth_context_is_authenticated(LocalContext ctx) REDDE VERUM
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_get(ctx, CONIURA auth_context_key_is_authenticated())
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(opt), "1") == 0
+EXPLICIT RITUALE
+
+RITUALE auth_context_require(LocalContext ctx) REDDE SPECULUM NIHIL
+  SI NON CONIURA auth_context_is_authenticated(ctx)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("nao autenticado")
+  FIN SI
+  EVOCA SPECULUM NIHIL uid_opt AD CONIURA auth_context_user_id(ctx)
+  SI CONIURA option_is_none GENUS(VERBUM)(uid_opt)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("nao autenticado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(CONIURA option_unwrap GENUS(VERBUM)(uid_opt))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

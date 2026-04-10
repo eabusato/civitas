@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase17_17d_fallback_path_used"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17d_fallback_path_used")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA VERBUM fallback_path AD CONIURA phase17_write_file(stack.root, "uploads/fallback.txt", "fallback")
+  EVOCA UploadDescriptor descriptor AD CONIURA upload_descriptor_new(CONIURA path_join(stack.root, "uploads/missing.txt"), "missing-hash", 0, "text/plain", "missing.txt")
+  EVOCA MediaJobPolicy policy AD CONIURA media_policy_default()
+  VINCIRE policy.allow_fallback AD VERUM
+  EVOCA VERBUM output_path AD CONIURA path_join(stack.root, "derived/out.txt")
+  EVOCA VERBUM job_id AD CONIURA media_job_enqueue(stack.dbh, descriptor, "post-1", MEDIA_JOB_FALLBACK, "fallback", output_path, fallback_path, policy, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "media-worker")
+  EVOCA MediaJobRecord job AD CONIURA media_job_find(stack.dbh, job_id)
+  SI job.state != MEDIA_JOB_DONE
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(output_path)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

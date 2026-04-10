@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase19_19e_video_embed_and_log"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/embed/embed.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_video_embed_and_log() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19e_video")
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_default("video", "videos", "id", "Civitas", "https://example.test")
+  CONIURA embed_schema_up(stack.db)
+  CONIURA db_exec(stack.db, "CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, media_url TEXT NOT NULL)")
+  CONIURA db_exec(stack.db, "INSERT INTO videos (id, title, body, media_url) VALUES ('1', 'Video Title', '<p>desc</p>', 'https://cdn.example.test/v.mp4')")
+  CONIURA embed_config_register(stack.db, cfg)
+  EVOCA WebRequest req AD CONIURA phase19_request("GET", "/embed/video/1/", "")
+  CONIURA phase19_request_set_param(SPECULUM req, "pk", "1")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(req.headers, "origin", "https://host.test")
+  EVOCA WebResponse res AD CONIURA embed_video_handler(stack.db, "video", req)
+  SI res.status != 200 VEL CONIURA find(res.body, "<video controls src=\"https://cdn.example.test/v.mp4\">") == -1
+    IACE "video embed handler mismatch"
+  FIN SI
+  SI CONIURA embed_access_log_count(stack.db, "video", "1") != 1
+    IACE "embed access log missing"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_video_embed_and_log()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase27_27b_restore_media_snapshot"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/restore/restore.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_restore_media_snapshot_restores_previous_content() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27b_restore_media", 2, 5)
+  EVOCA RestoreConfig rcfg AD CONIURA restore_config_new(cfg.topology, "phase27", "", "")
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+
+  EVOCA VERBUM live_path AD CONIURA storage_topology_media_path(cfg.topology, "processed", "card.txt")
+  CONIURA write_all(live_path, "v1")
+  EVOCA BackupResult snap AD CONIURA backup_media_snapshot(cfg, "processed")
+  SI NON snap.success
+    IACE snap.message
+  FIN SI
+
+  CONIURA write_all(live_path, "v2")
+  EVOCA RestoreResult restore_res AD CONIURA restore_media_snapshot(rcfg, snap.backup_path, "processed")
+  SI NON restore_res.success
+    IACE restore_res.message
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(live_path), "v1") != 0
+    IACE "media restore should put original content back"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

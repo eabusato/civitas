@@ -1,0 +1,256 @@
+INCIPIT grimoire "civitas_backup"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../storage/storage.cct"
+
+SIGILLUM BackupConfig
+  topology: StorageTopology
+  keep_db_snapshots: REX
+  keep_media_snapshots: REX
+FIN SIGILLUM
+
+SIGILLUM BackupResult
+  success: VERUM
+  backup_path: VERBUM
+  size_bytes: REX
+  duration_ms: REX
+  message: VERBUM
+FIN SIGILLUM
+
+RITUALE backup_config_new(StorageTopology topology, REX keep_db_snapshots, REX keep_media_snapshots) REDDE BackupConfig
+  EVOCA BackupConfig cfg
+  VINCIRE cfg.topology AD topology
+  VINCIRE cfg.keep_db_snapshots AD keep_db_snapshots
+  VINCIRE cfg.keep_media_snapshots AD keep_media_snapshots
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE backup_result_fail(VERBUM message) REDDE BackupResult
+  EVOCA BackupResult out
+  VINCIRE out.success AD FALSUM
+  VINCIRE out.backup_path AD ""
+  VINCIRE out.size_bytes AD 0
+  VINCIRE out.duration_ms AD 0
+  VINCIRE out.message AD message
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_result_ok(VERBUM backup_path, REX size_bytes, REX duration_ms, VERBUM message) REDDE BackupResult
+  EVOCA BackupResult out
+  VINCIRE out.success AD VERUM
+  VINCIRE out.backup_path AD backup_path
+  VINCIRE out.size_bytes AD size_bytes
+  VINCIRE out.duration_ms AD duration_ms
+  VINCIRE out.message AD message
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_sql_quote_literal(VERBUM value) REDDE VERBUM
+  REDDE CONIURA concat("'", CONIURA concat(CONIURA replace_all(value, "'", "''"), "'"))
+EXPLICIT RITUALE
+
+RITUALE backup_stamp() REDDE VERBUM
+  REDDE CONIURA stringify_int(CONIURA now_ms())
+EXPLICIT RITUALE
+
+RITUALE backup_db_file_name(VERBUM db_name, VERBUM stamp) REDDE VERBUM
+  REDDE CONIURA concat(db_name, CONIURA concat("_", CONIURA concat(stamp, ".db")))
+EXPLICIT RITUALE
+
+RITUALE backup_media_snapshot_dir(StorageTopology topo, VERBUM subdir, VERBUM stamp) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA path_join(topo.backups_media_dir, subdir), stamp)
+EXPLICIT RITUALE
+
+RITUALE backup_list_sqlite_paths(BackupConfig cfg, VERBUM db_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  SI NON CONIURA exists(cfg.topology.backups_db_dir)
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(cfg.topology.backups_db_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA VERBUM prefix AD CONIURA concat(db_name, "_")
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA starts_with(*name_ptr, prefix) ET CONIURA ends_with(*name_ptr, ".db")
+      EVOCA VERBUM full_path AD CONIURA path_join(cfg.topology.backups_db_dir, *name_ptr)
+      CONIURA fluxus_push(out, SPECULUM full_path)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA fluxus_sort_verbum(out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_latest_sqlite_path(BackupConfig cfg, VERBUM db_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL entries AD CONIURA backup_list_sqlite_paths(cfg, db_name)
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA VERBUM out AD ""
+  SI n > 0
+    EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(entries, n - 1)
+    VINCIRE out AD *path_ptr
+  FIN SI
+  CONIURA fluxus_free(entries)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_prune_old_sqlite(BackupConfig cfg, VERBUM db_name) REDDE REX
+  EVOCA SPECULUM NIHIL entries AD CONIURA backup_list_sqlite_paths(cfg, db_name)
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX keep AD cfg.keep_db_snapshots
+  EVOCA REX removed AD 0
+  EVOCA REX i AD 0
+  SI keep < 0
+    VINCIRE keep AD 0
+  FIN SI
+  DUM i < (n - keep)
+    EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA delete_file(*path_ptr)
+    VINCIRE removed AD removed + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE removed
+EXPLICIT RITUALE
+
+RITUALE backup_verify_sqlite(VERBUM path) REDDE VERUM
+  SI NON CONIURA exists(path)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(path)
+  EVOCA VERBUM integrity AD CONIURA db_scalar_text(db, "PRAGMA integrity_check;")
+  CONIURA db_close(db)
+  REDDE CONIURA compare(CONIURA trim(integrity), "ok") == 0
+EXPLICIT RITUALE
+
+RITUALE backup_sqlite(VERBUM live_db_path, BackupConfig cfg, VERBUM db_name) REDDE BackupResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  SI NON CONIURA exists(live_db_path)
+    REDDE CONIURA backup_result_fail(CONIURA concat("sqlite source not found: ", live_db_path))
+  FIN SI
+
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+
+  EVOCA VERBUM stamp AD CONIURA backup_stamp()
+  EVOCA VERBUM dest_path AD CONIURA path_join(cfg.topology.backups_db_dir, CONIURA backup_db_file_name(db_name, stamp))
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(live_db_path)
+  EVOCA VERBUM sql AD CONIURA concat("VACUUM INTO ", CONIURA backup_sql_quote_literal(dest_path))
+  CONIURA db_exec(db, sql)
+  CONIURA db_close(db)
+
+  SI NON CONIURA backup_verify_sqlite(dest_path)
+    SI CONIURA exists(dest_path)
+      CONIURA delete_file(dest_path)
+    FIN SI
+    REDDE CONIURA backup_result_fail("sqlite backup integrity check failed")
+  FIN SI
+
+  CONIURA backup_prune_old_sqlite(cfg, db_name)
+  REDDE CONIURA backup_result_ok(
+    dest_path,
+    CONIURA size(dest_path),
+    CONIURA now_ms() - started_ms,
+    "sqlite backup completed"
+  )
+EXPLICIT RITUALE
+
+RITUALE backup_media_dir_allowed(VERBUM subdir) REDDE VERUM
+  REDDE CONIURA compare(subdir, "processed") == 0 VEL CONIURA compare(subdir, "private") == 0
+EXPLICIT RITUALE
+
+RITUALE backup_media_source_dir(StorageTopology topo, VERBUM subdir) REDDE VERBUM
+  SI CONIURA compare(subdir, "processed") == 0
+    REDDE topo.media_processed_dir
+  FIN SI
+  REDDE topo.media_private_dir
+EXPLICIT RITUALE
+
+RITUALE backup_list_media_snapshot_dirs(BackupConfig cfg, VERBUM subdir) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM root AD CONIURA path_join(cfg.topology.backups_media_dir, subdir)
+  SI NON CONIURA exists(root)
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(root)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM full_path AD CONIURA path_join(root, *name_ptr)
+    SI CONIURA is_dir(full_path)
+      CONIURA fluxus_push(out, SPECULUM full_path)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA fluxus_sort_verbum(out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_latest_media_snapshot(BackupConfig cfg, VERBUM subdir) REDDE VERBUM
+  EVOCA SPECULUM NIHIL entries AD CONIURA backup_list_media_snapshot_dirs(cfg, subdir)
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA VERBUM out AD ""
+  SI n > 0
+    EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(entries, n - 1)
+    VINCIRE out AD *path_ptr
+  FIN SI
+  CONIURA fluxus_free(entries)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE backup_prune_old_media(BackupConfig cfg, VERBUM subdir) REDDE REX
+  EVOCA SPECULUM NIHIL entries AD CONIURA backup_list_media_snapshot_dirs(cfg, subdir)
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX keep AD cfg.keep_media_snapshots
+  EVOCA REX removed AD 0
+  EVOCA REX i AD 0
+  SI keep < 0
+    VINCIRE keep AD 0
+  FIN SI
+  DUM i < (n - keep)
+    EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA storage_delete_tree(*path_ptr)
+    VINCIRE removed AD removed + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE removed
+EXPLICIT RITUALE
+
+RITUALE backup_media_snapshot(BackupConfig cfg, VERBUM subdir) REDDE BackupResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  SI NON CONIURA backup_media_dir_allowed(subdir)
+    REDDE CONIURA backup_result_fail("media backup only supports processed/private")
+  FIN SI
+
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+
+  EVOCA VERBUM source_dir AD CONIURA backup_media_source_dir(cfg.topology, subdir)
+  EVOCA VERBUM stamp AD CONIURA backup_stamp()
+  EVOCA VERBUM snapshot_dir AD CONIURA backup_media_snapshot_dir(cfg.topology, subdir, stamp)
+
+  SI NON CONIURA exists(source_dir)
+    REDDE CONIURA backup_result_fail(CONIURA concat("media source not found: ", source_dir))
+  FIN SI
+
+  CONIURA mkdir_all(CONIURA path_join(cfg.topology.backups_media_dir, subdir))
+  CONIURA storage_copy_tree(source_dir, snapshot_dir)
+  CONIURA backup_prune_old_media(cfg, subdir)
+
+  REDDE CONIURA backup_result_ok(
+    snapshot_dir,
+    CONIURA storage_dir_size_bytes(snapshot_dir),
+    CONIURA now_ms() - started_ms,
+    "media snapshot completed"
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

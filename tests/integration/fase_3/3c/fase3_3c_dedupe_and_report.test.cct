@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase3_3c_dedupe_and_report_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "../../../../lib/civitas/outbox.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE noop_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase3_3c_tmp_dir("3c_dedupe")
+  EVOCA OutboxStore store
+  EVOCA EventBus bus
+  EVOCA VERBUM entry_id
+  EVOCA OutboxPublishReport report
+  EVOCA OutboxEntry entry
+  EVOCA REX base_now AD 0
+
+  CONIURA phase3_3c_reset_dir(dir)
+  VINCIRE store AD CONIURA phase3_3c_ok_or_fail_store(CONIURA outbox_store_open(dir, 3))
+  CONIURA event_bus_init(SPECULUM bus, "dedupe-bus")
+  CONIURA phase3_3c_ok_or_fail_unit(CONIURA event_subscribe(SPECULUM bus, "content.published", "noop_handler", noop_handler))
+
+  VINCIRE entry_id AD CONIURA phase3_3c_ok_or_fail_entry_id(CONIURA outbox_enqueue(SPECULUM store, CONIURA phase3_3c_event("content.published", "req-dedupe", "actor-9", "{\"slug\":\"one\"}", "public"), "content:one"))
+  VINCIRE base_now AD CONIURA now_ms()
+  VINCIRE report AD CONIURA phase3_3c_ok_or_fail_report(CONIURA outbox_after_commit_publish(SPECULUM store, bus, 10, 100, base_now))
+  VINCIRE entry AD CONIURA phase3_3c_ok_or_fail_entry(CONIURA outbox_get_entry(SPECULUM store, entry_id))
+
+  SI CONIURA compare(entry.dedupe_key, "content:one") != 0
+    REDDE 1
+  FIN SI
+  SI report.claimed_count != 1 VEL report.published_count != 1 VEL report.failed_count != 0
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,102 @@
+INCIPIT grimoire "civitas_factory"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO FactoryFieldKind
+  FfkConst,
+  FfkSeq,
+  FfkNulo
+FIN ORDO
+
+SIGILLUM FactoryField
+  nome: VERBUM
+  kind: FactoryFieldKind
+  const_valor: VERBUM
+  seq_nome: VERBUM
+  seq_prefixo: VERBUM
+FIN SIGILLUM
+
+SIGILLUM FactoryDep
+  campo_fk: VERBUM
+  factory_dep: VERBUM
+FIN SIGILLUM
+
+SIGILLUM FactoryDef
+  modelo: VERBUM
+  campos: SPECULUM NIHIL
+  deps: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM FactoryRegistry
+  defs: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE factory_def_new(VERBUM modelo) REDDE FactoryDef
+  EVOCA FactoryDef def
+  VINCIRE def.modelo AD modelo
+  VINCIRE def.campos AD CONIURA fluxus_init(MENSURA(FactoryField))
+  VINCIRE def.deps AD CONIURA fluxus_init(MENSURA(FactoryDep))
+  REDDE def
+EXPLICIT RITUALE
+
+RITUALE factory_def_add_const(FactoryDef def, VERBUM nome, VERBUM valor) REDDE NIHIL
+  EVOCA FactoryField f
+  VINCIRE f.nome AD nome
+  VINCIRE f.kind AD FfkConst
+  VINCIRE f.const_valor AD valor
+  VINCIRE f.seq_nome AD ""
+  VINCIRE f.seq_prefixo AD ""
+  CONIURA fluxus_push(def.campos, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_def_add_seq(FactoryDef def, VERBUM nome, VERBUM prefixo) REDDE NIHIL
+  EVOCA FactoryField f
+  VINCIRE f.nome AD nome
+  VINCIRE f.kind AD FfkSeq
+  VINCIRE f.const_valor AD ""
+  VINCIRE f.seq_nome AD CONIURA concat(def.modelo, ".")
+  VINCIRE f.seq_nome AD CONIURA concat(f.seq_nome, nome)
+  VINCIRE f.seq_prefixo AD prefixo
+  CONIURA fluxus_push(def.campos, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_def_add_nulo(FactoryDef def, VERBUM nome) REDDE NIHIL
+  EVOCA FactoryField f
+  VINCIRE f.nome AD nome
+  VINCIRE f.kind AD FfkNulo
+  VINCIRE f.const_valor AD ""
+  VINCIRE f.seq_nome AD ""
+  VINCIRE f.seq_prefixo AD ""
+  CONIURA fluxus_push(def.campos, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_def_add_dep(FactoryDef def, VERBUM campo_fk, VERBUM factory_dep) REDDE NIHIL
+  EVOCA FactoryDep d
+  VINCIRE d.campo_fk AD campo_fk
+  VINCIRE d.factory_dep AD factory_dep
+  CONIURA fluxus_push(def.deps, SPECULUM d)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_registry_new() REDDE FactoryRegistry
+  EVOCA FactoryRegistry reg
+  VINCIRE reg.defs AD CONIURA map_init GENUS(VERBUM, FactoryDef)()
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE factory_registry_add(SPECULUM FactoryRegistry reg, VERBUM nome, FactoryDef def) REDDE NIHIL
+  CONIURA map_update_or_insert GENUS(VERBUM, FactoryDef)((*reg).defs, nome, def)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE factory_registry_get(FactoryRegistry reg, VERBUM nome) REDDE SPECULUM NIHIL
+  REDDE CONIURA map_get GENUS(VERBUM, FactoryDef)(reg.defs, nome)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

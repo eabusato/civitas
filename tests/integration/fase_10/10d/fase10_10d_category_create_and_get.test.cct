@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase10_10d_category_create_and_get"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/taxonomy/taxonomy.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10d_category_create_and_get")
+  EVOCA Category cat AD CONIURA category_create(db, "News", "All news", "en", 0)
+  SI cat.id == 0
+    REDDE 1
+  FIN SI
+  EVOCA Category loaded AD CONIURA category_get_by_slug(db, cat.slug, "en")
+  SI loaded.id != cat.id
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(loaded.title, "News") != 0
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

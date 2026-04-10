@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase15_15d_middleware_populates_context"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_store.cct"
+ADVOCARE "../../../../lib/civitas/session/session_middleware.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_session_db_open("15d_middleware_populates_context")
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.cookie_nome AD "civitas_session"
+  VINCIRE cfg.ttl_segundos AD 3600
+  EVOCA Session sess AD CONIURA session_create(db, cfg, "user-1", "127.0.0.1", "Agent/1.0")
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat("civitas_session=", sess.id))
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/", "HTTP/1.1", headers, "", "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA session_middleware_apply(db, cfg, req, SPECULUM ctx)
+  CONIURA db_close(db)
+  SI CONIURA compare(CONIURA session_ctx_id(ctx), sess.id) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA session_ctx_user_id(ctx), "user-1") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

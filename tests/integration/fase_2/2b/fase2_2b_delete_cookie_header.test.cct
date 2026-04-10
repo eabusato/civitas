@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase2_2b_delete_cookie_header_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE find_set_cookie(HttpResponse res) REDDE VERBUM
+  EVOCA REX handle AD CONIURA http_response_headers_handle(res)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(handle)
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header AD CONIURA http_headers_get_ptr(handle, i)
+    SI CONIURA compare(CONIURA to_lower((*header).nome), "set-cookie") == 0
+      REDDE (*header).valor
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA WebResponse res AD CONIURA response_ok()
+  CONIURA response_delete_cookie(SPECULUM res, "sid", "/admin")
+  EVOCA SPECULUM NIHIL http_res AD CONIURA response_to_http(res)
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_res)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM header AD CONIURA find_set_cookie(CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_res))
+  SI CONIURA find(header, "sid=") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(header, "Max-Age=0") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(header, "Path=/admin") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_i18n_root"
+
+ADVOCARE "i18n/i18n.cct"
+ADVOCARE "i18n/i18n_registry.cct"
+ADVOCARE "i18n/i18n_translate.cct"
+ADVOCARE "i18n/i18n_context.cct"
+
+EXPLICIT grimoire

@@ -1,0 +1,52 @@
+INCIPIT grimoire "fase24_24a_cookie_jar_login"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase24_login_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SetCookie ck AD CONIURA cookie_default_set("sessionid", "sess-abc")
+  VINCIRE ck.http_only AD VERUM
+  CONIURA response_fill(out, CONIURA response_json_text("{\"ok\":true}"))
+  CONIURA response_set_cookie(out, ck)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_me_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL sess_opt AD CONIURA request_cookie(*req, "sessionid")
+  SI CONIURA option_is_none GENUS(VERBUM)(sess_opt)
+    CONIURA option_free GENUS(VERBUM)(sess_opt)
+    CONIURA response_fill(out, CONIURA response_unauthorized("sem sessao"))
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(sess_opt)
+  CONIURA response_fill(out, CONIURA response_json_text("{\"user\":\"alice\"}"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "POST", "/login", "login", "phase24_login_handler", phase24_login_handler))
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/me", "me", "phase24_me_handler", phase24_me_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  SI NON CONIURA test_client_login(SPECULUM client, "/login", "alice", "abc123")
+    REDDE 1
+  FIN SI
+  EVOCA TestResponse me AD CONIURA test_client_get(SPECULUM client, "/me")
+  CONIURA assert_status(me, 200)
+  CONIURA assert_json_str(me, "user", "alice")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

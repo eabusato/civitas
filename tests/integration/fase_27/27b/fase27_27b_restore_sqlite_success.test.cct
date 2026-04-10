@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase27_27b_restore_sqlite_success"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/restore/restore.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_restore_sqlite_replaces_live_db_and_keeps_previous_copy() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27b_restore_sqlite_ok", 5, 2)
+  EVOCA RestoreConfig rcfg AD CONIURA restore_config_new(cfg.topology, "phase27", "", "")
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+
+  EVOCA VERBUM live_db AD CONIURA storage_topology_main_db_path(cfg.topology)
+  CONIURA phase27_seed_sqlite(live_db)
+  EVOCA BackupResult backup_res AD CONIURA backup_sqlite(live_db, cfg, "main")
+  SI NON backup_res.success
+    IACE backup_res.message
+  FIN SI
+
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(live_db)
+  CONIURA db_exec(db, "DELETE FROM entries")
+  CONIURA db_exec(db, "INSERT INTO entries(id, title) VALUES(2, 'mutated')")
+  CONIURA db_close(db)
+
+  EVOCA RestoreResult restore_res AD CONIURA restore_sqlite(backup_res.backup_path, rcfg, "main")
+  SI NON restore_res.success
+    IACE restore_res.message
+  FIN SI
+
+  VINCIRE db AD CONIURA db_open(live_db)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM entries") != 1
+    CONIURA db_close(db)
+    IACE "restore should bring original backup content back"
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM entries WHERE id = 1") != 1
+    CONIURA db_close(db)
+    IACE "restored database should contain original row"
+  FIN SI
+  CONIURA db_close(db)
+
+  SI NON CONIURA exists(CONIURA concat(live_db, ".pre-restore"))
+    IACE "restore should keep pre-restore copy of previous live database"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

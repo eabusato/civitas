@@ -1,0 +1,98 @@
+# Civitas Documentation
+
+## Main Entry Points
+
+- `README.md`: consolidated onboarding through phase 28 with `28A-28D` and closure of the 1.0 line.
+- `docs/manuals/MANUAL_INICIAR_PROJETO_CIVITAS.md`: practical manual for creating a new project and progressively filling apps, routes, models, templates, and local runtime on top of the canonical scaffold.
+- `docs/manuals/SISTEMA_FASE_0.md`: in-depth manual for the current bootstrap.
+- `docs/manuals/SISTEMA_FASE_1.md`: in-depth manual for the usable HTTP server.
+- `docs/manuals/SISTEMA_FASE_2.md`: in-depth manual for the web core.
+- `docs/manuals/SISTEMA_FASE_3.md`: in-depth manual for signals, events, and outbox.
+- `docs/manuals/SISTEMA_FASE_4.md`: in-depth manual for settings, application, external services, and secrets.
+- `docs/manuals/SISTEMA_FASE_5.md`: in-depth manual for the baseline security layer and complementary anti-abuse.
+- `docs/manuals/SISTEMA_FASE_6.md`: in-depth manual for compiled templates, `civitas/html`, and editorial/public helpers.
+- `docs/manuals/SISTEMA_FASE_7.md`: in-depth manual for forms, declarative validation, rich sanitization, and extensible HTML rendering with a memory contract.
+- `docs/manuals/SISTEMA_FASE_8.md`: in-depth manual for server-side session, flash messages, Redis backend, authenticated context, and `UploadDescriptor`.
+- `docs/manuals/SISTEMA_FASE_9.md`: in-depth manual for upload streaming, static files, media storage, image/video pipeline, and authenticated delivery.
+- `docs/manuals/SISTEMA_FASE_10.md`: in-depth manual for declarative schema, query builder, migrations, and structured content.
+- `docs/manuals/SISTEMA_FASE_11.md`: in-depth manual for `DbHandle`, pooling, transactions, PostgreSQL search, and concurrent locks.
+- `docs/manuals/SISTEMA_FASE_12.md`: in-depth manual for multi-layer cache, response cache, query cache, coordinated invalidation, and anti-stampede.
+- `docs/manuals/SISTEMA_FASE_13.md`: in-depth manual for fixtures, factory, test database, data IO, and Django migration.
+- `docs/manuals/SISTEMA_FASE_14.md`: in-depth manual for i18n, l10n, request locale resolution, JSON catalogs, and advanced localized formatting.
+- `docs/manuals/SISTEMA_FASE_15.md`: in-depth manual for full authentication with users, tokens, permissions, session, middleware, rate limit, and test helpers.
+- `docs/manuals/SISTEMA_FASE_16.md`: in-depth manual for account recovery, email verification, mailer, transactional templates, and email test helpers.
+- `docs/manuals/SISTEMA_FASE_17.md`: in-depth manual for background execution with tasks, scheduler, retention, media pipeline, and editorial automation.
+- `docs/manuals/SISTEMA_FASE_18.md`: in-depth manual for operational admin with registry, inlines, moderation, and dashboards.
+- `docs/manuals/SISTEMA_FASE_19.md`: in-depth manual for the native REST API, OpenAPI, public publication, embeds, and exports.
+- `docs/manuals/SISTEMA_FASE_20.md`: in-depth manual for request instrumentation, trace collector, trace store, and explicit subsystem spans.
+- `docs/manuals/SISTEMA_FASE_21.md`: in-depth manual for the SVG trace renderer, local HTML panel, and offline ZIP export.
+- `docs/manuals/SISTEMA_FASE_22.md`: in-depth manual for the dev server, HTML toolbar, and livereload with the real CCT sigil.
+- `docs/manuals/SISTEMA_FASE_23.md`: in-depth manual for the native CLI with scaffolding, generate, management commands, shared `civitas.toml`, and doctor.
+- `docs/manuals/SISTEMA_FASE_24.md`: in-depth manual for integration harnesses for HTTP, email, tasks, and SEO.
+- `docs/manuals/SISTEMA_FASE_25.md`: in-depth manual for the realtime base with SSE, WebSocket, SSE presence, and WS rooms.
+- `docs/manuals/SISTEMA_FASE_26.md`: in-depth manual for the benchmark layer, profiler, memory profiler, and perf report with the real CCT sigil.
+- `docs/manuals/SISTEMA_FASE_27.md`: in-depth manual for the operational storage topology, verifiable backup, safe restore, and local binary rollback.
+- `docs/manuals/SISTEMA_FASE_28.md`: in-depth manual for final hardening with audit, fuzzing, in-process load, dependency review, and release bundling.
+- `docs/specs/FASE_0_BOOTSTRAP.md`: consolidated spec for the implemented behavior.
+- `docs/specs/FASE_1_SERVIDOR_HTTP_UTILIZAVEL.md`: consolidated spec for block 1A-1F.
+- `docs/specs/FASE_2_WEB_CORE.md`: consolidated spec for block 2A-2F.
+- `docs/specs/FASE_3_SIGNALS_EVENTS_OUTBOX.md`: consolidated spec for block 3A-3C.
+- `docs/specs/FASE_4_CONFIGURACAO_E_AMBIENTES.md`: consolidated spec for block 4A-4D.
+- `docs/specs/FASE_5_SEGURANCA_BASE.md`: consolidated spec for block 5A-5C.
+- `docs/specs/FASE_6_TEMPLATES_E_HTML.md`: consolidated spec for block 6A-6D.
+- `docs/specs/FASE_7_FORMS_E_VALIDACAO.md`: consolidated spec for block 7A-7E.
+- `docs/specs/FASE_8_SESSAO_E_FLASH.md`: consolidated spec for block 8A-8D.
+- `docs/specs/FASE_9_UPLOAD_STATIC_E_MEDIA.md`: consolidated spec for block 9A-9F.
+- `docs/specs/FASE_10_ORM_E_MIGRATIONS.md`: consolidated spec for block 10A-10G.
+- `docs/specs/FASE_11_POSTGRES_POOL_TRANSACOES_SEARCH_E_LOCKS.md`: consolidated spec for block 11A-11E.
+- `docs/specs/FASE_12_CACHE_MULTICAMADA.md`: consolidated spec for block 12A-12D.
+- `docs/specs/FASE_13_FIXTURES_FACTORY_TEST_DB_E_MIGRACAO.md`: consolidated spec for block 13A-13E.
+- `docs/specs/FASE_14_I18N_E_L10N_BASELINE.md`: consolidated spec for block 14A-14E.
+- `docs/specs/FASE_15_AUTENTICACAO_COMPLETA.md`: consolidated spec for block 15A-15G.
+- `docs/specs/FASE_16_RECUPERACAO_E_EMAIL.md`: consolidated spec for block 16A-16D.
+- `docs/specs/FASE_17_TASKS_SCHEDULER_RETENCAO_MEDIA_EDITORIAL.md`: consolidated spec for block 17A-17E.
+- `docs/specs/FASE_18_ADMIN_OPERACIONAL.md`: consolidated spec for block 18A-18E.
+- `docs/specs/FASE_19_API_REST_PUBLICACAO_E_EMBEDS.md`: consolidated spec for block 19A-19E.
+- `docs/specs/FASE_20_SIGILO_VIVO_INSTRUMENTACAO_DE_REQUEST.md`: consolidated spec for block 20A-20D.
+- `docs/specs/FASE_21_SIGILO_VIVO_RENDER_PAINEL_EXPORT.md`: consolidated spec for block 21A-21C.
+- `docs/specs/FASE_22_DEV_SERVER_E_HOT_RELOAD.md`: consolidated spec for block 22A-22C.
+- `docs/specs/FASE_23_SCAFFOLDING_E_CLI.md`: consolidated spec for block 23A-23D.
+- `docs/specs/FASE_24_TEST_HARNESS_HTTP_MAIL_TASKS_SEO.md`: consolidated spec for block 24A-24D.
+- `docs/specs/FASE_25_WEBSOCKETS_E_SSE.md`: consolidated spec for block 25A-25E.
+- `docs/specs/FASE_26_PROFILING_E_BENCHMARK.md`: consolidated spec for block 26A-26D.
+- `docs/specs/FASE_27_DEPLOY_E_PRODUCAO.md`: consolidated spec for block 27A-27B.
+- `docs/specs/FASE_28_HARDENING_FINAL_E_AUDITORIA.md`: consolidated spec for block 28A-28D and closure of the 1.0 line.
+- `docs/release/FASE_0_RELEASE_NOTES.md`: closure of the base phase.
+- `docs/release/FASE_1_RELEASE_NOTES.md`: closure of the first usable HTTP server.
+- `docs/release/FASE_2_RELEASE_NOTES.md`: closure of the web core.
+- `docs/release/FASE_3_RELEASE_NOTES.md`: closure of the local decoupling infrastructure and outbox.
+- `docs/release/FASE_4_RELEASE_NOTES.md`: closure of the operational configuration and bootstrap base.
+- `docs/release/FASE_5_RELEASE_NOTES.md`: closure of the baseline security layer and complementary anti-abuse.
+- `docs/release/FASE_6_RELEASE_NOTES.md`: closure of the compiled template layer, HTML builder, and editorial/public helpers.
+- `docs/release/FASE_7_RELEASE_NOTES.md`: closure of the canonical forms cycle, rich sanitization, and renderer extensibility.
+- `docs/release/FASE_8_RELEASE_NOTES.md`: closure of the session layer, flash, cross-request identity, and canonical upload descriptor.
+- `docs/release/FASE_9_RELEASE_NOTES.md`: closure of the upload, static, storage, image, video, and private-delivery pipeline.
+- `docs/release/FASE_10_RELEASE_NOTES.md`: closure of the first data layer, migrations, and structured editorial content.
+- `docs/release/FASE_11_RELEASE_NOTES.md`: closure of the multi-backend database infrastructure, pooling, transactions, search, and locks.
+- `docs/release/FASE_12_RELEASE_NOTES.md`: closure of the official multi-layer cache and invalidation-coordination layer.
+- `docs/release/FASE_13_RELEASE_NOTES.md`: closure of the fixtures, factory, test database, data IO, and Django toolkit layer.
+- `docs/release/FASE_14_RELEASE_NOTES.md`: closure of the i18n/l10n baseline with request locale and advanced formats.
+- `docs/release/FASE_15_RELEASE_NOTES.md`: closure of the full authentication, permission, session, and rate-limit layer.
+- `docs/release/FASE_16_RELEASE_NOTES.md`: closure of the account-recovery, email verification, mailer, and email testing flows.
+- `docs/release/FASE_17_RELEASE_NOTES.md`: closure of the background-execution layer, scheduler, retention, media jobs, and editorial jobs.
+- `docs/release/FASE_18_RELEASE_NOTES.md`: closure of the operational admin layer with CRUD, inlines, moderation, and dashboard.
+- `docs/release/FASE_19_RELEASE_NOTES.md`: closure of the REST API, OpenAPI, public SEO, embeds, and exports layer.
+- `docs/release/FASE_20_RELEASE_NOTES.md`: closure of the request observability layer, collector, trace store, and explicit spans.
+- `docs/release/FASE_21_RELEASE_NOTES.md`: closure of the live trace-visualization layer, local panel, and offline export.
+- `docs/release/FASE_22_RELEASE_NOTES.md`: closure of the dev-server layer, HTML toolbar, and livereload.
+- `docs/release/FASE_23_RELEASE_NOTES.md`: closure of the project scaffolding and native CLI layer.
+- `docs/release/FASE_24_RELEASE_NOTES.md`: closure of the socket-free integration-harness layer.
+- `docs/release/FASE_25_RELEASE_NOTES.md`: closure of the realtime layer with SSE, WebSocket, presence, and rooms.
+- `docs/release/FASE_26_RELEASE_NOTES.md`: closure of the benchmark, CPU/memory profiling, and perf-report layer.
+- `docs/release/FASE_27_RELEASE_NOTES.md`: closure of the operational storage, backup, restore, and local rollback block.
+- `docs/release/FASE_28_RELEASE_NOTES.md`: closure of final hardening, local audit, docs/release bundle, and the end of the 1.0 line.
+- `docs/phase_map.md`: phase map and artifacts.
+
+## Publication Notes
+
+This index was adjusted for the public repository. Private or temporary planning artifacts are no longer prerequisites for understanding the published codebase.

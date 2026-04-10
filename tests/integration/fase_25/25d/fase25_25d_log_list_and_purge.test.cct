@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase25_25d_log_list_and_purge"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/ws_room/ws_room.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25d_log_list_and_purge")
+  EVOCA REX first_id AD CONIURA ws_room_log(db, "room:audit", ROOM_EV_JOIN, 300, 0, "{\"join\":true}")
+  EVOCA REX second_id AD CONIURA ws_room_log(db, "room:audit", ROOM_EV_MESSAGE, 300, 300, "{\"body\":\"hi\"}")
+
+  EVOCA SPECULUM NIHIL items AD CONIURA ws_room_event_list(db, "room:audit", 10, 0)
+  SI CONIURA fluxus_len(items) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM RoomEvent first AD CONIURA fluxus_get(items, 0)
+  SI (*first).id != second_id
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI (*first).tipo != ROOM_EV_MESSAGE
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_exec(db, "UPDATE ws_room_events SET criado_em = 0 WHERE id = 1")
+  SI CONIURA ws_room_log_purge_old(db, "room:audit", 1) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_events") != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI first_id != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

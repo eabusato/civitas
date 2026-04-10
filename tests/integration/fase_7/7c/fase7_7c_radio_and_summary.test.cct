@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase7_7c_radio_and_summary_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FieldDef cor AD CONIURA field_def_new("cor", "Cor favorita", IkRadio)
+  EVOCA VERBUM field_html
+  EVOCA VERBUM summary_html
+
+  CONIURA form_data_put_text(SPECULUM fd, "cor", "azul")
+  CONIURA field_def_add_option(SPECULUM cor, "vermelho", "Vermelho")
+  CONIURA field_def_add_option(SPECULUM cor, "azul", "Azul")
+  CONIURA phase7_render_add_error(SPECULUM vr, "cor", "Escolha uma cor.")
+  VINCIRE field_html AD CONIURA render_field(cor, vr, fd)
+  VINCIRE summary_html AD CONIURA render_form_errors_summary(vr)
+
+  SI CONIURA find(field_html, "<fieldset class=\"form-group field-error\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(field_html, "value=\"azul\" checked=\"checked\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(summary_html, "form-errors-summary") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(summary_html, "href=\"#cor\"") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(summary_html, "cor: Escolha uma cor.") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

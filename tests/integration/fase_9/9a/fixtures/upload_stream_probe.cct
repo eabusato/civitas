@@ -1,0 +1,145 @@
+INCIPIT grimoire "fase9_9a_upload_stream_probe"
+
+ADVOCARE "../../support/common.cct"
+ADVOCARE "../../../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../../lib/civitas/upload/upload.cct"
+ADVOCARE "../../../../../lib/civitas/upload/upload_types.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase9_upload_error_name(UploadError err) REDDE VERBUM
+  ELIGE err
+    CASUS UeExcedeuLimite:
+      REDDE "UeExcedeuLimite"
+    CASUS UeTipoNaoPermitido:
+      REDDE "UeTipoNaoPermitido"
+    CASUS UeMagicBytesInvalido:
+      REDDE "UeMagicBytesInvalido"
+    CASUS UeBoundaryAusente:
+      REDDE "UeBoundaryAusente"
+    CASUS UeBoundaryMalformado:
+      REDDE "UeBoundaryMalformado"
+    CASUS UePartHeaderMalformado:
+      REDDE "UePartHeaderMalformado"
+    CASUS UeDestinoNaoGravavel:
+      REDDE "UeDestinoNaoGravavel"
+    CASUS UeWriteFalhou:
+      REDDE "UeWriteFalhou"
+    CASUS UeRequestTruncado:
+      REDDE "UeRequestTruncado"
+    ALIOQUIN:
+      REDDE "UeContentTypeInvalido"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE NIHIL
+  EVOCA REX port AD 39281
+  EVOCA VERBUM ready_file AD CONIURA getenv("CIVITAS_READY_FILE")
+  EVOCA VERBUM result_file AD CONIURA getenv("CIVITAS_RESULT_FILE")
+  EVOCA VERBUM upload_dir AD CONIURA getenv("CIVITAS_UPLOAD_DIR")
+  SI CONIURA has_env("CIVITAS_STREAM_PORT")
+    VINCIRE port AD CONIURA parse_int(CONIURA getenv("CIVITAS_STREAM_PORT"))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL listener AD CONIURA socket_tcp()
+  CONIURA sock_bind(listener, "127.0.0.1", port)
+  CONIURA sock_listen(listener, 1)
+  CONIURA write_all(ready_file, "ready")
+
+  EVOCA SPECULUM NIHIL client AD CONIURA sock_accept(listener)
+  EVOCA HttpServerOptions opts AD CONIURA http_server_default_options()
+  VINCIRE opts.upload_stream_threshold_bytes AD 32
+  VINCIRE opts.max_body_bytes AD 2097152
+  VINCIRE opts.max_request_bytes AD 2097152
+
+  EVOCA SPECULUM NIHIL raw_res AD CONIURA http_server_read_request_from_socket(client, "127.0.0.1:50000", "127.0.0.1:39281", opts, ConnPolicyRespondAndClose)
+  SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(raw_res)
+    CONIURA write_all(result_file, "error=parse")
+    CONIURA net_close(client)
+    CONIURA net_close(listener)
+    REDDE
+  FIN SI
+
+  EVOCA HttpRawRequest raw AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(raw_res)
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build_with_raw_body(
+    raw.method,
+    raw.target,
+    raw.version,
+    CONIURA request_copy_string_map(raw.headers),
+    raw.body,
+    raw.body_socket,
+    raw.client_ip,
+    raw.scheme,
+    raw.original_host,
+    raw.request_id,
+    raw.proxy_addr,
+    raw.remote_addr,
+    raw.local_addr
+  )
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    CONIURA write_all(result_file, "error=request")
+    CONIURA net_close(client)
+    CONIURA net_close(listener)
+    REDDE
+  FIN SI
+
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA UploadConfig cfg AD CONIURA upload_config_new(upload_dir)
+  VINCIRE cfg.max_tamanho_campo AD 1048576
+  VINCIRE cfg.max_tamanho_total AD 2097152
+  VINCIRE cfg.tamanho_bloco AD 32
+  CONIURA upload_config_allow_type(SPECULUM cfg, "image/jpeg")
+
+  EVOCA SPECULUM NIHIL upload_res AD CONIURA upload_parse(req, cfg)
+  SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(upload_res)
+    EVOCA VERBUM out AD "error=upload:"
+    VINCIRE out AD CONIURA concat(out, CONIURA phase9_upload_error_name(CONIURA result_unwrap_err GENUS(MultipartResult, UploadError)(upload_res)))
+    CONIURA write_all(result_file, out)
+    CONIURA net_close(client)
+    CONIURA net_close(listener)
+    REDDE
+  FIN SI
+
+  EVOCA MultipartResult result AD CONIURA result_unwrap GENUS(MultipartResult, UploadError)(upload_res)
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA upload_get_file(result, "avatar")
+  EVOCA SPECULUM NIHIL text_opt AD CONIURA upload_get_field(result, "title")
+  SI CONIURA option_is_none GENUS(UploadedFile)(file_opt) VEL CONIURA option_is_none GENUS(VERBUM)(text_opt)
+    CONIURA write_all(result_file, "error=missing")
+    CONIURA net_close(client)
+    CONIURA net_close(listener)
+    REDDE
+  FIN SI
+
+  EVOCA UploadedFile file AD CONIURA option_unwrap GENUS(UploadedFile)(file_opt)
+  EVOCA VERBUM title AD CONIURA option_unwrap GENUS(VERBUM)(text_opt)
+  EVOCA VERBUM out AD "stream=ok"
+  VINCIRE out AD CONIURA concat(out, "\nbody_empty=")
+  SI CONIURA len(req.body) == 0
+    VINCIRE out AD CONIURA concat(out, "true")
+  ALITER
+    VINCIRE out AD CONIURA concat(out, "false")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, "\nhas_raw=")
+  SI CONIURA request_has_raw_body(req)
+    VINCIRE out AD CONIURA concat(out, "true")
+  ALITER
+    VINCIRE out AD CONIURA concat(out, "false")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, "\ntitle=")
+  VINCIRE out AD CONIURA concat(out, title)
+  VINCIRE out AD CONIURA concat(out, "\nsaved=")
+  VINCIRE out AD CONIURA concat(out, file.nome_salvo)
+  CONIURA write_all(result_file, out)
+  CONIURA net_close(client)
+  CONIURA net_close(listener)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

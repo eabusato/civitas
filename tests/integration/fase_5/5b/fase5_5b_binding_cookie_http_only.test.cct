@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase5_5b_binding_cookie_http_only_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5b_tmp_dir("5b_binding_cookie_http_only")
+  EVOCA Application app AD CONIURA phase5_5b_new_app(
+    root,
+    "[app]\nname = \"f5\"\nallowed_hosts = [\"example.test\"]\n"
+  )
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase5_headers()
+  EVOCA SPECULUM WebRequest req AD OBSECRO mem_alloc(MENSURA(WebRequest))
+  EVOCA SPECULUM WebResponse res AD OBSECRO mem_alloc(MENSURA(WebResponse))
+
+  CONIURA phase5_5b_register_submit_route(SPECULUM app)
+  CONIURA phase5_5b_install_csrf_secret(SPECULUM app, "segredo-csrf")
+  CONIURA phase5_request_with_body_fill(req, "GET", "/submit", headers, "", "https", "example.test", "127.0.0.1")
+  CONIURA phase5_response_init(res, 500)
+  CONIURA app_dispatch_fill(SPECULUM app, req, res)
+
+  SI CONIURA fluxus_len((*res).set_cookies) != 1
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get((*res).set_cookies, 0)
+  SI NON (*cookie_ptr).http_only
+    REDDE 2
+  FIN SI
+  SI NON (*cookie_ptr).secure
+    REDDE 3
+  FIN SI
+  SI CONIURA compare((*cookie_ptr).same_site, "Strict") != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

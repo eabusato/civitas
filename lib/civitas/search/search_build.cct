@@ -1,0 +1,214 @@
+INCIPIT grimoire "civitas_search_build"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/db_postgres_search.cct"
+ADVOCARE "search.cct"
+ADVOCARE "search_registry.cct"
+
+RITUALE search_headline_options_sql(PgSearchHeadlineOptions opts) REDDE VERBUM
+  EVOCA VERBUM sql AD "'StartSel="
+  VINCIRE sql AD CONIURA concat(sql, opts.start_sel)
+  VINCIRE sql AD CONIURA concat(sql, ", StopSel=")
+  VINCIRE sql AD CONIURA concat(sql, opts.stop_sel)
+  VINCIRE sql AD CONIURA concat(sql, ", MaxWords=")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(opts.max_words))
+  VINCIRE sql AD CONIURA concat(sql, ", MinWords=")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(opts.min_words))
+  VINCIRE sql AD CONIURA concat(sql, ", ShortWord=")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(opts.short_word))
+  VINCIRE sql AD CONIURA concat(sql, ", HighlightAll=")
+  SI opts.highlight_all
+    VINCIRE sql AD CONIURA concat(sql, "TRUE")
+  ALITER
+    VINCIRE sql AD CONIURA concat(sql, "FALSE")
+  FIN SI
+  VINCIRE sql AD CONIURA concat(sql, "'")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_query_fn_name(PgSearchQueryMode mode) REDDE VERBUM
+  ELIGE mode
+    CASUS SEARCH_QUERY_PHRASE:
+      REDDE "phraseto_tsquery"
+    CASUS SEARCH_QUERY_WEB:
+      REDDE "websearch_to_tsquery"
+    CASUS SEARCH_QUERY_RAW:
+      REDDE "to_tsquery"
+    ALIOQUIN:
+      REDDE "plainto_tsquery"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE search_rank_fn_name(PgSearchRankMode mode) REDDE VERBUM
+  SI mode == SEARCH_RANK_COVER_DENSITY
+    REDDE "ts_rank_cd"
+  FIN SI
+  REDDE "ts_rank"
+EXPLICIT RITUALE
+
+RITUALE search_query_expr(SearchIndex idx, SearchQuery q) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA search_query_fn_name(q.mode)
+  VINCIRE out AD CONIURA concat(out, "(")
+  VINCIRE out AD CONIURA concat(out, CONIURA pg_search_quote(CONIURA search_locale_to_dict(idx.locale)))
+  VINCIRE out AD CONIURA concat(out, ", $1)")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE search_tag_in_placeholders(REX start_idx, REX count) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  DUM i < count
+    SI i > 0
+      VINCIRE out AD CONIURA concat(out, ", ")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, "$")
+    VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(start_idx + i))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE search_append_filter_sql(VERBUM base_sql, SearchIndex idx, SearchQuery q) REDDE VERBUM
+  EVOCA VERBUM sql AD base_sql
+  EVOCA REX next_param AD 2
+  SI CONIURA len(q.filter.locale) > 0
+    VINCIRE sql AD CONIURA concat(sql, " AND locale = $")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(next_param))
+    VINCIRE next_param AD next_param + 1
+  FIN SI
+  SI q.filter.publicado_de_ms > 0
+    VINCIRE sql AD CONIURA concat(sql, " AND published_at_ms >= $")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(next_param))
+    VINCIRE next_param AD next_param + 1
+  FIN SI
+  SI q.filter.publicado_ate_ms > 0
+    VINCIRE sql AD CONIURA concat(sql, " AND published_at_ms <= $")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(next_param))
+    VINCIRE next_param AD next_param + 1
+  FIN SI
+  SI q.filter.apenas_publico
+    VINCIRE sql AD CONIURA concat(sql, " AND publish_state = 3")
+  FIN SI
+  SI CONIURA len(q.filter.author_id) > 0
+    VINCIRE sql AD CONIURA concat(sql, " AND created_by = $")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(next_param))
+    VINCIRE next_param AD next_param + 1
+  FIN SI
+  SI CONIURA fluxus_len(q.filter.tag_slugs) > 0
+    VINCIRE sql AD CONIURA concat(sql, " AND EXISTS (SELECT 1 FROM civitas_object_tags t WHERE t.object_id = CAST(")
+    VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+    VINCIRE sql AD CONIURA concat(sql, ".")
+    VINCIRE sql AD CONIURA concat(sql, idx.id_column)
+    VINCIRE sql AD CONIURA concat(sql, " AS TEXT) AND t.object_type = ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA pg_search_quote(idx.object_type))
+    VINCIRE sql AD CONIURA concat(sql, " AND t.slug IN (")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA search_tag_in_placeholders(next_param, CONIURA fluxus_len(q.filter.tag_slugs)))
+    VINCIRE sql AD CONIURA concat(sql, "))")
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE search_build_subquery(SearchIndex idx, SearchQuery q, VERUM for_count) REDDE VERBUM
+  EVOCA VERBUM query_expr AD CONIURA search_query_expr(idx, q)
+  EVOCA VERBUM rank_expr AD CONIURA search_rank_fn_name(q.rank_mode)
+  VINCIRE rank_expr AD CONIURA concat(rank_expr, "(search_vector, ")
+  VINCIRE rank_expr AD CONIURA concat(rank_expr, query_expr)
+  VINCIRE rank_expr AD CONIURA concat(rank_expr, ", 1)")
+  EVOCA VERBUM sql AD "SELECT "
+  SI for_count
+    VINCIRE sql AD CONIURA concat(sql, "1 AS marker")
+  ALITER
+    VINCIRE sql AD CONIURA concat(sql, CONIURA pg_search_quote(idx.object_type))
+    VINCIRE sql AD CONIURA concat(sql, " AS object_type, CAST(")
+    VINCIRE sql AD CONIURA concat(sql, idx.id_column)
+    VINCIRE sql AD CONIURA concat(sql, " AS TEXT) AS object_id, ")
+    VINCIRE sql AD CONIURA concat(sql, rank_expr)
+    VINCIRE sql AD CONIURA concat(sql, " AS rank")
+    SI q.with_headline
+      EVOCA PgSearchHeadlineOptions opts AD CONIURA search_headline_options_default()
+      EVOCA SPECULUM SearchField first_field AD CONIURA fluxus_get(idx.fields, 0)
+      VINCIRE sql AD CONIURA concat(sql, ", ts_headline(")
+      VINCIRE sql AD CONIURA concat(sql, CONIURA pg_search_quote(CONIURA search_locale_to_dict(idx.locale)))
+      VINCIRE sql AD CONIURA concat(sql, ", coalesce(")
+      VINCIRE sql AD CONIURA concat(sql, (*first_field).column_name)
+      VINCIRE sql AD CONIURA concat(sql, ", ''), ")
+      VINCIRE sql AD CONIURA concat(sql, query_expr)
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+      VINCIRE sql AD CONIURA concat(sql, CONIURA search_headline_options_sql(opts))
+      VINCIRE sql AD CONIURA concat(sql, ") AS headline")
+    ALITER
+      VINCIRE sql AD CONIURA concat(sql, ", '' AS headline")
+    FIN SI
+  FIN SI
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, idx.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE search_vector @@ ")
+  VINCIRE sql AD CONIURA concat(sql, query_expr)
+  REDDE CONIURA search_append_filter_sql(sql, idx, q)
+EXPLICIT RITUALE
+
+RITUALE search_registry_collect_types(SPECULUM NIHIL registry, SearchFilter filter) REDDE SPECULUM NIHIL
+  SI CONIURA fluxus_len(filter.object_types) > 0
+    REDDE filter.object_types
+  FIN SI
+  REDDE CONIURA search_registry_list_types(registry)
+EXPLICIT RITUALE
+
+RITUALE search_build_union_sql(SPECULUM NIHIL registry, SearchQuery q, VERUM for_count) REDDE SPECULUM NIHIL
+  SI CONIURA len(CONIURA trim(q.input)) == 0
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("search_build_sql: input cannot be empty")
+  FIN SI
+  EVOCA SPECULUM NIHIL types AD CONIURA search_registry_collect_types(registry, q.filter)
+  SI CONIURA fluxus_len(types) == 0
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("search_build_sql: no registered types")
+  FIN SI
+  EVOCA VERBUM sql AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(types)
+  EVOCA REX used AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM type_ptr AD CONIURA fluxus_get(types, i)
+    EVOCA SPECULUM NIHIL maybe_idx AD CONIURA search_registry_get(registry, *type_ptr)
+    SI CONIURA option_is_none GENUS(SearchIndex)(maybe_idx)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    EVOCA SearchIndex idx AD CONIURA option_unwrap GENUS(SearchIndex)(maybe_idx)
+    SI used > 0
+      VINCIRE sql AD CONIURA concat(sql, " UNION ALL ")
+    FIN SI
+    VINCIRE sql AD CONIURA concat(sql, CONIURA search_build_subquery(idx, q, for_count))
+    VINCIRE used AD used + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI used == 0
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("search_build_sql: no matching registered types")
+  FIN SI
+  SI for_count
+    EVOCA VERBUM count_sql AD "SELECT COUNT(*) FROM ("
+    VINCIRE count_sql AD CONIURA concat(count_sql, sql)
+    VINCIRE count_sql AD CONIURA concat(count_sql, ") AS civitas_search_count")
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(count_sql)
+  FIN SI
+  EVOCA VERBUM final_sql AD "SELECT * FROM ("
+  VINCIRE final_sql AD CONIURA concat(final_sql, sql)
+  VINCIRE final_sql AD CONIURA concat(final_sql, ") AS civitas_search_hits ORDER BY rank DESC LIMIT ")
+  VINCIRE final_sql AD CONIURA concat(final_sql, CONIURA stringify_int(q.limit))
+  VINCIRE final_sql AD CONIURA concat(final_sql, " OFFSET ")
+  VINCIRE final_sql AD CONIURA concat(final_sql, CONIURA stringify_int(q.offset))
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(final_sql)
+EXPLICIT RITUALE
+
+RITUALE search_build_sql(SPECULUM NIHIL registry, SearchQuery q) REDDE SPECULUM NIHIL
+  REDDE CONIURA search_build_union_sql(registry, q, FALSUM)
+EXPLICIT RITUALE
+
+RITUALE search_build_count_sql(SPECULUM NIHIL registry, SearchQuery q) REDDE SPECULUM NIHIL
+  REDDE CONIURA search_build_union_sql(registry, q, VERUM)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

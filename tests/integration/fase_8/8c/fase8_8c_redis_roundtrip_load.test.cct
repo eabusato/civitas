@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase8_8c_redis_roundtrip_load_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase8_8c_tmp_dir("roundtrip")
+  CONIURA phase8_reset_dir(root)
+  SI CONIURA phase8_8c_start_fake_redis(root) != 0
+    REDDE 1
+  FIN SI
+
+  EVOCA SessionStore store AD CONIURA phase8_8c_store(root)
+  EVOCA SessionConfig cfg AD CONIURA phase8_session_config("redis-8c-secret")
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA session_set(SPECULUM sess, "user_id", "42")
+  EVOCA WebResponse res AD CONIURA session_finalize(SPECULUM sess, store, cfg, CONIURA response_ok())
+  EVOCA WebRequest req AD CONIURA phase8_request_with_cookie(cfg.cookie_nome, CONIURA phase8_cookie_value_from_response(res))
+  EVOCA Session loaded AD CONIURA session_load(req, store, cfg)
+  EVOCA SPECULUM NIHIL uid_opt AD CONIURA session_get(SPECULUM loaded, "user_id")
+  CONIURA phase8_8c_stop_fake_redis(root)
+  SI CONIURA option_is_none GENUS(VERBUM)(uid_opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(uid_opt), "42") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

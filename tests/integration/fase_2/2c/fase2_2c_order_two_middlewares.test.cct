@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase2_2c_order_two_middlewares_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("terminal"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mw_a(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  VINCIRE (*out).body AD CONIURA concat("A>", CONIURA concat((*out).body, "<A"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mw_b(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  VINCIRE (*out).body AD CONIURA concat("B>", CONIURA concat((*out).body, "<B"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "mw_a", mw_a)
+  CONIURA middleware_bindings_push(middlewares, "mw_b", mw_b)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/mw"), terminal)
+  SI CONIURA compare(out.body, "A>B>terminal<B<A") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

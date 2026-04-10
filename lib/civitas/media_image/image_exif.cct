@@ -1,0 +1,33 @@
+INCIPIT grimoire "civitas_media_image_exif"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE image_strip_exif(VERBUM path) REDDE SPECULUM NIHIL
+  SI NON CONIURA exists(path)
+    REDDE CONIURA Err GENUS(REX, VERBUM)("image file does not exist")
+  FIN SI
+
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "exiftool -all= -overwrite_original \"",
+    CONIURA concat(path, "\" 2>&1")
+  )
+  EVOCA VERBUM output AD CONIURA run_capture(cmd)
+  EVOCA VERBUM lowered AD CONIURA to_lower(output)
+
+  SI CONIURA contains(lowered, "not found") VEL CONIURA contains(lowered, "no such file")
+    REDDE CONIURA Err GENUS(REX, VERBUM)("exiftool is not available in PATH")
+  FIN SI
+  SI CONIURA contains(lowered, "error")
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA concat("exif strip failed: ", output))
+  FIN SI
+  SI NON CONIURA exists(path)
+    REDDE CONIURA Err GENUS(REX, VERBUM)("exif strip removed the source file unexpectedly")
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

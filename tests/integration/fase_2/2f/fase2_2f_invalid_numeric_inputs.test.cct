@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase2_2f_invalid_numeric_inputs_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/pagination.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL allowed AD CONIURA phase2_allowed_sorts_basic()
+  EVOCA SPECULUM NIHIL bad_page_res AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts?page=abc"),
+    allowed,
+    20,
+    100,
+    "created_at",
+    SORT_ASC
+  )
+  EVOCA SPECULUM NIHIL bad_page_size_res AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts?page_size=xyz"),
+    allowed,
+    20,
+    100,
+    "created_at",
+    SORT_ASC
+  )
+
+  SI NON CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(bad_page_res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(bad_page_size_res)
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

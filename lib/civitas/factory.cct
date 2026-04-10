@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_factory_root"
+
+ADVOCARE "factory/factory.cct"
+ADVOCARE "factory/factory_seq.cct"
+ADVOCARE "factory/factory_build.cct"
+ADVOCARE "factory/factory_exec.cct"
+ADVOCARE "factory/factory_rel.cct"
+
+EXPLICIT grimoire

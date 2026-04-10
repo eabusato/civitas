@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase13_13c_open_file_temp"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13c_open_file_temp")
+  CONIURA phase13_reset_dir(root)
+  EVOCA TestDbConfig cfg
+  VINCIRE cfg.usar_memoria AD FALSUM
+  VINCIRE cfg.path_temp AD CONIURA path_join(root, "suite.db")
+  VINCIRE cfg.auto_migrate AD FALSUM
+  EVOCA TestDb tdb AD CONIURA test_db_open(cfg)
+  CONIURA test_db_close(tdb)
+  SI NON CONIURA exists(cfg.path_temp)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase26_26b_analyze_detects_n1_queries"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(NIHIL, 2)
+  CONIURA profiler_enable(SPECULUM state)
+  CONIURA instrument_buffer_clear()
+  EVOCA REX root_span AD CONIURA instrument_http_span("GET", "/profiled")
+  EVOCA REX i AD 0
+  DUM i < 3
+    EVOCA REX db_span AD CONIURA instrument_span_begin("db", "select:comments_by_post")
+    CONIURA instrument_span_attr(db_span, "db.target", "comments_by_post")
+    CONIURA instrument_span_attr(db_span, "sql.template", "SELECT comments WHERE post_id = ?")
+    CONIURA sleep_ms(1)
+    CONIURA instrument_span_end(db_span)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA instrument_span_end(root_span)
+  EVOCA SPECULUM NIHIL spans AD CONIURA instrument_buffer_drain()
+  EVOCA RequestProfile profile AD CONIURA profiler_analyze(SPECULUM state, spans, "trace-26b", "req-26b", "/profiled", "GET", 10)
+  SI NON profile.n1_report.found
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    REDDE 1
+  FIN SI
+  SI profile.n_db_calls != 3
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    REDDE 2
+  FIN SI
+  SI CONIURA fluxus_len(profile.n1_report.queries) != 1
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    REDDE 3
+  FIN SI
+  CONIURA profiler_request_profile_free(SPECULUM profile)
+  CONIURA instrument_spans_free(spans)
+  CONIURA profiler_disable(SPECULUM state)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

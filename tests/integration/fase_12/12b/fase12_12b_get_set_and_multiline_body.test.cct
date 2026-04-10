@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase12_12b_get_set_and_multiline_body"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_serial.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_mem_cache("12b-basic")
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM h, CONIURA phase12_12b_cfg("cv12b", 60), NIHIL)
+  EVOCA WebRequest req AD CONIURA phase12_12b_request("GET", "/posts")
+  EVOCA WebResponse resp AD CONIURA response_html("<h1>posts</h1>\n<p>line 2</p>")
+  CONIURA response_set_header(SPECULUM resp, "x-test", "ok")
+  CONIURA cache_view_set(cv, req, resp, 60, "posts")
+  EVOCA CacheMaybeViewEntry got AD CONIURA cache_view_get(cv, req)
+  SI NON got.found
+    REDDE 1
+  FIN SI
+  SI got.meta.status != 200
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(got.body, resp.body) != 0
+    REDDE 3
+  FIN SI
+  EVOCA WebResponse rebuilt AD CONIURA cache_view_response_from_entry(got)
+  SI CONIURA compare(CONIURA response_header_or(rebuilt, "content-type", ""), "text/html; charset=utf-8") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(rebuilt, "x-test", ""), "ok") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

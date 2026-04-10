@@ -1,0 +1,135 @@
+INCIPIT grimoire "civitas_auth_flows_email"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "auth_flows.cct"
+
+RITUALE auth_flow_verificar_email_solicitar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_buscar_por_id(db, user_id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA auth_flow_err_token_result(FlowUsuarioNaoEncontrado)
+  FIN SI
+  EVOCA User user AD CONIURA option_unwrap GENUS(User)(user_opt)
+  CONIURA option_free GENUS(User)(user_opt)
+  SI user.email_verificado
+    REDDE CONIURA auth_flow_err_token_result(FlowEmailJaVerificado)
+  FIN SI
+  REDDE CONIURA auth_flow_inserir_token(db, cfg, user.id, "verificar_email", "", cfg.ttl_verificar_email)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_verificar_email_confirmar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM token_claro) REDDE SPECULUM NIHIL
+  SI NON CONIURA auth_flow_token_signature_valid(cfg, token_claro)
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenInvalido)
+  FIN SI
+  EVOCA SPECULUM NIHIL token_res AD CONIURA auth_flow_buscar_token_por_hash(db, CONIURA auth_flow_hash_token(token_claro))
+  SI CONIURA result_is_err GENUS(FlowToken, FlowError)(token_res)
+    REDDE CONIURA auth_flow_err_verbum(CONIURA result_unwrap_err GENUS(FlowToken, FlowError)(token_res))
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA result_unwrap GENUS(FlowToken, FlowError)(token_res)
+  SI CONIURA compare(ft.tipo, "verificar_email") != 0
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenTipoErrado("verificar_email"))
+  FIN SI
+  SI ft.usado
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenJaUsado)
+  FIN SI
+  SI ft.expira_em < CONIURA auth_flow_now_unix()
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenExpirado)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt_upd AD CONIURA db_prepare(
+    db,
+    "UPDATE usuarios SET email_verificado = 1, email_verificacao_pendente = '' WHERE id = ?"
+  )
+  CONIURA stmt_bind_text(stmt_upd, 1, ft.user_id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_upd)
+
+  EVOCA SPECULUM NIHIL stmt_usado AD CONIURA db_prepare(db, "UPDATE auth_flow_tokens SET usado = 1 WHERE id = ?")
+  CONIURA stmt_bind_text(stmt_usado, 1, ft.id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_usado)
+  REDDE CONIURA auth_flow_ok_verbum(ft.user_id)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_alterar_email_solicitar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM user_id, VERBUM novo_email) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL existente_opt AD CONIURA auth_buscar_por_email(db, novo_email)
+  SI CONIURA option_is_some GENUS(User)(existente_opt)
+    CONIURA option_free GENUS(User)(existente_opt)
+    REDDE CONIURA auth_flow_err_token_result(FlowErroInterno("email already in use"))
+  FIN SI
+  CONIURA option_free GENUS(User)(existente_opt)
+
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_buscar_por_id(db, user_id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA auth_flow_err_token_result(FlowUsuarioNaoEncontrado)
+  FIN SI
+  CONIURA option_free GENUS(User)(user_opt)
+
+  EVOCA VERBUM payload AD CONIURA auth_flow_payload_json_novo_email(novo_email)
+  EVOCA SPECULUM NIHIL stmt_pending AD CONIURA db_prepare(
+    db,
+    "UPDATE usuarios SET email_verificacao_pendente = ? WHERE id = ?"
+  )
+  CONIURA stmt_bind_text(stmt_pending, 1, novo_email)
+  CONIURA stmt_bind_text(stmt_pending, 2, user_id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_pending)
+  REDDE CONIURA auth_flow_inserir_token(db, cfg, user_id, "alterar_email", payload, cfg.ttl_alterar_email)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_alterar_email_confirmar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM token_claro) REDDE SPECULUM NIHIL
+  SI NON CONIURA auth_flow_token_signature_valid(cfg, token_claro)
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenInvalido)
+  FIN SI
+  EVOCA SPECULUM NIHIL token_res AD CONIURA auth_flow_buscar_token_por_hash(db, CONIURA auth_flow_hash_token(token_claro))
+  SI CONIURA result_is_err GENUS(FlowToken, FlowError)(token_res)
+    REDDE CONIURA auth_flow_err_verbum(CONIURA result_unwrap_err GENUS(FlowToken, FlowError)(token_res))
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA result_unwrap GENUS(FlowToken, FlowError)(token_res)
+  SI CONIURA compare(ft.tipo, "alterar_email") != 0
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenTipoErrado("alterar_email"))
+  FIN SI
+  SI ft.usado
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenJaUsado)
+  FIN SI
+  SI ft.expira_em < CONIURA auth_flow_now_unix()
+    REDDE CONIURA auth_flow_err_verbum(FlowTokenExpirado)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL opt_email AD CONIURA auth_flow_payload_novo_email(ft.payload)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_email)
+    CONIURA option_free GENUS(VERBUM)(opt_email)
+    REDDE CONIURA auth_flow_err_verbum(FlowErroInterno("payload invalid"))
+  FIN SI
+  EVOCA VERBUM novo_email AD CONIURA option_unwrap GENUS(VERBUM)(opt_email)
+  CONIURA option_free GENUS(VERBUM)(opt_email)
+
+  EVOCA SPECULUM NIHIL existente_opt AD CONIURA auth_buscar_por_email(db, novo_email)
+  SI CONIURA option_is_some GENUS(User)(existente_opt)
+    EVOCA User existente AD CONIURA option_unwrap GENUS(User)(existente_opt)
+    CONIURA option_free GENUS(User)(existente_opt)
+    SI CONIURA compare(existente.id, ft.user_id) != 0
+      REDDE CONIURA auth_flow_err_verbum(FlowErroInterno("email already in use"))
+    FIN SI
+  ALITER
+    CONIURA option_free GENUS(User)(existente_opt)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt_upd AD CONIURA db_prepare(
+    db,
+    "UPDATE usuarios SET email = ?, email_verificado = 0, email_verificacao_pendente = '' WHERE id = ?"
+  )
+  CONIURA stmt_bind_text(stmt_upd, 1, novo_email)
+  CONIURA stmt_bind_text(stmt_upd, 2, ft.user_id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_upd)
+
+  EVOCA SPECULUM NIHIL stmt_usado AD CONIURA db_prepare(db, "UPDATE auth_flow_tokens SET usado = 1 WHERE id = ?")
+  CONIURA stmt_bind_text(stmt_usado, 1, ft.id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_usado)
+  REDDE CONIURA auth_flow_ok_verbum(ft.user_id)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

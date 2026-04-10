@@ -1,0 +1,601 @@
+INCIPIT grimoire "civitas_sanitize_html"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "text.cct"
+
+SIGILLUM HtmlAllowList
+  tags: SPECULUM NIHIL
+  tag_attrs: SPECULUM NIHIL
+  allow_data_attrs: VERUM
+  allow_aria_attrs: VERUM
+  url_attrs: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM HtmlSanitizeConfig
+  allowlist: HtmlAllowList
+  strip_comments: VERUM
+  normalize_whitespace: VERUM
+  url_schemes_allowed: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM HtmlParsedTag
+  name: VERBUM
+  attrs: VERBUM
+  closing: VERUM
+  self_closing: VERUM
+  valid: VERUM
+FIN SIGILLUM
+
+RITUALE html_string_bool_map_find_key(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERUM)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE html_string_ptr_map_find_key(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERUM)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_new() REDDE HtmlAllowList
+  EVOCA HtmlAllowList out
+  VINCIRE out.tags AD CONIURA map_init GENUS(VERBUM, VERUM)()
+  VINCIRE out.tag_attrs AD CONIURA map_init GENUS(VERBUM, VERUM)()
+  VINCIRE out.allow_data_attrs AD FALSUM
+  VINCIRE out.allow_aria_attrs AD FALSUM
+  VINCIRE out.url_attrs AD CONIURA map_init GENUS(VERBUM, VERUM)()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_add_url_attr(SPECULUM HtmlAllowList al, VERBUM attr) REDDE NIHIL
+  EVOCA VERBUM lowered AD CONIURA to_lower(CONIURA trim(attr))
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA html_string_bool_map_find_key((*al).url_attrs, lowered)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    REDDE
+  FIN SI
+  CONIURA map_insert GENUS(VERBUM, VERUM)((*al).url_attrs, lowered, VERUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE allowlist_add_tag(SPECULUM HtmlAllowList al, VERBUM tag) REDDE NIHIL
+  EVOCA VERBUM lowered AD CONIURA to_lower(CONIURA trim(tag))
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA html_string_bool_map_find_key((*al).tags, lowered)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    REDDE
+  FIN SI
+  CONIURA map_insert GENUS(VERBUM, VERUM)((*al).tags, lowered, VERUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_tag_attr_key(VERBUM tag, VERBUM attr) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat(CONIURA to_lower(CONIURA trim(tag)), "|"), CONIURA to_lower(CONIURA trim(attr)))
+EXPLICIT RITUALE
+
+RITUALE allowlist_add_tag_attr(SPECULUM HtmlAllowList al, VERBUM tag, VERBUM attr) REDDE NIHIL
+  EVOCA VERBUM lowered_tag AD CONIURA to_lower(CONIURA trim(tag))
+  EVOCA VERBUM lowered_attr AD CONIURA to_lower(CONIURA trim(attr))
+  EVOCA VERBUM composite_key AD CONIURA html_tag_attr_key(lowered_tag, lowered_attr)
+  EVOCA SPECULUM NIHIL stored_key_opt
+
+  CONIURA allowlist_add_tag(al, lowered_tag)
+  VINCIRE stored_key_opt AD CONIURA html_string_bool_map_find_key((*al).tag_attrs, composite_key)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+  CONIURA map_insert GENUS(VERBUM, VERUM)((*al).tag_attrs, composite_key, VERUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_has_tag(HtmlAllowList al, VERBUM tag) REDDE VERUM
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA html_string_bool_map_find_key(al.tags, CONIURA to_lower(CONIURA trim(tag)))
+  EVOCA VERUM found AD CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+  CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+  REDDE found
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_has_attr(HtmlAllowList al, VERBUM tag, VERBUM attr) REDDE VERUM
+  EVOCA VERBUM lowered_tag AD CONIURA to_lower(CONIURA trim(tag))
+  EVOCA VERBUM lowered_attr AD CONIURA to_lower(CONIURA trim(attr))
+  EVOCA VERBUM composite_key AD CONIURA html_tag_attr_key(lowered_tag, lowered_attr)
+  EVOCA SPECULUM NIHIL stored_key_opt
+
+  SI CONIURA starts_with(lowered_attr, "on")
+    REDDE FALSUM
+  FIN SI
+  SI al.allow_data_attrs ET CONIURA starts_with(lowered_attr, "data-")
+    REDDE VERUM
+  FIN SI
+  SI al.allow_aria_attrs ET CONIURA starts_with(lowered_attr, "aria-")
+    REDDE VERUM
+  FIN SI
+  VINCIRE stored_key_opt AD CONIURA html_string_bool_map_find_key(al.tag_attrs, composite_key)
+  EVOCA VERUM found AD CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+  CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+  REDDE found
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_is_url_attr(HtmlAllowList al, VERBUM attr) REDDE VERUM
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA html_string_bool_map_find_key(al.url_attrs, CONIURA to_lower(CONIURA trim(attr)))
+  EVOCA VERUM found AD CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+  CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+  REDDE found
+EXPLICIT RITUALE
+
+RITUALE allowlist_none() REDDE HtmlAllowList
+  REDDE CONIURA html_allowlist_new()
+EXPLICIT RITUALE
+
+RITUALE allowlist_minimal() REDDE HtmlAllowList
+  EVOCA HtmlAllowList out AD CONIURA html_allowlist_new()
+  CONIURA allowlist_add_tag(SPECULUM out, "b")
+  CONIURA allowlist_add_tag(SPECULUM out, "i")
+  CONIURA allowlist_add_tag(SPECULUM out, "em")
+  CONIURA allowlist_add_tag(SPECULUM out, "strong")
+  CONIURA allowlist_add_tag(SPECULUM out, "a")
+  CONIURA allowlist_add_tag(SPECULUM out, "p")
+  CONIURA allowlist_add_tag(SPECULUM out, "br")
+  CONIURA allowlist_add_tag(SPECULUM out, "ul")
+  CONIURA allowlist_add_tag(SPECULUM out, "ol")
+  CONIURA allowlist_add_tag(SPECULUM out, "li")
+  CONIURA allowlist_add_tag(SPECULUM out, "blockquote")
+  CONIURA allowlist_add_tag_attr(SPECULUM out, "a", "href")
+  CONIURA html_allowlist_add_url_attr(SPECULUM out, "href")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE allowlist_rich() REDDE HtmlAllowList
+  EVOCA HtmlAllowList out AD CONIURA allowlist_minimal()
+  CONIURA allowlist_add_tag(SPECULUM out, "h1")
+  CONIURA allowlist_add_tag(SPECULUM out, "h2")
+  CONIURA allowlist_add_tag(SPECULUM out, "h3")
+  CONIURA allowlist_add_tag(SPECULUM out, "h4")
+  CONIURA allowlist_add_tag(SPECULUM out, "h5")
+  CONIURA allowlist_add_tag(SPECULUM out, "h6")
+  CONIURA allowlist_add_tag(SPECULUM out, "table")
+  CONIURA allowlist_add_tag(SPECULUM out, "thead")
+  CONIURA allowlist_add_tag(SPECULUM out, "tbody")
+  CONIURA allowlist_add_tag(SPECULUM out, "tr")
+  CONIURA allowlist_add_tag(SPECULUM out, "th")
+  CONIURA allowlist_add_tag(SPECULUM out, "td")
+  CONIURA allowlist_add_tag(SPECULUM out, "pre")
+  CONIURA allowlist_add_tag(SPECULUM out, "code")
+  CONIURA allowlist_add_tag(SPECULUM out, "span")
+  CONIURA allowlist_add_tag(SPECULUM out, "img")
+  CONIURA allowlist_add_tag_attr(SPECULUM out, "img", "src")
+  CONIURA allowlist_add_tag_attr(SPECULUM out, "img", "alt")
+  CONIURA allowlist_add_tag_attr(SPECULUM out, "img", "width")
+  CONIURA allowlist_add_tag_attr(SPECULUM out, "img", "height")
+  CONIURA html_allowlist_add_url_attr(SPECULUM out, "src")
+  VINCIRE out.allow_data_attrs AD VERUM
+  VINCIRE out.allow_aria_attrs AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE html_sanitize_config_default(HtmlAllowList allowlist) REDDE HtmlSanitizeConfig
+  EVOCA HtmlSanitizeConfig cfg
+  EVOCA VERBUM scheme_https AD "https"
+  EVOCA VERBUM scheme_http AD "http"
+  EVOCA VERBUM scheme_mailto AD "mailto"
+  VINCIRE cfg.allowlist.tags AD allowlist.tags
+  VINCIRE cfg.allowlist.tag_attrs AD allowlist.tag_attrs
+  VINCIRE cfg.allowlist.allow_data_attrs AD allowlist.allow_data_attrs
+  VINCIRE cfg.allowlist.allow_aria_attrs AD allowlist.allow_aria_attrs
+  VINCIRE cfg.allowlist.url_attrs AD allowlist.url_attrs
+  VINCIRE cfg.strip_comments AD VERUM
+  VINCIRE cfg.normalize_whitespace AD FALSUM
+  VINCIRE cfg.url_schemes_allowed AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(cfg.url_schemes_allowed, SPECULUM scheme_https)
+  CONIURA fluxus_push(cfg.url_schemes_allowed, SPECULUM scheme_http)
+  CONIURA fluxus_push(cfg.url_schemes_allowed, SPECULUM scheme_mailto)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE html_allowlist_has_any_tags(HtmlAllowList al) REDDE VERUM
+  REDDE CONIURA map_len GENUS(VERBUM, VERUM)(al.tags) > 0
+EXPLICIT RITUALE
+
+RITUALE html_is_void_tag(VERBUM tag) REDDE VERUM
+  REDDE CONIURA compare(tag, "br") == 0 VEL CONIURA compare(tag, "hr") == 0 VEL CONIURA compare(tag, "img") == 0
+EXPLICIT RITUALE
+
+RITUALE html_is_dangerous_block(VERBUM tag) REDDE VERUM
+  REDDE CONIURA compare(tag, "script") == 0 VEL CONIURA compare(tag, "style") == 0 VEL CONIURA compare(tag, "iframe") == 0 VEL CONIURA compare(tag, "object") == 0
+EXPLICIT RITUALE
+
+RITUALE html_find_tag_end(VERBUM input, REX start) REDDE REX
+  EVOCA REX i AD start
+  EVOCA REX n AD CONIURA len(input)
+  EVOCA MILES quote AD 0
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(input, i)
+    SI quote != 0
+      SI ch == quote
+        VINCIRE quote AD 0
+      FIN SI
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI ch == 34 VEL ch == 39
+      VINCIRE quote AD ch
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI ch == 62
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE html_parse_tag(VERBUM raw) REDDE HtmlParsedTag
+  EVOCA HtmlParsedTag out
+  EVOCA VERBUM token AD CONIURA trim(raw)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(token)
+  EVOCA REX name_start AD 0
+  EVOCA REX name_end AD 0
+
+  VINCIRE out.name AD ""
+  VINCIRE out.attrs AD ""
+  VINCIRE out.closing AD FALSUM
+  VINCIRE out.self_closing AD FALSUM
+  VINCIRE out.valid AD FALSUM
+
+  SI CONIURA len(token) == 0
+    REDDE out
+  FIN SI
+
+  SI CONIURA char_at(token, 0) == 47
+    VINCIRE out.closing AD VERUM
+    VINCIRE token AD CONIURA trim(CONIURA substring(token, 1, CONIURA len(token)))
+    VINCIRE n AD CONIURA len(token)
+  FIN SI
+
+  SI n == 0
+    REDDE out
+  FIN SI
+
+  SI CONIURA char_at(token, n - 1) == 47
+    VINCIRE out.self_closing AD VERUM
+    VINCIRE token AD CONIURA trim(CONIURA substring(token, 0, n - 1))
+    VINCIRE n AD CONIURA len(token)
+  FIN SI
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(token, i)
+    SI ch == 32 VEL ch == 9 VEL ch == 10
+      VINCIRE name_end AD i
+      FRANGE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI name_end == 0
+    VINCIRE name_end AD n
+  FIN SI
+
+  VINCIRE out.name AD CONIURA to_lower(CONIURA substring(token, name_start, name_end))
+  SI CONIURA len(out.name) == 0
+    REDDE out
+  FIN SI
+  SI name_end < n
+    VINCIRE out.attrs AD CONIURA trim(CONIURA substring(token, name_end, n))
+  FIN SI
+  VINCIRE out.valid AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE html_sanitize_attr_value(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA trim(raw)
+  SI CONIURA len(out) >= 2
+    SI (CONIURA char_at(out, 0) == 34 ET CONIURA char_at(out, CONIURA len(out) - 1) == 34) VEL (CONIURA char_at(out, 0) == 39 ET CONIURA char_at(out, CONIURA len(out) - 1) == 39)
+      REDDE CONIURA substring(out, 1, CONIURA len(out) - 1)
+    FIN SI
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE html_scheme_allowed(HtmlSanitizeConfig cfg, VERBUM scheme) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.url_schemes_allowed)
+  EVOCA VERBUM wanted AD CONIURA to_lower(CONIURA trim(scheme))
+  DUM i < n
+    EVOCA SPECULUM VERBUM scheme_ptr AD CONIURA fluxus_get(cfg.url_schemes_allowed, i)
+    SI CONIURA compare(*scheme_ptr, wanted) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE html_attr_value_scheme(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM trimmed AD CONIURA to_lower(CONIURA trim(value))
+  EVOCA REX colon_idx AD CONIURA find(trimmed, ":")
+  EVOCA REX slash_idx AD CONIURA find(trimmed, "/")
+  EVOCA REX hash_idx AD CONIURA find(trimmed, "#")
+  EVOCA REX question_idx AD CONIURA find(trimmed, "?")
+  EVOCA REX limit AD CONIURA len(trimmed)
+
+  SI colon_idx <= 0
+    REDDE ""
+  FIN SI
+  SI slash_idx != -1 ET slash_idx < limit
+    VINCIRE limit AD slash_idx
+  FIN SI
+  SI hash_idx != -1 ET hash_idx < limit
+    VINCIRE limit AD hash_idx
+  FIN SI
+  SI question_idx != -1 ET question_idx < limit
+    VINCIRE limit AD question_idx
+  FIN SI
+  SI colon_idx > limit
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(trimmed, 0, colon_idx)
+EXPLICIT RITUALE
+
+RITUALE html_url_attr_allowed(VERBUM tag, VERBUM attr, VERBUM value, HtmlSanitizeConfig cfg) REDDE VERUM
+  EVOCA VERBUM trimmed AD CONIURA trim(value)
+  EVOCA VERBUM scheme AD CONIURA html_attr_value_scheme(trimmed)
+
+  SI CONIURA starts_with(CONIURA to_lower(trimmed), "javascript:") VEL CONIURA starts_with(CONIURA to_lower(trimmed), "vbscript:") VEL CONIURA starts_with(CONIURA to_lower(trimmed), "data:")
+    REDDE FALSUM
+  FIN SI
+
+  SI CONIURA compare(tag, "img") == 0 ET CONIURA compare(attr, "src") == 0
+    SI CONIURA len(scheme) == 0
+      REDDE FALSUM
+    FIN SI
+    REDDE CONIURA compare(scheme, "https") == 0
+  FIN SI
+
+  SI CONIURA len(scheme) == 0
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA html_scheme_allowed(cfg, scheme)
+EXPLICIT RITUALE
+
+RITUALE html_skip_dangerous_block(VERBUM lowered_input, REX start, VERBUM tag) REDDE REX
+  EVOCA VERBUM needle AD CONIURA concat(CONIURA concat("</", tag), ">")
+  EVOCA VERBUM tail AD CONIURA substring(lowered_input, start, CONIURA len(lowered_input))
+  EVOCA REX rel_idx AD CONIURA find(tail, needle)
+  SI rel_idx == -1
+    REDDE CONIURA len(lowered_input)
+  FIN SI
+  REDDE start + rel_idx + CONIURA len(needle)
+EXPLICIT RITUALE
+
+RITUALE html_append_text_chunk(SPECULUM NIHIL b, VERBUM chunk, HtmlSanitizeConfig cfg) REDDE NIHIL
+  EVOCA VERBUM text AD chunk
+  SI cfg.normalize_whitespace
+    VINCIRE text AD CONIURA normalize_whitespace(text)
+  FIN SI
+  CONIURA builder_append(b, CONIURA html_encode(text))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_render_allowed_attrs(SPECULUM NIHIL b, VERBUM tag, VERBUM attrs_raw, HtmlSanitizeConfig cfg) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(attrs_raw)
+
+  DUM i < n
+    EVOCA VERBUM name AD ""
+    EVOCA VERBUM value AD ""
+    EVOCA REX start AD 0
+    EVOCA REX end AD 0
+    EVOCA MILES quote AD 0
+
+    DUM i < n ET ((CONIURA char_at(attrs_raw, i) == 32) VEL (CONIURA char_at(attrs_raw, i) == 9) VEL (CONIURA char_at(attrs_raw, i) == 10) VEL (CONIURA char_at(attrs_raw, i) == 47))
+      VINCIRE i AD i + 1
+    FIN DUM
+    SI i >= n
+      FRANGE
+    FIN SI
+
+    VINCIRE start AD i
+    DUM i < n
+      EVOCA MILES ch AD CONIURA char_at(attrs_raw, i)
+      SI ch == 32 VEL ch == 9 VEL ch == 10 VEL ch == 61
+        FRANGE
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+    VINCIRE end AD i
+    VINCIRE name AD CONIURA to_lower(CONIURA substring(attrs_raw, start, end))
+
+    DUM i < n ET ((CONIURA char_at(attrs_raw, i) == 32) VEL (CONIURA char_at(attrs_raw, i) == 9) VEL (CONIURA char_at(attrs_raw, i) == 10))
+      VINCIRE i AD i + 1
+    FIN DUM
+
+    SI i < n ET CONIURA char_at(attrs_raw, i) == 61
+      VINCIRE i AD i + 1
+      DUM i < n ET ((CONIURA char_at(attrs_raw, i) == 32) VEL (CONIURA char_at(attrs_raw, i) == 9) VEL (CONIURA char_at(attrs_raw, i) == 10))
+        VINCIRE i AD i + 1
+      FIN DUM
+
+      SI i < n ET (CONIURA char_at(attrs_raw, i) == 34 VEL CONIURA char_at(attrs_raw, i) == 39)
+        VINCIRE quote AD CONIURA char_at(attrs_raw, i)
+        VINCIRE start AD i
+        VINCIRE i AD i + 1
+        DUM i < n ET CONIURA char_at(attrs_raw, i) != quote
+          VINCIRE i AD i + 1
+        FIN DUM
+        SI i < n
+          VINCIRE end AD i + 1
+          VINCIRE value AD CONIURA html_sanitize_attr_value(CONIURA substring(attrs_raw, start, end))
+          VINCIRE i AD i + 1
+        ALITER
+          VINCIRE value AD CONIURA html_sanitize_attr_value(CONIURA substring(attrs_raw, start, n))
+        FIN SI
+      ALITER
+        VINCIRE start AD i
+        DUM i < n
+          EVOCA MILES ch AD CONIURA char_at(attrs_raw, i)
+          SI ch == 32 VEL ch == 9 VEL ch == 10
+            FRANGE
+          FIN SI
+          VINCIRE i AD i + 1
+        FIN DUM
+        VINCIRE end AD i
+        VINCIRE value AD CONIURA html_sanitize_attr_value(CONIURA substring(attrs_raw, start, end))
+      FIN SI
+    ALITER
+      VINCIRE value AD name
+    FIN SI
+
+    SI CONIURA len(name) == 0 VEL NON CONIURA html_allowlist_has_attr(cfg.allowlist, tag, name)
+      RECEDE
+    FIN SI
+    SI CONIURA html_allowlist_is_url_attr(cfg.allowlist, name)
+      SI NON CONIURA html_url_attr_allowed(tag, name, value, cfg)
+        RECEDE
+      FIN SI
+    FIN SI
+
+    CONIURA builder_append(b, " ")
+    CONIURA builder_append(b, name)
+    CONIURA builder_append(b, "=\"")
+    CONIURA builder_append(b, CONIURA html_encode(value))
+    CONIURA builder_append(b, "\"")
+  FIN DUM
+
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_sanitize(VERBUM input, HtmlSanitizeConfig cfg) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA VERBUM lowered_input AD CONIURA to_lower(input)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(input)
+
+  SI CONIURA len(input) == 0
+    CONIURA builder_free(b)
+    REDDE ""
+  FIN SI
+
+  DUM i < n
+    SI CONIURA char_at(input, i) != 60
+      EVOCA REX next_lt AD CONIURA find(CONIURA substring(input, i, n), "<")
+      EVOCA REX end AD n
+      SI next_lt != -1
+        VINCIRE end AD i + next_lt
+      FIN SI
+      CONIURA html_append_text_chunk(b, CONIURA substring(input, i, end), cfg)
+      VINCIRE i AD end
+      RECEDE
+    FIN SI
+
+    SI i + 3 < n
+      SI CONIURA compare(CONIURA substring(input, i, i + 4), "<!--") == 0
+        EVOCA REX comment_end AD CONIURA find(CONIURA substring(input, i + 4, n), "-->")
+        SI comment_end == -1
+          VINCIRE i AD n
+        FIN SI
+        SI comment_end != -1
+          SI NON cfg.strip_comments
+            CONIURA builder_append(b, CONIURA substring(input, i, i + 4 + comment_end + 3))
+          FIN SI
+          VINCIRE i AD i + 4 + comment_end + 3
+        FIN SI
+        RECEDE
+      FIN SI
+    FIN SI
+
+    EVOCA REX tag_end AD CONIURA html_find_tag_end(input, i + 1)
+    EVOCA HtmlParsedTag parsed
+    SI tag_end == -1
+      CONIURA html_append_text_chunk(b, CONIURA substring(input, i, n), cfg)
+      VINCIRE i AD n
+      RECEDE
+    FIN SI
+
+    VINCIRE parsed AD CONIURA html_parse_tag(CONIURA substring(input, i + 1, tag_end))
+    SI NON parsed.valid
+      CONIURA html_append_text_chunk(b, CONIURA substring(input, i, i + 1), cfg)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI CONIURA html_is_dangerous_block(parsed.name) ET NON CONIURA html_allowlist_has_tag(cfg.allowlist, parsed.name) ET CONIURA html_allowlist_has_any_tags(cfg.allowlist)
+      VINCIRE i AD CONIURA html_skip_dangerous_block(lowered_input, tag_end + 1, parsed.name)
+      RECEDE
+    FIN SI
+
+    SI NON CONIURA html_allowlist_has_tag(cfg.allowlist, parsed.name)
+      VINCIRE i AD tag_end + 1
+      RECEDE
+    FIN SI
+
+    SI parsed.closing
+      SI NON CONIURA html_is_void_tag(parsed.name)
+        CONIURA builder_append(b, "</")
+        CONIURA builder_append(b, parsed.name)
+        CONIURA builder_append(b, ">")
+      FIN SI
+      VINCIRE i AD tag_end + 1
+      RECEDE
+    FIN SI
+
+    CONIURA builder_append(b, "<")
+    CONIURA builder_append(b, parsed.name)
+    CONIURA html_render_allowed_attrs(b, parsed.name, parsed.attrs, cfg)
+    SI parsed.self_closing VEL CONIURA html_is_void_tag(parsed.name)
+      CONIURA builder_append(b, ">")
+    ALITER
+      CONIURA builder_append(b, ">")
+    FIN SI
+    VINCIRE i AD tag_end + 1
+  FIN DUM
+
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE allowlist_free(SPECULUM HtmlAllowList al) REDDE NIHIL
+  CONIURA map_free GENUS(VERBUM, VERUM)((*al).tags)
+  CONIURA map_free GENUS(VERBUM, VERUM)((*al).tag_attrs)
+  CONIURA map_free GENUS(VERBUM, VERUM)((*al).url_attrs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_sanitize_config_free(SPECULUM HtmlSanitizeConfig cfg) REDDE NIHIL
+  CONIURA allowlist_free(SPECULUM (*cfg).allowlist)
+  CONIURA fluxus_free((*cfg).url_schemes_allowed)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase5_5b_binding_and_token_derivation_test"
+
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM binding_a AD CONIURA csrf_binding_generate()
+  EVOCA VERBUM binding_b AD CONIURA csrf_binding_generate()
+  EVOCA VERBUM token_a AD CONIURA csrf_token_derive("segredo", binding_a)
+  EVOCA VERBUM token_b AD CONIURA csrf_token_derive("segredo", binding_a)
+
+  SI CONIURA len(binding_a) != 64
+    REDDE 1
+  FIN SI
+  SI CONIURA len(binding_b) != 64
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(binding_a, binding_b) == 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(token_a, token_b) != 0
+    REDDE 4
+  FIN SI
+  SI NON CONIURA csrf_token_validate("segredo", binding_a, token_a)
+    REDDE 5
+  FIN SI
+  SI CONIURA csrf_token_validate("segredo", binding_a, CONIURA concat(token_a, "x"))
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,272 @@
+INCIPIT grimoire "civitas_db_handle_postgres"
+
+ADVOCARE "cct/db_postgres.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "db_handle.cct"
+
+RITUALE dbh_postgres_rows_fill(SPECULUM Rows dest, Rows src) REDDE NIHIL
+  VINCIRE (*dest).handle AD src.handle
+  VINCIRE (*dest).current_row AD src.current_row
+  VINCIRE (*dest).row_count AD src.row_count
+  VINCIRE (*dest).column_count AD src.column_count
+  VINCIRE (*dest).open AD src.open
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_db_fill(SPECULUM Db dest, Db src) REDDE NIHIL
+  VINCIRE (*dest).conn AD src.conn
+  VINCIRE (*dest).last_error AD src.last_error
+  VINCIRE (*dest).open AD src.open
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_placeholder_sql(VERBUM sql) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(sql)
+  EVOCA REX param_idx AD 1
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(sql, i)
+    SI c == 63
+      CONIURA builder_append(b, "$")
+      CONIURA builder_append(b, CONIURA stringify_int(param_idx))
+      VINCIRE param_idx AD param_idx + 1
+    ALITER
+      CONIURA builder_append_char(b, c)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA builder_to_verbum(b)
+EXPLICIT RITUALE
+
+RITUALE dbh_params_to_pg(DbParams params) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA db_empty_params()
+  EVOCA REX i AD 0
+  DUM i < params.n
+    EVOCA SPECULUM DbParam value AD CONIURA fluxus_get(params.valores, i)
+    ELIGE (*value).kind
+      CASUS DpkInt:
+        EVOCA DbValue v AD CONIURA db_value_int((*value).int_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+      CASUS DpkReal:
+        EVOCA DbValue v AD CONIURA db_value_real((*value).real_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+      CASUS DpkBool:
+        EVOCA DbValue v AD CONIURA db_value_bool((*value).bool_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+      CASUS DpkUuid:
+        EVOCA DbValue v AD CONIURA db_value_uuid((*value).text_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+      CASUS DpkJson:
+        EVOCA DbValue v AD CONIURA db_value_json((*value).text_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+      CASUS DpkNull:
+        EVOCA DbValue v AD CONIURA db_value_null()
+        CONIURA fluxus_push(out, SPECULUM v)
+      ALIOQUIN:
+        EVOCA DbValue v AD CONIURA db_value_text((*value).text_value)
+        CONIURA fluxus_push(out, SPECULUM v)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_exec(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr == NIHIL
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL pg_params AD CONIURA dbh_params_to_pg(params)
+  CONIURA db_exec(*db_ptr, CONIURA dbh_postgres_placeholder_sql(sql), pg_params)
+  CONIURA fluxus_free(pg_params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_next(SPECULUM NIHIL raw_rows) REDDE VERUM
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA rows_next(rows_ptr)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_get_text(SPECULUM NIHIL raw_rows, REX col) REDDE DbTextValue
+  EVOCA DbTextValue out
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    VINCIRE out.value AD ""
+    REDDE out
+  FIN SI
+  VINCIRE out.value AD CONIURA rows_get_text(*rows_ptr, col)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_get_int(SPECULUM NIHIL raw_rows, REX col) REDDE REX
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    REDDE 0
+  FIN SI
+  REDDE CONIURA rows_get_int(*rows_ptr, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_get_real(SPECULUM NIHIL raw_rows, REX col) REDDE UMBRA
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    REDDE 0.0
+  FIN SI
+  REDDE CONIURA rows_get_real(*rows_ptr, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_get_bool(SPECULUM NIHIL raw_rows, REX col) REDDE VERUM
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA rows_get_bool(*rows_ptr, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_is_null(SPECULUM NIHIL raw_rows, REX col) REDDE VERUM
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr == NIHIL
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA rows_is_null(*rows_ptr, col)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rows_close(SPECULUM NIHIL raw_rows) REDDE NIHIL
+  EVOCA SPECULUM Rows rows_ptr AD raw_rows
+  SI rows_ptr != NIHIL
+    CONIURA rows_close(rows_ptr)
+    OBSECRO mem_free(rows_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_query(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE DbRows
+  EVOCA DbRows rows AD CONIURA dbrows_empty(PbkPostgres)
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr == NIHIL
+    REDDE rows
+  FIN SI
+  EVOCA SPECULUM NIHIL pg_params AD CONIURA dbh_params_to_pg(params)
+  EVOCA SPECULUM NIHIL res AD CONIURA db_query(*db_ptr, CONIURA dbh_postgres_placeholder_sql(sql), pg_params)
+  CONIURA fluxus_free(pg_params)
+  SI CONIURA result_is_err GENUS(Rows, VERBUM)(res)
+    REDDE rows
+  FIN SI
+  EVOCA Rows rows_value AD CONIURA result_unwrap GENUS(Rows, VERBUM)(res)
+  EVOCA SPECULUM Rows rows_ptr AD OBSECRO mem_alloc(MENSURA(Rows))
+  CONIURA dbh_postgres_rows_fill(rows_ptr, rows_value)
+  VINCIRE rows.raw_rows AD rows_ptr
+  VINCIRE rows.pg_rows AD rows_ptr
+  VINCIRE rows.next_fn AD dbh_postgres_rows_next
+  VINCIRE rows.get_text_fn AD dbh_postgres_rows_get_text
+  VINCIRE rows.get_int_fn AD dbh_postgres_rows_get_int
+  VINCIRE rows.get_real_fn AD dbh_postgres_rows_get_real
+  VINCIRE rows.get_bool_fn AD dbh_postgres_rows_get_bool
+  VINCIRE rows.is_null_fn AD dbh_postgres_rows_is_null
+  VINCIRE rows.close_fn AD dbh_postgres_rows_close
+  REDDE rows
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_scalar_int(SPECULUM NIHIL raw_conn, VERBUM sql, DbParams params) REDDE REX
+  EVOCA DbRows rows AD CONIURA dbh_postgres_query(raw_conn, sql, params)
+  EVOCA REX value AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE value AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_begin(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_begin(*db_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_commit(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_commit(*db_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rollback(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_rollback(*db_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_savepoint(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_savepoint(*db_ptr, name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_rollback_to(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_rollback_to(*db_ptr, name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_release_savepoint(SPECULUM NIHIL raw_conn, VERBUM name) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_release_savepoint(*db_ptr, name)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_is_alive(SPECULUM NIHIL raw_conn) REDDE VERUM
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr == NIHIL
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA db_is_open(*db_ptr)
+EXPLICIT RITUALE
+
+RITUALE dbh_postgres_close(SPECULUM NIHIL raw_conn) REDDE NIHIL
+  EVOCA SPECULUM Db db_ptr AD raw_conn
+  SI db_ptr != NIHIL
+    CONIURA db_close(db_ptr)
+    OBSECRO mem_free(db_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE dbh_from_postgres(Db db) REDDE DbHandle
+  EVOCA SPECULUM Db db_ptr AD OBSECRO mem_alloc(MENSURA(Db))
+  CONIURA dbh_postgres_db_fill(db_ptr, db)
+  EVOCA DbHandle h AD CONIURA dbh_empty()
+  VINCIRE h.kind AD PbkPostgres
+  VINCIRE h.pg_conn AD db_ptr
+  VINCIRE h.exec_fn AD dbh_postgres_exec
+  VINCIRE h.query_fn AD dbh_postgres_query
+  VINCIRE h.scalar_int_fn AD dbh_postgres_scalar_int
+  VINCIRE h.begin_fn AD dbh_postgres_begin
+  VINCIRE h.commit_fn AD dbh_postgres_commit
+  VINCIRE h.rollback_fn AD dbh_postgres_rollback
+  VINCIRE h.savepoint_fn AD dbh_postgres_savepoint
+  VINCIRE h.rollback_to_fn AD dbh_postgres_rollback_to
+  VINCIRE h.release_savepoint_fn AD dbh_postgres_release_savepoint
+  VINCIRE h.is_alive_fn AD dbh_postgres_is_alive
+  VINCIRE h.close_fn AD dbh_postgres_close
+  REDDE h
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

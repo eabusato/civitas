@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase6_6c_text_and_raw_escape_test"
+
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("div")
+  EVOCA VERBUM html AD ""
+
+  CONIURA html_text(node, "<unsafe>")
+  CONIURA html_raw(node, "<span>ok</span>")
+  VINCIRE html AD CONIURA html_render_free(node)
+
+  SI CONIURA compare(html, "<div>&lt;unsafe&gt;<span>ok</span></div>") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase10_10a_model_index_sql"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_ddl.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ModelDef def AD CONIURA model_def_new("posts")
+  CONIURA model_def_add_text(def, "slug", VERUM, FALSUM)
+  CONIURA model_def_add_index(def, "slug", VERUM)
+  CONIURA model_def_add_index(def, "author_id,created_at", FALSUM)
+
+  EVOCA SPECULUM IndexDef idx0 AD CONIURA fluxus_get(def.indices, 0)
+  EVOCA SPECULUM IndexDef idx1 AD CONIURA fluxus_get(def.indices, 1)
+  EVOCA VERBUM sql0 AD CONIURA model_index_ddl(def, *idx0)
+  EVOCA VERBUM sql1 AD CONIURA model_index_ddl(def, *idx1)
+  SI CONIURA contains(sql0, "CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)") == FALSUM
+    REDDE 1
+  FIN SI
+  SI CONIURA contains(sql1, "CREATE INDEX IF NOT EXISTS idx_posts_author_id_created_at ON posts(author_id,created_at)") == FALSUM
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

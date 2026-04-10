@@ -1,0 +1,127 @@
+INCIPIT grimoire "civitas_dev_livereload"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../request.cct"
+ADVOCARE "../response.cct"
+
+SIGILLUM LivereloadConfig
+  gen_file: VERBUM
+  poll_route: VERBUM
+  enabled: VERUM
+FIN SIGILLUM
+
+RITUALE livereload_config_default() REDDE LivereloadConfig
+  EVOCA LivereloadConfig cfg
+  VINCIRE cfg.gen_file AD ".civitas-gen"
+  VINCIRE cfg.poll_route AD "/civitas/livereload"
+  VINCIRE cfg.enabled AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE livereload_read_gen(VERBUM gen_file) REDDE VERBUM
+  SI NON CONIURA exists(gen_file)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA trim(CONIURA read_all(gen_file))
+EXPLICIT RITUALE
+
+RITUALE livereload_write_gen(VERBUM gen_file) REDDE VERBUM
+  EVOCA VERBUM gen AD CONIURA stringify_int(CONIURA now_ms())
+  CONIURA write_all(gen_file, gen)
+  REDDE gen
+EXPLICIT RITUALE
+
+RITUALE livereload_json(VERBUM current_gen, VERUM reload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "{\"gen\":\"")
+  CONIURA builder_append(b, current_gen)
+  CONIURA builder_append(b, "\",\"reload\":")
+  SI reload
+    CONIURA builder_append(b, "true}")
+  ALITER
+    CONIURA builder_append(b, "false}")
+  FIN SI
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE livereload_handler(WebRequest req, LivereloadConfig cfg) REDDE WebResponse
+  EVOCA VERBUM current_gen AD CONIURA livereload_read_gen(cfg.gen_file)
+  SI CONIURA len(current_gen) == 0
+    EVOCA WebResponse starting AD CONIURA response_json_text("{\"error\":\"starting\"}")
+    VINCIRE starting.status AD 503
+    CONIURA response_set_header(SPECULUM starting, "cache-control", "no-store")
+    REDDE starting
+  FIN SI
+
+  EVOCA SPECULUM NIHIL client_gen_opt AD CONIURA request_query_first(req, "gen")
+  EVOCA VERBUM client_gen AD ""
+  SI CONIURA option_is_some GENUS(VERBUM)(client_gen_opt)
+    VINCIRE client_gen AD CONIURA option_unwrap GENUS(VERBUM)(client_gen_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(client_gen_opt)
+
+  EVOCA VERUM should_reload AD FALSUM
+  SI CONIURA len(client_gen) > 0 ET CONIURA compare(client_gen, current_gen) != 0
+    VINCIRE should_reload AD VERUM
+  FIN SI
+
+  EVOCA WebResponse res AD CONIURA response_json_text(CONIURA livereload_json(current_gen, should_reload))
+  CONIURA response_set_header(SPECULUM res, "cache-control", "no-store")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE livereload_js_snippet(VERBUM poll_route) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<script id=\"civitas-livereload\">(function(){")
+  CONIURA builder_append(b, "var gen=null;var route='")
+  CONIURA builder_append(b, poll_route)
+  CONIURA builder_append(b, "';function tick(){var url=route+(gen!==null?('?gen='+encodeURIComponent(gen)):'');")
+  CONIURA builder_append(b, "fetch(url,{cache:'no-store'}).then(function(r){if(!r.ok){throw new Error('retry');}return r.json();}).then(function(d){")
+  CONIURA builder_append(b, "if(gen===null){gen=d.gen;setTimeout(tick,500);return;}if(d.reload){location.reload();return;}gen=d.gen;setTimeout(tick,500);")
+  CONIURA builder_append(b, "}).catch(function(){setTimeout(tick,1000);});}tick();})();</script>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE livereload_inject(VERBUM html_body, VERBUM poll_route) REDDE VERBUM
+  SI CONIURA find(html_body, "id=\"civitas-livereload\"") != -1
+    REDDE html_body
+  FIN SI
+  EVOCA REX close_body AD CONIURA find(CONIURA to_lower(html_body), "</body>")
+  SI close_body == -1
+    REDDE html_body
+  FIN SI
+  EVOCA VERBUM snippet AD CONIURA livereload_js_snippet(poll_route)
+  EVOCA VERBUM before AD CONIURA substring(html_body, 0, close_body)
+  EVOCA VERBUM after AD CONIURA substring(html_body, close_body, CONIURA len(html_body))
+  REDDE CONIURA concat(CONIURA concat(before, snippet), after)
+EXPLICIT RITUALE
+
+RITUALE livereload_is_html_response(WebResponse res) REDDE VERUM
+  SI res.body_kind == WEB_RESPONSE_HTML
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA find(CONIURA to_lower(CONIURA response_header_or(res, "content-type", "")), "text/html") != -1
+EXPLICIT RITUALE
+
+RITUALE livereload_apply(WebResponse resp, LivereloadConfig cfg) REDDE WebResponse
+  SI NON cfg.enabled
+    REDDE resp
+  FIN SI
+  SI NON CONIURA livereload_is_html_response(resp)
+    REDDE resp
+  FIN SI
+  EVOCA WebResponse out AD resp
+  VINCIRE out.body AD CONIURA livereload_inject(resp.body, cfg.poll_route)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

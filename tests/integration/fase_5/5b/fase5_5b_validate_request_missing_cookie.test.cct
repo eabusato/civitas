@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase5_5b_validate_request_missing_cookie_test"
+
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL res AD CONIURA csrf_validate_request(SPECULUM cfg, "segredo", headers, "")
+
+  SI NON CONIURA result_is_err GENUS(REX, CsrfError)(res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA csrf_validation_error_matches(res, CsrfErrNoCookie)
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_storage_gc"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "storage.cct"
+
+RITUALE storage_gc_checker_invoke(SPECULUM NIHIL checker_fn, VERBUM artifact_id) REDDE VERUM
+  REDDE CONIURA callback_invoke1 GENUS(VERBUM, VERUM)(checker_fn, artifact_id)
+EXPLICIT RITUALE
+
+RITUALE storage_gc_artifact_id_from_filename(VERBUM filename) REDDE VERBUM
+  EVOCA REX last_dot AD CONIURA last_find(filename, ".")
+  SI last_dot < 0
+    REDDE filename
+  FIN SI
+  REDDE CONIURA substring(filename, 0, last_dot)
+EXPLICIT RITUALE
+
+RITUALE storage_gc_tmp(MediaStore store, StorageConfig cfg, SPECULUM NIHIL checker_fn, REX now_unix) REDDE StorageGcReport
+  EVOCA VERBUM tmp_dir AD CONIURA media_store_zone_dir(store, MEDIA_ZONE_TMP)
+  EVOCA StorageGcReport report AD CONIURA storage_gc_report_new()
+  EVOCA REX cutoff_unix AD now_unix - (cfg.tmp_max_age_minutos * 60)
+
+  SI NON CONIURA is_dir(tmp_dir)
+    REDDE report
+  FIN SI
+
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(tmp_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM entry_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM filename AD *entry_ptr
+    EVOCA VERBUM path AD CONIURA path_join(tmp_dir, filename)
+    VINCIRE i AD i + 1
+
+    SI CONIURA is_file(path)
+      VINCIRE report.arquivos_verificados AD report.arquivos_verificados + 1
+      SI CONIURA modified_time(path) <= cutoff_unix
+        SI NON CONIURA storage_gc_checker_invoke(checker_fn, CONIURA storage_gc_artifact_id_from_filename(filename))
+          VINCIRE report.bytes_liberados AD report.bytes_liberados + CONIURA size(path)
+          CONIURA delete_file(path)
+          VINCIRE report.orfaos_removidos AD report.orfaos_removidos + 1
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN DUM
+
+  REDDE report
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

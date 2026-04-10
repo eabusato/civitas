@@ -1,0 +1,89 @@
+INCIPIT grimoire "civitas_template_extras_seo"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM HreflangEntry
+  locale: VERBUM
+  url: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SeoConfig
+  base_url: VERBUM
+  site_name: VERBUM
+FIN SIGILLUM
+
+RITUALE seo_absolute_url(VERBUM base_url, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM base AD CONIURA trim(base_url)
+  EVOCA VERBUM target AD CONIURA trim(path)
+
+  SI CONIURA len(target) == 0
+    REDDE base
+  FIN SI
+  SI CONIURA starts_with(target, "http://") VEL CONIURA starts_with(target, "https://")
+    REDDE target
+  FIN SI
+  SI CONIURA len(base) == 0
+    SI CONIURA starts_with(target, "/")
+      REDDE target
+    FIN SI
+    REDDE CONIURA concat("/", target)
+  FIN SI
+  SI CONIURA ends_with(base, "/") ET CONIURA starts_with(target, "/")
+    REDDE CONIURA concat(CONIURA substring(base, 0, CONIURA len(base) - 1), target)
+  FIN SI
+  SI NON CONIURA ends_with(base, "/") ET NON CONIURA starts_with(target, "/")
+    REDDE CONIURA concat(CONIURA concat(base, "/"), target)
+  FIN SI
+  REDDE CONIURA concat(base, target)
+EXPLICIT RITUALE
+
+RITUALE seo_canonical_tag(SeoConfig cfg, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM href AD CONIURA html_encode(CONIURA seo_absolute_url(cfg.base_url, path))
+  REDDE CONIURA concat(CONIURA concat("<link rel=\"canonical\" href=\"", href), "\">")
+EXPLICIT RITUALE
+
+RITUALE seo_hreflang_tags(SPECULUM NIHIL entries) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+
+  DUM i < n
+    EVOCA SPECULUM HreflangEntry entry_ptr AD CONIURA fluxus_get(entries, i)
+    VINCIRE out AD CONIURA concat(out, "<link rel=\"alternate\" hreflang=\"")
+    VINCIRE out AD CONIURA concat(out, CONIURA html_encode((*entry_ptr).locale))
+    VINCIRE out AD CONIURA concat(out, "\" href=\"")
+    VINCIRE out AD CONIURA concat(out, CONIURA html_encode((*entry_ptr).url))
+    VINCIRE out AD CONIURA concat(out, "\">")
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE seo_meta_description(VERBUM descricao) REDDE VERBUM
+  REDDE CONIURA concat(
+    CONIURA concat("<meta name=\"description\" content=\"", CONIURA html_encode(descricao)),
+    "\">"
+  )
+EXPLICIT RITUALE
+
+RITUALE seo_og_tags(VERBUM titulo, VERBUM descricao, VERBUM image_url, VERBUM url) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  VINCIRE out AD CONIURA concat(out, "<meta property=\"og:title\" content=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(titulo))
+  VINCIRE out AD CONIURA concat(out, "\">")
+  VINCIRE out AD CONIURA concat(out, "<meta property=\"og:description\" content=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(descricao))
+  VINCIRE out AD CONIURA concat(out, "\">")
+  VINCIRE out AD CONIURA concat(out, "<meta property=\"og:image\" content=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(image_url))
+  VINCIRE out AD CONIURA concat(out, "\">")
+  VINCIRE out AD CONIURA concat(out, "<meta property=\"og:url\" content=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(url))
+  VINCIRE out AD CONIURA concat(out, "\">")
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

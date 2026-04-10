@@ -1,0 +1,157 @@
+INCIPIT grimoire "civitas_auth_token"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TokenConfig
+  segredo: VERBUM
+  ttl_acesso: REX
+  ttl_refresh: REX
+  issuer: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TokenPayload
+  user_id: VERBUM
+  emitido_em: REX
+  expira_em: REX
+  escopos: VERBUM
+  jti: VERBUM
+  issuer: VERBUM
+FIN SIGILLUM
+
+ORDO TokenError
+  TokenAssinaturaInvalida,
+  TokenExpirado,
+  TokenMalformado,
+  TokenRevogado,
+  TokenIssuerInvalido
+FIN ORDO
+
+SIGILLUM RefreshToken
+  id: VERBUM
+  user_id: VERBUM
+  emitido_em: REX
+  expira_em: REX
+  familia: VERBUM
+  revogado: VERUM
+FIN SIGILLUM
+
+RITUALE token_config_new(VERBUM segredo, REX ttl_acesso, REX ttl_refresh) REDDE TokenConfig
+  EVOCA TokenConfig cfg
+  VINCIRE cfg.segredo AD segredo
+  VINCIRE cfg.ttl_acesso AD ttl_acesso
+  VINCIRE cfg.ttl_refresh AD ttl_refresh
+  VINCIRE cfg.issuer AD "civitas"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE token_payload_empty() REDDE TokenPayload
+  EVOCA TokenPayload p
+  VINCIRE p.user_id AD ""
+  VINCIRE p.emitido_em AD 0
+  VINCIRE p.expira_em AD 0
+  VINCIRE p.escopos AD ""
+  VINCIRE p.jti AD ""
+  VINCIRE p.issuer AD ""
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE refresh_token_empty() REDDE RefreshToken
+  EVOCA RefreshToken rt
+  VINCIRE rt.id AD ""
+  VINCIRE rt.user_id AD ""
+  VINCIRE rt.emitido_em AD 0
+  VINCIRE rt.expira_em AD 0
+  VINCIRE rt.familia AD ""
+  VINCIRE rt.revogado AD FALSUM
+  REDDE rt
+EXPLICIT RITUALE
+
+RITUALE token_error_name(TokenError err) REDDE VERBUM
+  ELIGE err
+    CASUS TokenAssinaturaInvalida:
+      REDDE "TokenAssinaturaInvalida"
+    CASUS TokenExpirado:
+      REDDE "TokenExpirado"
+    CASUS TokenMalformado:
+      REDDE "TokenMalformado"
+    CASUS TokenRevogado:
+      REDDE "TokenRevogado"
+    CASUS TokenIssuerInvalido:
+      REDDE "TokenIssuerInvalido"
+    ALIOQUIN:
+      REDDE "TokenDesconhecido"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE token_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE token_blacklist_timestamp_utc() REDDE VERBUM
+  EVOCA DateTime now AD CONIURA datetime_now()
+  REDDE CONIURA datetime_format(now, "%Y-%m-%dT%H:%M:%SZ")
+EXPLICIT RITUALE
+
+RITUALE token_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE token_payload_para_json(TokenPayload p) REDDE VERBUM
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "uid", CONIURA json_str(p.user_id))
+  CONIURA json_obj_push(obj, "iat", CONIURA json_num(cast GENUS(UMBRA)(p.emitido_em)))
+  CONIURA json_obj_push(obj, "exp", CONIURA json_num(cast GENUS(UMBRA)(p.expira_em)))
+  CONIURA json_obj_push(obj, "scp", CONIURA json_str(p.escopos))
+  CONIURA json_obj_push(obj, "jti", CONIURA json_str(p.jti))
+  CONIURA json_obj_push(obj, "iss", CONIURA json_str(p.issuer))
+  REDDE CONIURA json_stringify(obj)
+EXPLICIT RITUALE
+
+RITUALE token_payload_from_json(Json root) REDDE SPECULUM NIHIL
+  SI NON CONIURA json_is_obj(root)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+  SI NON CONIURA json_has_key(root, "uid") VEL NON CONIURA json_has_key(root, "iat") VEL NON CONIURA json_has_key(root, "exp") VEL NON CONIURA json_has_key(root, "scp") VEL NON CONIURA json_has_key(root, "jti") VEL NON CONIURA json_has_key(root, "iss")
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+
+  EVOCA Json uid_json AD CONIURA json_get_key(root, "uid")
+  EVOCA Json iat_json AD CONIURA json_get_key(root, "iat")
+  EVOCA Json exp_json AD CONIURA json_get_key(root, "exp")
+  EVOCA Json scp_json AD CONIURA json_get_key(root, "scp")
+  EVOCA Json jti_json AD CONIURA json_get_key(root, "jti")
+  EVOCA Json iss_json AD CONIURA json_get_key(root, "iss")
+  SI NON CONIURA json_is_str(uid_json) VEL NON CONIURA json_is_num(iat_json) VEL NON CONIURA json_is_num(exp_json) VEL NON CONIURA json_is_str(scp_json) VEL NON CONIURA json_is_str(jti_json) VEL NON CONIURA json_is_str(iss_json)
+    REDDE CONIURA Err GENUS(TokenPayload, TokenError)(TokenMalformado)
+  FIN SI
+
+  EVOCA TokenPayload p AD CONIURA token_payload_empty()
+  VINCIRE p.user_id AD CONIURA json_expect_str(uid_json)
+  VINCIRE p.emitido_em AD cast GENUS(REX)(CONIURA json_expect_num(iat_json))
+  VINCIRE p.expira_em AD cast GENUS(REX)(CONIURA json_expect_num(exp_json))
+  VINCIRE p.escopos AD CONIURA json_expect_str(scp_json)
+  VINCIRE p.jti AD CONIURA json_expect_str(jti_json)
+  VINCIRE p.issuer AD CONIURA json_expect_str(iss_json)
+  REDDE CONIURA Ok GENUS(TokenPayload, TokenError)(p)
+EXPLICIT RITUALE
+
+RITUALE token_refresh_from_stmt(SPECULUM NIHIL stmt) REDDE RefreshToken
+  EVOCA RefreshToken rt AD CONIURA refresh_token_empty()
+  VINCIRE rt.id AD CONIURA stmt_get_text(stmt, 0)
+  VINCIRE rt.user_id AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE rt.emitido_em AD CONIURA stmt_get_int(stmt, 2)
+  VINCIRE rt.expira_em AD CONIURA stmt_get_int(stmt, 3)
+  VINCIRE rt.familia AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE rt.revogado AD CONIURA stmt_get_int(stmt, 5) != 0
+  REDDE rt
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_trace_store_entry"
+
+ADVOCARE "trace_store/trace_store.cct"
+
+EXPLICIT grimoire

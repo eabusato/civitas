@@ -1,0 +1,91 @@
+INCIPIT grimoire "civitas_session_remember"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cookie.cct"
+
+SIGILLUM RememberMeConfig
+  cookie_nome: VERBUM
+  duracao_dias: REX
+  segredo: VERBUM
+  cookie_seguro: VERUM
+  cookie_http_only: VERUM
+FIN SIGILLUM
+
+RITUALE remember_me_config_default() REDDE RememberMeConfig
+  EVOCA RememberMeConfig cfg
+  VINCIRE cfg.cookie_nome AD "civitas_remember"
+  VINCIRE cfg.duracao_dias AD 30
+  VINCIRE cfg.segredo AD ""
+  VINCIRE cfg.cookie_seguro AD FALSUM
+  VINCIRE cfg.cookie_http_only AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE remember_me_generate(VERBUM user_id, RememberMeConfig cfg) REDDE VERBUM
+  EVOCA REX criado_em AD CONIURA now_ms()
+  EVOCA VERBUM criado_str AD CONIURA stringify_int(criado_em)
+  EVOCA VERBUM payload AD CONIURA concat(CONIURA concat(user_id, ":"), criado_str)
+  EVOCA VERBUM mac AD CONIURA hmac_sha256(cfg.segredo, payload)
+  EVOCA VERBUM out AD CONIURA concat(CONIURA concat(user_id, "."), criado_str)
+  VINCIRE out AD CONIURA concat(out, ".")
+  VINCIRE out AD CONIURA concat(out, mac)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE remember_me_verify(VERBUM cookie_valor, RememberMeConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(cookie_valor, ".")
+  SI CONIURA fluxus_len(parts) != 3
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA SPECULUM VERBUM user_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA SPECULUM VERBUM created_ptr AD CONIURA fluxus_get(parts, 1)
+  EVOCA SPECULUM VERBUM mac_ptr AD CONIURA fluxus_get(parts, 2)
+  EVOCA VERBUM payload AD CONIURA concat(CONIURA concat(*user_ptr, ":"), *created_ptr)
+  EVOCA VERBUM expected AD CONIURA hmac_sha256(cfg.segredo, payload)
+  SI NON CONIURA constant_time_compare(expected, *mac_ptr)
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA SPECULUM NIHIL created_opt AD CONIURA try_int(*created_ptr)
+  SI CONIURA option_is_none GENUS(REX)(created_opt)
+    CONIURA option_free GENUS(REX)(created_opt)
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA REX created_ms AD CONIURA option_unwrap GENUS(REX)(created_opt)
+  CONIURA option_free GENUS(REX)(created_opt)
+  SI CONIURA now_ms() - created_ms > (cfg.duracao_dias * 86400 * 1000)
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA VERBUM user_id AD *user_ptr
+  CONIURA fluxus_free(parts)
+  REDDE CONIURA Some GENUS(VERBUM)(user_id)
+EXPLICIT RITUALE
+
+RITUALE remember_me_cookie(VERBUM valor, RememberMeConfig cfg) REDDE SetCookie
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(cfg.cookie_nome, valor)
+  VINCIRE cookie.path AD "/"
+  VINCIRE cookie.max_age AD cfg.duracao_dias * 86400
+  VINCIRE cookie.secure AD cfg.cookie_seguro
+  VINCIRE cookie.http_only AD cfg.cookie_http_only
+  VINCIRE cookie.same_site AD "Lax"
+  REDDE cookie
+EXPLICIT RITUALE
+
+RITUALE remember_me_cookie_header(VERBUM valor, RememberMeConfig cfg) REDDE VERBUM
+  REDDE CONIURA cookie_build_set(CONIURA remember_me_cookie(valor, cfg))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

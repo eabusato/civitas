@@ -1,0 +1,47 @@
+INCIPIT grimoire "civitas_auth_middleware_session_resolve"
+
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "../session/session.cct"
+ADVOCARE "../session/session_cookie.cct"
+ADVOCARE "../session/session_store.cct"
+ADVOCARE "auth_context.cct"
+
+RITUALE auth_resolve_session(SPECULUM NIHIL db, SessionConfig ses_cfg, VERBUM cookie_header) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL sid_opt AD CONIURA session_id_from_cookie_header(cookie_header, ses_cfg.cookie_nome)
+  SI CONIURA option_is_none GENUS(VERBUM)(sid_opt)
+    CONIURA option_free GENUS(VERBUM)(sid_opt)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  EVOCA VERBUM sid AD CONIURA option_unwrap GENUS(VERBUM)(sid_opt)
+  CONIURA option_free GENUS(VERBUM)(sid_opt)
+
+  EVOCA SPECULUM NIHIL sess_opt AD CONIURA session_lookup(db, sid)
+  SI CONIURA option_is_none GENUS(Session)(sess_opt)
+    CONIURA option_free GENUS(Session)(sess_opt)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  EVOCA Session sess AD CONIURA option_unwrap GENUS(Session)(sess_opt)
+  CONIURA option_free GENUS(Session)(sess_opt)
+  SI CONIURA len(sess.user_id) == 0
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_usuario_ativo(db, sess.user_id)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA None GENUS(AuthContext)()
+  FIN SI
+  CONIURA option_free GENUS(User)(user_opt)
+
+  EVOCA AuthContext ac AD CONIURA auth_context_empty()
+  VINCIRE ac.autenticado AD VERUM
+  VINCIRE ac.user_id AD sess.user_id
+  VINCIRE ac.escopos AD "session"
+  VINCIRE ac.via AD "session"
+  REDDE CONIURA Some GENUS(AuthContext)(ac)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase13_13e_media_import"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_media_import.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13e_media_import")
+  CONIURA phase13_reset_dir(root)
+  EVOCA VERBUM src_root AD CONIURA path_join(root, "django_media")
+  EVOCA VERBUM dst_root AD CONIURA path_join(root, "civitas_media")
+  CONIURA mkdir_all(CONIURA path_join(src_root, "blog"))
+  CONIURA write_all(CONIURA path_join(CONIURA path_join(src_root, "blog"), "cover.txt"), "hello")
+  EVOCA DjangoMigrateConfig cfg
+  VINCIRE cfg.db_django AD ""
+  VINCIRE cfg.db_civitas AD NIHIL
+  VINCIRE cfg.media_root_django AD src_root
+  VINCIRE cfg.media_root_civitas AD dst_root
+  VINCIRE cfg.dry_run AD FALSUM
+  EVOCA DjangoMigrateResult r AD CONIURA django_media_import(cfg, "blog")
+  SI r.arquivos_copiados != 1
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(CONIURA path_join(dst_root, "blog"), "cover.txt"))
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,837 @@
+INCIPIT grimoire "mural_expandido_views"
+
+ADVOCARE "../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt_rules.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt_reltime.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt_date_long.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt_list.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../lib/civitas/validate/validate.cct"
+ADVOCARE "repository.cct"
+ADVOCARE "state.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+
+RITUALE muralx_t(MuralExpandidoState state, VERBUM locale, VERBUM key) REDDE VERBUM
+  REDDE CONIURA i18n_t(state.i18n, locale, key)
+EXPLICIT RITUALE
+
+RITUALE muralx_rules(MuralExpandidoState state, VERBUM locale) REDDE L10nFmtRules
+  REDDE CONIURA l10n_fmt_registry_get(state.l10n, locale)
+EXPLICIT RITUALE
+
+RITUALE muralx_css_url(StaticIndex static_index) REDDE VERBUM
+  REDDE CONIURA static_url(static_index, "app.css")
+EXPLICIT RITUALE
+
+RITUALE muralx_fallback_cover_url(StaticIndex static_index) REDDE VERBUM
+  REDDE CONIURA static_url(static_index, "poster.svg")
+EXPLICIT RITUALE
+
+RITUALE muralx_page_title(MuralExpandidoState state, VERBUM locale, VERBUM section) REDDE VERBUM
+  SI CONIURA len(section) == 0
+    REDDE state.cfg.site_title
+  FIN SI
+  REDDE CONIURA concat(section, CONIURA concat(" | ", state.cfg.site_title))
+EXPLICIT RITUALE
+
+SIGILLUM MuralExpandidoRenderedSigil
+  sigil: MuralExpandidoSigil
+  svg_markup: VERBUM
+FIN SIGILLUM
+
+RITUALE muralx_append_input(
+  SPECULUM NIHIL b,
+  VERBUM label,
+  VERBUM name,
+  VERBUM type_name,
+  FormData fd,
+  ValidationResult vr,
+  VERBUM placeholder
+) REDDE NIHIL
+  EVOCA VERBUM value AD CONIURA form_data_get_or(fd, name, "")
+  EVOCA VERBUM error AD CONIURA validation_first_error(vr, name)
+  CONIURA builder_append(b, "<label class=\"field\"><span>")
+  CONIURA builder_append(b, CONIURA html_encode(label))
+  CONIURA builder_append(b, "</span><input name=\"")
+  CONIURA builder_append(b, CONIURA html_encode(name))
+  CONIURA builder_append(b, "\" type=\"")
+  CONIURA builder_append(b, CONIURA html_encode(type_name))
+  CONIURA builder_append(b, "\" value=\"")
+  CONIURA builder_append(b, CONIURA html_encode(value))
+  CONIURA builder_append(b, "\" placeholder=\"")
+  CONIURA builder_append(b, CONIURA html_encode(placeholder))
+  CONIURA builder_append(b, "\"")
+  SI CONIURA validation_has_error(vr, name)
+    CONIURA builder_append(b, " class=\"is-invalid\"")
+  FIN SI
+  CONIURA builder_append(b, "></label>")
+  SI CONIURA len(error) > 0
+    CONIURA builder_append(b, "<p class=\"field-error\">")
+    CONIURA builder_append(b, CONIURA html_encode(error))
+    CONIURA builder_append(b, "</p>")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_append_textarea(
+  SPECULUM NIHIL b,
+  VERBUM label,
+  VERBUM name,
+  FormData fd,
+  ValidationResult vr,
+  VERBUM placeholder
+) REDDE NIHIL
+  EVOCA VERBUM value AD CONIURA form_data_get_or(fd, name, "")
+  EVOCA VERBUM error AD CONIURA validation_first_error(vr, name)
+  CONIURA builder_append(b, "<label class=\"field\"><span>")
+  CONIURA builder_append(b, CONIURA html_encode(label))
+  CONIURA builder_append(b, "</span><textarea name=\"")
+  CONIURA builder_append(b, CONIURA html_encode(name))
+  CONIURA builder_append(b, "\" placeholder=\"")
+  CONIURA builder_append(b, CONIURA html_encode(placeholder))
+  CONIURA builder_append(b, "\"")
+  SI CONIURA validation_has_error(vr, name)
+    CONIURA builder_append(b, " class=\"is-invalid\"")
+  FIN SI
+  CONIURA builder_append(b, ">")
+  CONIURA builder_append(b, CONIURA html_encode(value))
+  CONIURA builder_append(b, "</textarea></label>")
+  SI CONIURA len(error) > 0
+    CONIURA builder_append(b, "<p class=\"field-error\">")
+    CONIURA builder_append(b, CONIURA html_encode(error))
+    CONIURA builder_append(b, "</p>")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_datetime_short(REX unix_seconds) REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_from_unix(unix_seconds), "%Y-%m-%d %H:%M")
+EXPLICIT RITUALE
+
+RITUALE muralx_format_reltime(MuralExpandidoState state, VERBUM locale, REX unix_seconds) REDDE VERBUM
+  EVOCA L10nFmtRules rules AD CONIURA muralx_rules(state, locale)
+  REDDE CONIURA l10n_reltime(CONIURA datetime_from_unix(unix_seconds), SPECULUM rules)
+EXPLICIT RITUALE
+
+RITUALE muralx_format_long_date(MuralExpandidoState state, VERBUM locale, REX unix_seconds) REDDE VERBUM
+  EVOCA DateTime dt AD CONIURA datetime_from_unix(unix_seconds)
+  EVOCA Date d
+  VINCIRE d.ano AD dt.ano
+  VINCIRE d.mes AD dt.mes
+  VINCIRE d.dia AD dt.dia
+  EVOCA L10nFmtRules rules AD CONIURA muralx_rules(state, locale)
+  REDDE CONIURA l10n_format_date_long(d, SPECULUM rules)
+EXPLICIT RITUALE
+
+RITUALE muralx_format_tags(MuralExpandidoState state, VERBUM locale, VERBUM tags_csv) REDDE VERBUM
+  SI CONIURA len(CONIURA trim(tags_csv)) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL raw_tags AD CONIURA split(tags_csv, ",")
+  EVOCA SPECULUM NIHIL tags AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(raw_tags)
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(raw_tags, i)
+    EVOCA VERBUM item AD CONIURA trim(*ptr)
+    SI CONIURA len(item) > 0
+      CONIURA fluxus_push(tags, SPECULUM item)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA L10nFmtRules rules AD CONIURA muralx_rules(state, locale)
+  REDDE CONIURA l10n_format_list(tags, SPECULUM rules)
+EXPLICIT RITUALE
+
+RITUALE muralx_video_embed_url(VERBUM video_url) REDDE VERBUM
+  SI CONIURA starts_with(video_url, "https://www.youtube.com/watch?v=")
+    EVOCA VERBUM id AD CONIURA substring(video_url, 32, CONIURA len(video_url))
+    REDDE CONIURA concat("https://www.youtube.com/embed/", id)
+  FIN SI
+  SI CONIURA starts_with(video_url, "https://youtu.be/")
+    EVOCA VERBUM id2 AD CONIURA substring(video_url, 17, CONIURA len(video_url))
+    REDDE CONIURA concat("https://www.youtube.com/embed/", id2)
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_status_color(REX status) REDDE VERBUM
+  SI status >= 500
+    REDDE "#ff7d7d"
+  FIN SI
+  SI status >= 400
+    REDDE "#ffb36b"
+  FIN SI
+  SI status >= 300
+    REDDE "#8eb8ff"
+  FIN SI
+  SI status >= 200
+    REDDE "#6ee7c8"
+  FIN SI
+  REDDE "#d5def5"
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_accent_color(REX span_count) REDDE VERBUM
+  SI span_count <= 1
+    REDDE "#7c9cff"
+  FIN SI
+  SI span_count <= 3
+    REDDE "#8b5cf6"
+  FIN SI
+  SI span_count <= 6
+    REDDE "#ff8f70"
+  FIN SI
+  REDDE "#f7d774"
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_surface_color(REX duration_ms) REDDE VERBUM
+  SI duration_ms >= 300
+    REDDE "rgba(255, 143, 112, 0.18)"
+  FIN SI
+  SI duration_ms >= 80
+    REDDE "rgba(142, 184, 255, 0.16)"
+  FIN SI
+  REDDE "rgba(110, 231, 200, 0.14)"
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_anim_dur(REX duration_ms) REDDE VERBUM
+  SI duration_ms >= 400
+    REDDE "10s"
+  FIN SI
+  SI duration_ms >= 150
+    REDDE "7s"
+  FIN SI
+  SI duration_ms >= 40
+    REDDE "5s"
+  FIN SI
+  REDDE "3.5s"
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_svg_id(VERBUM trace_id) REDDE VERBUM
+  SI CONIURA len(trace_id) <= 8
+    REDDE CONIURA concat("sigil-", trace_id)
+  FIN SI
+  REDDE CONIURA concat("sigil-", CONIURA substring(trace_id, 0, 8))
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_ring_radius(REX span_count) REDDE REX
+  SI span_count <= 1
+    REDDE 58
+  FIN SI
+  SI span_count <= 3
+    REDDE 68
+  FIN SI
+  SI span_count <= 6
+    REDDE 76
+  FIN SI
+  REDDE 84
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_core_radius(REX duration_ms) REDDE REX
+  SI duration_ms >= 300
+    REDDE 34
+  FIN SI
+  SI duration_ms >= 80
+    REDDE 30
+  FIN SI
+  REDDE 26
+EXPLICIT RITUALE
+
+RITUALE muralx_append_trace_sigil_svg(
+  SPECULUM NIHIL b,
+  VERBUM trace_id,
+  REX status,
+  REX duration_ms,
+  REX span_count,
+  VERBUM title_text,
+  VERUM large_mode
+) REDDE NIHIL
+  EVOCA VERBUM sigil_id AD CONIURA muralx_trace_svg_id(trace_id)
+  EVOCA VERBUM primary AD CONIURA muralx_trace_status_color(status)
+  EVOCA VERBUM accent AD CONIURA muralx_trace_accent_color(span_count)
+  EVOCA VERBUM surface AD CONIURA muralx_trace_surface_color(duration_ms)
+  EVOCA VERBUM anim_dur AD CONIURA muralx_trace_anim_dur(duration_ms)
+  EVOCA REX ring_radius AD CONIURA muralx_trace_ring_radius(span_count)
+  EVOCA REX core_radius AD CONIURA muralx_trace_core_radius(duration_ms)
+  EVOCA REX cross AD ring_radius - 12
+  EVOCA VERBUM svg_class AD "sigil-svg"
+  SI large_mode
+    VINCIRE svg_class AD "sigil-svg sigil-svg-large"
+  FIN SI
+  CONIURA builder_append(b, "<svg class=\"")
+  CONIURA builder_append(b, svg_class)
+  CONIURA builder_append(b, "\" viewBox=\"0 0 240 240\" aria-label=\"")
+  CONIURA builder_append(b, CONIURA html_encode(title_text))
+  CONIURA builder_append(b, "\" role=\"img\"><defs><radialGradient id=\"")
+  CONIURA builder_append(b, sigil_id)
+  CONIURA builder_append(b, "-core\" cx=\"50%\" cy=\"50%\" r=\"60%\"><stop offset=\"0%\" stop-color=\"")
+  CONIURA builder_append(b, accent)
+  CONIURA builder_append(b, "\"></stop><stop offset=\"100%\" stop-color=\"")
+  CONIURA builder_append(b, primary)
+  CONIURA builder_append(b, "\"></stop></radialGradient><linearGradient id=\"")
+  CONIURA builder_append(b, sigil_id)
+  CONIURA builder_append(b, "-ring\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"")
+  CONIURA builder_append(b, primary)
+  CONIURA builder_append(b, "\"></stop><stop offset=\"100%\" stop-color=\"")
+  CONIURA builder_append(b, accent)
+  CONIURA builder_append(b, "\"></stop></linearGradient></defs><rect x=\"20\" y=\"20\" width=\"200\" height=\"200\" rx=\"38\" fill=\"")
+  CONIURA builder_append(b, surface)
+  CONIURA builder_append(b, "\" stroke=\"rgba(255,255,255,0.06)\"></rect><circle cx=\"120\" cy=\"120\" r=\"")
+  CONIURA builder_append(b, CONIURA stringify_int(ring_radius))
+  CONIURA builder_append(b, "\" fill=\"none\" stroke=\"url(#")
+  CONIURA builder_append(b, sigil_id)
+  CONIURA builder_append(b, "-ring)\" stroke-width=\"3.2\" stroke-linecap=\"round\" stroke-dasharray=\"20 10 4 12\"><animateTransform attributeName=\"transform\" type=\"rotate\" from=\"0 120 120\" to=\"360 120 120\" dur=\"")
+  CONIURA builder_append(b, anim_dur)
+  CONIURA builder_append(b, "\" repeatCount=\"indefinite\"></animateTransform></circle><circle cx=\"120\" cy=\"120\" r=\"")
+  CONIURA builder_append(b, CONIURA stringify_int(core_radius))
+  CONIURA builder_append(b, "\" fill=\"url(#")
+  CONIURA builder_append(b, sigil_id)
+  CONIURA builder_append(b, "-core)\" opacity=\"0.88\"><animate attributeName=\"r\" values=\"")
+  CONIURA builder_append(b, CONIURA stringify_int(core_radius - 4))
+  CONIURA builder_append(b, ";")
+  CONIURA builder_append(b, CONIURA stringify_int(core_radius + 6))
+  CONIURA builder_append(b, ";")
+  CONIURA builder_append(b, CONIURA stringify_int(core_radius - 4))
+  CONIURA builder_append(b, "\" dur=\"")
+  CONIURA builder_append(b, anim_dur)
+  CONIURA builder_append(b, "\" repeatCount=\"indefinite\"></animate></circle><path d=\"M120 ")
+  CONIURA builder_append(b, CONIURA stringify_int(120 - cross))
+  CONIURA builder_append(b, " L120 ")
+  CONIURA builder_append(b, CONIURA stringify_int(120 + cross))
+  CONIURA builder_append(b, " M")
+  CONIURA builder_append(b, CONIURA stringify_int(120 - cross))
+  CONIURA builder_append(b, " 120 L")
+  CONIURA builder_append(b, CONIURA stringify_int(120 + cross))
+  CONIURA builder_append(b, " 120\" stroke=\"")
+  CONIURA builder_append(b, accent)
+  CONIURA builder_append(b, "\" stroke-width=\"2.3\" stroke-linecap=\"round\" opacity=\"0.72\"><animateTransform attributeName=\"transform\" type=\"rotate\" from=\"0 120 120\" to=\"-360 120 120\" dur=\"")
+  CONIURA builder_append(b, anim_dur)
+  CONIURA builder_append(b, "\" repeatCount=\"indefinite\"></animateTransform></path><circle cx=\"120\" cy=\"120\" r=\"")
+  CONIURA builder_append(b, CONIURA stringify_int(ring_radius - 20))
+  CONIURA builder_append(b, "\" fill=\"none\" stroke=\"")
+  CONIURA builder_append(b, primary)
+  CONIURA builder_append(b, "\" stroke-opacity=\"0.38\" stroke-width=\"1.6\"><animate attributeName=\"stroke-opacity\" values=\"0.2;0.8;0.2\" dur=\"")
+  CONIURA builder_append(b, anim_dur)
+  CONIURA builder_append(b, "\" repeatCount=\"indefinite\"></animate></circle></svg>")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_append_post_card(
+  SPECULUM NIHIL b,
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  MuralExpandidoPost post
+) REDDE NIHIL
+  EVOCA VERBUM cover_url AD post.cover_url
+  EVOCA VERBUM tag_line AD CONIURA muralx_format_tags(state, locale, post.tags_csv)
+  SI CONIURA len(CONIURA trim(cover_url)) == 0
+    VINCIRE cover_url AD CONIURA muralx_fallback_cover_url(static_index)
+  FIN SI
+  CONIURA builder_append(b, "<article class=\"post-card\"><a class=\"cover-link\" href=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "\"><img class=\"post-cover\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(cover_url))
+  CONIURA builder_append(b, "\" alt=\"")
+  CONIURA builder_append(b, CONIURA html_encode(post.title))
+  CONIURA builder_append(b, "\"></a><div class=\"post-body\"><div class=\"meta-row\"><a class=\"author-pill\" href=\"/perfil/")
+  CONIURA builder_append(b, CONIURA html_encode(post.author_handle))
+  CONIURA builder_append(b, "\">")
+  CONIURA builder_append(b, CONIURA html_encode(post.author_display_name))
+  CONIURA builder_append(b, "</a><span class=\"muted\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_format_reltime(state, locale, post.published_at_unix)))
+  CONIURA builder_append(b, "</span></div><h2><a href=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "\">")
+  CONIURA builder_append(b, CONIURA html_encode(post.title))
+  CONIURA builder_append(b, "</a></h2><p class=\"excerpt\">")
+  CONIURA builder_append(b, CONIURA html_encode(post.excerpt))
+  CONIURA builder_append(b, "</p>")
+  SI CONIURA len(tag_line) > 0
+    CONIURA builder_append(b, "<p class=\"tag-line\">")
+    CONIURA builder_append(b, CONIURA html_encode(tag_line))
+    CONIURA builder_append(b, "</p>")
+  FIN SI
+  CONIURA builder_append(b, "<div class=\"social-row\"><form method=\"post\" action=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "/reagir/like\"><button type=\"submit\"")
+  SI post.viewer_liked
+    CONIURA builder_append(b, " class=\"active\"")
+  FIN SI
+  CONIURA builder_append(b, ">Like ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.like_count))
+  CONIURA builder_append(b, "</button></form><form method=\"post\" action=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "/reagir/love\"><button type=\"submit\"")
+  SI post.viewer_loved
+    CONIURA builder_append(b, " class=\"active\"")
+  FIN SI
+  CONIURA builder_append(b, ">Love ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.love_count))
+  CONIURA builder_append(b, "</button></form><form method=\"post\" action=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "/reagir/bookmark\"><button type=\"submit\"")
+  SI post.viewer_bookmarked
+    CONIURA builder_append(b, " class=\"active\"")
+  FIN SI
+  CONIURA builder_append(b, ">Save ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.bookmark_count))
+  CONIURA builder_append(b, "</button></form><a class=\"stat-link\" href=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "\">Comments ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.comment_count))
+  CONIURA builder_append(b, "</a><span class=\"stat-link\">Views ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.view_count))
+  CONIURA builder_append(b, "</span></div>")
+  SI current_user.found ET current_user.user.id != post.author_id
+    CONIURA builder_append(b, "<div class=\"follow-strip\"><form method=\"post\" action=\"/perfil/")
+    CONIURA builder_append(b, CONIURA html_encode(post.author_handle))
+    CONIURA builder_append(b, "/seguir\"><button type=\"submit\">")
+    SI post.viewer_follows_author
+      CONIURA builder_append(b, "Following ")
+    ALITER
+      CONIURA builder_append(b, "Follow ")
+    FIN SI
+    CONIURA builder_append(b, CONIURA html_encode(post.author_display_name))
+    CONIURA builder_append(b, "</button></form></div>")
+  FIN SI
+  CONIURA builder_append(b, "</div></article>")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_append_header(
+  SPECULUM NIHIL b,
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user
+) REDDE NIHIL
+  CONIURA builder_append(b, "<!doctype html><html lang=\"")
+  CONIURA builder_append(b, CONIURA html_encode(locale))
+  CONIURA builder_append(b, "\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
+  CONIURA builder_append(b, CONIURA html_encode(state.cfg.site_title))
+  CONIURA builder_append(b, "</title><link rel=\"stylesheet\" href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_css_url(static_index)))
+  CONIURA builder_append(b, "\"></head><body><header class=\"topbar\"><div class=\"brand-block\"><a class=\"brand\" href=\"/\">")
+  CONIURA builder_append(b, CONIURA html_encode(state.cfg.site_title))
+  CONIURA builder_append(b, "</a><p class=\"brand-copy\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "site.tagline")))
+  CONIURA builder_append(b, "</p></div><nav class=\"topnav\"><a href=\"/\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.feed")))
+  CONIURA builder_append(b, "</a><a href=\"/api/posts\">API</a><a href=\"/admin-lite\">Admin</a><a href=\"/sigilos-vivos\">Sigilos</a><a href=\"/locale/pt-BR\">PT</a><a href=\"/locale/en-US\">EN</a>")
+  SI current_user.found
+    CONIURA builder_append(b, "<a href=\"/perfil/")
+    CONIURA builder_append(b, CONIURA html_encode(current_user.user.handle))
+    CONIURA builder_append(b, "\">")
+    CONIURA builder_append(b, CONIURA html_encode(current_user.user.display_name))
+    CONIURA builder_append(b, "</a><form method=\"post\" action=\"/sair\" class=\"inline-form\"><button type=\"submit\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.logout")))
+    CONIURA builder_append(b, "</button></form>")
+  ALITER
+    CONIURA builder_append(b, "<a href=\"/entrar\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.login")))
+    CONIURA builder_append(b, "</a><a href=\"/registrar\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.register")))
+    CONIURA builder_append(b, "</a>")
+  FIN SI
+  CONIURA builder_append(b, "</nav></header><main class=\"shell\">")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_append_flash(SPECULUM NIHIL b, VERBUM flash_message) REDDE NIHIL
+  SI CONIURA len(CONIURA trim(flash_message)) == 0
+    REDDE
+  FIN SI
+  CONIURA builder_append(b, "<div class=\"flash\"><p>")
+  CONIURA builder_append(b, CONIURA html_encode(flash_message))
+  CONIURA builder_append(b, "</p></div>")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_append_footer(SPECULUM NIHIL b) REDDE NIHIL
+  CONIURA builder_append(b, "</main></body></html>")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_render_home(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  SPECULUM NIHIL posts,
+  VERBUM flash_message,
+  FormData post_form,
+  ValidationResult post_vr
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  CONIURA muralx_append_header(b, state, static_index, locale, current_user)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<section class=\"hero hero-social\"><div><p class=\"eyebrow\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "hero.kicker")))
+  CONIURA builder_append(b, "</p><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "hero.title")))
+  CONIURA builder_append(b, "</h1><p class=\"lead\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "hero.lead")))
+  CONIURA builder_append(b, "</p><div class=\"hero-links\"><a class=\"cta\" href=\"/api/posts\">Open JSON feed</a><a class=\"ghost\" href=\"/sigilos-vivos\">Ver sigilos vivos</a></div></div><aside class=\"hero-card\"><h2>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "hero.panel_title")))
+  CONIURA builder_append(b, "</h2><ul><li>HTML + CSS + static assets</li><li>Sessions, auth and flash</li><li>SQLite repository + social counters</li><li>i18n, API and ops traces</li></ul></aside></section>")
+  SI current_user.found
+    CONIURA builder_append(b, "<section class=\"composer card\"><div class=\"section-head\"><h2>")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "composer.title")))
+    CONIURA builder_append(b, "</h2><span class=\"badge\">")
+    CONIURA builder_append(b, CONIURA html_encode(current_user.user.handle))
+    CONIURA builder_append(b, "</span></div><form method=\"post\" action=\"/posts\" class=\"stack-form\">")
+    CONIURA muralx_append_input(b, "Title", "title", "text", post_form, post_vr, "A short title for the feed")
+    CONIURA muralx_append_input(b, "Excerpt", "excerpt", "text", post_form, post_vr, "One-line teaser")
+    CONIURA muralx_append_textarea(b, "Body", "body", post_form, post_vr, "Tell the story, share the process, drop context.")
+    CONIURA muralx_append_input(b, "Cover image URL", "cover_url", "url", post_form, post_vr, "https://...")
+    CONIURA muralx_append_input(b, "Video URL", "video_url", "url", post_form, post_vr, "YouTube or Vimeo link")
+    CONIURA muralx_append_input(b, "Tags", "tags_csv", "text", post_form, post_vr, "photo,video,process")
+    CONIURA builder_append(b, "<button type=\"submit\">Publish post</button></form></section>")
+  ALITER
+    CONIURA builder_append(b, "<section class=\"auth-cta card\"><h2>")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "auth.prompt_title")))
+    CONIURA builder_append(b, "</h2><p>")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "auth.prompt_body")))
+    CONIURA builder_append(b, "</p><div class=\"hero-links\"><a class=\"cta\" href=\"/registrar\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.register")))
+    CONIURA builder_append(b, "</a><a class=\"ghost\" href=\"/entrar\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "nav.login")))
+    CONIURA builder_append(b, "</a></div></section>")
+  FIN SI
+  CONIURA builder_append(b, "<section class=\"feed-grid\">")
+  DUM i < CONIURA fluxus_len(posts)
+    EVOCA SPECULUM MuralExpandidoPost ptr AD CONIURA fluxus_get(posts, i)
+    CONIURA muralx_append_post_card(b, state, static_index, locale, current_user, *ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_auth_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  VERBUM flash_message,
+  VERBUM action_url,
+  VERBUM title_text,
+  VERBUM subtitle_text,
+  FormData fd,
+  ValidationResult vr,
+  VERUM is_register
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA muralx_append_header(b, state, static_index, locale, current_user)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<section class=\"auth-page card\"><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(title_text))
+  CONIURA builder_append(b, "</h1><p class=\"lead\">")
+  CONIURA builder_append(b, CONIURA html_encode(subtitle_text))
+  CONIURA builder_append(b, "</p><form method=\"post\" action=\"")
+  CONIURA builder_append(b, CONIURA html_encode(action_url))
+  CONIURA builder_append(b, "\" class=\"stack-form\">")
+  SI is_register
+    CONIURA muralx_append_input(b, "Handle", "handle", "text", fd, vr, "creator_handle")
+    CONIURA muralx_append_input(b, "Display name", "display_name", "text", fd, vr, "Display name")
+  FIN SI
+  CONIURA muralx_append_input(b, "Email", "email", "email", fd, vr, "you@example.com")
+  CONIURA muralx_append_input(b, "Password", "password", "password", fd, vr, "abc123 or longer")
+  SI is_register
+    CONIURA muralx_append_textarea(b, "Bio", "bio", fd, vr, "Tell the network what you publish.")
+    CONIURA muralx_append_input(b, "Avatar URL", "avatar_url", "url", fd, vr, "https://...")
+  FIN SI
+  CONIURA builder_append(b, "<button type=\"submit\">")
+  CONIURA builder_append(b, CONIURA html_encode(title_text))
+  CONIURA builder_append(b, "</button></form></section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_profile_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  MuralExpandidoProfile profile,
+  SPECULUM NIHIL posts,
+  VERBUM flash_message
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA REX i AD 0
+  CONIURA muralx_append_header(b, state, static_index, locale, current_user)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<section class=\"profile-hero card\"><img class=\"avatar\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(profile.avatar_url))
+  CONIURA builder_append(b, "\" alt=\"")
+  CONIURA builder_append(b, CONIURA html_encode(profile.display_name))
+  CONIURA builder_append(b, "\"><div><p class=\"eyebrow\">@")
+  CONIURA builder_append(b, CONIURA html_encode(profile.handle))
+  CONIURA builder_append(b, "</p><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(profile.display_name))
+  CONIURA builder_append(b, "</h1><p class=\"lead\">")
+  CONIURA builder_append(b, CONIURA html_encode(profile.bio))
+  CONIURA builder_append(b, "</p><div class=\"stat-grid\"><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(profile.post_count))
+  CONIURA builder_append(b, "</strong><span>posts</span></div><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(profile.follower_count))
+  CONIURA builder_append(b, "</strong><span>followers</span></div><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(profile.following_count))
+  CONIURA builder_append(b, "</strong><span>following</span></div></div>")
+  SI current_user.found ET current_user.user.id != profile.user_id
+    CONIURA builder_append(b, "<form method=\"post\" action=\"/perfil/")
+    CONIURA builder_append(b, CONIURA html_encode(profile.handle))
+    CONIURA builder_append(b, "/seguir\"><button type=\"submit\">")
+    SI profile.viewer_follows
+      CONIURA builder_append(b, "Following")
+    ALITER
+      CONIURA builder_append(b, "Follow")
+    FIN SI
+    CONIURA builder_append(b, "</button></form>")
+  FIN SI
+  CONIURA builder_append(b, "</div></section><section class=\"feed-grid\">")
+  DUM i < CONIURA fluxus_len(posts)
+    EVOCA SPECULUM MuralExpandidoPost ptr AD CONIURA fluxus_get(posts, i)
+    CONIURA muralx_append_post_card(b, state, static_index, locale, current_user, *ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_post_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  MuralExpandidoPost post,
+  SPECULUM NIHIL comments,
+  VERBUM flash_message,
+  FormData comment_form,
+  ValidationResult comment_vr
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA VERBUM embed_url AD CONIURA muralx_video_embed_url(post.video_url)
+  EVOCA VERBUM tag_line AD CONIURA muralx_format_tags(state, locale, post.tags_csv)
+  EVOCA REX i AD 0
+  EVOCA VERBUM cover_url AD post.cover_url
+  SI CONIURA len(CONIURA trim(cover_url)) == 0
+    VINCIRE cover_url AD CONIURA muralx_fallback_cover_url(static_index)
+  FIN SI
+  CONIURA muralx_append_header(b, state, static_index, locale, current_user)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<article class=\"post-detail\"><img class=\"detail-cover\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(cover_url))
+  CONIURA builder_append(b, "\" alt=\"")
+  CONIURA builder_append(b, CONIURA html_encode(post.title))
+  CONIURA builder_append(b, "\"><div class=\"detail-copy\"><p class=\"eyebrow\">@")
+  CONIURA builder_append(b, CONIURA html_encode(post.author_handle))
+  CONIURA builder_append(b, " • ")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_format_long_date(state, locale, post.published_at_unix)))
+  CONIURA builder_append(b, "</p><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(post.title))
+  CONIURA builder_append(b, "</h1><p class=\"lead\">")
+  CONIURA builder_append(b, CONIURA html_encode(post.excerpt))
+  CONIURA builder_append(b, "</p><p class=\"body-copy\">")
+  CONIURA builder_append(b, CONIURA html_encode(post.body))
+  CONIURA builder_append(b, "</p>")
+  SI CONIURA len(tag_line) > 0
+    CONIURA builder_append(b, "<p class=\"tag-line\">")
+    CONIURA builder_append(b, CONIURA html_encode(tag_line))
+    CONIURA builder_append(b, "</p>")
+  FIN SI
+  SI CONIURA len(embed_url) > 0
+    CONIURA builder_append(b, "<div class=\"video-frame\"><iframe src=\"")
+    CONIURA builder_append(b, CONIURA html_encode(embed_url))
+    CONIURA builder_append(b, "\" title=\"")
+    CONIURA builder_append(b, CONIURA html_encode(post.title))
+    CONIURA builder_append(b, "\" loading=\"lazy\" allowfullscreen></iframe></div>")
+  FIN SI
+  CONIURA builder_append(b, "<div class=\"social-row\"><span class=\"stat-link\">Likes ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.like_count))
+  CONIURA builder_append(b, "</span><span class=\"stat-link\">Love ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.love_count))
+  CONIURA builder_append(b, "</span><span class=\"stat-link\">Saved ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.bookmark_count))
+  CONIURA builder_append(b, "</span><span class=\"stat-link\">Views ")
+  CONIURA builder_append(b, CONIURA stringify_int(post.view_count))
+  CONIURA builder_append(b, "</span></div></div></article><section class=\"card\"><div class=\"section-head\"><h2>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_t(state, locale, "comments.title")))
+  CONIURA builder_append(b, "</h2><span class=\"badge\">")
+  CONIURA builder_append(b, CONIURA stringify_int(CONIURA fluxus_len(comments)))
+  CONIURA builder_append(b, "</span></div>")
+  DUM i < CONIURA fluxus_len(comments)
+    EVOCA SPECULUM MuralExpandidoCommentItem ptr AD CONIURA fluxus_get(comments, i)
+    CONIURA builder_append(b, "<article class=\"comment-item\"><div class=\"meta-row\"><strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).author_name))
+    CONIURA builder_append(b, "</strong><span class=\"muted\">")
+    CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_format_reltime(state, locale, (*ptr).created_at_unix)))
+    CONIURA builder_append(b, "</span></div><p>")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).body))
+    CONIURA builder_append(b, "</p></article>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "<form method=\"post\" action=\"/posts/")
+  CONIURA builder_append(b, CONIURA html_encode(post.slug))
+  CONIURA builder_append(b, "/comentarios\" class=\"stack-form\">")
+  CONIURA muralx_append_textarea(b, "Comment", "body", comment_form, comment_vr, "Share a thoughtful reply.")
+  CONIURA builder_append(b, "<button type=\"submit\">Post comment</button></form></section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_admin_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoStats stats,
+  SPECULUM NIHIL pending_comments,
+  VERBUM flash_message
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA MuralExpandidoUserLookup anon
+  VINCIRE anon.found AD FALSUM
+  CONIURA muralx_append_header(b, state, static_index, locale, anon)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<section class=\"card\"><h1>Admin-lite</h1><p class=\"lead\">Operational moderation and health overview for the expanded mural.</p><div class=\"stat-grid\"><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(stats.user_count))
+  CONIURA builder_append(b, "</strong><span>users</span></div><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(stats.post_count))
+  CONIURA builder_append(b, "</strong><span>posts</span></div><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(stats.pending_comment_count))
+  CONIURA builder_append(b, "</strong><span>pending comments</span></div><div><strong>")
+  CONIURA builder_append(b, CONIURA stringify_int(stats.trace_count))
+  CONIURA builder_append(b, "</strong><span>traces</span></div></div><div class=\"admin-actions\"><form method=\"post\" action=\"/admin-lite/cache/flush\"><button type=\"submit\">Flush public cache</button></form><a class=\"ghost-link\" href=\"/sigilos-vivos\">Ver sigilos vivos</a></div></section><section class=\"card\"><div class=\"section-head\"><h2>Pending moderation</h2></div>")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(pending_comments)
+    EVOCA SPECULUM MuralExpandidoCommentItem ptr AD CONIURA fluxus_get(pending_comments, i)
+    CONIURA builder_append(b, "<article class=\"comment-item\"><div class=\"meta-row\"><strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).author_name))
+    CONIURA builder_append(b, "</strong><span class=\"muted\">on <a href=\"/posts/")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).post_slug))
+    CONIURA builder_append(b, "\">")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).post_title))
+    CONIURA builder_append(b, "</a></span></div><p>")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).body))
+    CONIURA builder_append(b, "</p><div class=\"social-row\"><form method=\"post\" action=\"/admin-lite/comments/")
+    CONIURA builder_append(b, CONIURA stringify_int((*ptr).id))
+    CONIURA builder_append(b, "/approve\"><button type=\"submit\">Approve</button></form><form method=\"post\" action=\"/admin-lite/comments/")
+    CONIURA builder_append(b, CONIURA stringify_int((*ptr).id))
+    CONIURA builder_append(b, "/reject\"><button type=\"submit\" class=\"danger\">Reject</button></form></div></article>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA fluxus_len(pending_comments) == 0
+    CONIURA builder_append(b, "<p class=\"muted\">No pending comments.</p>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_traces_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  SPECULUM NIHIL sigils,
+  VERBUM flash_message
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA MuralExpandidoUserLookup anon
+  VINCIRE anon.found AD FALSUM
+  CONIURA muralx_append_header(b, state, static_index, locale, anon)
+  CONIURA muralx_append_flash(b, flash_message)
+  CONIURA builder_append(b, "<section class=\"card sigil-shell\"><h1>Sigilos vivos</h1><p class=\"lead\">Full animated CCT route sigils rendered from live `.ctrace` files through the canonical Civitas trace renderer. The gallery keeps the social-facing experience, while `/ops/traces` exposes the operational panel.</p><div class=\"hero-links\"><a class=\"cta\" href=\"/sigilos-vivos/export.zip\">Export trace pack</a><a class=\"ghost\" href=\"/ops/traces\">Open ops panel</a></div><div class=\"sigil-grid\">")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(sigils)
+    EVOCA SPECULUM MuralExpandidoRenderedSigil ptr AD CONIURA fluxus_get(sigils, i)
+    CONIURA builder_append(b, "<a class=\"sigil-card\" href=\"/sigilos-vivos/")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).sigil.trace_id))
+    CONIURA builder_append(b, "\"><div class=\"sigil-stage\">")
+    CONIURA builder_append(b, (*ptr).svg_markup)
+    CONIURA builder_append(b, "</div><div class=\"sigil-meta\"><strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).sigil.method))
+    CONIURA builder_append(b, " ")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).sigil.path))
+    CONIURA builder_append(b, "</strong><span>Status ")
+    CONIURA builder_append(b, CONIURA stringify_int((*ptr).sigil.status))
+    CONIURA builder_append(b, " • ")
+    CONIURA builder_append(b, CONIURA stringify_int((*ptr).sigil.duration_ms))
+    CONIURA builder_append(b, "ms • spans ")
+    CONIURA builder_append(b, CONIURA stringify_int((*ptr).sigil.span_count))
+    CONIURA builder_append(b, "</span><span class=\"muted trace-id\">")
+    CONIURA builder_append(b, CONIURA html_encode((*ptr).sigil.trace_id))
+    CONIURA builder_append(b, "</span></div></a>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA fluxus_len(sigils) == 0
+    CONIURA builder_append(b, "<p class=\"muted\">No traces indexed yet.</p>")
+  FIN SI
+  CONIURA builder_append(b, "</div></section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_render_trace_detail_page(
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoSigil sigil,
+  VERBUM rendered_svg,
+  VERBUM raw_trace_text
+) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA MuralExpandidoUserLookup anon
+  VINCIRE anon.found AD FALSUM
+  CONIURA muralx_append_header(b, state, static_index, locale, anon)
+  CONIURA builder_append(b, "<section class=\"card sigil-detail-shell\"><div class=\"sigil-detail-hero\"><div><p class=\"eyebrow\">LIVE TRACE SIGIL</p><h1>Sigilo vivo</h1><p class=\"lead\">")
+  CONIURA builder_append(b, CONIURA html_encode(sigil.trace_id))
+  CONIURA builder_append(b, "</p><p class=\"muted\">This view embeds the full animated CCT route sigil generated from the persisted `.ctrace` file through the canonical trace renderer.</p><div class=\"hero-links\"><a class=\"ghost\" href=\"/sigilos-vivos/")
+  CONIURA builder_append(b, CONIURA html_encode(sigil.trace_id))
+  CONIURA builder_append(b, "/svg\">Open raw SVG</a><a class=\"ghost\" href=\"/ops/traces/")
+  CONIURA builder_append(b, CONIURA html_encode(sigil.trace_id))
+  CONIURA builder_append(b, "\">Open ops detail</a></div></div><div class=\"sigil-detail-stage\">")
+  CONIURA builder_append(b, rendered_svg)
+  CONIURA builder_append(b, "</div></div><div class=\"trace-detail\"><article class=\"trace-span\"><strong>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA concat(sigil.method, CONIURA concat(" ", sigil.path))))
+  CONIURA builder_append(b, "</strong><span>Status ")
+  CONIURA builder_append(b, CONIURA stringify_int(sigil.status))
+  CONIURA builder_append(b, " • ")
+  CONIURA builder_append(b, CONIURA stringify_int(sigil.duration_ms))
+  CONIURA builder_append(b, "ms • spans ")
+  CONIURA builder_append(b, CONIURA stringify_int(sigil.span_count))
+  CONIURA builder_append(b, "</span><p>Indexed at ")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA muralx_datetime_short(sigil.created_at)))
+  CONIURA builder_append(b, "</p><pre>")
+  CONIURA builder_append(b, CONIURA html_encode(raw_trace_text))
+  CONIURA builder_append(b, "</pre></article>")
+  CONIURA builder_append(b, "</div></section>")
+  CONIURA muralx_append_footer(b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

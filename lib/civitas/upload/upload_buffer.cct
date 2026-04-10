@@ -1,0 +1,88 @@
+INCIPIT grimoire "civitas_upload_buffer"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../forms/multipart.cct"
+ADVOCARE "upload_types.cct"
+ADVOCARE "upload_save.cct"
+
+RITUALE upload_parse_buffer_part(VERBUM part, SPECULUM MultipartResult resultado, SPECULUM UploadConfig cfg, SPECULUM REX total_lido) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sep_marker AD CONIURA concat(CONIURA multipart_crlf(), CONIURA multipart_crlf())
+  EVOCA REX sep AD CONIURA find(part, sep_marker)
+  SI sep == -1
+    REDDE CONIURA upload_result_err(UePartHeaderMalformado)
+  FIN SI
+
+  EVOCA VERBUM headers AD CONIURA substring(part, 0, sep)
+  EVOCA VERBUM body_part AD CONIURA substring(part, sep + 4, CONIURA len(part))
+  EVOCA VERBUM disposition AD CONIURA multipart_header_value(headers, "Content-Disposition:")
+  EVOCA VERBUM field_name AD CONIURA multipart_disposition_param(disposition, "name")
+  EVOCA VERBUM filename AD CONIURA multipart_disposition_param(disposition, "filename")
+
+  SI CONIURA len(field_name) == 0
+    REDDE CONIURA upload_result_err(UePartHeaderMalformado)
+  FIN SI
+
+  VINCIRE *total_lido AD *total_lido + CONIURA len(body_part)
+  SI *total_lido > (*cfg).max_tamanho_total
+    REDDE CONIURA upload_result_err(UeExcedeuLimite)
+  FIN SI
+
+  SI CONIURA len(filename) == 0
+    SI CONIURA len(body_part) > (*cfg).max_tamanho_campo
+      REDDE CONIURA upload_result_err(UeExcedeuLimite)
+    FIN SI
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*resultado).campos, field_name, body_part)
+    REDDE CONIURA upload_result_ok(*resultado)
+  FIN SI
+
+  SI CONIURA len(body_part) > (*cfg).max_tamanho_campo
+    REDDE CONIURA upload_result_err(UeExcedeuLimite)
+  FIN SI
+
+  EVOCA VERBUM caminho_temp AD CONIURA upload_temp_path(*cfg)
+  TEMPTA
+    CONIURA write_all(caminho_temp, body_part)
+  CAPE FRACTUM erro
+    REDDE CONIURA upload_result_err(UeWriteFalhou)
+  FIN TEMPTA
+
+  EVOCA SPECULUM NIHIL saved_res AD CONIURA upload_salvar_parte(caminho_temp, filename, *cfg)
+  SI CONIURA result_is_err GENUS(UploadedFile, UploadError)(saved_res)
+    REDDE CONIURA upload_result_err(CONIURA result_unwrap_err GENUS(UploadedFile, UploadError)(saved_res))
+  FIN SI
+  CONIURA map_update_or_insert GENUS(VERBUM, UploadedFile)((*resultado).arquivos, field_name, CONIURA result_unwrap GENUS(UploadedFile, UploadError)(saved_res))
+  REDDE CONIURA upload_result_ok(*resultado)
+EXPLICIT RITUALE
+
+RITUALE upload_parse_buffer(VERBUM body, VERBUM boundary, UploadConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA MultipartResult resultado AD CONIURA upload_new_result()
+  EVOCA SPECULUM NIHIL parts AD CONIURA multipart_split_parts(body, boundary)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA REX total_lido AD 0
+
+  SI CONIURA len(body) > cfg.max_tamanho_total
+    REDDE CONIURA upload_result_err(UeExcedeuLimite)
+  FIN SI
+  SI n == 0
+    REDDE CONIURA upload_result_err(UeBoundaryMalformado)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA SPECULUM NIHIL part_res AD CONIURA upload_parse_buffer_part(*part_ptr, SPECULUM resultado, SPECULUM cfg, SPECULUM total_lido)
+    SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(part_res)
+      REDDE part_res
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA upload_result_ok(resultado)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

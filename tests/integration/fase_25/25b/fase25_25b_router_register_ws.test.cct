@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase25_25b_router_register_ws"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/websocket/websocket.cct"
+ADVOCARE "cct/option.cct"
+
+RITUALE noop_ws_connect(SPECULUM NIHIL conn_ptr, SPECULUM NIHIL ctx) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE noop_ws_message(SPECULUM NIHIL conn_ptr, WsFrame frame, SPECULUM NIHIL ctx) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE noop_ws_close(SPECULUM NIHIL conn_ptr, REX code, VERBUM reason, SPECULUM NIHIL ctx) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE noop_ws_error(SPECULUM NIHIL conn_ptr, VERBUM erro, SPECULUM NIHIL ctx) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA REX ctx AD 88
+  CONIURA ws_handler_add(SPECULUM router, "/ws/chat", noop_ws_connect, noop_ws_message, noop_ws_close, noop_ws_error, SPECULUM ctx)
+
+  EVOCA WebRequest req AD CONIURA phase25_request("GET", "/ws/chat")
+  EVOCA SPECULUM NIHIL route_opt AD CONIURA router_match_route(router, req)
+  SI CONIURA option_is_none GENUS(Route)(route_opt)
+    CONIURA option_free GENUS(Route)(route_opt)
+    REDDE 1
+  FIN SI
+
+  EVOCA Route route AD CONIURA option_unwrap GENUS(Route)(route_opt)
+  CONIURA option_free GENUS(Route)(route_opt)
+  SI CONIURA router_route_transport(route) != ROUTE_TRANSPORT_WS
+    REDDE 1
+  FIN SI
+  SI CONIURA router_route_handler_ctx(route) == NIHIL
+    REDDE 1
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

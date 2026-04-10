@@ -1,0 +1,62 @@
+INCIPIT grimoire "fase1_1e_header_bytes_overflow_returns_431_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM ready AD CONIURA tmp_file("fase1_1e_header_bytes.ready")
+  EVOCA VERBUM done AD CONIURA tmp_file("fase1_1e_header_bytes.done")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase1_1e_header_bytes.log")
+  EVOCA VERBUM reqlog AD CONIURA tmp_file("fase1_1e_header_bytes.requests.log")
+  EVOCA VERBUM stats AD CONIURA tmp_file("fase1_1e_header_bytes.stats")
+  EVOCA SPECULUM NIHIL sock
+  EVOCA VERBUM req AD "GET /meta HTTP/1.1"
+  EVOCA HttpResponse res
+
+  CONIURA cleanup_file(ready)
+  CONIURA cleanup_file(done)
+  CONIURA cleanup_file(log)
+  CONIURA cleanup_file(reqlog)
+  CONIURA cleanup_file(stats)
+
+  SI CONIURA build_probe_server(log) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA spawn_to_log(CONIURA probe_command_with_hardening(18113, 1, ready, done, reqlog, stats, 500, 500, 500, 32, 32, 4096), log) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 4000)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(ready), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Host: 127.0.0.1")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "X-Long: 1234567890123456789012345678901234567890")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+
+  VINCIRE sock AD CONIURA open_local_socket(18113)
+  SI CONIURA send_raw(sock, req) != 0
+    REDDE 4
+  FIN SI
+  VINCIRE res AD CONIURA read_http_response(sock)
+  CONIURA net_close(sock)
+
+  SI CONIURA http_response_status(res) != 431
+    REDDE 5
+  FIN SI
+  SI NON CONIURA wait_for_file(done, 4000)
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

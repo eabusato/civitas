@@ -1,0 +1,600 @@
+INCIPIT grimoire "civitas_outbox"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "events.cct"
+
+ORDO OutboxStatus
+  OUTBOX_PENDING,
+  OUTBOX_LEASED,
+  OUTBOX_PUBLISHED,
+  OUTBOX_FAILED,
+  OUTBOX_DEAD_LETTER
+FIN ORDO
+
+SIGILLUM OutboxEntry
+  entry_id: VERBUM
+  event_type: VERBUM
+  payload_json: VERBUM
+  headers_json: VERBUM
+  dedupe_key: VERBUM
+  status: OutboxStatus
+  attempts: REX
+  max_attempts: REX
+  lease_until_unix_ms: REX
+  available_at_unix_ms: REX
+  created_at_unix_ms: REX
+  published_at_unix_ms: REX
+  last_error: VERBUM
+FIN SIGILLUM
+
+SIGILLUM OutboxClaimBatch
+  entries: SPECULUM NIHIL
+  leased_count: REX
+FIN SIGILLUM
+
+SIGILLUM OutboxStore
+  backend_name: VERBUM
+  root_dir: VERBUM
+  entries_dir: VERBUM
+  index_path: VERBUM
+  default_max_attempts: REX
+FIN SIGILLUM
+
+SIGILLUM OutboxPublishReport
+  claimed_count: REX
+  published_count: REX
+  failed_count: REX
+  dead_letter_count: REX
+FIN SIGILLUM
+
+SIGILLUM OutboxTransaction
+  store: OutboxStore
+  pending_entries: SPECULUM NIHIL
+  committed: VERUM
+  rolled_back: VERUM
+FIN SIGILLUM
+
+RITUALE outbox_ok_entry_id(VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_claim_batch(OutboxClaimBatch batch) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(OutboxClaimBatch, VERBUM)(batch)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_store(OutboxStore store) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(OutboxStore, VERBUM)(store)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_report(OutboxPublishReport report) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(OutboxPublishReport, VERBUM)(report)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_entry(OutboxEntry entry) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(OutboxEntry, VERBUM)(entry)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE outbox_ok_count(REX count) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(count)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_entry_id(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERBUM, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_claim_batch(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(OutboxClaimBatch, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_store(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(OutboxStore, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_report(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(OutboxPublishReport, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_entry(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(OutboxEntry, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_err_unit(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE outbox_status_to_string(OutboxStatus status) REDDE VERBUM
+  ELIGE status
+    CASUS OUTBOX_PENDING:
+      REDDE "pending"
+    CASUS OUTBOX_LEASED:
+      REDDE "leased"
+    CASUS OUTBOX_PUBLISHED:
+      REDDE "published"
+    CASUS OUTBOX_FAILED:
+      REDDE "failed"
+    ALIOQUIN:
+      REDDE "dead_letter"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE outbox_status_from_string(VERBUM value) REDDE OutboxStatus
+  SI CONIURA compare(value, "pending") == 0
+    REDDE OUTBOX_PENDING
+  FIN SI
+  SI CONIURA compare(value, "leased") == 0
+    REDDE OUTBOX_LEASED
+  FIN SI
+  SI CONIURA compare(value, "published") == 0
+    REDDE OUTBOX_PUBLISHED
+  FIN SI
+  SI CONIURA compare(value, "failed") == 0
+    REDDE OUTBOX_FAILED
+  FIN SI
+  REDDE OUTBOX_DEAD_LETTER
+EXPLICIT RITUALE
+
+RITUALE outbox_claim_batch_new() REDDE OutboxClaimBatch
+  EVOCA OutboxClaimBatch batch
+  VINCIRE batch.entries AD CONIURA fluxus_init(MENSURA(OutboxEntry))
+  VINCIRE batch.leased_count AD 0
+  REDDE batch
+EXPLICIT RITUALE
+
+RITUALE outbox_publish_report_new() REDDE OutboxPublishReport
+  EVOCA OutboxPublishReport report
+  VINCIRE report.claimed_count AD 0
+  VINCIRE report.published_count AD 0
+  VINCIRE report.failed_count AD 0
+  VINCIRE report.dead_letter_count AD 0
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE outbox_store_entry_path(OutboxStore store, VERBUM entry_id) REDDE VERBUM
+  REDDE CONIURA path_join(store.entries_dir, CONIURA concat(entry_id, ".json"))
+EXPLICIT RITUALE
+
+RITUALE outbox_store_open(VERBUM root_dir, REX default_max_attempts) REDDE SPECULUM NIHIL
+  EVOCA OutboxStore store
+  EVOCA VERBUM normalized AD CONIURA normalize(root_dir)
+  SI CONIURA len(CONIURA trim(normalized)) == 0
+    REDDE CONIURA outbox_err_store("outbox root_dir nao pode ser vazio")
+  FIN SI
+  SI default_max_attempts <= 0
+    REDDE CONIURA outbox_err_store("outbox max_attempts precisa ser positivo")
+  FIN SI
+
+  VINCIRE store.backend_name AD "fs_json"
+  VINCIRE store.root_dir AD normalized
+  VINCIRE store.entries_dir AD CONIURA path_join(normalized, "entries")
+  VINCIRE store.index_path AD CONIURA path_join(normalized, "_index.json")
+  VINCIRE store.default_max_attempts AD default_max_attempts
+
+  TEMPTA
+    CONIURA mkdir_all(store.root_dir)
+    CONIURA mkdir_all(store.entries_dir)
+    SI NON CONIURA exists(store.index_path)
+      CONIURA json_write_file(CONIURA json_arr(), store.index_path)
+    FIN SI
+  CAPE FRACTUM error
+    REDDE CONIURA outbox_err_store(OBSECRO fractum_to_verbum(error))
+  FIN TEMPTA
+
+  REDDE CONIURA outbox_ok_store(store)
+EXPLICIT RITUALE
+
+RITUALE outbox_index_read(OutboxStore store) REDDE Json
+  SI NON CONIURA exists(store.index_path)
+    REDDE CONIURA json_arr()
+  FIN SI
+  TEMPTA
+    EVOCA Json raw AD CONIURA json_parse_file(store.index_path)
+    SI CONIURA json_is_arr(raw)
+      REDDE raw
+    FIN SI
+  CAPE FRACTUM error
+  FIN TEMPTA
+  REDDE CONIURA json_arr()
+EXPLICIT RITUALE
+
+RITUALE outbox_index_write(OutboxStore store, Json raw) REDDE SPECULUM NIHIL
+  TEMPTA
+    CONIURA json_write_file(raw, store.index_path)
+    REDDE CONIURA outbox_ok_unit()
+  CAPE FRACTUM error
+    REDDE CONIURA outbox_err_unit(OBSECRO fractum_to_verbum(error))
+  FIN TEMPTA
+  REDDE CONIURA outbox_err_unit("falha ao escrever indice do outbox")
+EXPLICIT RITUALE
+
+RITUALE outbox_index_add(OutboxStore store, VERBUM entry_id) REDDE SPECULUM NIHIL
+  EVOCA Json index_json AD CONIURA outbox_index_read(store)
+  EVOCA REX i AD 0
+  DUM i < CONIURA json_arr_len(index_json)
+    SI CONIURA compare(CONIURA json_expect_str(CONIURA json_arr_get(index_json, i)), entry_id) == 0
+      REDDE CONIURA outbox_ok_unit()
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_arr_push(index_json, CONIURA json_str(entry_id))
+  REDDE CONIURA outbox_index_write(store, index_json)
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_headers_json(EventEnvelope env) REDDE VERBUM
+  EVOCA Json out AD CONIURA json_obj()
+  CONIURA json_obj_push(out, "event_id", CONIURA json_str(env.event_id))
+  CONIURA json_obj_push(out, "occurred_at_iso", CONIURA json_str(env.occurred_at_iso))
+  CONIURA json_obj_push(out, "request_id", CONIURA json_str(env.request_id))
+  CONIURA json_obj_push(out, "actor_id", CONIURA json_str(env.actor_id))
+  CONIURA json_obj_push(out, "attributes", CONIURA outbox_event_attributes_to_json(env.attributes))
+  REDDE CONIURA json_stringify(out)
+EXPLICIT RITUALE
+
+RITUALE outbox_event_attributes_to_json(SPECULUM NIHIL attrs) REDDE Json
+  EVOCA Json out AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(attrs)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA json_obj_push(out, *key_ptr, CONIURA json_str(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(attrs, *key_ptr, "")))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE outbox_event_attributes_from_json(Json raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL attrs AD CONIURA event_attributes_new()
+  SI NON CONIURA json_is_obj(raw)
+    REDDE attrs
+  FIN SI
+  EVOCA SPECULUM NIHIL keys AD CONIURA json_keys(raw)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA event_attributes_set(attrs, *key_ptr, CONIURA json_expect_str(CONIURA json_get_key(raw, *key_ptr)))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE attrs
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_build(OutboxStore store, EventEnvelope env, VERBUM dedupe_key, REX now_unix_ms) REDDE OutboxEntry
+  EVOCA OutboxEntry entry
+  EVOCA UUID uid AD CONIURA uuid_v7()
+  VINCIRE entry.entry_id AD CONIURA uuid_to_string(uid)
+  VINCIRE entry.event_type AD env.event_type
+  VINCIRE entry.payload_json AD env.payload_json
+  VINCIRE entry.headers_json AD CONIURA outbox_entry_headers_json(env)
+  VINCIRE entry.dedupe_key AD dedupe_key
+  VINCIRE entry.status AD OUTBOX_PENDING
+  VINCIRE entry.attempts AD 0
+  VINCIRE entry.max_attempts AD store.default_max_attempts
+  VINCIRE entry.lease_until_unix_ms AD 0
+  VINCIRE entry.available_at_unix_ms AD now_unix_ms
+  VINCIRE entry.created_at_unix_ms AD now_unix_ms
+  VINCIRE entry.published_at_unix_ms AD 0
+  VINCIRE entry.last_error AD ""
+  REDDE entry
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_to_json(OutboxEntry entry) REDDE Json
+  EVOCA Json out AD CONIURA json_obj()
+  CONIURA json_obj_push(out, "entry_id", CONIURA json_str(entry.entry_id))
+  CONIURA json_obj_push(out, "event_type", CONIURA json_str(entry.event_type))
+  CONIURA json_obj_push(out, "payload_json", CONIURA json_str(entry.payload_json))
+  CONIURA json_obj_push(out, "headers_json", CONIURA json_str(entry.headers_json))
+  CONIURA json_obj_push(out, "dedupe_key", CONIURA json_str(entry.dedupe_key))
+  CONIURA json_obj_push(out, "status", CONIURA json_str(CONIURA outbox_status_to_string(entry.status)))
+  CONIURA json_obj_push(out, "attempts", CONIURA json_num(cast GENUS(UMBRA)(entry.attempts)))
+  CONIURA json_obj_push(out, "max_attempts", CONIURA json_num(cast GENUS(UMBRA)(entry.max_attempts)))
+  CONIURA json_obj_push(out, "lease_until_unix_ms", CONIURA json_num(cast GENUS(UMBRA)(entry.lease_until_unix_ms)))
+  CONIURA json_obj_push(out, "available_at_unix_ms", CONIURA json_num(cast GENUS(UMBRA)(entry.available_at_unix_ms)))
+  CONIURA json_obj_push(out, "created_at_unix_ms", CONIURA json_num(cast GENUS(UMBRA)(entry.created_at_unix_ms)))
+  CONIURA json_obj_push(out, "published_at_unix_ms", CONIURA json_num(cast GENUS(UMBRA)(entry.published_at_unix_ms)))
+  CONIURA json_obj_push(out, "last_error", CONIURA json_str(entry.last_error))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_from_json(Json raw) REDDE OutboxEntry
+  EVOCA OutboxEntry entry
+  VINCIRE entry.entry_id AD CONIURA json_expect_str(CONIURA json_get_key(raw, "entry_id"))
+  VINCIRE entry.event_type AD CONIURA json_expect_str(CONIURA json_get_key(raw, "event_type"))
+  VINCIRE entry.payload_json AD CONIURA json_expect_str(CONIURA json_get_key(raw, "payload_json"))
+  VINCIRE entry.headers_json AD CONIURA json_expect_str(CONIURA json_get_key(raw, "headers_json"))
+  VINCIRE entry.dedupe_key AD CONIURA json_expect_str(CONIURA json_get_key(raw, "dedupe_key"))
+  VINCIRE entry.status AD CONIURA outbox_status_from_string(CONIURA json_expect_str(CONIURA json_get_key(raw, "status")))
+  VINCIRE entry.attempts AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "attempts")))
+  VINCIRE entry.max_attempts AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "max_attempts")))
+  VINCIRE entry.lease_until_unix_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "lease_until_unix_ms")))
+  VINCIRE entry.available_at_unix_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "available_at_unix_ms")))
+  VINCIRE entry.created_at_unix_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "created_at_unix_ms")))
+  VINCIRE entry.published_at_unix_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(raw, "published_at_unix_ms")))
+  VINCIRE entry.last_error AD CONIURA json_expect_str(CONIURA json_get_key(raw, "last_error"))
+  REDDE entry
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_write(OutboxStore store, OutboxEntry entry) REDDE SPECULUM NIHIL
+  TEMPTA
+    CONIURA json_write_file(CONIURA outbox_entry_to_json(entry), CONIURA outbox_store_entry_path(store, entry.entry_id))
+    REDDE CONIURA outbox_ok_unit()
+  CAPE FRACTUM error
+    REDDE CONIURA outbox_err_unit(OBSECRO fractum_to_verbum(error))
+  FIN TEMPTA
+  REDDE CONIURA outbox_err_unit("falha ao persistir entry do outbox")
+EXPLICIT RITUALE
+
+RITUALE outbox_get_entry(SPECULUM OutboxStore store, VERBUM entry_id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM path AD CONIURA outbox_store_entry_path(*store, entry_id)
+  SI NON CONIURA exists(path)
+    REDDE CONIURA outbox_err_entry("entry do outbox nao encontrada")
+  FIN SI
+  TEMPTA
+    EVOCA Json raw AD CONIURA json_parse_file(path)
+    REDDE CONIURA outbox_ok_entry(CONIURA outbox_entry_from_json(raw))
+  CAPE FRACTUM error
+    REDDE CONIURA outbox_err_entry(OBSECRO fractum_to_verbum(error))
+  FIN TEMPTA
+  REDDE CONIURA outbox_err_entry("entry do outbox corrompida")
+EXPLICIT RITUALE
+
+RITUALE outbox_list_entries(SPECULUM OutboxStore store) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(OutboxEntry))
+  EVOCA Json index_json AD CONIURA outbox_index_read(*store)
+  EVOCA REX i AD 0
+  DUM i < CONIURA json_arr_len(index_json)
+    EVOCA VERBUM entry_id AD CONIURA json_expect_str(CONIURA json_arr_get(index_json, i))
+    EVOCA SPECULUM NIHIL entry_res AD CONIURA outbox_get_entry(store, entry_id)
+    SI NON CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(entry_res)
+      EVOCA OutboxEntry entry AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(entry_res)
+      CONIURA fluxus_push(out, SPECULUM entry)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE outbox_enqueue(SPECULUM OutboxStore store, EventEnvelope env, VERBUM dedupe_key) REDDE SPECULUM NIHIL
+  EVOCA OutboxEntry entry AD CONIURA outbox_entry_build(*store, env, dedupe_key, CONIURA now_ms())
+  EVOCA SPECULUM NIHIL write_res AD CONIURA outbox_entry_write(*store, entry)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(write_res)
+    REDDE CONIURA outbox_err_entry_id(CONIURA result_unwrap_err GENUS(REX, VERBUM)(write_res))
+  FIN SI
+  EVOCA SPECULUM NIHIL index_res AD CONIURA outbox_index_add(*store, entry.entry_id)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(index_res)
+    REDDE CONIURA outbox_err_entry_id(CONIURA result_unwrap_err GENUS(REX, VERBUM)(index_res))
+  FIN SI
+  REDDE CONIURA outbox_ok_entry_id(entry.entry_id)
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_is_claimable(OutboxEntry entry, REX now_unix_ms) REDDE VERUM
+  SI entry.status == OUTBOX_PENDING
+    REDDE entry.available_at_unix_ms <= now_unix_ms
+  FIN SI
+  SI entry.status == OUTBOX_FAILED
+    REDDE entry.available_at_unix_ms <= now_unix_ms
+  FIN SI
+  SI entry.status == OUTBOX_LEASED
+    REDDE entry.lease_until_unix_ms <= now_unix_ms
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE outbox_claim_batch(SPECULUM OutboxStore store, REX batch_size, REX lease_ms, REX now_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA OutboxClaimBatch batch AD CONIURA outbox_claim_batch_new()
+  EVOCA Json index_json AD CONIURA outbox_index_read(*store)
+  EVOCA REX i AD 0
+
+  DUM i < CONIURA json_arr_len(index_json)
+    SI batch_size > 0 ET batch.leased_count >= batch_size
+      REDDE CONIURA outbox_ok_claim_batch(batch)
+    FIN SI
+    EVOCA VERBUM entry_id AD CONIURA json_expect_str(CONIURA json_arr_get(index_json, i))
+    EVOCA SPECULUM NIHIL entry_res AD CONIURA outbox_get_entry(store, entry_id)
+    SI NON CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(entry_res)
+      EVOCA OutboxEntry entry AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(entry_res)
+      SI CONIURA outbox_entry_is_claimable(entry, now_unix_ms)
+        VINCIRE entry.status AD OUTBOX_LEASED
+        VINCIRE entry.lease_until_unix_ms AD now_unix_ms + lease_ms
+        EVOCA SPECULUM NIHIL write_res AD CONIURA outbox_entry_write(*store, entry)
+        SI CONIURA result_is_err GENUS(REX, VERBUM)(write_res)
+          REDDE CONIURA outbox_err_claim_batch(CONIURA result_unwrap_err GENUS(REX, VERBUM)(write_res))
+        FIN SI
+        CONIURA fluxus_push(batch.entries, SPECULUM entry)
+        VINCIRE batch.leased_count AD batch.leased_count + 1
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA outbox_ok_claim_batch(batch)
+EXPLICIT RITUALE
+
+RITUALE outbox_mark_published(SPECULUM OutboxStore store, VERBUM entry_id, REX published_at_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL entry_res AD CONIURA outbox_get_entry(store, entry_id)
+  SI CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(entry_res)
+    REDDE CONIURA outbox_err_unit(CONIURA result_unwrap_err GENUS(OutboxEntry, VERBUM)(entry_res))
+  FIN SI
+  EVOCA OutboxEntry entry AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(entry_res)
+  VINCIRE entry.status AD OUTBOX_PUBLISHED
+  VINCIRE entry.lease_until_unix_ms AD 0
+  VINCIRE entry.published_at_unix_ms AD published_at_unix_ms
+  VINCIRE entry.last_error AD ""
+  REDDE CONIURA outbox_entry_write(*store, entry)
+EXPLICIT RITUALE
+
+RITUALE outbox_mark_failed(SPECULUM OutboxStore store, VERBUM entry_id, VERBUM error_message, REX next_retry_unix_ms, VERUM move_to_dead_letter) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL entry_res AD CONIURA outbox_get_entry(store, entry_id)
+  SI CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(entry_res)
+    REDDE CONIURA outbox_err_unit(CONIURA result_unwrap_err GENUS(OutboxEntry, VERBUM)(entry_res))
+  FIN SI
+  EVOCA OutboxEntry entry AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(entry_res)
+  VINCIRE entry.attempts AD entry.attempts + 1
+  VINCIRE entry.last_error AD error_message
+  VINCIRE entry.lease_until_unix_ms AD 0
+  VINCIRE entry.available_at_unix_ms AD next_retry_unix_ms
+  SI move_to_dead_letter VEL entry.attempts >= entry.max_attempts
+    VINCIRE entry.status AD OUTBOX_DEAD_LETTER
+  ALITER
+    VINCIRE entry.status AD OUTBOX_FAILED
+  FIN SI
+  REDDE CONIURA outbox_entry_write(*store, entry)
+EXPLICIT RITUALE
+
+RITUALE outbox_release_lease(SPECULUM OutboxStore store, VERBUM entry_id, REX next_retry_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL entry_res AD CONIURA outbox_get_entry(store, entry_id)
+  SI CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(entry_res)
+    REDDE CONIURA outbox_err_unit(CONIURA result_unwrap_err GENUS(OutboxEntry, VERBUM)(entry_res))
+  FIN SI
+  EVOCA OutboxEntry entry AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(entry_res)
+  VINCIRE entry.status AD OUTBOX_PENDING
+  VINCIRE entry.lease_until_unix_ms AD 0
+  VINCIRE entry.available_at_unix_ms AD next_retry_unix_ms
+  REDDE CONIURA outbox_entry_write(*store, entry)
+EXPLICIT RITUALE
+
+RITUALE outbox_entry_to_event(OutboxEntry entry) REDDE EventEnvelope
+  EVOCA EventEnvelope env
+  EVOCA Json headers AD CONIURA json_parse(entry.headers_json)
+  EVOCA SPECULUM NIHIL attrs AD CONIURA outbox_event_attributes_from_json(CONIURA json_get_key(headers, "attributes"))
+  CONIURA event_envelope_fill(
+    SPECULUM env,
+    entry.event_type,
+    CONIURA json_expect_str(CONIURA json_get_key(headers, "event_id")),
+    CONIURA json_expect_str(CONIURA json_get_key(headers, "occurred_at_iso")),
+    CONIURA json_expect_str(CONIURA json_get_key(headers, "request_id")),
+    CONIURA json_expect_str(CONIURA json_get_key(headers, "actor_id")),
+    attrs,
+    entry.payload_json
+  )
+  REDDE env
+EXPLICIT RITUALE
+
+RITUALE outbox_publish_claimed(SPECULUM OutboxStore store, EventBus bus, OutboxClaimBatch batch, REX now_unix_ms) REDDE OutboxPublishReport
+  EVOCA OutboxPublishReport report AD CONIURA outbox_publish_report_new()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(batch.entries)
+
+  VINCIRE report.claimed_count AD batch.leased_count
+  DUM i < n
+    EVOCA SPECULUM OutboxEntry entry_ptr AD CONIURA fluxus_get(batch.entries, i)
+    EVOCA EventEnvelope env AD CONIURA outbox_entry_to_event(*entry_ptr)
+    EVOCA EventDispatchReport event_report AD CONIURA event_publish(bus, env)
+    SI event_report.failed_count == 0
+      EVOCA SPECULUM NIHIL mark_res AD CONIURA outbox_mark_published(store, (*entry_ptr).entry_id, now_unix_ms)
+      SI CONIURA result_is_err GENUS(REX, VERBUM)(mark_res)
+        VINCIRE report.failed_count AD report.failed_count + 1
+      ALITER
+        VINCIRE report.published_count AD report.published_count + 1
+      FIN SI
+    ALITER
+      EVOCA VERBUM error_message AD event_report.first_error
+      SI CONIURA len(error_message) == 0
+        VINCIRE error_message AD "event publish failed"
+      FIN SI
+      CONIURA outbox_mark_failed(store, (*entry_ptr).entry_id, error_message, now_unix_ms, (*entry_ptr).attempts + 1 >= (*entry_ptr).max_attempts)
+      EVOCA SPECULUM NIHIL updated_res AD CONIURA outbox_get_entry(store, (*entry_ptr).entry_id)
+      SI NON CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(updated_res)
+        EVOCA OutboxEntry updated AD CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(updated_res)
+        SI updated.status == OUTBOX_DEAD_LETTER
+          VINCIRE report.dead_letter_count AD report.dead_letter_count + 1
+        ALITER
+          VINCIRE report.failed_count AD report.failed_count + 1
+        FIN SI
+      ALITER
+        VINCIRE report.failed_count AD report.failed_count + 1
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE outbox_after_commit_publish(SPECULUM OutboxStore store, EventBus bus, REX batch_size, REX lease_ms, REX now_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL batch_res AD CONIURA outbox_claim_batch(store, batch_size, lease_ms, now_unix_ms)
+  SI CONIURA result_is_err GENUS(OutboxClaimBatch, VERBUM)(batch_res)
+    REDDE CONIURA outbox_err_report(CONIURA result_unwrap_err GENUS(OutboxClaimBatch, VERBUM)(batch_res))
+  FIN SI
+  REDDE CONIURA outbox_ok_report(CONIURA outbox_publish_claimed(store, bus, CONIURA result_unwrap GENUS(OutboxClaimBatch, VERBUM)(batch_res), now_unix_ms))
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_begin(OutboxStore store) REDDE OutboxTransaction
+  EVOCA OutboxTransaction tx
+  CONIURA outbox_tx_init(SPECULUM tx, store)
+  REDDE tx
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_init(SPECULUM OutboxTransaction tx, OutboxStore store) REDDE NIHIL
+  VINCIRE (*tx).store AD store
+  VINCIRE (*tx).pending_entries AD CONIURA fluxus_init(MENSURA(OutboxEntry))
+  VINCIRE (*tx).committed AD FALSUM
+  VINCIRE (*tx).rolled_back AD FALSUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_enqueue(SPECULUM OutboxTransaction tx, EventEnvelope env, VERBUM dedupe_key) REDDE SPECULUM NIHIL
+  SI (*tx).committed
+    REDDE CONIURA outbox_err_entry_id("transacao do outbox ja foi commitada")
+  FIN SI
+  SI (*tx).rolled_back
+    REDDE CONIURA outbox_err_entry_id("transacao do outbox ja foi revertida")
+  FIN SI
+  EVOCA OutboxEntry entry AD CONIURA outbox_entry_build((*tx).store, env, dedupe_key, CONIURA now_ms())
+  CONIURA fluxus_push((*tx).pending_entries, SPECULUM entry)
+  REDDE CONIURA outbox_ok_entry_id(entry.entry_id)
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_commit(SPECULUM OutboxTransaction tx) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*tx).pending_entries)
+  SI (*tx).rolled_back
+    REDDE CONIURA outbox_err_unit("transacao do outbox ja foi revertida")
+  FIN SI
+  SI (*tx).committed
+    REDDE CONIURA outbox_ok_count(0)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM OutboxEntry entry_ptr AD CONIURA fluxus_get((*tx).pending_entries, i)
+    EVOCA SPECULUM NIHIL write_res AD CONIURA outbox_entry_write((*tx).store, *entry_ptr)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(write_res)
+      REDDE CONIURA outbox_err_unit(CONIURA result_unwrap_err GENUS(REX, VERBUM)(write_res))
+    FIN SI
+    EVOCA SPECULUM NIHIL index_res AD CONIURA outbox_index_add((*tx).store, (*entry_ptr).entry_id)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(index_res)
+      REDDE CONIURA outbox_err_unit(CONIURA result_unwrap_err GENUS(REX, VERBUM)(index_res))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE (*tx).committed AD VERUM
+  REDDE CONIURA outbox_ok_count(n)
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_rollback(SPECULUM OutboxTransaction tx) REDDE NIHIL
+  CONIURA fluxus_clear((*tx).pending_entries)
+  VINCIRE (*tx).rolled_back AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE outbox_tx_commit_and_publish(SPECULUM OutboxTransaction tx, EventBus bus, REX batch_size, REX lease_ms, REX now_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL commit_res AD CONIURA outbox_tx_commit(tx)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(commit_res)
+    REDDE CONIURA outbox_err_report(CONIURA result_unwrap_err GENUS(REX, VERBUM)(commit_res))
+  FIN SI
+  REDDE CONIURA outbox_after_commit_publish(SPECULUM (*tx).store, bus, batch_size, lease_ms, now_unix_ms)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

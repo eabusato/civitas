@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase6_6d_breadcrumbs_html_and_json_ld_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/breadcrumbs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL items AD CONIURA fluxus_init(MENSURA(BreadcrumbItem))
+  EVOCA BreadcrumbItem first
+  EVOCA BreadcrumbItem second
+  EVOCA BreadcrumbItem third
+  EVOCA VERBUM html AD ""
+  EVOCA VERBUM json_ld AD ""
+
+  VINCIRE first AD CONIURA breadcrumb_item("Inicio", "/", FALSUM)
+  VINCIRE second AD CONIURA breadcrumb_item("Posts", "/posts", FALSUM)
+  VINCIRE third AD CONIURA breadcrumb_item("Como usar Civitas", "/posts/como-usar", VERUM)
+  CONIURA fluxus_push(items, SPECULUM first)
+  CONIURA fluxus_push(items, SPECULUM second)
+  CONIURA fluxus_push(items, SPECULUM third)
+
+  VINCIRE html AD CONIURA breadcrumbs_html(items, "breadcrumbs")
+  VINCIRE json_ld AD CONIURA breadcrumbs_json_ld("https://civitas.dev", items)
+
+  SI CONIURA find(html, "schema.org/BreadcrumbList") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "aria-current=\"page\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "href=\"/posts/como-usar\"") != -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(json_ld, "\"position\":3") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(json_ld, "https://civitas.dev/posts") == -1
+    REDDE 5
+  FIN SI
+  SI CONIURA find(json_ld, "BreadcrumbList") == -1
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

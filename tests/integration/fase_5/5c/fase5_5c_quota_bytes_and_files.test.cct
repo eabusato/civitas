@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase5_5c_quota_bytes_and_files_test"
+
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL store AD CONIURA abuse_quota_store_new()
+  EVOCA QuotaPolicy policy AD CONIURA quota_policy_make(1000, 3600, 2)
+  EVOCA QuotaCheckResult result
+
+  VINCIRE result AD CONIURA quota_check(store, "user-1", policy, 500, 1000)
+  SI result != QcrAllowed
+    REDDE 1
+  FIN SI
+  CONIURA quota_record_upload(store, "user-1", 500, 1000)
+
+  VINCIRE result AD CONIURA quota_check(store, "user-1", policy, 600, 1001)
+  SI result != QcrExceededBytes
+    REDDE 2
+  FIN SI
+
+  VINCIRE result AD CONIURA quota_check(store, "user-1", policy, 400, 1002)
+  SI result != QcrAllowed
+    REDDE 3
+  FIN SI
+  CONIURA quota_record_upload(store, "user-1", 400, 1002)
+
+  VINCIRE result AD CONIURA quota_check(store, "user-1", policy, 10, 1003)
+  SI result != QcrExceededFiles
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

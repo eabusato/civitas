@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase28_28b_load_test_error_route_fails"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/load_test.cct"
+ADVOCARE "../../../../lib/civitas/load_test/load_test.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA phase28_load_router()
+  EVOCA LoadConfig cfg AD CONIURA load_config_default()
+  VINCIRE cfg.n_requests AD 12
+  EVOCA LoadRoute route_ok AD CONIURA load_route_new("GET", "/fast")
+  VINCIRE route_ok.weight AD 1
+  EVOCA LoadRoute route_fail AD CONIURA load_route_new("GET", "/error")
+  VINCIRE route_fail.weight AD 1
+  CONIURA load_config_add_route(SPECULUM cfg, route_ok)
+  CONIURA load_config_add_route(SPECULUM cfg, route_fail)
+  EVOCA LoadResult result AD CONIURA load_test_run_inprocess(SPECULUM router, cfg)
+  SI result.requests_error == 0
+    REDDE 1
+  FIN SI
+  SI result.approved
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

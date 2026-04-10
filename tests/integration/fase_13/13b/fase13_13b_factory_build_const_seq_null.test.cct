@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase13_13b_factory_build_const_seq_null"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_seq.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_build.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA factory_seq_reset()
+  EVOCA FactoryDef def AD CONIURA factory_def_new("posts")
+  CONIURA factory_def_add_const(def, "titulo", "Hello")
+  CONIURA factory_def_add_seq(def, "slug", "post-")
+  CONIURA factory_def_add_nulo(def, "email")
+  EVOCA Json obj AD CONIURA factory_build(def)
+  SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(obj, "titulo")), "Hello") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(obj, "slug")), "post-1") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA json_is_null(CONIURA json_get_key(obj, "email"))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

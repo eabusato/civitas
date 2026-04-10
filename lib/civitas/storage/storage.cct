@@ -1,0 +1,360 @@
+INCIPIT grimoire "civitas_storage"
+
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../core/settings.cct"
+ADVOCARE "../core/settings_schema.cct"
+ADVOCARE "../core/storage_settings.cct"
+
+SIGILLUM StorageConfig
+  root_dir: VERBUM
+  url_base_public: VERBUM
+  url_base_private: VERBUM
+  tmp_max_age_minutos: REX
+  naming_policy: MediaNamingPolicy
+FIN SIGILLUM
+
+SIGILLUM StorageGcReport
+  arquivos_verificados: REX
+  orfaos_removidos: REX
+  bytes_liberados: REX
+FIN SIGILLUM
+
+SIGILLUM StorageTopology
+  app_name: VERBUM
+  base_dir: VERBUM
+  db_dir: VERBUM
+  media_dir: VERBUM
+  media_tmp_dir: VERBUM
+  media_processed_dir: VERBUM
+  media_thumbs_dir: VERBUM
+  media_private_dir: VERBUM
+  cache_dir: VERBUM
+  cache_templates_dir: VERBUM
+  cache_queries_dir: VERBUM
+  backups_dir: VERBUM
+  backups_db_dir: VERBUM
+  backups_media_dir: VERBUM
+  logs_dir: VERBUM
+  run_dir: VERBUM
+  pid_file: VERBUM
+FIN SIGILLUM
+
+RITUALE storage_config_make(
+  VERBUM root_dir,
+  VERBUM url_base_public,
+  VERBUM url_base_private,
+  REX tmp_max_age_minutos,
+  MediaNamingPolicy naming_policy
+) REDDE StorageConfig
+  EVOCA StorageConfig cfg
+  VINCIRE cfg.root_dir AD root_dir
+  VINCIRE cfg.url_base_public AD url_base_public
+  VINCIRE cfg.url_base_private AD url_base_private
+  VINCIRE cfg.tmp_max_age_minutos AD tmp_max_age_minutos
+  VINCIRE cfg.naming_policy AD naming_policy
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE storage_gc_report_new() REDDE StorageGcReport
+  EVOCA StorageGcReport report
+  VINCIRE report.arquivos_verificados AD 0
+  VINCIRE report.orfaos_removidos AD 0
+  VINCIRE report.bytes_liberados AD 0
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE storage_topology_new(VERBUM app_name, VERBUM base_dir, VERBUM logs_dir) REDDE StorageTopology
+  EVOCA StorageTopology topo
+  EVOCA VERBUM normalized_base AD CONIURA normalize(base_dir)
+  EVOCA VERBUM normalized_logs AD CONIURA normalize(logs_dir)
+  VINCIRE topo.app_name AD app_name
+  VINCIRE topo.base_dir AD normalized_base
+  VINCIRE topo.db_dir AD CONIURA path_join(normalized_base, "db")
+  VINCIRE topo.media_dir AD CONIURA path_join(normalized_base, "media")
+  VINCIRE topo.media_tmp_dir AD CONIURA path_join(topo.media_dir, "tmp")
+  VINCIRE topo.media_processed_dir AD CONIURA path_join(topo.media_dir, "processed")
+  VINCIRE topo.media_thumbs_dir AD CONIURA path_join(topo.media_dir, "thumbs")
+  VINCIRE topo.media_private_dir AD CONIURA path_join(topo.media_dir, "private")
+  VINCIRE topo.cache_dir AD CONIURA path_join(normalized_base, "cache")
+  VINCIRE topo.cache_templates_dir AD CONIURA path_join(topo.cache_dir, "templates")
+  VINCIRE topo.cache_queries_dir AD CONIURA path_join(topo.cache_dir, "queries")
+  VINCIRE topo.backups_dir AD CONIURA path_join(normalized_base, "backups")
+  VINCIRE topo.backups_db_dir AD CONIURA path_join(topo.backups_dir, "db")
+  VINCIRE topo.backups_media_dir AD CONIURA path_join(topo.backups_dir, "media")
+  VINCIRE topo.logs_dir AD normalized_logs
+  VINCIRE topo.run_dir AD CONIURA path_join(normalized_base, "run")
+  VINCIRE topo.pid_file AD CONIURA path_join(topo.run_dir, "civitas.pid")
+  REDDE topo
+EXPLICIT RITUALE
+
+RITUALE storage_topology_from_env(VERBUM app_name) REDDE StorageTopology
+  EVOCA VERBUM data_dir AD CONIURA getenv("CIVITAS_DATA_DIR")
+  EVOCA VERBUM logs_dir AD CONIURA getenv("CIVITAS_LOG_DIR")
+  SI CONIURA len(data_dir) == 0
+    VINCIRE data_dir AD CONIURA getenv("DATA_DIR")
+  FIN SI
+  SI CONIURA len(logs_dir) == 0
+    VINCIRE logs_dir AD CONIURA getenv("LOG_DIR")
+  FIN SI
+  SI CONIURA len(data_dir) == 0
+    VINCIRE data_dir AD CONIURA concat("/var/lib/civitas/", app_name)
+  FIN SI
+  SI CONIURA len(logs_dir) == 0
+    VINCIRE logs_dir AD CONIURA concat("/var/log/civitas/", app_name)
+  FIN SI
+  REDDE CONIURA storage_topology_new(app_name, data_dir, logs_dir)
+EXPLICIT RITUALE
+
+RITUALE storage_topology_ensure_dirs(StorageTopology topo) REDDE NIHIL
+  CONIURA mkdir_all(topo.base_dir)
+  CONIURA mkdir_all(topo.db_dir)
+  CONIURA mkdir_all(topo.media_dir)
+  CONIURA mkdir_all(topo.media_tmp_dir)
+  CONIURA mkdir_all(topo.media_processed_dir)
+  CONIURA mkdir_all(topo.media_thumbs_dir)
+  CONIURA mkdir_all(topo.media_private_dir)
+  CONIURA mkdir_all(topo.cache_dir)
+  CONIURA mkdir_all(topo.cache_templates_dir)
+  CONIURA mkdir_all(topo.cache_queries_dir)
+  CONIURA mkdir_all(topo.backups_dir)
+  CONIURA mkdir_all(topo.backups_db_dir)
+  CONIURA mkdir_all(topo.backups_media_dir)
+  CONIURA mkdir_all(topo.logs_dir)
+  CONIURA mkdir_all(topo.run_dir)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE storage_topology_db_path(StorageTopology topo, VERBUM db_name) REDDE VERBUM
+  REDDE CONIURA path_join(topo.db_dir, CONIURA concat(db_name, ".db"))
+EXPLICIT RITUALE
+
+RITUALE storage_topology_main_db_path(StorageTopology topo) REDDE VERBUM
+  REDDE CONIURA storage_topology_db_path(topo, "main")
+EXPLICIT RITUALE
+
+RITUALE storage_topology_sessions_db_path(StorageTopology topo) REDDE VERBUM
+  REDDE CONIURA storage_topology_db_path(topo, "sessions")
+EXPLICIT RITUALE
+
+RITUALE storage_topology_media_dir(StorageTopology topo, VERBUM subdir) REDDE VERBUM
+  SI CONIURA compare(subdir, "tmp") == 0
+    REDDE topo.media_tmp_dir
+  FIN SI
+  SI CONIURA compare(subdir, "processed") == 0
+    REDDE topo.media_processed_dir
+  FIN SI
+  SI CONIURA compare(subdir, "thumbs") == 0
+    REDDE topo.media_thumbs_dir
+  FIN SI
+  SI CONIURA compare(subdir, "private") == 0
+    REDDE topo.media_private_dir
+  FIN SI
+  REDDE topo.media_tmp_dir
+EXPLICIT RITUALE
+
+RITUALE storage_topology_media_path(StorageTopology topo, VERBUM subdir, VERBUM file_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA storage_topology_media_dir(topo, subdir), file_name)
+EXPLICIT RITUALE
+
+RITUALE storage_topology_promote_tmp(StorageTopology topo, VERBUM tmp_name, VERBUM final_name) REDDE NIHIL
+  CONIURA rename(
+    CONIURA storage_topology_media_path(topo, "tmp", tmp_name),
+    CONIURA storage_topology_media_path(topo, "processed", final_name)
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE storage_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA storage_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE storage_copy_tree(VERBUM src, VERBUM dst) REDDE NIHIL
+  SI CONIURA is_file(src)
+    CONIURA mkdir_all(CONIURA parent(dst))
+    CONIURA copy(src, dst)
+    REDDE
+  FIN SI
+  CONIURA mkdir_all(dst)
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(src)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA storage_copy_tree(
+      CONIURA path_join(src, *name_ptr),
+      CONIURA path_join(dst, *name_ptr)
+    )
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE storage_dir_size_bytes(VERBUM path) REDDE REX
+  SI NON CONIURA exists(path)
+    REDDE 0
+  FIN SI
+  SI CONIURA is_file(path)
+    REDDE CONIURA size(path)
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX total AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    VINCIRE total AD total + CONIURA storage_dir_size_bytes(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE storage_du_mb(VERBUM path) REDDE REX
+  REDDE CONIURA storage_dir_size_bytes(path) / (1024 * 1024)
+EXPLICIT RITUALE
+
+RITUALE storage_tmp_sweep_dir(VERBUM path, REX cutoff_ms) REDDE REX
+  SI NON CONIURA exists(path)
+    REDDE 0
+  FIN SI
+  SI CONIURA is_file(path)
+    SI CONIURA modified_time(path) <= cutoff_ms
+      CONIURA delete_file(path)
+      REDDE 1
+    FIN SI
+    REDDE 0
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  EVOCA REX removed AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    VINCIRE removed AD removed + CONIURA storage_tmp_sweep_dir(CONIURA path_join(path, *name_ptr), cutoff_ms)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+
+  SI CONIURA is_dir(path)
+    EVOCA SPECULUM NIHIL after_entries AD CONIURA list_dir(path)
+    SI CONIURA fluxus_len(after_entries) == 0
+      CONIURA delete_dir(path)
+    FIN SI
+    CONIURA fluxus_free(after_entries)
+  FIN SI
+
+  REDDE removed
+EXPLICIT RITUALE
+
+RITUALE storage_topology_tmp_sweep(StorageTopology topo, REX max_age_seconds) REDDE REX
+  EVOCA REX cutoff_ms AD CONIURA now_ms() - (max_age_seconds * 1000)
+  REDDE CONIURA storage_tmp_sweep_dir(topo.media_tmp_dir, cutoff_ms)
+EXPLICIT RITUALE
+
+RITUALE storage_config_from_storage_settings(StorageSettings settings) REDDE StorageConfig
+  REDDE CONIURA storage_config_make(
+    settings.root_dir,
+    settings.public_base_url,
+    settings.private_base_url,
+    settings.tmp_max_age_minutes,
+    MEDIA_NAMING_UUID_WITH_EXT
+  )
+EXPLICIT RITUALE
+
+RITUALE storage_config_from_settings(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL storage_res AD CONIURA settings_storage(settings)
+  SI CONIURA result_is_err GENUS(StorageSettings, VERBUM)(storage_res)
+    REDDE CONIURA Err GENUS(StorageConfig, VERBUM)(CONIURA result_unwrap_err GENUS(StorageSettings, VERBUM)(storage_res))
+  FIN SI
+  REDDE CONIURA Ok GENUS(StorageConfig, VERBUM)(
+    CONIURA storage_config_from_storage_settings(
+      CONIURA result_unwrap GENUS(StorageSettings, VERBUM)(storage_res)
+    )
+  )
+EXPLICIT RITUALE
+
+RITUALE storage_open(StorageConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA MediaStoreOptions opts AD CONIURA media_store_default_options(cfg.root_dir)
+  VINCIRE opts.naming_policy AD cfg.naming_policy
+  VINCIRE opts.checksum_algorithm AD "sha256"
+
+  EVOCA SPECULUM NIHIL open_res AD CONIURA media_store_open(opts)
+  SI CONIURA result_is_err GENUS(MediaStore, VERBUM)(open_res)
+    REDDE CONIURA Err GENUS(MediaStore, VERBUM)(CONIURA result_unwrap_err GENUS(MediaStore, VERBUM)(open_res))
+  FIN SI
+
+  EVOCA MediaStore store AD CONIURA result_unwrap GENUS(MediaStore, VERBUM)(open_res)
+  EVOCA SPECULUM NIHIL layout_res AD CONIURA media_store_ensure_layout(store)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(layout_res)
+    REDDE CONIURA Err GENUS(MediaStore, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(layout_res))
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(MediaStore, VERBUM)(store)
+EXPLICIT RITUALE
+
+RITUALE storage_put_tmp(MediaStore store, VERBUM source_path, VERBUM original_filename) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL put_res AD CONIURA media_store_put_file(store, MEDIA_ZONE_TMP, source_path, original_filename)
+  SI CONIURA result_is_ok GENUS(MediaArtifact, VERBUM)(put_res) ET CONIURA exists(source_path)
+    CONIURA delete_file(source_path)
+  FIN SI
+  REDDE put_res
+EXPLICIT RITUALE
+
+RITUALE storage_promote(MediaStore store, MediaArtifact artifact, MediaZone destination) REDDE SPECULUM NIHIL
+  REDDE CONIURA media_store_promote(store, artifact, destination)
+EXPLICIT RITUALE
+
+RITUALE storage_copy(MediaStore store, MediaArtifact artifact, MediaZone destination) REDDE SPECULUM NIHIL
+  REDDE CONIURA media_store_copy(store, artifact, destination)
+EXPLICIT RITUALE
+
+RITUALE storage_delete(MediaStore store, MediaArtifact artifact) REDDE SPECULUM NIHIL
+  REDDE CONIURA media_store_delete(store, artifact)
+EXPLICIT RITUALE
+
+RITUALE storage_exists(MediaStore store, MediaArtifact artifact) REDDE VERUM
+  REDDE CONIURA media_store_exists(store, artifact)
+EXPLICIT RITUALE
+
+RITUALE storage_absolute_path(MediaStore store, MediaArtifact artifact) REDDE VERBUM
+  REDDE CONIURA media_store_absolute_path(store, artifact)
+EXPLICIT RITUALE
+
+RITUALE storage_url_for_artifact(StorageConfig cfg, MediaArtifact artifact) REDDE VERBUM
+  ELIGE artifact.zone
+    CASUS MEDIA_ZONE_PUBLIC:
+      REDDE CONIURA concat(cfg.url_base_public, CONIURA concat("/", artifact.relative_path))
+    CASUS MEDIA_ZONE_PRIVATE:
+      REDDE CONIURA concat(cfg.url_base_private, CONIURA concat("/", artifact.artifact_id))
+    ALIOQUIN:
+      REDDE ""
+  FIN ELIGE
+  REDDE ""
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

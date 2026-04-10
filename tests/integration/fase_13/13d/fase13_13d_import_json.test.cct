@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase13_13d_import_json"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_io.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_import.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13d_import_json")
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "test.db"))
+  CONIURA phase13_seed_schema(db)
+  EVOCA VERBUM path AD CONIURA path_join(root, "cats.json")
+  CONIURA write_all(path, "[{\"nome\":\"Tech\",\"slug\":\"tech\",\"ativo\":1},{\"nome\":\"Vida\",\"slug\":\"vida\",\"ativo\":0}]")
+  EVOCA DataIoResult r AD CONIURA data_import_json(db, path, "categorias", CONIURA phase13_model_categoria())
+  SI r.ok != 2
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM categorias") != 2
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

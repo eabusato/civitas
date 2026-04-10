@@ -1,0 +1,345 @@
+INCIPIT grimoire "civitas_template_compiler"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "ast.cct"
+ADVOCARE "checker.cct"
+ADVOCARE "codegen.cct"
+ADVOCARE "lexer.cct"
+ADVOCARE "parser.cct"
+
+RITUALE template_compile_file(VERBUM template_path, VERBUM output_path, VERBUM templates_root) REDDE SPECULUM NIHIL
+  EVOCA VERBUM source AD CONIURA read_all(template_path)
+  EVOCA VERBUM relative_template AD CONIURA relative_to(template_path, templates_root)
+  EVOCA VERBUM project_root AD CONIURA parent(templates_root)
+  EVOCA SPECULUM NIHIL lex_res AD CONIURA template_lex(source)
+  EVOCA SPECULUM NIHIL parse_res
+  EVOCA SPECULUM NIHIL gen_res
+  EVOCA SPECULUM TemplateNode root
+  EVOCA TemplateCompileUnit unit
+  EVOCA TemplateCheckerState schema AD CONIURA template_checker_state_new(relative_template)
+  EVOCA VERBUM context_name AD ""
+
+  SI CONIURA result_is_err GENUS(SPECULUM NIHIL, TemplateLexError)(lex_res)
+    EVOCA SPECULUM TemplateLexError err AD OBSECRO result_unwrap_err_ptr(lex_res)
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_compile_error(relative_template, (*err).message, (*err).line, (*err).column))
+  FIN SI
+
+  VINCIRE parse_res AD CONIURA template_parse_with_name(OBSECRO result_unwrap_handle(lex_res), relative_template)
+  SI CONIURA result_is_err GENUS(SPECULUM TemplateNode, TemplateCompileError)(parse_res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(parse_res)
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(*err)
+  FIN SI
+
+  VINCIRE root AD OBSECRO result_unwrap_handle(parse_res)
+  CONIURA template_normalize_root(root)
+  VINCIRE root AD CONIURA template_resolve_extends(root, template_path, templates_root)
+  VINCIRE context_name AD CONIURA template_root_context_name(root)
+  SI CONIURA len(context_name) == 0
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_compile_error(relative_template, "template sem {% EVOCA %}", 1, 1))
+  FIN SI
+
+  CONIURA template_schema_scan_dir(SPECULUM schema, project_root)
+  VINCIRE unit AD CONIURA template_compile_unit(CONIURA codegen_template_name_from_path(relative_template), relative_template, templates_root, output_path)
+  VINCIRE unit.context_sigillum AD context_name
+  VINCIRE unit.context_import AD CONIURA template_sigillum_import_path(schema.sigilla, context_name)
+  SI CONIURA len(unit.context_import) == 0
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_compile_error(relative_template, CONIURA concat("import do contexto nao encontrado para ", context_name), 1, 1))
+  FIN SI
+
+  VINCIRE gen_res AD CONIURA template_check_with_project(root, context_name, project_root)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(gen_res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(gen_res)
+    SI CONIURA len((*err).template_name) == 0
+      VINCIRE (*err).template_name AD relative_template
+    FIN SI
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(*err)
+  FIN SI
+
+  REDDE CONIURA template_generate_to_file_with_project(root, unit, project_root, output_path)
+EXPLICIT RITUALE
+
+RITUALE template_compile_directory(VERBUM templates_dir, VERBUM output_dir, VERBUM templates_root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL files AD CONIURA template_collect_templates(templates_dir)
+  EVOCA REX i AD 0
+  EVOCA REX count AD 0
+  EVOCA REX n AD CONIURA fluxus_len(files)
+  DUM i < n
+    EVOCA SPECULUM VERBUM file_ptr AD CONIURA fluxus_get(files, i)
+    EVOCA VERBUM relative AD CONIURA relative_to(*file_ptr, templates_root)
+    EVOCA VERBUM out_path AD CONIURA path_join(output_dir, CONIURA with_ext(relative, ".cct"))
+    EVOCA SPECULUM NIHIL res AD CONIURA template_compile_file(*file_ptr, out_path, templates_root)
+    SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+      REDDE res
+    FIN SI
+    VINCIRE count AD count + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(count)
+EXPLICIT RITUALE
+
+RITUALE template_compile_file_cli(VERBUM template_path, VERBUM output_path, VERBUM templates_root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_file(template_path, output_path, templates_root)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA template_compile_error_text(*err))
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE template_compile_directory_cli(VERBUM templates_dir, VERBUM output_dir, VERBUM templates_root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_directory(templates_dir, output_dir, templates_root)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA template_compile_error_text(*err))
+  FIN SI
+  EVOCA SPECULUM REX count_ptr AD OBSECRO result_unwrap_ptr(res)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(*count_ptr)
+EXPLICIT RITUALE
+
+RITUALE template_compile_file_cli_error(VERBUM template_path, VERBUM output_path, VERBUM templates_root) REDDE VERBUM
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_file(template_path, output_path, templates_root)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA template_compile_error_text(*err)
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE template_compile_directory_cli_error(VERBUM templates_dir, VERBUM output_dir, VERBUM templates_root) REDDE VERBUM
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_directory(templates_dir, output_dir, templates_root)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA template_compile_error_text(*err)
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE template_compile_error_text(TemplateCompileError err) REDDE VERBUM
+  EVOCA VERBUM out AD err.template_name
+  VINCIRE out AD CONIURA concat(out, ":")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(err.line))
+  VINCIRE out AD CONIURA concat(out, ":")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(err.column))
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, err.message)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE template_collect_templates(VERBUM dir_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA template_collect_templates_into(dir_path, out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE template_collect_templates_into(VERBUM dir_path, SPECULUM NIHIL out) REDDE NIHIL
+  SI CONIURA is_file(dir_path)
+    SI CONIURA compare(CONIURA path_ext(dir_path), ".html") == 0
+      CONIURA fluxus_push(out, SPECULUM dir_path)
+    FIN SI
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir_path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA template_collect_templates_into(CONIURA path_join(dir_path, *name_ptr), out)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_root_context_name(SPECULUM TemplateNode root) REDDE VERBUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*root).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnContext
+      REDDE (*node_ptr).text
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE template_resolve_extends(SPECULUM TemplateNode root, VERBUM template_path, VERBUM templates_root) REDDE SPECULUM TemplateNode
+  EVOCA SPECULUM TemplateNode extends_ptr AD CONIURA template_root_extends_node(root)
+  SI CONIURA len((*extends_ptr).include_path) == 0
+    REDDE root
+  FIN SI
+
+  EVOCA VERBUM parent_path AD CONIURA path_join(CONIURA path_dirname(template_path), (*extends_ptr).include_path)
+  EVOCA SPECULUM TemplateNode parent_root AD CONIURA template_load_root(parent_path, templates_root)
+  EVOCA SPECULUM TemplateNode merged AD OBSECRO mem_alloc(MENSURA(TemplateNode))
+  EVOCA SPECULUM TemplateNode context_ptr AD CONIURA template_root_context_ptr(root)
+  EVOCA SPECULUM NIHIL child_blocks AD CONIURA template_collect_blocks(root)
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+
+  CONIURA template_node_fill(merged, CONIURA template_node_new(TnRoot, 1, 1))
+  SI CONIURA len((*context_ptr).text) != 0
+    EVOCA TemplateNodeRef context_ref AD CONIURA template_node_ref(context_ptr)
+    CONIURA fluxus_push((*merged).children, SPECULUM context_ref)
+  ALITER
+    VINCIRE context_ptr AD CONIURA template_root_context_ptr(parent_root)
+    SI CONIURA len((*context_ptr).text) != 0
+      EVOCA TemplateNodeRef parent_context_ref AD CONIURA template_node_ref(context_ptr)
+      CONIURA fluxus_push((*merged).children, SPECULUM parent_context_ref)
+    FIN SI
+  FIN SI
+
+  VINCIRE n AD CONIURA fluxus_len((*parent_root).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef parent_ref AD CONIURA fluxus_get((*parent_root).children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*parent_ref).ptr
+    EVOCA TemplateNodeRef node_ref_copy AD *parent_ref
+    SI (*node_ptr).kind == TnContext VEL (*node_ptr).kind == TnExtends
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI (*node_ptr).kind == TnBlock
+      EVOCA SPECULUM TemplateNode child_block AD CONIURA template_find_block(child_blocks, (*node_ptr).block_name)
+      SI CONIURA len((*child_block).block_name) != 0
+        EVOCA TemplateNodeRef child_block_ref AD CONIURA template_node_ref(child_block)
+        CONIURA fluxus_push((*merged).children, SPECULUM child_block_ref)
+      ALITER
+        CONIURA fluxus_push((*merged).children, SPECULUM node_ref_copy)
+      FIN SI
+    ALITER
+      CONIURA fluxus_push((*merged).children, SPECULUM node_ref_copy)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE merged
+EXPLICIT RITUALE
+
+RITUALE template_load_root(VERBUM template_path, VERBUM templates_root) REDDE SPECULUM TemplateNode
+  EVOCA VERBUM source AD CONIURA read_all(template_path)
+  EVOCA VERBUM relative_template AD CONIURA relative_to(template_path, templates_root)
+  EVOCA SPECULUM NIHIL lex_res AD CONIURA template_lex(source)
+  EVOCA SPECULUM NIHIL parse_res AD CONIURA template_parse_with_name(OBSECRO result_unwrap_handle(lex_res), relative_template)
+  EVOCA SPECULUM TemplateNode root AD OBSECRO result_unwrap_handle(parse_res)
+  CONIURA template_normalize_root(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE template_root_extends_node(SPECULUM TemplateNode root) REDDE SPECULUM TemplateNode
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*root).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnExtends
+      REDDE node_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA template_empty_node_ptr()
+EXPLICIT RITUALE
+
+RITUALE template_root_context_ptr(SPECULUM TemplateNode root) REDDE SPECULUM TemplateNode
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*root).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnContext
+      REDDE node_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA template_empty_node_ptr()
+EXPLICIT RITUALE
+
+RITUALE template_collect_blocks(SPECULUM TemplateNode root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(TemplateNodeRef))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*root).children)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnBlock
+      EVOCA TemplateNodeRef block_ref AD CONIURA template_node_ref(node_ptr)
+      CONIURA fluxus_push(out, SPECULUM block_ref)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE template_find_block(SPECULUM NIHIL blocks, VERBUM block_name) REDDE SPECULUM TemplateNode
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(blocks)
+  DUM i < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get(blocks, i)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI CONIURA compare((*node_ptr).block_name, block_name) == 0
+      REDDE node_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA template_empty_node_ptr()
+EXPLICIT RITUALE
+
+RITUALE template_empty_node_ptr() REDDE SPECULUM TemplateNode
+  EVOCA SPECULUM TemplateNode node_ptr AD OBSECRO mem_alloc(MENSURA(TemplateNode))
+  CONIURA template_node_fill(node_ptr, CONIURA template_node_new(TnText, 1, 1))
+  REDDE node_ptr
+EXPLICIT RITUALE
+
+RITUALE template_normalize_root(SPECULUM TemplateNode root) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len((*root).children)
+  EVOCA REX first_idx AD 0
+  EVOCA REX last_idx AD n - 1
+  DUM first_idx < n
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, first_idx)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnContext VEL (*node_ptr).kind == TnExtends
+      VINCIRE first_idx AD first_idx + 1
+      RECEDE
+    FIN SI
+    SI (*node_ptr).kind == TnText
+      VINCIRE (*node_ptr).text AD CONIURA template_trim_leading_linebreak((*node_ptr).text)
+    FIN SI
+    FRANGE
+  FIN DUM
+  DUM last_idx >= 0
+    EVOCA SPECULUM TemplateNodeRef node_ref AD CONIURA fluxus_get((*root).children, last_idx)
+    EVOCA SPECULUM TemplateNode node_ptr AD (*node_ref).ptr
+    SI (*node_ptr).kind == TnText
+      VINCIRE (*node_ptr).text AD CONIURA template_trim_trailing_linebreak((*node_ptr).text)
+    FIN SI
+    FRANGE
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_trim_leading_linebreak(VERBUM text) REDDE VERBUM
+  EVOCA REX n AD CONIURA len(text)
+  SI n >= 2 ET CONIURA char_at(text, 0) == 13 ET CONIURA char_at(text, 1) == 10
+    REDDE CONIURA substring(text, 2, n)
+  FIN SI
+  SI n >= 1 ET CONIURA char_at(text, 0) == 10
+    REDDE CONIURA substring(text, 1, n)
+  FIN SI
+  REDDE text
+EXPLICIT RITUALE
+
+RITUALE template_trim_trailing_linebreak(VERBUM text) REDDE VERBUM
+  EVOCA REX n AD CONIURA len(text)
+  SI n >= 2 ET CONIURA char_at(text, n - 2) == 13 ET CONIURA char_at(text, n - 1) == 10
+    REDDE CONIURA substring(text, 0, n - 2)
+  FIN SI
+  SI n >= 1 ET CONIURA char_at(text, n - 1) == 10
+    REDDE CONIURA substring(text, 0, n - 1)
+  FIN SI
+  REDDE text
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase16_16a_reset_request_validate"
+
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_reset.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  CONIURA fase16_create_user(tdb, "ana@test.example", "abcd")
+  EVOCA FlowConfig cfg AD CONIURA fase16_flow_cfg()
+  EVOCA SPECULUM NIHIL req_res AD CONIURA auth_flow_reset_solicitar(tdb.db, cfg, "ana@test.example")
+  SI CONIURA result_is_err GENUS(FlowTokenResult, FlowError)(req_res)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA FlowTokenResult issued AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(req_res)
+  SI CONIURA compare(issued.flow_token.tipo, "reset_senha") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL val_res AD CONIURA auth_flow_reset_validar(tdb.db, cfg, issued.token_claro)
+  SI CONIURA result_is_err GENUS(FlowToken, FlowError)(val_res)
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA result_unwrap GENUS(FlowToken, FlowError)(val_res)
+  SI ft.usado
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

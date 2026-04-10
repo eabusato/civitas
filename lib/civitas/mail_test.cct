@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_mail_test_root"
+
+ADVOCARE "mail_test/mail_test.cct"
+ADVOCARE "mail_test/mail_test_assert.cct"
+ADVOCARE "mail_test/mail_test_extract.cct"
+ADVOCARE "mail_test/mail_test_flow.cct"
+
+EXPLICIT grimoire

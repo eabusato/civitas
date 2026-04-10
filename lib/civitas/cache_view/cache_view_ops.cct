@@ -1,0 +1,37 @@
+INCIPIT grimoire "civitas_cache_view_ops"
+
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../cache/cache_api.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cache_view.cct"
+ADVOCARE "cache_view_chave.cct"
+ADVOCARE "cache_view_serial.cct"
+ADVOCARE "cache_view_tags.cct"
+
+RITUALE cache_view_get(SPECULUM NIHIL cv_ptr, WebRequest req) REDDE CacheMaybeViewEntry
+  EVOCA SPECULUM CacheView cv AD cv_ptr
+  EVOCA VERBUM chave AD CONIURA cache_view_chave(cv, req)
+  EVOCA CacheMaybeText raw AD CONIURA cache_get((*cv).handle, chave)
+  SI NON raw.found
+    REDDE CONIURA cache_view_entry_empty()
+  FIN SI
+  REDDE CONIURA cache_view_desserializar(raw.valor)
+EXPLICIT RITUALE
+
+RITUALE cache_view_set(SPECULUM NIHIL cv_ptr, WebRequest req, WebResponse resp, REX ttl, VERBUM tags) REDDE NIHIL
+  EVOCA SPECULUM CacheView cv AD cv_ptr
+  SI ttl <= 0
+    REDDE
+  FIN SI
+  EVOCA VERBUM chave AD CONIURA cache_view_chave(cv, req)
+  EVOCA VERBUM raw AD CONIURA cache_view_serializar(resp.status, CONIURA cache_view_headers_json(resp), tags, resp.body)
+  CONIURA cache_set((*cv).handle, chave, raw, ttl)
+  SI CONIURA len(CONIURA trim(tags)) > 0
+    CONIURA cache_view_tags_indexar(cv_ptr, chave, tags)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

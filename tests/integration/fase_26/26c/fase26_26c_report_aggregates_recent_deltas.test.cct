@@ -1,0 +1,57 @@
+INCIPIT grimoire "fase26_26c_report_aggregates_recent_deltas"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE phase26_mem_delta(VERBUM route, VERBUM request_id, REX allocs, REX alloc_bytes, REX frees, REX live_count, REX live_bytes, VERUM suspected, REX ts) REDDE MemDelta
+  EVOCA MemDelta delta
+  VINCIRE delta.route AD route
+  VINCIRE delta.request_id AD request_id
+  VINCIRE delta.alloc_count_delta AD allocs
+  VINCIRE delta.alloc_bytes_delta AD alloc_bytes
+  VINCIRE delta.free_count_delta AD frees
+  VINCIRE delta.live_count_delta AD live_count
+  VINCIRE delta.live_bytes_delta AD live_bytes
+  VINCIRE delta.duration_ms AD 3
+  VINCIRE delta.suspected_leak AD suspected
+  VINCIRE delta.timestamp_ms AD ts
+  REDDE delta
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26c_report_aggregates_recent_deltas")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "mem.db"))
+  EVOCA MemProfilerState state AD CONIURA mem_profiler_state_new(db, 0)
+  CONIURA mem_profiler_record(SPECULUM state, CONIURA phase26_mem_delta("/a", "r1", 10, 100, 10, 0, 0, FALSUM, 100))
+  CONIURA mem_profiler_record(SPECULUM state, CONIURA phase26_mem_delta("/b", "r2", 20, 300, 18, 2, 64, VERUM, 200))
+  EVOCA MemReport report AD CONIURA mem_profiler_report(SPECULUM state, 10)
+  SI report.n_requests != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI report.allocs_total != 30
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI report.bytes_alloc_total != 400
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  SI report.suspected_count != 1
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  SI report.peak_live_bytes_delta != 64
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  CONIURA fluxus_free(report.deltas)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase7_7a_file_too_large_error_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM boundary AD "----CivitasBoundaryC"
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  EVOCA FormParseConfig cfg AD CONIURA form_parse_config_default()
+  EVOCA VERBUM part_file AD CONIURA phase7_multipart_file_part("foto", "large.txt", "text/plain", "12345")
+  VINCIRE cfg.max_file_size AD 4
+
+  CONIURA fluxus_push(parts, SPECULUM part_file)
+  CONIURA phase7_set_content_type(headers, CONIURA concat("multipart/form-data; boundary=", boundary))
+
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/upload", headers, CONIURA phase7_multipart_body(boundary, parts))
+  EVOCA SPECULUM NIHIL res AD CONIURA form_parse(SPECULUM req, cfg)
+
+  SI NON OBSECRO result_is_err(res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA form_parse_error_message(FpeFileTooLarge), "arquivo excede limite") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

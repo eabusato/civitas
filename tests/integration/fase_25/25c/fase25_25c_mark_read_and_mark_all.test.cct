@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase25_25c_mark_read_and_mark_all"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse_presence/sse_presence.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25c_mark_read_and_mark_all")
+  EVOCA REX first_id AD CONIURA sse_inbox_push(db, 50, "moderation", "{\"id\":10}")
+  CONIURA sse_inbox_push(db, 50, "badge", "{\"id\":11}")
+
+  CONIURA sse_inbox_mark_read(db, 50, first_id)
+  SI CONIURA sse_inbox_count_unread(db, 50) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA sse_inbox_mark_all_read(db, 50)
+  SI CONIURA sse_inbox_count_unread(db, 50) != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

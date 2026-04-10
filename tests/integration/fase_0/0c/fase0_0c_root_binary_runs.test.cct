@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase0_0c_root_binary_runs_test"
+
+ADVOCARE "../support/common.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM build_log AD CONIURA tmp_file("fase0_0c_root_binary_build.log")
+  EVOCA VERBUM run_log AD CONIURA tmp_file("fase0_0c_root_binary_run.log")
+
+  SI CONIURA run_to_log("make build", build_log) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA run_to_log("./dist/civitas", run_log) != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

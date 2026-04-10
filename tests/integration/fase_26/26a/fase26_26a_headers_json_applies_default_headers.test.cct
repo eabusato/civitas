@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase26_26a_headers_json_applies_default_headers"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA phase26_bench_router()
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/needs-header", "GET")
+  CONIURA bench_config_set_n(SPECULUM cfg, 2)
+  CONIURA bench_config_set_warmup(SPECULUM cfg, 0)
+  CONIURA bench_config_set_headers_json(SPECULUM cfg, "{\"x-bench\":\"1\"}")
+  EVOCA BenchResult result AD CONIURA bench_run_inprocess(SPECULUM router, cfg)
+  SI result.n_success != 2
+    REDDE 1
+  FIN SI
+  SI result.n_error != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

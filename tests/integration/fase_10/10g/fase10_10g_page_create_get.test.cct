@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase10_10g_page_create_get"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages_crud.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10g_page_create_get")
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  VINCIRE origin.user_id AD "1"
+  VINCIRE origin.request_id AD "req-1"
+  EVOCA Page page AD CONIURA page_create(db, "en", "home", "Home", "<p>Hello</p>", origin)
+  SI page.id == 0
+    REDDE 1
+  FIN SI
+  EVOCA Page loaded AD CONIURA page_get_by_slug(db, "home", "en")
+  SI loaded.id != page.id
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_cache_root"
+
+ADVOCARE "cache/cache.cct"
+ADVOCARE "cache/cache_mem.cct"
+ADVOCARE "cache/cache_arq.cct"
+ADVOCARE "cache/cache_redis.cct"
+ADVOCARE "cache/cache_api.cct"
+
+EXPLICIT grimoire

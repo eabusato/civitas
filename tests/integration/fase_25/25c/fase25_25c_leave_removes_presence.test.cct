@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase25_25c_leave_removes_presence"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse_presence/sse_presence.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25c_leave_removes_presence")
+  CONIURA sse_presence_join(db, 30, "newsroom", "conn-z")
+  CONIURA sse_presence_leave(db, 30, "newsroom", "conn-z")
+
+  SI CONIURA sse_presence_count(db, "newsroom", 60000) != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase15_15a_hash_format_and_verify"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_hash.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  EVOCA VERBUM hash AD CONIURA auth_hash_senha(cfg, "S3nh@Forte!")
+  SI NON CONIURA starts_with(hash, "pbkdf2:sha256:")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA auth_verificar_senha("S3nh@Forte!", hash)
+    REDDE 2
+  FIN SI
+  SI CONIURA auth_verificar_senha("senha_errada", hash)
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

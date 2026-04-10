@@ -1,0 +1,63 @@
+INCIPIT grimoire "fase5_5b_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/keyring.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase5_5b_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase5_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase5_5b_new_app(VERBUM root, VERBUM content) REDDE Application
+  REDDE CONIURA phase5_new_app(root, content)
+EXPLICIT RITUALE
+
+RITUALE phase5_5b_submit_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("submitted"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5b_register_submit_route(SPECULUM Application app) REDDE NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA app_add_route(app, "POST", "/submit", "", "phase5_5b_submit_handler", phase5_5b_submit_handler)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5b_install_csrf_secret(SPECULUM Application app, VERBUM secret) REDDE NIHIL
+  EVOCA SecretRegistry registry
+  EVOCA SPECULUM NIHIL registry_ptr AD OBSECRO mem_alloc(MENSURA(SecretRegistry))
+  EVOCA SPECULUM SecretKey active_key_ptr AD OBSECRO mem_alloc(MENSURA(SecretKey))
+  EVOCA SecretKey active_key AD CONIURA secret_key_make("csrf_current", secret, "test", "", "active")
+
+  EVOCA SecretKeyRing session_ring AD CONIURA secret_keyring_disabled(SECRET_DOMAIN_SESSION, FALSUM, "")
+  EVOCA SecretKeyRing csrf_ring AD CONIURA secret_keyring_disabled(SECRET_DOMAIN_CSRF, FALSUM, "")
+  EVOCA SecretKeyRing signed_cookie_ring AD CONIURA secret_keyring_disabled(SECRET_DOMAIN_SIGNED_COOKIE, FALSUM, "")
+  EVOCA SecretKeyRing token_ring AD CONIURA secret_keyring_disabled(SECRET_DOMAIN_TOKEN, FALSUM, "")
+  EVOCA SecretKeyRing temporary_link_ring AD CONIURA secret_keyring_disabled(SECRET_DOMAIN_TEMPORARY_LINK, FALSUM, "")
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM registry.session, SPECULUM session_ring)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM registry.csrf, SPECULUM csrf_ring)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM registry.signed_cookie, SPECULUM signed_cookie_ring)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM registry.token, SPECULUM token_ring)
+  CONIURA secret_keyring_fill_from_ptr(SPECULUM registry.temporary_link, SPECULUM temporary_link_ring)
+  VINCIRE registry.legacy_global_key_enabled AD FALSUM
+
+  VINCIRE registry.csrf.enabled AD VERUM
+  VINCIRE registry.csrf.active_key AD active_key
+  VINCIRE registry.csrf.rotation_policy AD CONIURA secret_rotation_policy_make(0, 0, FALSUM, "")
+  VINCIRE registry.csrf.verify_candidates AD CONIURA fluxus_init(MENSURA(SecretKey))
+  CONIURA secret_key_fill(active_key_ptr, active_key)
+  CONIURA fluxus_push(registry.csrf.verify_candidates, active_key_ptr)
+
+  CONIURA secret_registry_fill_from_opaque(registry_ptr, registry)
+  CONIURA app_service_set(app, CONIURA app_service_secret_registry_key(), registry_ptr)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

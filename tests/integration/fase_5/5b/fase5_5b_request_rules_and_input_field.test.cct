@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase5_5b_request_rules_and_input_field_test"
+
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA VERBUM html AD CONIURA csrf_input_field(SPECULUM cfg, "\"<abc>&")
+
+  SI CONIURA csrf_request_needs_check("GET", headers)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA csrf_request_needs_check("POST", headers)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA csrf_request_needs_check("DELETE", headers)
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "&quot;") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(html, "&lt;abc&gt;&amp;") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

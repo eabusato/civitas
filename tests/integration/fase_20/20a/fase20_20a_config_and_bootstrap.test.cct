@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase20_20a_config_and_bootstrap"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_config/trace_config.cct"
+ADVOCARE "../../../../lib/civitas/trace_config/trace_bootstrap.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase20_trace_dir("20a_config_bootstrap")
+  EVOCA SPECULUM NIHIL raw_cfg AD CONIURA phase20_config("true", "full", "7", dir)
+  EVOCA TraceConfig cfg AD CONIURA trace_config_load(raw_cfg)
+  SI NON cfg.enabled
+    REDDE 1
+  FIN SI
+  SI cfg.mode != INSTR_MODE_FULL
+    REDDE 2
+  FIN SI
+  SI cfg.sample_rate != 7
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(cfg.trace_dir, dir) != 0
+    REDDE 4
+  FIN SI
+  CONIURA trace_bootstrap(cfg)
+  SI NON CONIURA instrument_is_enabled()
+    REDDE 5
+  FIN SI
+  SI CONIURA instrument_mode() != INSTR_MODE_FULL
+    REDDE 6
+  FIN SI
+  CONIURA trace_bootstrap(CONIURA trace_config_default())
+  SI CONIURA instrument_is_enabled()
+    REDDE 7
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

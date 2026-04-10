@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_config_root"
+
+ADVOCARE "civitas_config/civitas_config.cct"
+
+EXPLICIT grimoire

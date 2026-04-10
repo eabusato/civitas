@@ -1,0 +1,71 @@
+INCIPIT grimoire "civitas_l10n_number"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n.cct"
+
+RITUALE l10n_is_divisible_int(REX valor, REX div) REDDE VERUM
+  SI div == 0
+    REDDE FALSUM
+  FIN SI
+  EVOCA REX q AD valor / div
+  REDDE valor - (q * div) == 0
+EXPLICIT RITUALE
+
+RITUALE l10n_format_grouped_digits(VERBUM digits, NumberRules rules) REDDE VERBUM
+  EVOCA REX len_digits AD CONIURA len(digits)
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  DUM i < len_digits
+    EVOCA REX pos_d AD len_digits - i - 1
+    VINCIRE out AD CONIURA concat(out, CONIURA from_char(CONIURA char_at(digits, i)))
+    SI pos_d > 0 ET CONIURA l10n_is_divisible_int(pos_d, rules.grupos)
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(rules.sep_milhar))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE l10n_format_int(REX n, NumberRules rules) REDDE VERBUM
+  EVOCA VERBUM sinal AD ""
+  EVOCA REX abs_n AD n
+  SI n < 0
+    VINCIRE sinal AD "-"
+    VINCIRE abs_n AD 0 - n
+  FIN SI
+  EVOCA VERBUM bruto AD CONIURA stringify_int(abs_n)
+  REDDE CONIURA concat(sinal, CONIURA l10n_format_grouped_digits(bruto, rules))
+EXPLICIT RITUALE
+
+RITUALE l10n_format_real(UMBRA n, REX casas, NumberRules rules) REDDE VERBUM
+  EVOCA VERBUM bruto AD CONIURA stringify_real_prec(n, casas)
+  EVOCA REX ponto AD CONIURA find(bruto, ".")
+  EVOCA VERBUM parte_int AD bruto
+  EVOCA VERBUM parte_dec AD ""
+  SI ponto >= 0
+    VINCIRE parte_int AD CONIURA substring(bruto, 0, ponto)
+    VINCIRE parte_dec AD CONIURA substring(bruto, ponto + 1, CONIURA len(bruto))
+  FIN SI
+
+  EVOCA VERBUM sinal AD ""
+  EVOCA VERBUM parte_int_abs AD parte_int
+  SI CONIURA starts_with(parte_int, "-")
+    VINCIRE sinal AD "-"
+    VINCIRE parte_int_abs AD CONIURA substring(parte_int, 1, CONIURA len(parte_int))
+  FIN SI
+
+  EVOCA VERBUM out AD CONIURA concat(sinal, CONIURA l10n_format_grouped_digits(parte_int_abs, rules))
+  SI casas > 0 ET CONIURA len(parte_dec) > 0
+    VINCIRE out AD CONIURA concat(out, CONIURA from_char(rules.sep_decimal))
+    VINCIRE out AD CONIURA concat(out, parte_dec)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE l10n_format_percent(UMBRA n, REX casas, NumberRules rules) REDDE VERBUM
+  EVOCA VERBUM val AD CONIURA l10n_format_real(n * 100.0, casas, rules)
+  REDDE CONIURA concat(val, "%")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

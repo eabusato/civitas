@@ -1,0 +1,87 @@
+INCIPIT grimoire "civitas_mail_test_flow"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth_flows/auth_flows.cct"
+ADVOCARE "../auth_flows/auth_flows_email.cct"
+ADVOCARE "../auth_flows/auth_flows_reset.cct"
+ADVOCARE "../auth_flows/auth_flows_schema.cct"
+ADVOCARE "../auth_test/auth_test.cct"
+ADVOCARE "../mail_templates/mail_tpl_reset.cct"
+ADVOCARE "../mail_templates/mail_tpl_verificar.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "../mailer/mailer_send.cct"
+ADVOCARE "../test_db/test_db.cct"
+ADVOCARE "mail_test.cct"
+ADVOCARE "mail_test_extract.cct"
+
+RITUALE mail_test_ok_verbum(VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE mail_test_err_verbum(VERBUM err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+EXPLICIT RITUALE
+
+RITUALE mail_test_reset_solicitar_e_extrair(SPECULUM NIHIL db, SPECULUM Mailer m, FlowConfig flow_cfg, MailerConfig mailer_cfg, VERBUM email, VERBUM nome, VERBUM url_base) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res_flow AD CONIURA auth_flow_reset_solicitar(db, flow_cfg, email)
+  SI CONIURA result_is_err GENUS(FlowTokenResult, FlowError)(res_flow)
+    REDDE CONIURA mail_test_err_verbum("auth_flow_reset_solicitar failed")
+  FIN SI
+  EVOCA FlowTokenResult ft_res AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(res_flow)
+  EVOCA VERBUM url_reset AD CONIURA concat(CONIURA concat(url_base, "?t="), ft_res.token_claro)
+  EVOCA MailMessage msg AD CONIURA mail_tpl_reset_senha(mailer_cfg, email, nome, url_reset, flow_cfg.ttl_reset_senha / 60)
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(m, msg)
+  SI CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    REDDE CONIURA mail_test_err_verbum("mailer_send failed")
+  FIN SI
+  EVOCA REX idx_ultimo AD CONIURA mailer_memory_count(*m) - 1
+  EVOCA SPECULUM NIHIL opt_token AD CONIURA mail_test_extrair_token_reset(*m, idx_ultimo)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_token)
+    CONIURA option_free GENUS(VERBUM)(opt_token)
+    REDDE CONIURA mail_test_err_verbum("reset token not found in email")
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(opt_token)
+  CONIURA option_free GENUS(VERBUM)(opt_token)
+  REDDE CONIURA mail_test_ok_verbum(token)
+EXPLICIT RITUALE
+
+RITUALE mail_test_verificar_email_e_extrair(SPECULUM NIHIL db, SPECULUM Mailer m, FlowConfig flow_cfg, MailerConfig mailer_cfg, VERBUM user_id, VERBUM email, VERBUM nome, VERBUM url_base) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res_flow AD CONIURA auth_flow_verificar_email_solicitar(db, flow_cfg, user_id)
+  SI CONIURA result_is_err GENUS(FlowTokenResult, FlowError)(res_flow)
+    REDDE CONIURA mail_test_err_verbum("auth_flow_verificar_email_solicitar failed")
+  FIN SI
+  EVOCA FlowTokenResult ft_res AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(res_flow)
+  EVOCA VERBUM url_verif AD CONIURA concat(CONIURA concat(url_base, "?token="), ft_res.token_claro)
+  EVOCA MailMessage msg AD CONIURA mail_tpl_verificar_email(mailer_cfg, email, nome, url_verif, flow_cfg.ttl_verificar_email / 3600)
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(m, msg)
+  SI CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    REDDE CONIURA mail_test_err_verbum("mailer_send failed")
+  FIN SI
+  EVOCA REX idx_ultimo AD CONIURA mailer_memory_count(*m) - 1
+  EVOCA SPECULUM NIHIL opt_token AD CONIURA mail_test_extrair_token_verificacao(*m, idx_ultimo)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_token)
+    CONIURA option_free GENUS(VERBUM)(opt_token)
+    REDDE CONIURA mail_test_err_verbum("verification token not found in email")
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(opt_token)
+  CONIURA option_free GENUS(VERBUM)(opt_token)
+  REDDE CONIURA mail_test_ok_verbum(token)
+EXPLICIT RITUALE
+
+RITUALE mail_test_schema_up(TestDb tdb) REDDE NIHIL
+  CONIURA auth_test_schema_up(tdb)
+  CONIURA auth_flows_schema_up(tdb.db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mail_test_schema_down(TestDb tdb) REDDE NIHIL
+  CONIURA auth_flows_schema_down(tdb.db)
+  CONIURA auth_test_schema_down(tdb)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

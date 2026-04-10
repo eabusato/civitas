@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase5_5b_validate_request_valid_and_invalid_test"
+
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  EVOCA VERBUM binding AD "binding-fixed"
+  EVOCA VERBUM token AD CONIURA csrf_token_derive("segredo", binding)
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL valid_res
+  EVOCA SPECULUM NIHIL invalid_res
+
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat("civitas_csrf_binding=", binding))
+  VINCIRE valid_res AD CONIURA csrf_validate_request(SPECULUM cfg, "segredo", headers, CONIURA concat("civitas_csrf_token=", token))
+  VINCIRE invalid_res AD CONIURA csrf_validate_request(SPECULUM cfg, "segredo", headers, "civitas_csrf_token=errado")
+
+  SI CONIURA result_is_err GENUS(REX, CsrfError)(valid_res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(REX, CsrfError)(invalid_res)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA csrf_validation_error_matches(invalid_res, CsrfErrInvalidToken)
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

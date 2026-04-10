@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase2_2a_query_simple_test"
+
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest raw AD CONIURA http_request_new("GET", "/search?q=civitas")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_from_http(raw, "127.0.0.1", "http", "example.test", "req-2")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA request_query_first(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res), "q")
+  SI CONIURA option_is_none GENUS(VERBUM)(value_opt)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(value_opt), "civitas") != 0
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

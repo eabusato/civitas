@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase2_2b_method_not_allowed_sets_allow_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL allow AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM get AD "GET"
+  EVOCA VERBUM post AD "POST"
+  CONIURA fluxus_push(allow, SPECULUM get)
+  CONIURA fluxus_push(allow, SPECULUM post)
+
+  EVOCA SPECULUM NIHIL http_res AD CONIURA response_to_http(CONIURA response_method_not_allowed(allow))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_res)
+    REDDE 1
+  FIN SI
+  EVOCA HttpResponse out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_res)
+  SI CONIURA http_response_status(out) != 405
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA http_response_header(out, "allow", ""), "GET, POST") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

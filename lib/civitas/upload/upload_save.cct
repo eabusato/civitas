@@ -1,0 +1,55 @@
+INCIPIT grimoire "civitas_upload_save"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "upload_types.cct"
+
+RITUALE upload_temp_path(UploadConfig cfg) REDDE VERBUM
+  REDDE CONIURA path_join(cfg.destino, CONIURA concat(".upload-", CONIURA concat(CONIURA uuid_to_string(CONIURA uuid_v4()), ".part")))
+EXPLICIT RITUALE
+
+RITUALE upload_salvar_parte(VERBUM caminho_temp, VERBUM nome_original, UploadConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA FileType kind AD CONIURA filetype_detect(caminho_temp)
+  EVOCA VERBUM mime_real AD CONIURA filetype_mime(kind)
+
+  SI cfg.validar_magic_bytes
+    SI kind == Unknown VEL kind == Text
+      SI CONIURA exists(caminho_temp)
+        CONIURA delete_file(caminho_temp)
+      FIN SI
+      REDDE CONIURA upload_file_err(UeMagicBytesInvalido)
+    FIN SI
+    SI cfg.tipos_permitidos != NIHIL ET NON CONIURA upload_tipo_permitido(mime_real, cfg.tipos_permitidos)
+      SI CONIURA exists(caminho_temp)
+        CONIURA delete_file(caminho_temp)
+      FIN SI
+      REDDE CONIURA upload_file_err(UeTipoNaoPermitido)
+    FIN SI
+  FIN SI
+
+  EVOCA VERBUM nome_final AD CONIURA upload_nome_salvo(kind)
+  EVOCA VERBUM caminho_final AD CONIURA path_join(cfg.destino, nome_final)
+  TEMPTA
+    CONIURA move(caminho_temp, caminho_final)
+  CAPE FRACTUM erro
+    SI CONIURA exists(caminho_temp)
+      CONIURA delete_file(caminho_temp)
+    FIN SI
+    REDDE CONIURA upload_file_err(UeWriteFalhou)
+  FIN TEMPTA
+
+  EVOCA UploadedFile arq
+  VINCIRE arq.nome_original AD nome_original
+  VINCIRE arq.extensao_original AD CONIURA upload_extensao_de(nome_original)
+  VINCIRE arq.nome_salvo AD nome_final
+  VINCIRE arq.caminho AD caminho_final
+  VINCIRE arq.tamanho AD CONIURA size(caminho_final)
+  VINCIRE arq.mime_type AD mime_real
+  VINCIRE arq.file_kind AD kind
+  REDDE CONIURA upload_file_ok(arq)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

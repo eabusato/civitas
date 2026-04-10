@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase9_9f_check_signed_url_expired_and_invalid"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage_url.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9f_root("check_errors")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaArtifact artifact AD CONIURA phase9_9f_private_artifact(root, "private.txt", "secret-data")
+  EVOCA SPECULUM NIHIL registry_ref AD CONIURA phase9_9f_registry()
+  EVOCA SignedUrlConfig cfg AD CONIURA phase9_9f_signed_cfg()
+  EVOCA SignedUrl signed_url AD CONIURA storage_sign_url(cfg, "tmp-secret-active", artifact, 100)
+
+  EVOCA SPECULUM NIHIL expired_res AD CONIURA delivery_check_signed_url(
+    artifact.artifact_id,
+    signed_url.token,
+    signed_url.expires_unix,
+    101,
+    registry_ref,
+    cfg
+  )
+  SI NON CONIURA result_is_err GENUS(REX, DeliveryError)(expired_res)
+    IACE "expired token should fail"
+  FIN SI
+  SI CONIURA result_unwrap_err GENUS(REX, DeliveryError)(expired_res) != DeExpired
+    IACE "expired token should return DeExpired"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL invalid_res AD CONIURA delivery_check_signed_url(
+    artifact.artifact_id,
+    CONIURA concat(signed_url.token, "x"),
+    signed_url.expires_unix,
+    99,
+    registry_ref,
+    cfg
+  )
+  SI NON CONIURA result_is_err GENUS(REX, DeliveryError)(invalid_res)
+    IACE "invalid token should fail"
+  FIN SI
+  SI CONIURA result_unwrap_err GENUS(REX, DeliveryError)(invalid_res) != DeInvalidToken
+    IACE "corrupted token should return DeInvalidToken"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

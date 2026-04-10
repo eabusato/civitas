@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase19_19d_robots"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/seo/seo.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_robots() REDDE NIHIL
+  EVOCA RobotsConfig cfg AD CONIURA seo_robots_config_default("https://example.test")
+  EVOCA VERBUM body AD CONIURA seo_robots_generate(cfg)
+  SI CONIURA find(body, "User-agent: *") == -1
+    IACE "robots user-agent missing"
+  FIN SI
+  SI CONIURA find(body, "Disallow: /admin") == -1
+    IACE "robots admin disallow missing"
+  FIN SI
+  SI CONIURA find(body, "Sitemap: https://example.test/sitemap.xml") == -1
+    IACE "robots sitemap missing"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_robots()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

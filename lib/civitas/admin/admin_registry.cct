@@ -1,0 +1,76 @@
+INCIPIT grimoire "civitas_admin_registry"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+
+RITUALE admin_model_config_to_json(AdminModelConfig cfg) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json fields_arr AD CONIURA json_arr()
+  EVOCA Json list_arr AD CONIURA json_arr()
+  EVOCA Json filter_arr AD CONIURA json_arr()
+  EVOCA Json search_arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    EVOCA Json item AD CONIURA json_obj()
+    CONIURA json_obj_push(item, "name", CONIURA json_str((*field_ptr).name))
+    CONIURA json_obj_push(item, "label", CONIURA json_str((*field_ptr).label))
+    CONIURA json_obj_push(item, "required", CONIURA json_bool((*field_ptr).required))
+    CONIURA json_arr_push(fields_arr, item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len(cfg.list_display)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(cfg.list_display, i)
+    CONIURA json_arr_push(list_arr, CONIURA json_str(*ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len(cfg.list_filter)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(cfg.list_filter, i)
+    CONIURA json_arr_push(filter_arr, CONIURA json_str(*ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len(cfg.search_fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(cfg.search_fields, i)
+    CONIURA json_arr_push(search_arr, CONIURA json_str(*ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_obj_push(root, "model_name", CONIURA json_str(cfg.model_name))
+  CONIURA json_obj_push(root, "table_name", CONIURA json_str(cfg.table_name))
+  CONIURA json_obj_push(root, "pk_field", CONIURA json_str(cfg.pk_field))
+  CONIURA json_obj_push(root, "ordering_default", CONIURA json_str(cfg.ordering_default))
+  CONIURA json_obj_push(root, "page_size", CONIURA json_num(cast GENUS(UMBRA)(cfg.page_size)))
+  CONIURA json_obj_push(root, "permissions_prefix", CONIURA json_str(cfg.permissions_prefix))
+  CONIURA json_obj_push(root, "fields", fields_arr)
+  CONIURA json_obj_push(root, "list_display", list_arr)
+  CONIURA json_obj_push(root, "list_filter", filter_arr)
+  CONIURA json_obj_push(root, "search_fields", search_arr)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE admin_register(SPECULUM AdminRegistry registry, DbHandle dbh, AdminModelConfig cfg) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  CONIURA admin_model_config_generate_routes(SPECULUM cfg)
+  SI CONIURA admin_registry_find(registry, cfg.model_name) == NIHIL
+    CONIURA fluxus_push((*registry).models, SPECULUM cfg)
+  FIN SI
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, cfg.model_name)
+  CONIURA dbh_param_text(SPECULUM params, cfg.table_name)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA admin_model_config_to_json(cfg))
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO admin_model_registry (model_name, table_name, config_json, registered_at_unix) VALUES (?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

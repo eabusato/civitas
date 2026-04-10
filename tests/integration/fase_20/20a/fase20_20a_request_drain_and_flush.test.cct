@@ -1,0 +1,57 @@
+INCIPIT grimoire "fase20_20a_request_drain_and_flush"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_spans.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_request.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase20_trace_dir("20a_request_drain")
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+  EVOCA VERBUM trace_id AD CONIURA trace_request_new_id()
+  EVOCA REX span_id AD CONIURA civitas_span_handler("FlushView")
+  CONIURA civitas_span_end(span_id)
+  EVOCA SPECULUM NIHIL drained_opt AD CONIURA trace_request_drain(trace_id)
+  SI CONIURA option_is_none GENUS(Trace)(drained_opt)
+    CONIURA option_free GENUS(Trace)(drained_opt)
+    REDDE 1
+  FIN SI
+  EVOCA Trace drained AD CONIURA option_unwrap GENUS(Trace)(drained_opt)
+  CONIURA option_free GENUS(Trace)(drained_opt)
+  SI CONIURA trace_span_count(drained) != 1
+    CONIURA trace_free(SPECULUM drained)
+    REDDE 2
+  FIN SI
+  CONIURA trace_free(SPECULUM drained)
+
+  CONIURA instrument_buffer_clear()
+  VINCIRE span_id AD CONIURA civitas_span_handler("FlushView")
+  CONIURA civitas_span_end(span_id)
+  SI CONIURA trace_request_flush_to_disk(trace_id, dir) != 1
+    REDDE 3
+  FIN SI
+  EVOCA VERBUM path AD CONIURA trace_request_file_path(dir, trace_id)
+  SI NON CONIURA exists(path)
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM NIHIL loaded_res AD CONIURA trace_read_file(path)
+  SI CONIURA result_is_err GENUS(Trace, TraceError)(loaded_res)
+    REDDE 5
+  FIN SI
+  EVOCA Trace loaded AD CONIURA result_unwrap GENUS(Trace, TraceError)(loaded_res)
+  SI CONIURA trace_span_count(loaded) != 1
+    CONIURA trace_free(SPECULUM loaded)
+    REDDE 6
+  FIN SI
+  CONIURA trace_free(SPECULUM loaded)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,60 @@
+INCIPIT grimoire "civitas_cache_invalidation_signal"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../model/model_registry.cct"
+ADVOCARE "../signals.cct"
+ADVOCARE "invalidation.cct"
+ADVOCARE "invalidation_exec.cct"
+
+RITUALE invalidation_signal_register(SPECULUM InvalidationCoord coord, ModelRegistry registry) REDDE NIHIL
+  CONIURA fluxus_clear((*coord).registered_models)
+  EVOCA SPECULUM NIHIL names AD CONIURA model_registry_table_names(registry)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(names)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(names, i)
+    CONIURA fluxus_push((*coord).registered_models, SPECULUM *name_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE invalidation_coord_has_model(InvalidationCoord coord, VERBUM nome_modelo) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(coord.registered_models)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(coord.registered_models, i)
+    SI CONIURA compare(*name_ptr, nome_modelo) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE invalidation_signal_table_name(VERBUM signal_name) REDDE VERBUM
+  EVOCA REX pos AD CONIURA find(signal_name, ":")
+  SI pos < 0
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(signal_name, pos + 1, CONIURA len(signal_name))
+EXPLICIT RITUALE
+
+RITUALE invalidation_signal_apply(SPECULUM InvalidationCoord coord, SignalEnvelope env) REDDE InvalidationResult
+  SI NON CONIURA starts_with(env.signal_name, "post_save:")
+    SI NON CONIURA starts_with(env.signal_name, "post_delete:")
+      REDDE CONIURA invalidation_result_new()
+    FIN SI
+  FIN SI
+  EVOCA VERBUM tabela AD CONIURA invalidation_signal_table_name(env.signal_name)
+  SI CONIURA len(tabela) == 0
+    REDDE CONIURA invalidation_result_new()
+  FIN SI
+  SI NON CONIURA invalidation_coord_has_model(*coord, tabela)
+    REDDE CONIURA invalidation_result_new()
+  FIN SI
+  REDDE CONIURA invalidation_on_model_save(*coord, tabela)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

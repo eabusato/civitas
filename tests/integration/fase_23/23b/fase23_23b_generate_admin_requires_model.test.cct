@@ -1,0 +1,47 @@
+INCIPIT grimoire "fase23_23b_generate_admin_requires_model"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23b_generate_admin_requires_model")
+  EVOCA CivitasNewConfig new_cfg AD CONIURA civitas_new_cfg("vega", TemplateWeb, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(new_cfg))
+    REDDE 1
+  FIN SI
+  EVOCA GenerateApiConfig admin_missing
+  VINCIRE admin_missing.model_name AD "Article"
+  VINCIRE admin_missing.module_name AD "article"
+  VINCIRE admin_missing.dest_dir AD CONIURA path_join(root, "vega")
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_admin_run(admin_missing))
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(ModelField))
+  EVOCA ModelField title_field AD CONIURA civitas_gen_parse_field("titulo:VERBUM")
+  CONIURA fluxus_push(fields, SPECULUM title_field)
+  EVOCA GenerateModelConfig model_cfg
+  VINCIRE model_cfg.model_name AD "Article"
+  VINCIRE model_cfg.table_name AD "article"
+  VINCIRE model_cfg.module_name AD "article"
+  VINCIRE model_cfg.fields AD fields
+  VINCIRE model_cfg.dest_dir AD CONIURA path_join(root, "vega")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_model_run(model_cfg))
+    REDDE 3
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_admin_run(admin_missing))
+    REDDE 4
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "vega/apps/core/admin/article.cct"), "article_admin_label")
+    REDDE 5
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "vega/apps/core/admin/article.cct")) != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

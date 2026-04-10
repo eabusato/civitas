@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase13_13c_open_memory_and_migrate"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_assert.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA test_db_run_migrations(tdb, CONIURA phase13_registry_basic())
+  SI CONIURA test_db_count(tdb, "categorias") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA test_db_count(tdb, "posts") != 0
+    REDDE 2
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

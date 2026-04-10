@@ -1,0 +1,322 @@
+INCIPIT grimoire "civitas_migrate"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../db_handle/db_handle_sqlite.cct"
+
+ORDO MigrationStatus
+  MsAplicada,
+  MsPendente
+FIN ORDO
+
+ORDO MigrateError
+  MeUpFalhou,
+  MeDownFalhou,
+  MeNenhumaPendente,
+  MeNenhumaAplicada,
+  MeVersaoNaoEncontrada,
+  MeTabelaFalhou
+FIN ORDO
+
+SIGILLUM Migration
+  version: VERBUM
+  nome: VERBUM
+  fn_up: SPECULUM NIHIL
+  fn_down: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM MigrationInfo
+  version: VERBUM
+  nome: VERBUM
+  status: MigrationStatus
+  aplicada_em: REX
+FIN SIGILLUM
+
+SIGILLUM Migrator
+  db: SPECULUM NIHIL
+  migrations: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM MigrationDbHandle
+  version: VERBUM
+  nome: VERBUM
+  fn_up: SPECULUM NIHIL
+  fn_down: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM MigratorDbHandle
+  db: SPECULUM NIHIL
+  migrations: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE migrator_empty_logger_fields() REDDE VERBUM
+  REDDE "{}"
+EXPLICIT RITUALE
+
+RITUALE migrator_params_version(VERBUM version) REDDE DbParams
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, version)
+  REDDE params
+EXPLICIT RITUALE
+
+RITUALE migrator_params_record(VERBUM version, VERBUM nome, REX aplicada_em) REDDE DbParams
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, version)
+  CONIURA dbh_param_text(SPECULUM params, nome)
+  CONIURA dbh_param_int(SPECULUM params, aplicada_em)
+  REDDE params
+EXPLICIT RITUALE
+
+RITUALE migrator_ensure_table_dbh(DbHandle db) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(db, "CREATE TABLE IF NOT EXISTS civitas_migrations (version TEXT PRIMARY KEY, nome TEXT NOT NULL, aplicada_em INTEGER NOT NULL)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_is_applied_dbh(DbHandle db, VERBUM version) REDDE VERUM
+  EVOCA DbParams params AD CONIURA migrator_params_version(version)
+  EVOCA DbRows rows AD CONIURA dbh_query(db, "SELECT COUNT(*) FROM civitas_migrations WHERE version = ?", params)
+  EVOCA REX n AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE n AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE n > 0
+EXPLICIT RITUALE
+
+RITUALE migrator_record_applied_dbh(DbHandle db, VERBUM version, VERBUM nome) REDDE NIHIL
+  EVOCA REX agora AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  EVOCA DbParams params AD CONIURA migrator_params_record(version, nome, agora)
+  CONIURA dbh_exec(db, "INSERT INTO civitas_migrations (version, nome, aplicada_em) VALUES (?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_remove_record_dbh(DbHandle db, VERBUM version) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA migrator_params_version(version)
+  CONIURA dbh_exec(db, "DELETE FROM civitas_migrations WHERE version = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_applied_at_dbh(DbHandle db, VERBUM version) REDDE REX
+  EVOCA DbParams params AD CONIURA migrator_params_version(version)
+  EVOCA DbRows rows AD CONIURA dbh_query(db, "SELECT aplicada_em FROM civitas_migrations WHERE version = ?", params)
+  EVOCA REX applied_at AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE applied_at AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE applied_at
+EXPLICIT RITUALE
+
+RITUALE migrator_last_applied_version_dbh(DbHandle db) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(db, "SELECT version FROM civitas_migrations ORDER BY version DESC LIMIT 1", params)
+  EVOCA VERBUM version AD ""
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE version AD CONIURA dbrows_get_text(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE version
+EXPLICIT RITUALE
+
+RITUALE migrator_ensure_table(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA migrator_ensure_table_dbh(CONIURA dbh_from_sqlite(db))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_is_applied(SPECULUM NIHIL db, VERBUM version) REDDE VERUM
+  REDDE CONIURA migrator_is_applied_dbh(CONIURA dbh_from_sqlite(db), version)
+EXPLICIT RITUALE
+
+RITUALE migrator_record_applied(SPECULUM NIHIL db, VERBUM version, VERBUM nome) REDDE NIHIL
+  CONIURA migrator_record_applied_dbh(CONIURA dbh_from_sqlite(db), version, nome)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_remove_record(SPECULUM NIHIL db, VERBUM version) REDDE NIHIL
+  CONIURA migrator_remove_record_dbh(CONIURA dbh_from_sqlite(db), version)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_applied_at(SPECULUM NIHIL db, VERBUM version) REDDE REX
+  REDDE CONIURA migrator_applied_at_dbh(CONIURA dbh_from_sqlite(db), version)
+EXPLICIT RITUALE
+
+RITUALE migrator_last_applied_version(SPECULUM NIHIL db) REDDE VERBUM
+  REDDE CONIURA migrator_last_applied_version_dbh(CONIURA dbh_from_sqlite(db))
+EXPLICIT RITUALE
+
+RITUALE migrator_new(SPECULUM NIHIL db, SPECULUM NIHIL logger) REDDE Migrator
+  EVOCA Migrator mgr
+  VINCIRE mgr.db AD db
+  VINCIRE mgr.migrations AD CONIURA fluxus_init(MENSURA(Migration))
+  VINCIRE mgr.logger AD logger
+  REDDE mgr
+EXPLICIT RITUALE
+
+RITUALE migrator_new_dbh(DbHandle db, SPECULUM NIHIL logger) REDDE MigratorDbHandle
+  EVOCA MigratorDbHandle mgr
+  EVOCA SPECULUM DbHandle db_ptr AD OBSECRO mem_alloc(MENSURA(DbHandle))
+  CONIURA dbh_fill(db_ptr, db)
+  VINCIRE mgr.db AD db_ptr
+  VINCIRE mgr.migrations AD CONIURA fluxus_init(MENSURA(MigrationDbHandle))
+  VINCIRE mgr.logger AD logger
+  REDDE mgr
+EXPLICIT RITUALE
+
+RITUALE migrator_add(Migrator mgr, VERBUM version, VERBUM nome, SPECULUM NIHIL fn_up, SPECULUM NIHIL fn_down) REDDE NIHIL
+  EVOCA Migration m
+  VINCIRE m.version AD version
+  VINCIRE m.nome AD nome
+  VINCIRE m.fn_up AD fn_up
+  VINCIRE m.fn_down AD fn_down
+  CONIURA fluxus_push(mgr.migrations, SPECULUM m)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_run(Migrator mgr) REDDE SPECULUM NIHIL
+  CONIURA migrator_ensure_table(mgr.db)
+  EVOCA REX n AD CONIURA fluxus_len(mgr.migrations)
+  EVOCA REX applied AD 0
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM Migration mptr AD CONIURA fluxus_get(mgr.migrations, i)
+    SI CONIURA migrator_is_applied(mgr.db, (*mptr).version)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI mgr.logger != NIHIL
+      CONIURA log_info(mgr.logger, CONIURA concat("applying migration ", (*mptr).version), "{}")
+    FIN SI
+    CONIURA db_begin(mgr.db)
+    CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*mptr).fn_up, mgr.db)
+    CONIURA migrator_record_applied(mgr.db, (*mptr).version, (*mptr).nome)
+    CONIURA db_commit(mgr.db)
+    VINCIRE applied AD applied + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI applied == 0
+    REDDE CONIURA Err GENUS(REX, MigrateError)(MeNenhumaPendente)
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, MigrateError)(applied)
+EXPLICIT RITUALE
+
+RITUALE migrator_rollback(Migrator mgr) REDDE SPECULUM NIHIL
+  CONIURA migrator_ensure_table(mgr.db)
+  EVOCA VERBUM version AD CONIURA migrator_last_applied_version(mgr.db)
+  SI CONIURA len(version) == 0
+    REDDE CONIURA Err GENUS(REX, MigrateError)(MeNenhumaAplicada)
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(mgr.migrations)
+  DUM i < n
+    EVOCA SPECULUM Migration mptr AD CONIURA fluxus_get(mgr.migrations, i)
+    SI CONIURA compare((*mptr).version, version) == 0
+      CONIURA db_begin(mgr.db)
+      CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*mptr).fn_down, mgr.db)
+      CONIURA migrator_remove_record(mgr.db, (*mptr).version)
+      CONIURA db_commit(mgr.db)
+      REDDE CONIURA Ok GENUS(REX, MigrateError)(1)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA Err GENUS(REX, MigrateError)(MeVersaoNaoEncontrada)
+EXPLICIT RITUALE
+
+RITUALE migrator_status(Migrator mgr) REDDE SPECULUM NIHIL
+  CONIURA migrator_ensure_table(mgr.db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MigrationInfo))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(mgr.migrations)
+  DUM i < n
+    EVOCA SPECULUM Migration mptr AD CONIURA fluxus_get(mgr.migrations, i)
+    EVOCA MigrationInfo info
+    VINCIRE info.version AD (*mptr).version
+    VINCIRE info.nome AD (*mptr).nome
+    SI CONIURA migrator_is_applied(mgr.db, (*mptr).version)
+      VINCIRE info.status AD MsAplicada
+      VINCIRE info.aplicada_em AD CONIURA migrator_applied_at(mgr.db, (*mptr).version)
+    ALITER
+      VINCIRE info.status AD MsPendente
+      VINCIRE info.aplicada_em AD 0
+    FIN SI
+    CONIURA fluxus_push(out, SPECULUM info)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE migrator_add_dbh(MigratorDbHandle mgr, VERBUM version, VERBUM nome, SPECULUM NIHIL fn_up, SPECULUM NIHIL fn_down) REDDE NIHIL
+  EVOCA MigrationDbHandle m
+  VINCIRE m.version AD version
+  VINCIRE m.nome AD nome
+  VINCIRE m.fn_up AD fn_up
+  VINCIRE m.fn_down AD fn_down
+  CONIURA fluxus_push(mgr.migrations, SPECULUM m)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migrator_run_dbh(MigratorDbHandle mgr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbHandle db_ptr AD mgr.db
+  CONIURA migrator_ensure_table_dbh(*db_ptr)
+  EVOCA REX n AD CONIURA fluxus_len(mgr.migrations)
+  EVOCA REX applied AD 0
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM MigrationDbHandle mptr AD CONIURA fluxus_get(mgr.migrations, i)
+    SI CONIURA migrator_is_applied_dbh(*db_ptr, (*mptr).version)
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    CONIURA dbh_begin(*db_ptr)
+    CONIURA callback_invoke1_void GENUS(DbHandle)((*mptr).fn_up, *db_ptr)
+    CONIURA migrator_record_applied_dbh(*db_ptr, (*mptr).version, (*mptr).nome)
+    CONIURA dbh_commit(*db_ptr)
+    VINCIRE applied AD applied + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI applied == 0
+    REDDE CONIURA Err GENUS(REX, MigrateError)(MeNenhumaPendente)
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, MigrateError)(applied)
+EXPLICIT RITUALE
+
+RITUALE migrator_status_dbh(MigratorDbHandle mgr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM DbHandle db_ptr AD mgr.db
+  CONIURA migrator_ensure_table_dbh(*db_ptr)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MigrationInfo))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(mgr.migrations)
+  DUM i < n
+    EVOCA SPECULUM MigrationDbHandle mptr AD CONIURA fluxus_get(mgr.migrations, i)
+    EVOCA MigrationInfo info
+    VINCIRE info.version AD (*mptr).version
+    VINCIRE info.nome AD (*mptr).nome
+    SI CONIURA migrator_is_applied_dbh(*db_ptr, (*mptr).version)
+      VINCIRE info.status AD MsAplicada
+      VINCIRE info.aplicada_em AD CONIURA migrator_applied_at_dbh(*db_ptr, (*mptr).version)
+    ALITER
+      VINCIRE info.status AD MsPendente
+      VINCIRE info.aplicada_em AD 0
+    FIN SI
+    CONIURA fluxus_push(out, SPECULUM info)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase15_15f_record_clear_and_count"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit_check.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_rate_limit_db_open("15f_record_clear_and_count")
+  EVOCA RateLimitConfig cfg AD CONIURA rate_limit_config_default()
+  EVOCA VERBUM chave AD CONIURA rate_limit_chave_email("alice@example.com")
+  CONIURA rate_limit_record(db, chave, FALSUM)
+  CONIURA rate_limit_record(db, chave, FALSUM)
+  SI CONIURA rate_limit_contagem_por_chave(db, cfg, chave) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  CONIURA rate_limit_clear(db, chave)
+  SI CONIURA rate_limit_contagem_por_chave(db, cfg, chave) != 0
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

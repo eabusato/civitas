@@ -1,0 +1,352 @@
+INCIPIT grimoire "civitas_perf_report"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../bench.cct"
+ADVOCARE "../bench/bench.cct"
+ADVOCARE "../memory_profiler.cct"
+ADVOCARE "../memory_profiler/memory_profiler.cct"
+ADVOCARE "../profiler.cct"
+ADVOCARE "../profiler/profiler.cct"
+ADVOCARE "../trace_render.cct"
+ADVOCARE "../trace_render/trace_render.cct"
+
+SIGILLUM PerfReport
+  app_name: VERBUM
+  generated_at_ms: REX
+  bench: BenchResult
+  has_comparison: VERUM
+  comparison: BenchComparison
+  profiles: SPECULUM NIHIL
+  mem_report: MemReport
+  n1_found: VERUM
+FIN SIGILLUM
+
+RITUALE perf_report_build(VERBUM app_name, BenchResult bench, SPECULUM NIHIL profiles, MemReport mem_report) REDDE PerfReport
+  EVOCA PerfReport report
+  VINCIRE report.app_name AD app_name
+  VINCIRE report.generated_at_ms AD CONIURA now_ms()
+  VINCIRE report.bench AD bench
+  VINCIRE report.has_comparison AD FALSUM
+  VINCIRE report.profiles AD profiles
+  VINCIRE report.mem_report.n_requests AD mem_report.n_requests
+  VINCIRE report.mem_report.allocs_total AD mem_report.allocs_total
+  VINCIRE report.mem_report.bytes_alloc_total AD mem_report.bytes_alloc_total
+  VINCIRE report.mem_report.mean_allocs_per_request AD mem_report.mean_allocs_per_request
+  VINCIRE report.mem_report.mean_bytes_per_request AD mem_report.mean_bytes_per_request
+  VINCIRE report.mem_report.peak_live_bytes_delta AD mem_report.peak_live_bytes_delta
+  VINCIRE report.mem_report.suspected_count AD mem_report.suspected_count
+  VINCIRE report.mem_report.deltas AD mem_report.deltas
+  VINCIRE report.n1_found AD FALSUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(profiles)
+  DUM i < n
+    EVOCA SPECULUM RequestProfile prof_ptr AD CONIURA fluxus_get(profiles, i)
+    SI (*prof_ptr).n1_report.found
+      VINCIRE report.n1_found AD VERUM
+      FRANGE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE perf_report_set_comparison(SPECULUM PerfReport report, BenchComparison comparison) REDDE NIHIL
+  VINCIRE (*report).has_comparison AD VERUM
+  VINCIRE (*report).comparison AD comparison
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE perf_report_css() REDDE VERBUM
+  REDDE "<style>*{box-sizing:border-box}body{margin:0;background:#020617;color:#e2e8f0;font:14px/1.6 ui-monospace,monospace;padding:24px}main{max-width:1240px;margin:0 auto}.hero{margin-bottom:22px}.hero h1{margin:0 0 6px;font-size:28px}.hero p{margin:0;color:#94a3b8}.section{background:#0f172a;border:1px solid #1e293b;border-radius:18px;padding:18px;margin:0 0 18px;box-shadow:0 20px 40px rgba(2,6,23,.35)}h2{margin:0 0 12px;font-size:18px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #1e293b;vertical-align:top}th{color:#94a3b8;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.ok{background:#052e16;color:#86efac;border:1px solid #166534;border-radius:12px;padding:12px;margin-top:12px}.alert{background:#450a0a;color:#fecaca;border:1px solid #7f1d1d;border-radius:12px;padding:12px;margin-top:12px}.muted{color:#94a3b8}.bars{display:flex;align-items:center;gap:10px}.bar{height:8px;border-radius:999px;background:linear-gradient(90deg,#0ea5e9,#38bdf8);display:inline-block;min-width:2px}.bar.warn{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.bar.bad{background:linear-gradient(90deg,#ef4444,#fb7185)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{padding:12px;border-radius:14px;background:#020817;border:1px solid #1e293b}.card .label{display:block;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em}.card .value{display:block;margin-top:8px;font-size:20px;font-weight:700}.svg-wrap{overflow:auto;background:#020617;border:1px solid #1e293b;border-radius:14px;padding:12px}.inline-code{background:#020617;border:1px solid #1e293b;border-radius:8px;padding:2px 6px}</style>"
+EXPLICIT RITUALE
+
+RITUALE perf_report_pct_bar(UMBRA pct) REDDE VERBUM
+  EVOCA REX width AD cast GENUS(REX)(pct)
+  SI width < 2
+    VINCIRE width AD 2
+  FIN SI
+  SI width > 100
+    VINCIRE width AD 100
+  FIN SI
+  EVOCA VERBUM cls AD "bar"
+  SI pct >= 50.0
+    VINCIRE cls AD "bar bad"
+  ALITER
+    SI pct >= 20.0
+      VINCIRE cls AD "bar warn"
+    FIN SI
+  FIN SI
+  EVOCA VERBUM out AD "<span class=\""
+  VINCIRE out AD CONIURA concat(out, cls)
+  VINCIRE out AD CONIURA concat(out, "\" style=\"width:")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(width))
+  VINCIRE out AD CONIURA concat(out, "%\"></span>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE perf_report_html_bench(PerfReport report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"section\"><h2>Benchmark</h2><table><tr><th>Metric</th><th>Value</th></tr>")
+  CONIURA builder_append(b, "<tr><td>Route</td><td>")
+  CONIURA builder_append(b, CONIURA html_encode(report.bench.config_method))
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, CONIURA html_encode(report.bench.config_url))
+  CONIURA builder_append(b, "</td></tr><tr><td>Throughput</td><td>")
+  CONIURA builder_append(b, CONIURA stringify_real_fixed(report.bench.throughput, 2))
+  CONIURA builder_append(b, " req/s</td></tr><tr><td>p50</td><td>")
+  CONIURA builder_append(b, CONIURA stringify_int(report.bench.p50_ms))
+  CONIURA builder_append(b, " ms</td></tr><tr><td>p95</td><td>")
+  CONIURA builder_append(b, CONIURA stringify_int(report.bench.p95_ms))
+  CONIURA builder_append(b, " ms</td></tr><tr><td>p99</td><td>")
+  CONIURA builder_append(b, CONIURA stringify_int(report.bench.p99_ms))
+  CONIURA builder_append(b, " ms</td></tr><tr><td>Errors</td><td>")
+  CONIURA builder_append(b, CONIURA stringify_int(report.bench.n_error))
+  CONIURA builder_append(b, " / ")
+  CONIURA builder_append(b, CONIURA stringify_int(report.bench.n_requests))
+  CONIURA builder_append(b, "</td></tr></table>")
+  SI report.has_comparison
+    CONIURA builder_append(b, "<h2>Comparison</h2><table><tr><th>Metric</th><th>Before</th><th>After</th><th>Delta</th></tr>")
+    CONIURA builder_append(b, "<tr><td>Throughput</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_real_fixed(report.comparison.before.throughput, 2))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_real_fixed(report.comparison.after.throughput, 2))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_real_fixed(report.comparison.delta_throughput_pct, 2))
+    CONIURA builder_append(b, "%</td></tr><tr><td>p99</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int(report.comparison.before.p99_ms))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int(report.comparison.after.p99_ms))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_real_fixed(report.comparison.delta_p99_pct, 2))
+    CONIURA builder_append(b, "%</td></tr></table>")
+    SI report.comparison.improved
+      CONIURA builder_append(b, "<div class=\"ok\">Improvement detected relative to the previous benchmark.</div>")
+    ALITER
+      CONIURA builder_append(b, "<div class=\"alert\">No benchmark improvement was detected.</div>")
+    FIN SI
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE perf_report_html_profiles(PerfReport report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"section\"><h2>CPU, Rituals and Queries</h2>")
+  SI CONIURA fluxus_len(report.profiles) == 0
+    CONIURA builder_append(b, "<p class=\"muted\">No persisted request profiles were provided.</p></section>")
+    EVOCA VERBUM empty AD CONIURA builder_to_verbum(b)
+    CONIURA builder_free(b)
+    REDDE empty
+  FIN SI
+  EVOCA SPECULUM RequestProfile prof_ptr AD CONIURA fluxus_get(report.profiles, 0)
+  EVOCA SPECULUM NIHIL top AD CONIURA profiler_top_rituals(*prof_ptr, 10)
+  CONIURA builder_append(b, "<table><tr><th>Ritual</th><th>Category</th><th>Calls</th><th>Total (us)</th><th>% request</th></tr>")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(top)
+  DUM i < n
+    EVOCA SPECULUM RitualStat rs_ptr AD CONIURA fluxus_get(top, i)
+    CONIURA builder_append(b, "<tr><td>")
+    CONIURA builder_append(b, CONIURA html_encode((*rs_ptr).name))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA html_encode((*rs_ptr).category))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int((*rs_ptr).calls))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int((*rs_ptr).total_us))
+    CONIURA builder_append(b, "</td><td><div class=\"bars\">")
+    CONIURA builder_append(b, CONIURA stringify_real_fixed((*rs_ptr).pct_request, 2))
+    CONIURA builder_append(b, "% ")
+    CONIURA builder_append(b, CONIURA perf_report_pct_bar((*rs_ptr).pct_request))
+    CONIURA builder_append(b, "</div></td></tr>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</table>")
+  CONIURA fluxus_free(top)
+
+  SI report.n1_found
+    CONIURA builder_append(b, "<div class=\"alert\"><strong>N+1 detected.</strong>")
+    EVOCA REX pidx AD 0
+    EVOCA REX pn AD CONIURA fluxus_len(report.profiles)
+    DUM pidx < pn
+      EVOCA SPECULUM RequestProfile profile_ptr AD CONIURA fluxus_get(report.profiles, pidx)
+      SI (*profile_ptr).n1_report.found
+        EVOCA REX qidx AD 0
+        EVOCA REX qn AD CONIURA fluxus_len((*profile_ptr).queries)
+        DUM qidx < qn
+          EVOCA SPECULUM QueryStat qs_ptr AD CONIURA fluxus_get((*profile_ptr).queries, qidx)
+          SI (*qs_ptr).possible_n1
+            CONIURA builder_append(b, "<div><span class=\"inline-code\">")
+            CONIURA builder_append(b, CONIURA html_encode((*qs_ptr).template))
+            CONIURA builder_append(b, "</span> · ")
+            CONIURA builder_append(b, CONIURA stringify_int((*qs_ptr).calls))
+            CONIURA builder_append(b, " calls</div>")
+          FIN SI
+          VINCIRE qidx AD qidx + 1
+        FIN DUM
+        FRANGE
+      FIN SI
+      VINCIRE pidx AD pidx + 1
+    FIN DUM
+    CONIURA builder_append(b, "</div>")
+  ALITER
+    CONIURA builder_append(b, "<div class=\"ok\">No N+1 pattern was detected in the provided profiles.</div>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE perf_report_html_memory(PerfReport report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"section\"><h2>Memory</h2><div class=\"grid\">")
+  CONIURA builder_append(b, "<div class=\"card\"><span class=\"label\">Requests</span><span class=\"value\">")
+  CONIURA builder_append(b, CONIURA stringify_int(report.mem_report.n_requests))
+  CONIURA builder_append(b, "</span></div><div class=\"card\"><span class=\"label\">Mean allocs/request</span><span class=\"value\">")
+  CONIURA builder_append(b, CONIURA stringify_real_fixed(report.mem_report.mean_allocs_per_request, 2))
+  CONIURA builder_append(b, "</span></div><div class=\"card\"><span class=\"label\">Mean bytes/request</span><span class=\"value\">")
+  CONIURA builder_append(b, CONIURA stringify_real_fixed(report.mem_report.mean_bytes_per_request, 2))
+  CONIURA builder_append(b, "</span></div><div class=\"card\"><span class=\"label\">Peak live bytes delta</span><span class=\"value\">")
+  CONIURA builder_append(b, CONIURA stringify_int(report.mem_report.peak_live_bytes_delta))
+  CONIURA builder_append(b, "</span></div></div>")
+  SI report.mem_report.suspected_count > 0
+    CONIURA builder_append(b, "<div class=\"alert\">Memory leak suspects detected in ")
+    CONIURA builder_append(b, CONIURA stringify_int(report.mem_report.suspected_count))
+    CONIURA builder_append(b, " request(s).</div>")
+  ALITER
+    CONIURA builder_append(b, "<div class=\"ok\">No leak suspect was detected in the recorded memory deltas.</div>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE perf_report_html_recommendations(PerfReport report) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<section class=\"section\"><h2>Recommendations</h2>")
+  EVOCA VERUM has_any AD FALSUM
+  SI report.n1_found
+    VINCIRE has_any AD VERUM
+    CONIURA builder_append(b, "<div class=\"alert\">Resolve repeated SQL templates first. The persisted profile already shows an N+1 pattern.</div>")
+  FIN SI
+  SI report.mem_report.suspected_count > 0
+    VINCIRE has_any AD VERUM
+    CONIURA builder_append(b, "<div class=\"alert\">Review missing releases for builders, fluxus handles and traces in the routes with positive live deltas.</div>")
+  FIN SI
+  SI report.bench.p99_ms > 500
+    VINCIRE has_any AD VERUM
+    CONIURA builder_append(b, "<div class=\"alert\">p99 is above 500 ms. Start with the top rituals section and cache/DB spans.</div>")
+  FIN SI
+  SI report.has_comparison ET report.comparison.improved
+    VINCIRE has_any AD VERUM
+    CONIURA builder_append(b, "<div class=\"ok\">The current benchmark improved. Save this run as a baseline for future regressions.</div>")
+  FIN SI
+  SI NON has_any
+    CONIURA builder_append(b, "<div class=\"ok\">No critical recommendation was produced from the current data set.</div>")
+  FIN SI
+  CONIURA builder_append(b, "</section>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE perf_report_hotspot_trace(PerfReport report) REDDE Trace
+  EVOCA Trace trace AD CONIURA trace_new_with_id("perf-hotspots")
+  EVOCA VERBUM root_span_id AD CONIURA span_start(SPECULUM trace, "GET /perf-report")
+  CONIURA span_set_attribute(SPECULUM trace, root_span_id, "category", "http")
+  CONIURA span_set_attribute(SPECULUM trace, root_span_id, "report.app_name", report.app_name)
+  SI CONIURA fluxus_len(report.profiles) > 0
+    EVOCA SPECULUM RequestProfile prof_ptr AD CONIURA fluxus_get(report.profiles, 0)
+    EVOCA SPECULUM NIHIL top AD CONIURA profiler_top_rituals(*prof_ptr, 5)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(top)
+    DUM i < n
+      EVOCA SPECULUM RitualStat rs_ptr AD CONIURA fluxus_get(top, i)
+      EVOCA VERBUM child_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, (*rs_ptr).name)
+      CONIURA span_set_attribute(SPECULUM trace, child_id, "category", (*rs_ptr).category)
+      CONIURA span_set_attribute(SPECULUM trace, child_id, "calls", CONIURA stringify_int((*rs_ptr).calls))
+      CONIURA span_set_attribute(SPECULUM trace, child_id, "pct_request", CONIURA stringify_real_fixed((*rs_ptr).pct_request, 2))
+      SI (*rs_ptr).pct_request >= 20.0
+        CONIURA span_set_attribute(SPECULUM trace, child_id, "hotspot", "true")
+      FIN SI
+      CONIURA span_end(SPECULUM trace, child_id)
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA fluxus_free(top)
+    SI (*prof_ptr).n1_report.found
+      EVOCA REX qidx AD 0
+      EVOCA REX qn AD CONIURA fluxus_len((*prof_ptr).queries)
+      DUM qidx < qn
+        EVOCA SPECULUM QueryStat qs_ptr AD CONIURA fluxus_get((*prof_ptr).queries, qidx)
+        SI (*qs_ptr).possible_n1
+          EVOCA VERBUM n1_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, (*qs_ptr).template)
+          CONIURA span_set_attribute(SPECULUM trace, n1_span_id, "category", "db")
+          CONIURA span_set_attribute(SPECULUM trace, n1_span_id, "n1_alert", "true")
+          CONIURA span_set_attribute(SPECULUM trace, n1_span_id, "calls", CONIURA stringify_int((*qs_ptr).calls))
+          CONIURA span_end(SPECULUM trace, n1_span_id)
+        FIN SI
+        VINCIRE qidx AD qidx + 1
+      FIN DUM
+    FIN SI
+  FIN SI
+  SI report.mem_report.suspected_count > 0
+    EVOCA VERBUM mem_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "memory.suspect")
+    CONIURA span_set_attribute(SPECULUM trace, mem_span_id, "category", "call")
+    CONIURA span_set_attribute(SPECULUM trace, mem_span_id, "suspected_count", CONIURA stringify_int(report.mem_report.suspected_count))
+    CONIURA span_end(SPECULUM trace, mem_span_id)
+  FIN SI
+  CONIURA span_end(SPECULUM trace, root_span_id)
+  REDDE trace
+EXPLICIT RITUALE
+
+RITUALE perf_report_sigilo_annot(PerfReport report, VERBUM out_dir) REDDE VERBUM
+  CONIURA mkdir_all(out_dir)
+  EVOCA Trace trace AD CONIURA perf_report_hotspot_trace(report)
+  EVOCA VERBUM out_path AD CONIURA path_join(out_dir, "hotspots.ctrace")
+  CONIURA trace_write_file(trace, out_path)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE out_path
+EXPLICIT RITUALE
+
+RITUALE perf_report_sigilo_render(PerfReport report, VERBUM out_path, TraceRenderConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA Trace trace AD CONIURA perf_report_hotspot_trace(report)
+  EVOCA SPECULUM NIHIL render_res AD CONIURA trace_render_to_file(trace, cfg, out_path)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE render_res
+EXPLICIT RITUALE
+
+RITUALE perf_report_write_html(PerfReport report, VERBUM path) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Civitas Perf Report — ")
+  CONIURA builder_append(b, CONIURA html_encode(report.app_name))
+  CONIURA builder_append(b, "</title>")
+  CONIURA builder_append(b, CONIURA perf_report_css())
+  CONIURA builder_append(b, "</head><body><main><div class=\"hero\"><h1>Civitas Perf Report</h1><p>")
+  CONIURA builder_append(b, CONIURA html_encode(report.app_name))
+  CONIURA builder_append(b, " · generated at ")
+  CONIURA builder_append(b, CONIURA stringify_int(report.generated_at_ms))
+  CONIURA builder_append(b, "</p></div>")
+  CONIURA builder_append(b, CONIURA perf_report_html_bench(report))
+  CONIURA builder_append(b, CONIURA perf_report_html_profiles(report))
+  CONIURA builder_append(b, CONIURA perf_report_html_memory(report))
+  CONIURA builder_append(b, CONIURA perf_report_html_recommendations(report))
+  CONIURA builder_append(b, "</main></body></html>")
+  EVOCA VERBUM html AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA mkdir_all(CONIURA path_dirname(path))
+  CONIURA write_all(path, html)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

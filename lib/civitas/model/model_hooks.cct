@@ -1,0 +1,30 @@
+INCIPIT grimoire "civitas_model_hooks"
+
+ADVOCARE "model.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE model_def_set_hook_before_save(SPECULUM ModelDef def, VERBUM signal_nome) REDDE NIHIL
+  VINCIRE (*def).hook_before_save AD signal_nome
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_set_hook_after_save(SPECULUM ModelDef def, VERBUM signal_nome) REDDE NIHIL
+  VINCIRE (*def).hook_after_save AD signal_nome
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_set_hook_before_delete(SPECULUM ModelDef def, VERBUM signal_nome) REDDE NIHIL
+  VINCIRE (*def).hook_before_delete AD signal_nome
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_set_hook_after_delete(SPECULUM ModelDef def, VERBUM signal_nome) REDDE NIHIL
+  VINCIRE (*def).hook_after_delete AD signal_nome
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_def_has_hooks(ModelDef def) REDDE VERUM
+  REDDE CONIURA len(def.hook_before_save) > 0 VEL CONIURA len(def.hook_after_save) > 0 VEL CONIURA len(def.hook_before_delete) > 0 VEL CONIURA len(def.hook_after_delete) > 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

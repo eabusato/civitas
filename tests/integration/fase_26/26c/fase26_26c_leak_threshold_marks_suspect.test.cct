@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase26_26c_leak_threshold_marks_suspect"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA MemSnapshot before AD CONIURA mem_snap_begin()
+  EVOCA SPECULUM NIHIL leak AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX a AD 11
+  EVOCA REX b AD 12
+  CONIURA fluxus_push(leak, SPECULUM a)
+  CONIURA fluxus_push(leak, SPECULUM b)
+  EVOCA MemDelta delta AD CONIURA mem_snap_end(before, "/leak", "req-2", 0)
+  SI delta.live_count_delta <= 0
+    REDDE 1
+  FIN SI
+  SI NON delta.suspected_leak
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

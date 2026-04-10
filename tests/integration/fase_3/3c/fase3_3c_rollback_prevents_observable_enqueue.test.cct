@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase3_3c_rollback_prevents_observable_enqueue_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "../../../../lib/civitas/outbox.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase3_3c_tmp_dir("3c_rollback")
+  EVOCA OutboxStore store
+  EVOCA EventBus bus
+  EVOCA OutboxTransaction tx
+  EVOCA OutboxPublishReport report
+  EVOCA SPECULUM NIHIL entries
+
+  CONIURA phase3_3c_reset_dir(dir)
+  VINCIRE store AD CONIURA phase3_3c_ok_or_fail_store(CONIURA outbox_store_open(dir, 3))
+  CONIURA event_bus_init(SPECULUM bus, "rollback-bus")
+
+  CONIURA outbox_tx_init(SPECULUM tx, store)
+  CONIURA phase3_3c_ok_or_fail_entry_id(CONIURA outbox_tx_enqueue(SPECULUM tx, CONIURA phase3_3c_event("mail.delivery_requested", "req-rollback", "actor-r", "{\"mail_id\":\"r1\"}", "public"), "mail:r1"))
+  CONIURA outbox_tx_rollback(SPECULUM tx)
+  VINCIRE report AD CONIURA phase3_3c_ok_or_fail_report(CONIURA outbox_after_commit_publish(SPECULUM store, bus, 10, 5000, 1000))
+  VINCIRE entries AD CONIURA outbox_list_entries(SPECULUM store)
+
+  SI CONIURA fluxus_len(entries) != 0
+    REDDE 1
+  FIN SI
+  SI report.claimed_count != 0 VEL report.published_count != 0
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,12 @@
+INCIPIT grimoire "civitas_session_db"
+
+ADVOCARE "session.cct"
+
+RITUALE session_db_handle(SessionStore store) REDDE SPECULUM NIHIL
+  SI store.kind != SbkDb
+    REDDE NIHIL
+  FIN SI
+  REDDE store.state
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

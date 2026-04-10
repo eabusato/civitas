@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase9_9f_serve_direct_range_partial"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery.cct"
+ADVOCARE "../../../../lib/civitas/media_delivery/delivery_range.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9f_root("direct_range")
+  EVOCA VERBUM content AD CONIURA phase9_9f_big_text()
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA phase9_9f_source_file(root, "data.txt", content)
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase9_9f_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "range", "bytes=0-19")
+  EVOCA SPECULUM NIHIL serve_res AD CONIURA delivery_serve_direct(path, "text/plain", CONIURA phase9_9f_direct_cfg(), headers)
+  SI CONIURA result_is_err GENUS(WebResponse, DeliveryError)(serve_res)
+    IACE "partial response should succeed"
+  FIN SI
+  EVOCA WebResponse res AD CONIURA result_unwrap GENUS(WebResponse, DeliveryError)(serve_res)
+  SI res.status != 206
+    IACE "range request should return 206"
+  FIN SI
+  SI CONIURA compare(res.body, CONIURA substring(content, 0, 20)) != 0
+    IACE "range body should match selected slice"
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "content-range", ""), "bytes 0-19/100") != 0
+    IACE "content-range header is wrong"
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "content-length", ""), "20") != 0
+    IACE "partial content-length should match range size"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

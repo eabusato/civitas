@@ -1,0 +1,17 @@
+INCIPIT grimoire "fase24_24c_enqueue_and_count"
+
+ADVOCARE "../../../../lib/civitas/test_tasks/test_tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL q AD CONIURA test_tasks_setup()
+  EVOCA VERBUM id AD CONIURA test_tasks_enqueue(q, "send_welcome", "{\"user\":1}")
+  SI CONIURA len(id) == 0
+    REDDE 1
+  FIN SI
+  CONIURA assert_task_enqueued(q, "send_welcome")
+  CONIURA assert_task_count(q, 1)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

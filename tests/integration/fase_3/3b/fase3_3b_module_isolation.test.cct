@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase3_3b_module_isolation_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "module_a_publisher.cct"
+ADVOCARE "module_b_subscriber.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA EventBus bus
+  EVOCA VERBUM dir AD CONIURA phase3_3b_tmp_dir("3b_module_isolation")
+  EVOCA EventDispatchReport report
+
+  CONIURA event_bus_init(SPECULUM bus, "module-bus")
+  CONIURA phase3_3b_reset_dir(dir)
+  CONIURA phase3_3b_ok_or_fail(CONIURA event_subscribe(SPECULUM bus, "content.published", "phase3_3b_module_b_handler", phase3_3b_module_b_handler))
+
+  VINCIRE report AD CONIURA phase3_3b_module_a_publish(SPECULUM bus, "req-isolated")
+  SI report.delivered_count != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/consumed.log")), "content.published|req-isolated") != 0
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

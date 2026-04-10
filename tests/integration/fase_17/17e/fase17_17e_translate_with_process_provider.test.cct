@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase17_17e_translate_with_process_provider"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17e_translate_with_process_provider")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA EditorialAutomationConfig cfg AD CONIURA editorial_automation_config_default()
+  VINCIRE cfg.translation_provider AD TRANSLATION_PROVIDER_PROCESS
+  VINCIRE cfg.translation_command AD "tr a-z A-Z"
+  CONIURA editorial_enqueue_translate(stack.dbh, "page", "1", "pt-BR", "en", "ola mundo", cfg, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "editorial-worker")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(stack.db, "SELECT translated_text FROM editorial_translations WHERE model_name = 'page' AND object_id = '1' LIMIT 1")
+  SI NON CONIURA stmt_step(stmt) VEL NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA stmt_get_text(stmt, 0), "OLA MUNDO") != 0
+    CONIURA stmt_finalize(stmt)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

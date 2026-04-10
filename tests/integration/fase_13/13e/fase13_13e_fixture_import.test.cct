@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase13_13e_fixture_import"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_schema_map.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_fixture_import.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13e_fixture_import")
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db AD CONIURA phase13_13e_prepare_schema_db("13e_fixture_import")
+  EVOCA SPECULUM NIHIL models AD CONIURA django_schema_parse(CONIURA phase13_13e_schema_json())
+  EVOCA VERBUM fixture_path AD CONIURA path_join(root, "dump.json")
+  CONIURA write_all(fixture_path, "[{\"model\":\"blog.post\",\"pk\":1,\"fields\":{\"titulo\":\"Hello\",\"conteudo\":\"World\",\"imagem\":\"\"}}]")
+  EVOCA DjangoMigrateConfig cfg
+  VINCIRE cfg.db_django AD ""
+  VINCIRE cfg.db_civitas AD db
+  VINCIRE cfg.media_root_django AD ""
+  VINCIRE cfg.media_root_civitas AD ""
+  VINCIRE cfg.dry_run AD FALSUM
+  EVOCA DjangoMigrateResult r AD CONIURA django_fixture_import(db, fixture_path, models, cfg)
+  SI r.registros_importados != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM blog_post") != 1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

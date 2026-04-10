@@ -1,0 +1,138 @@
+INCIPIT grimoire "civitas_admin_inline_save"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_audit.cct"
+ADVOCARE "admin_crud.cct"
+ADVOCARE "admin_inline.cct"
+
+RITUALE admin_inline_child_owned(AdminInlineConfig cfg, DbHandle dbh, VERBUM parent_pk, VERBUM object_pk) REDDE VERUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM sql AD "SELECT COUNT(*) FROM "
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_table)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ? AND ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.fk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_param_text(SPECULUM params, object_pk)
+  CONIURA dbh_param_text(SPECULUM params, parent_pk)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA VERUM owned AD FALSUM
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE owned AD CONIURA dbrows_get_int(rows, 0) > 0
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE owned
+EXPLICIT RITUALE
+
+RITUALE admin_inline_save_one(AdminInlineConfig cfg, DbHandle dbh, VERBUM parent_pk, InlineFormData form, VERBUM actor_id) REDDE VERBUM
+  EVOCA Json form_obj AD CONIURA json_parse(form.fields_json)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM columns AD ""
+  EVOCA VERBUM values_sql AD ""
+  EVOCA VERBUM sets_sql AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI CONIURA compare((*field_ptr).name, cfg.child_pk_field) != 0 ET CONIURA compare((*field_ptr).name, cfg.fk_field) != 0
+      EVOCA Json value AD CONIURA admin_json_get_field(form_obj, *field_ptr)
+      SI CONIURA admin_value_missing_required(*field_ptr, value)
+        IACE CONIURA concat("admin inline missing required field: ", (*field_ptr).name)
+      FIN SI
+      SI NON CONIURA json_is_null(value)
+        SI CONIURA len(form.object_pk) == 0
+          SI CONIURA len(columns) != 0
+            VINCIRE columns AD CONIURA concat(columns, ", ")
+            VINCIRE values_sql AD CONIURA concat(values_sql, ", ")
+          FIN SI
+          VINCIRE columns AD CONIURA concat(columns, (*field_ptr).name)
+          VINCIRE values_sql AD CONIURA concat(values_sql, "?")
+        FIN SI
+        SI CONIURA len(form.object_pk) > 0
+          SI CONIURA len(sets_sql) != 0
+            VINCIRE sets_sql AD CONIURA concat(sets_sql, ", ")
+          FIN SI
+          VINCIRE sets_sql AD CONIURA concat(sets_sql, (*field_ptr).name)
+          VINCIRE sets_sql AD CONIURA concat(sets_sql, " = ?")
+        FIN SI
+        CONIURA admin_append_param_for_field(SPECULUM params, *field_ptr, value)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA len(form.object_pk) == 0
+    SI CONIURA len(columns) != 0
+      VINCIRE columns AD CONIURA concat(columns, ", ")
+      VINCIRE values_sql AD CONIURA concat(values_sql, ", ")
+    FIN SI
+    VINCIRE columns AD CONIURA concat(columns, cfg.fk_field)
+    VINCIRE values_sql AD CONIURA concat(values_sql, "?")
+    CONIURA dbh_param_text(SPECULUM params, parent_pk)
+    EVOCA VERBUM sql AD "INSERT INTO "
+    VINCIRE sql AD CONIURA concat(sql, cfg.child_table)
+    VINCIRE sql AD CONIURA concat(sql, " (")
+    VINCIRE sql AD CONIURA concat(sql, columns)
+    VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+    VINCIRE sql AD CONIURA concat(sql, values_sql)
+    VINCIRE sql AD CONIURA concat(sql, ")")
+    CONIURA dbh_exec(dbh, sql, params)
+    CONIURA dbh_params_free(SPECULUM params)
+    EVOCA VERBUM created_pk AD CONIURA stringify_int(CONIURA dbh_scalar_int(dbh, "SELECT last_insert_rowid()"))
+    CONIURA admin_audit_write(dbh, cfg.child_model, created_pk, ADMIN_AUDIT_CREATE, actor_id, form.fields_json)
+    REDDE created_pk
+  FIN SI
+
+  SI NON CONIURA admin_inline_child_owned(cfg, dbh, parent_pk, form.object_pk)
+    CONIURA dbh_params_free(SPECULUM params)
+    IACE "admin inline fk mismatch"
+  FIN SI
+  SI CONIURA len(sets_sql) != 0
+    VINCIRE sets_sql AD CONIURA concat(sets_sql, ", ")
+  FIN SI
+  VINCIRE sets_sql AD CONIURA concat(sets_sql, cfg.fk_field)
+  VINCIRE sets_sql AD CONIURA concat(sets_sql, " = ?")
+  CONIURA dbh_param_text(SPECULUM params, parent_pk)
+  CONIURA dbh_param_text(SPECULUM params, form.object_pk)
+  EVOCA VERBUM update_sql AD "UPDATE "
+  VINCIRE update_sql AD CONIURA concat(update_sql, cfg.child_table)
+  VINCIRE update_sql AD CONIURA concat(update_sql, " SET ")
+  VINCIRE update_sql AD CONIURA concat(update_sql, sets_sql)
+  VINCIRE update_sql AD CONIURA concat(update_sql, " WHERE ")
+  VINCIRE update_sql AD CONIURA concat(update_sql, cfg.child_pk_field)
+  VINCIRE update_sql AD CONIURA concat(update_sql, " = ?")
+  CONIURA dbh_exec(dbh, update_sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA admin_audit_write(dbh, cfg.child_model, form.object_pk, ADMIN_AUDIT_UPDATE, actor_id, form.fields_json)
+  REDDE form.object_pk
+EXPLICIT RITUALE
+
+RITUALE admin_inline_delete_one(AdminInlineConfig cfg, DbHandle dbh, VERBUM parent_pk, VERBUM object_pk, VERBUM actor_id) REDDE NIHIL
+  SI NON CONIURA admin_inline_child_owned(cfg, dbh, parent_pk, object_pk)
+    IACE "admin inline fk mismatch"
+  FIN SI
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM sql AD "DELETE FROM "
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_table)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ? AND ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.fk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_param_text(SPECULUM params, object_pk)
+  CONIURA dbh_param_text(SPECULUM params, parent_pk)
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA admin_audit_write(dbh, cfg.child_model, object_pk, ADMIN_AUDIT_DELETE, actor_id, "{}")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,16 @@
+INCIPIT grimoire "civitas_trace_entry"
+
+ADVOCARE "trace/trace_spans.cct"
+ADVOCARE "trace/trace_request.cct"
+ADVOCARE "trace/trace_session.cct"
+ADVOCARE "trace/trace_capture_flush.cct"
+ADVOCARE "trace/trace_sql.cct"
+ADVOCARE "trace/trace_cache.cct"
+ADVOCARE "trace/trace_storage.cct"
+ADVOCARE "trace/trace_media.cct"
+ADVOCARE "trace/trace_mail.cct"
+ADVOCARE "trace/trace_i18n.cct"
+ADVOCARE "trace/trace_moderation.cct"
+ADVOCARE "trace/trace_task.cct"
+
+EXPLICIT grimoire

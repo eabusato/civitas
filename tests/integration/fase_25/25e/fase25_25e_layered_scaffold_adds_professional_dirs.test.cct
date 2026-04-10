@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase25_25e_layered_scaffold_adds_professional_dirs"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase25e_reset_root("25e_layered_scaffold_adds_professional_dirs")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg_with_style("atlas25", TemplateWeb, StyleLayered, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(cfg))
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/apps/core/services/index.cct"))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/apps/core/policies/index.cct"))
+    REDDE 3
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/apps/core/queries/index.cct"))
+    REDDE 4
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/apps/core/jobs/index.cct"))
+    REDDE 5
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/apps/core/contracts/index.cct"))
+    REDDE 6
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/docs/adr/README.md"))
+    REDDE 7
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas25/ops/environments/.keep"))
+    REDDE 8
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "atlas25/README.md"), "Use `services/`, `queries/`, `policies/` and `jobs/`")
+    REDDE 9
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "atlas25/civitas.toml"), "# Scaffold style: layered")
+    REDDE 10
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "atlas25/project/main.cct")) != 0
+    REDDE 11
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "atlas25/apps/core/services/index.cct")) != 0
+    REDDE 12
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

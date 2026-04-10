@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase5_5c_route_limit_basic_and_retry_after_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL store AD CONIURA abuse_route_store_new()
+  EVOCA RateLimitRule rule AD CONIURA rate_limit_rule_make(RlcAuth, 2, 60, 0)
+  EVOCA RateLimitKey key
+  VINCIRE key.ip AD "10.0.0.1"
+  VINCIRE key.route_class AD RlcAuth
+  VINCIRE key.actor_id AD ""
+
+  SI NON CONIURA rate_limit_route_allowed(store, key, rule, 1000)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA rate_limit_route_allowed(store, key, rule, 1001)
+    REDDE 2
+  FIN SI
+  SI CONIURA rate_limit_route_allowed(store, key, rule, 1002)
+    REDDE 3
+  FIN SI
+  SI CONIURA rate_limit_retry_after(store, key, rule, 1002) != 60
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

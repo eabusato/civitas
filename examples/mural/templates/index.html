@@ -1,0 +1,54 @@
+{% EVOCA MuralIndexPageContext %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link rel="stylesheet" href="{{ css_url }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">Civitas canonical example</p>
+      <h1>{{ page_title }}</h1>
+      <p class="lead">A minimal guestbook proving the framework can serve HTML, validate forms, persist data and serve static assets.</p>
+      <p><a class="admin-link" href="/admin-lite">Open admin-lite</a></p>
+    </header>
+
+    {% SI has_flash %}
+      <div class="flash flash-success"><p>{{ flash_message }}</p></div>
+    {% FIN SI %}
+
+    <section class="card">
+      <h2>Leave a message</h2>
+      {{ form_html|safe }}
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Latest messages</h2>
+        <span class="badge">{{ message_count }}</span>
+      </div>
+      {% SI message_count == 0 %}
+        <p class="empty">{{ empty_text }}</p>
+      {% ALITER %}
+        <ol class="messages">
+          {% DUM item IN messages %}
+            <li class="message-card">
+              <div class="message-head">
+                <strong>{{ item.name }}</strong>
+                {% SI item.has_email %}
+                  <span class="muted">{{ item.email }}</span>
+                {% FIN SI %}
+                <time>{{ item.created_at }}</time>
+              </div>
+              <p>{{ item.body }}</p>
+            </li>
+          {% FIN DUM %}
+        </ol>
+      {% FIN SI %}
+    </section>
+  </main>
+</body>
+</html>

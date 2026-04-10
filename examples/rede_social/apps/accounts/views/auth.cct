@@ -1,0 +1,18 @@
+INCIPIT grimoire "rede_social_accounts_views"
+
+ADVOCARE "../../../gen/login.cct"
+ADVOCARE "../../shared/template_contexts.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_render_login(VERBUM error_message, VERBUM csrf_html) REDDE VERBUM
+  EVOCA RedeLoginPageContext ctx
+  VINCIRE ctx.page_title AD "Login"
+  VINCIRE ctx.current_user AD ""
+  VINCIRE ctx.has_user AD FALSUM
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.error_message AD error_message
+  VINCIRE ctx.has_error AD CONIURA len(error_message) > 0
+  REDDE CONIURA render_login(ctx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

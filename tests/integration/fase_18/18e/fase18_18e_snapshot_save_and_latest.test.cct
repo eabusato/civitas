@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase18_18e_snapshot_save_and_latest"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_snapshot_save_and_latest() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_dashboard_stack_open("18e_snapshot_save")
+  EVOCA DashboardSnapshot first AD CONIURA dashboard_snapshot_empty()
+  EVOCA DashboardSnapshot second AD CONIURA dashboard_snapshot_empty()
+  VINCIRE first.id AD "snap-1"
+  VINCIRE first.computed_at_unix AD 100
+  VINCIRE first.content.total_pages AD 1
+  VINCIRE second.id AD "snap-2"
+  VINCIRE second.computed_at_unix AD 200
+  VINCIRE second.content.total_pages AD 9
+  CONIURA dashboard_snapshot_save(stack.dbh, first)
+  CONIURA dashboard_snapshot_save(stack.dbh, second)
+  EVOCA VERBUM latest_json AD CONIURA dashboard_latest_snapshot_json(stack.dbh)
+  SI CONIURA find(latest_json, "\"id\":\"snap-2\"") == -1
+    IACE "latest snapshot id mismatch"
+  FIN SI
+  SI CONIURA find(latest_json, "\"total_pages\":9") == -1
+    IACE "latest snapshot payload mismatch"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_snapshot_save_and_latest()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,443 @@
+INCIPIT grimoire "civitas_template_parser"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "ast.cct"
+
+SIGILLUM TemplateParserState
+  tokens: SPECULUM NIHIL
+  position: REX
+  template_name: VERBUM
+FIN SIGILLUM
+
+RITUALE template_parse(SPECULUM NIHIL tokens) REDDE SPECULUM NIHIL
+  REDDE CONIURA template_parse_with_name(tokens, "")
+EXPLICIT RITUALE
+
+RITUALE template_parse_with_name(SPECULUM NIHIL tokens, VERBUM template_name) REDDE SPECULUM NIHIL
+  EVOCA TemplateParserState state
+  EVOCA SPECULUM TemplateNode root AD OBSECRO mem_alloc(MENSURA(TemplateNode))
+  VINCIRE state.tokens AD tokens
+  VINCIRE state.position AD 0
+  VINCIRE state.template_name AD template_name
+  CONIURA template_node_fill(root, CONIURA template_node_new(TnRoot, 1, 1))
+
+  EVOCA SPECULUM NIHIL res AD CONIURA template_parse_children(SPECULUM state, (*root).children, Finis, Finis)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    REDDE res
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(root)
+EXPLICIT RITUALE
+
+RITUALE template_parse_children(
+  SPECULUM TemplateParserState state,
+  SPECULUM NIHIL out_children,
+  TemplateTokenKind stop_kind_a,
+  TemplateTokenKind stop_kind_b
+) REDDE SPECULUM NIHIL
+  DUM VERUM
+    SI CONIURA template_parser_is_current(state, Finis)
+      REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(1)
+    FIN SI
+    SI CONIURA template_parser_is_tag_keyword(state, stop_kind_a) VEL CONIURA template_parser_is_tag_keyword(state, stop_kind_b)
+      REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(1)
+    FIN SI
+    EVOCA SPECULUM NIHIL node_res AD CONIURA template_parse_next_node(state)
+    SI CONIURA result_is_err GENUS(SPECULUM TemplateNode, TemplateCompileError)(node_res)
+      EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(node_res)
+      REDDE CONIURA Err GENUS(REX, TemplateCompileError)(*err)
+    FIN SI
+    EVOCA SPECULUM TemplateNode node_ptr AD OBSECRO result_unwrap_handle(node_res)
+    EVOCA TemplateNodeRef node_ref AD CONIURA template_node_ref(node_ptr)
+    CONIURA fluxus_push(out_children, SPECULUM node_ref)
+  FIN DUM
+  REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_parse_next_node(SPECULUM TemplateParserState state) REDDE SPECULUM NIHIL
+  EVOCA TemplateToken current AD CONIURA template_parser_current(state)
+  SI current.kind == Textum
+    EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnText, current.line, current.column)
+    VINCIRE (*node).text AD current.value
+    CONIURA template_parser_advance(state)
+    REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+  FIN SI
+
+  SI current.kind == AperturaExpr
+    REDDE CONIURA template_parse_expression_node(state)
+  FIN SI
+
+  SI current.kind == AperturaTag
+    REDDE CONIURA template_parse_tag_node(state)
+  FIN SI
+
+  REDDE CONIURA Err GENUS(SPECULUM TemplateNode, TemplateCompileError)(
+    CONIURA template_compile_error((*state).template_name, "token inesperado no parser", current.line, current.column)
+  )
+EXPLICIT RITUALE
+
+RITUALE template_parse_expression_node(SPECULUM TemplateParserState state) REDDE SPECULUM NIHIL
+  EVOCA TemplateToken open_tok AD CONIURA template_parser_current(state)
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnExpression, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  CONIURA template_parse_expr_fill(state, SPECULUM (*node).expr)
+  EVOCA SPECULUM NIHIL res AD CONIURA template_parser_expect(state, ClausuraExpr, "fechamento '}}' esperado")
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(res)
+    EVOCA SPECULUM TemplateCompileError err AD OBSECRO result_unwrap_err_ptr(res)
+    REDDE CONIURA Err GENUS(SPECULUM TemplateNode, TemplateCompileError)(*err)
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_tag_node(SPECULUM TemplateParserState state) REDDE SPECULUM NIHIL
+  EVOCA TemplateToken open_tok AD CONIURA template_parser_current(state)
+  CONIURA template_parser_advance(state)
+  EVOCA TemplateToken keyword AD CONIURA template_parser_current(state)
+
+  SI keyword.kind == Evoca
+    REDDE CONIURA template_parse_context_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Extende
+    REDDE CONIURA template_parse_extends_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Sectio
+    REDDE CONIURA template_parse_block_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Si
+    REDDE CONIURA template_parse_if_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Dum
+    REDDE CONIURA template_parse_for_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Advocare
+    REDDE CONIURA template_parse_include_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Csrf
+    REDDE CONIURA template_parse_empty_tag_node(state, open_tok, TnCsrfInput)
+  FIN SI
+  SI keyword.kind == Signa
+    REDDE CONIURA template_parse_empty_tag_node(state, open_tok, TnFlash)
+  FIN SI
+  SI keyword.kind == Nexus
+    REDDE CONIURA template_parse_static_node(state, open_tok)
+  FIN SI
+  SI keyword.kind == Nonce
+    REDDE CONIURA template_parse_empty_tag_node(state, open_tok, TnNonce)
+  FIN SI
+  SI keyword.kind == Literal
+    REDDE CONIURA template_parse_literal_node(state, open_tok)
+  FIN SI
+
+  REDDE CONIURA Err GENUS(SPECULUM TemplateNode, TemplateCompileError)(
+    CONIURA template_compile_error((*state).template_name, "tag de template invalida", keyword.line, keyword.column)
+  )
+EXPLICIT RITUALE
+
+RITUALE template_parse_context_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnContext, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, Nomen)
+    REDDE CONIURA template_parser_node_error(state, "nome de contexto esperado")
+  FIN SI
+  EVOCA TemplateToken context_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).text AD context_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_extends_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnExtends, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, LitVerbum)
+    REDDE CONIURA template_parser_node_error(state, "caminho literal esperado em EXTENDE")
+  FIN SI
+  EVOCA TemplateToken extends_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).include_path AD extends_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_include_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnInclude, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, LitVerbum)
+    REDDE CONIURA template_parser_node_error(state, "caminho literal esperado em ADVOCARE")
+  FIN SI
+  EVOCA TemplateToken include_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).include_path AD include_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA template_parser_is_current(state, Ad)
+    CONIURA template_parser_advance(state)
+    VINCIRE (*node).include_with AD CONIURA template_parse_path_string(state)
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_static_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnStaticUrl, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, LitVerbum)
+    REDDE CONIURA template_parser_node_error(state, "caminho literal esperado em NEXUS")
+  FIN SI
+  EVOCA TemplateToken nexus_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).text AD nexus_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_empty_tag_node(SPECULUM TemplateParserState state, TemplateToken open_tok, TemplateNodeKind kind) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(kind, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_literal_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnText, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, LitVerbum)
+    REDDE CONIURA template_parser_node_error(state, "literal string esperado em LITERAL")
+  FIN SI
+  EVOCA TemplateToken literal_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).text AD literal_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_block_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnBlock, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, Nomen)
+    REDDE CONIURA template_parser_node_error(state, "nome de bloco esperado")
+  FIN SI
+  EVOCA TemplateToken block_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).block_name AD block_tok.value
+  CONIURA template_parser_advance(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parse_children(state, (*node).children, FinSectio, Finis))
+    REDDE CONIURA template_parser_node_error(state, "erro no corpo do bloco")
+  FIN SI
+  SI NON CONIURA template_parser_is_tag_keyword(state, FinSectio)
+    REDDE CONIURA template_parser_node_error(state, "FIN SECTIO esperado")
+  FIN SI
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado")
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_if_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnIf, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  CONIURA template_parse_condition_fill(state, SPECULUM (*node).condition)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parse_children(state, (*node).children, Aliter, FinSi))
+    REDDE CONIURA template_parser_node_error(state, "erro no corpo do SI")
+  FIN SI
+  SI CONIURA template_parser_is_tag_keyword(state, Aliter)
+    CONIURA template_parser_advance(state)
+    CONIURA template_parser_advance(state)
+    CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado")
+    SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parse_children(state, (*node).else_children, FinSi, Finis))
+      REDDE CONIURA template_parser_node_error(state, "erro no corpo do ALITER")
+    FIN SI
+  FIN SI
+  SI NON CONIURA template_parser_is_tag_keyword(state, FinSi)
+    REDDE CONIURA template_parser_node_error(state, "FIN SI esperado")
+  FIN SI
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado")
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_for_node(SPECULUM TemplateParserState state, TemplateToken open_tok) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM TemplateNode node AD CONIURA template_parser_make_node(TnFor, open_tok.line, open_tok.column)
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, Nomen)
+    REDDE CONIURA template_parser_node_error(state, "variavel de iteracao esperada")
+  FIN SI
+  EVOCA TemplateToken iter_tok AD CONIURA template_parser_current(state)
+  VINCIRE (*node).iter_var AD iter_tok.value
+  CONIURA template_parser_advance(state)
+  SI NON CONIURA template_parser_is_current(state, In)
+    REDDE CONIURA template_parser_node_error(state, "palavra-chave IN esperada")
+  FIN SI
+  CONIURA template_parser_advance(state)
+  VINCIRE (*node).iter_field AD CONIURA template_parse_path_string(state)
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado"))
+    REDDE CONIURA template_parser_node_error(state, "fechamento '%}' esperado")
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, TemplateCompileError)(CONIURA template_parse_children(state, (*node).children, FinDum, Finis))
+    REDDE CONIURA template_parser_node_error(state, "erro no corpo do DUM")
+  FIN SI
+  SI NON CONIURA template_parser_is_tag_keyword(state, FinDum)
+    REDDE CONIURA template_parser_node_error(state, "FIN DUM esperado")
+  FIN SI
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_advance(state)
+  CONIURA template_parser_expect(state, ClausuraTag, "fechamento '%}' esperado")
+  REDDE CONIURA Ok GENUS(SPECULUM TemplateNode, TemplateCompileError)(node)
+EXPLICIT RITUALE
+
+RITUALE template_parse_expr_fill(SPECULUM TemplateParserState state, SPECULUM TemplateExpr dest) REDDE NIHIL
+  CONIURA template_parse_path_into(state, (*dest).path)
+  DUM CONIURA template_parser_is_current(state, Fistula)
+    EVOCA TemplateFilter filter
+    EVOCA TemplateToken filter_tok
+    CONIURA template_parser_advance(state)
+    VINCIRE filter_tok AD CONIURA template_parser_current(state)
+    VINCIRE filter.name AD filter_tok.value
+    VINCIRE filter.arg AD ""
+    CONIURA template_parser_expect(state, Nomen, "nome de filtro esperado")
+    SI CONIURA template_parser_is_current(state, Colon)
+      CONIURA template_parser_advance(state)
+      SI CONIURA template_parser_is_current(state, LitVerbum) VEL CONIURA template_parser_is_current(state, LitRex) VEL CONIURA template_parser_is_current(state, Nomen)
+        EVOCA TemplateToken filter_arg_tok AD CONIURA template_parser_current(state)
+        VINCIRE filter.arg AD filter_arg_tok.value
+        CONIURA template_parser_advance(state)
+      FIN SI
+    FIN SI
+    CONIURA fluxus_push((*dest).filters, SPECULUM filter)
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_parse_condition_fill(SPECULUM TemplateParserState state, SPECULUM TemplateCondition dest) REDDE NIHIL
+  SI CONIURA template_parser_is_current(state, Non)
+    VINCIRE (*dest).is_negated AD VERUM
+    CONIURA template_parser_advance(state)
+  FIN SI
+  CONIURA template_parse_expr_fill(state, SPECULUM (*dest).expr)
+  SI CONIURA template_parser_is_current(state, Maior) VEL CONIURA template_parser_is_current(state, Minor) VEL CONIURA template_parser_is_current(state, MaiorAequalis) VEL CONIURA template_parser_is_current(state, MinorAequalis) VEL CONIURA template_parser_is_current(state, Aequalis) VEL CONIURA template_parser_is_current(state, Diversus)
+    EVOCA TemplateToken op_tok AD CONIURA template_parser_current(state)
+    VINCIRE (*dest).op AD op_tok.value
+    CONIURA template_parser_advance(state)
+    SI CONIURA template_parser_is_current(state, LitRex)
+      EVOCA TemplateToken rhs_int_tok AD CONIURA template_parser_current(state)
+      VINCIRE (*dest).rhs_int AD CONIURA fmt_parse_int(rhs_int_tok.value)
+      VINCIRE (*dest).rhs_kind AD "int"
+      CONIURA template_parser_advance(state)
+    ALITER
+      SI CONIURA template_parser_is_current(state, LitVerbum) VEL CONIURA template_parser_is_current(state, Nomen)
+        EVOCA TemplateToken rhs_str_tok AD CONIURA template_parser_current(state)
+        VINCIRE (*dest).rhs_verbum AD rhs_str_tok.value
+        VINCIRE (*dest).rhs_kind AD "string"
+        CONIURA template_parser_advance(state)
+      FIN SI
+    FIN SI
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_parse_path_into(SPECULUM TemplateParserState state, SPECULUM NIHIL out_path) REDDE NIHIL
+  SI NON CONIURA template_parser_is_current(state, Nomen)
+    REDDE
+  FIN SI
+  DUM VERUM
+    EVOCA TemplateToken path_tok AD CONIURA template_parser_current(state)
+    CONIURA fluxus_push(out_path, SPECULUM path_tok.value)
+    CONIURA template_parser_advance(state)
+    SI NON CONIURA template_parser_is_current(state, Punctum)
+      FRANGE
+    FIN SI
+    CONIURA template_parser_advance(state)
+    SI NON CONIURA template_parser_is_current(state, Nomen)
+      FRANGE
+    FIN SI
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_parse_path_string(SPECULUM TemplateParserState state) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM out AD ""
+  CONIURA template_parse_path_into(state, parts)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, ".")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *part_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE template_parser_is_current(SPECULUM TemplateParserState state, TemplateTokenKind kind) REDDE VERUM
+  EVOCA TemplateToken tok AD CONIURA template_parser_current(state)
+  REDDE tok.kind == kind
+EXPLICIT RITUALE
+
+RITUALE template_parser_is_tag_keyword(SPECULUM TemplateParserState state, TemplateTokenKind keyword_kind) REDDE VERUM
+  SI NON CONIURA template_parser_is_current(state, AperturaTag)
+    REDDE FALSUM
+  FIN SI
+  EVOCA TemplateToken next_tok AD CONIURA template_parser_peek(state, 1)
+  REDDE next_tok.kind == keyword_kind
+EXPLICIT RITUALE
+
+RITUALE template_parser_current(SPECULUM TemplateParserState state) REDDE TemplateToken
+  EVOCA SPECULUM TemplateToken tok_ptr AD CONIURA fluxus_get((*state).tokens, (*state).position)
+  REDDE *tok_ptr
+EXPLICIT RITUALE
+
+RITUALE template_parser_peek(SPECULUM TemplateParserState state, REX offset) REDDE TemplateToken
+  EVOCA SPECULUM TemplateToken tok_ptr AD CONIURA fluxus_get((*state).tokens, (*state).position + offset)
+  REDDE *tok_ptr
+EXPLICIT RITUALE
+
+RITUALE template_parser_advance(SPECULUM TemplateParserState state) REDDE NIHIL
+  VINCIRE (*state).position AD (*state).position + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_parser_expect(SPECULUM TemplateParserState state, TemplateTokenKind kind, VERBUM message) REDDE SPECULUM NIHIL
+  EVOCA TemplateToken current AD CONIURA template_parser_current(state)
+  SI current.kind != kind
+    REDDE CONIURA Err GENUS(REX, TemplateCompileError)(CONIURA template_compile_error((*state).template_name, message, current.line, current.column))
+  FIN SI
+  CONIURA template_parser_advance(state)
+  REDDE CONIURA Ok GENUS(REX, TemplateCompileError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_parser_make_node(TemplateNodeKind kind, REX line, REX column) REDDE SPECULUM TemplateNode
+  EVOCA SPECULUM TemplateNode node_ptr AD OBSECRO mem_alloc(MENSURA(TemplateNode))
+  CONIURA template_node_fill(node_ptr, CONIURA template_node_new(kind, line, column))
+  REDDE node_ptr
+EXPLICIT RITUALE
+
+RITUALE template_parser_node_error(SPECULUM TemplateParserState state, VERBUM message) REDDE SPECULUM NIHIL
+  EVOCA TemplateToken current AD CONIURA template_parser_current(state)
+  REDDE CONIURA Err GENUS(SPECULUM TemplateNode, TemplateCompileError)(
+    CONIURA template_compile_error((*state).template_name, message, current.line, current.column)
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

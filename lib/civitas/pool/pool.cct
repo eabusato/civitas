@@ -1,0 +1,356 @@
+INCIPIT grimoire "civitas_pool"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+ORDO PoolSlotStatus
+  PssOcioso,
+  PssEmUso,
+  PssMorto
+FIN ORDO
+
+ORDO PoolError
+  PeTimeout,
+  PeConexaoFalhou,
+  PePoolVazio,
+  PeConexaoMorta
+FIN ORDO
+
+SIGILLUM PoolConfig
+  backend: PoolBackendKind
+  dsn: VERBUM
+  min: REX
+  max: REX
+  timeout_ms: REX
+  health_intervalo: REX
+FIN SIGILLUM
+
+SIGILLUM PoolSlot
+  handle: SPECULUM NIHIL
+  status: PoolSlotStatus
+  ultimo_uso: REX
+  ultimo_check: REX
+  falhas: REX
+  id: REX
+FIN SIGILLUM
+
+SIGILLUM PoolMetrics
+  ativas: REX
+  ociosas: REX
+  mortas: REX
+  total: REX
+  aquisicoes: REX
+  timeouts: REX
+  reconexoes: REX
+  tempo_medio_ms: REX
+FIN SIGILLUM
+
+SIGILLUM PoolOpenResult
+  handle: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM Pool
+  config: PoolConfig
+  slots: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+  open_fn: SPECULUM NIHIL
+  metricas: PoolMetrics
+  ultimo_check: REX
+FIN SIGILLUM
+
+RITUALE pool_wait_ms() REDDE REX
+  REDDE 10
+EXPLICIT RITUALE
+
+RITUALE pool_metrics_new() REDDE PoolMetrics
+  EVOCA PoolMetrics m
+  VINCIRE m.ativas AD 0
+  VINCIRE m.ociosas AD 0
+  VINCIRE m.mortas AD 0
+  VINCIRE m.total AD 0
+  VINCIRE m.aquisicoes AD 0
+  VINCIRE m.timeouts AD 0
+  VINCIRE m.reconexoes AD 0
+  VINCIRE m.tempo_medio_ms AD 0
+  REDDE m
+EXPLICIT RITUALE
+
+RITUALE pool_open_result_new(SPECULUM NIHIL handle) REDDE PoolOpenResult
+  EVOCA PoolOpenResult out
+  VINCIRE out.handle AD handle
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pool_config_fill(SPECULUM PoolConfig dest, PoolConfig src) REDDE NIHIL
+  VINCIRE (*dest).backend AD src.backend
+  VINCIRE (*dest).dsn AD src.dsn
+  VINCIRE (*dest).min AD src.min
+  VINCIRE (*dest).max AD src.max
+  VINCIRE (*dest).timeout_ms AD src.timeout_ms
+  VINCIRE (*dest).health_intervalo AD src.health_intervalo
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pool_config_new(PoolBackendKind backend, VERBUM dsn) REDDE PoolConfig
+  EVOCA PoolConfig c
+  VINCIRE c.backend AD backend
+  VINCIRE c.dsn AD dsn
+  VINCIRE c.min AD 1
+  VINCIRE c.max AD 1
+  VINCIRE c.timeout_ms AD 5000
+  VINCIRE c.health_intervalo AD 30000
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE pool_config_set_min_max(SPECULUM PoolConfig c, REX min, REX max) REDDE NIHIL
+  VINCIRE (*c).min AD min
+  VINCIRE (*c).max AD max
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pool_abrir_conexao(VERBUM dsn, SPECULUM NIHIL open_fn) REDDE SPECULUM NIHIL
+  SI open_fn == NIHIL
+    REDDE NIHIL
+  FIN SI
+  EVOCA PoolOpenResult out AD CONIURA callback_invoke1 GENUS(VERBUM, PoolOpenResult)(open_fn, dsn)
+  REDDE out.handle
+EXPLICIT RITUALE
+
+RITUALE pool_log_fields(REX id, PoolBackendKind kind) REDDE VERBUM
+  EVOCA VERBUM out AD "{\"slot\":"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(id))
+  VINCIRE out AD CONIURA concat(out, ",\"backend\":\"")
+  SI kind == PbkSqlite
+    VINCIRE out AD CONIURA concat(out, "sqlite")
+  ALITER
+    VINCIRE out AD CONIURA concat(out, "postgres")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, "\"}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pool_log_slot_fields(REX id) REDDE VERBUM
+  EVOCA VERBUM out AD "{\"slot\":"
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(id))
+  VINCIRE out AD CONIURA concat(out, "}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pool_slot_alloc(SPECULUM NIHIL handle_ptr, REX id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM PoolSlot s AD OBSECRO mem_alloc(MENSURA(PoolSlot))
+  VINCIRE (*s).handle AD handle_ptr
+  VINCIRE (*s).status AD PssOcioso
+  VINCIRE (*s).ultimo_uso AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  VINCIRE (*s).ultimo_check AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  VINCIRE (*s).falhas AD 0
+  VINCIRE (*s).id AD id
+  REDDE s
+EXPLICIT RITUALE
+
+RITUALE pool_new(PoolConfig config, SPECULUM NIHIL logger, SPECULUM NIHIL open_fn) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Pool p AD OBSECRO mem_alloc(MENSURA(Pool))
+  CONIURA pool_config_fill(SPECULUM (*p).config, config)
+  VINCIRE (*p).slots AD CONIURA fluxus_init(MENSURA(PoolSlot))
+  VINCIRE (*p).logger AD logger
+  VINCIRE (*p).open_fn AD open_fn
+  VINCIRE (*p).metricas AD CONIURA pool_metrics_new()
+  VINCIRE (*p).ultimo_check AD CONIURA datetime_to_unix(CONIURA datetime_now())
+
+  EVOCA REX i AD 0
+  DUM i < config.min
+    EVOCA SPECULUM NIHIL handle_ptr AD CONIURA pool_abrir_conexao(config.dsn, open_fn)
+    SI handle_ptr != NIHIL
+      EVOCA SPECULUM NIHIL slot_ptr AD CONIURA pool_slot_alloc(handle_ptr, i)
+      CONIURA fluxus_push((*p).slots, slot_ptr)
+      VINCIRE (*p).metricas.total AD (*p).metricas.total + 1
+      VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas + 1
+      SI logger != NIHIL
+        CONIURA log_info(logger, "pool: slot opened", CONIURA pool_log_fields(i, config.backend))
+      FIN SI
+      OBSECRO mem_free(slot_ptr)
+    ALITER
+      SI logger != NIHIL
+        CONIURA log_error(logger, "pool: open failed at boot", "{}")
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE p
+EXPLICIT RITUALE
+
+RITUALE pool_handle_matches(SPECULUM NIHIL a, SPECULUM NIHIL b) REDDE VERUM
+  REDDE a == b
+EXPLICIT RITUALE
+
+RITUALE pool_acquire(SPECULUM NIHIL pool_ptr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Pool p AD pool_ptr
+  EVOCA REX inicio AD CONIURA now_ms()
+
+  DUM VERUM
+    EVOCA REX decorrido_ms AD CONIURA now_ms() - inicio
+    SI decorrido_ms > (*p).config.timeout_ms
+      VINCIRE (*p).metricas.timeouts AD (*p).metricas.timeouts + 1
+      SI (*p).logger != NIHIL
+        CONIURA log_warn((*p).logger, "pool: acquire timeout", "{}")
+      FIN SI
+      REDDE NIHIL
+    FIN SI
+
+    EVOCA REX n AD CONIURA fluxus_len((*p).slots)
+    EVOCA REX i AD 0
+    DUM i < n
+      EVOCA SPECULUM PoolSlot slot_ptr AD CONIURA fluxus_get((*p).slots, i)
+      SI (*slot_ptr).status == PssOcioso
+        EVOCA SPECULUM DbHandle slot_handle AD (*slot_ptr).handle
+        SI slot_handle != NIHIL ET CONIURA dbh_is_alive(*slot_handle)
+          VINCIRE (*slot_ptr).status AD PssEmUso
+          VINCIRE (*slot_ptr).ultimo_uso AD CONIURA datetime_to_unix(CONIURA datetime_now())
+          VINCIRE (*p).metricas.ativas AD (*p).metricas.ativas + 1
+          VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas - 1
+          VINCIRE (*p).metricas.aquisicoes AD (*p).metricas.aquisicoes + 1
+          REDDE slot_handle
+        FIN SI
+
+        EVOCA SPECULUM NIHIL novo_ptr AD CONIURA pool_abrir_conexao((*p).config.dsn, (*p).open_fn)
+        SI novo_ptr != NIHIL
+          SI slot_handle != NIHIL
+            CONIURA dbh_close(slot_handle)
+            OBSECRO mem_free(slot_handle)
+          FIN SI
+          VINCIRE (*slot_ptr).handle AD novo_ptr
+          VINCIRE (*slot_ptr).status AD PssEmUso
+          VINCIRE (*slot_ptr).falhas AD 0
+          VINCIRE (*p).metricas.reconexoes AD (*p).metricas.reconexoes + 1
+          VINCIRE (*p).metricas.ativas AD (*p).metricas.ativas + 1
+          VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas - 1
+          VINCIRE (*p).metricas.aquisicoes AD (*p).metricas.aquisicoes + 1
+          REDDE novo_ptr
+        FIN SI
+
+        VINCIRE (*slot_ptr).status AD PssMorto
+        VINCIRE (*slot_ptr).falhas AD (*slot_ptr).falhas + 1
+        VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas - 1
+        VINCIRE (*p).metricas.mortas AD (*p).metricas.mortas + 1
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+
+    CONIURA sleep_ms(CONIURA pool_wait_ms())
+  FIN DUM
+EXPLICIT RITUALE
+
+RITUALE pool_release(SPECULUM NIHIL pool_ptr, SPECULUM NIHIL handle_ptr) REDDE NIHIL
+  EVOCA SPECULUM Pool p AD pool_ptr
+  SI handle_ptr == NIHIL
+    REDDE
+  FIN SI
+  EVOCA REX n AD CONIURA fluxus_len((*p).slots)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM PoolSlot slot_ptr AD CONIURA fluxus_get((*p).slots, i)
+    SI CONIURA pool_handle_matches((*slot_ptr).handle, handle_ptr)
+      VINCIRE (*slot_ptr).status AD PssOcioso
+      VINCIRE (*slot_ptr).ultimo_uso AD CONIURA datetime_to_unix(CONIURA datetime_now())
+      VINCIRE (*p).metricas.ativas AD (*p).metricas.ativas - 1
+      VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas + 1
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI (*p).logger != NIHIL
+    CONIURA log_error((*p).logger, "pool: foreign handle released", "{}")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pool_health_check(SPECULUM NIHIL pool_ptr) REDDE NIHIL
+  EVOCA SPECULUM Pool p AD pool_ptr
+  EVOCA REX agora AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  EVOCA REX n AD CONIURA fluxus_len((*p).slots)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM PoolSlot slot_ptr AD CONIURA fluxus_get((*p).slots, i)
+    SI (*slot_ptr).status == PssOcioso
+      EVOCA SPECULUM DbHandle slot_handle AD (*slot_ptr).handle
+      SI slot_handle != NIHIL ET CONIURA dbh_is_alive(*slot_handle)
+        VINCIRE (*slot_ptr).ultimo_check AD agora
+        VINCIRE (*slot_ptr).falhas AD 0
+      ALITER
+        EVOCA SPECULUM NIHIL novo_ptr AD CONIURA pool_abrir_conexao((*p).config.dsn, (*p).open_fn)
+        SI novo_ptr != NIHIL
+          SI slot_handle != NIHIL
+            CONIURA dbh_close(slot_handle)
+            OBSECRO mem_free(slot_handle)
+          FIN SI
+          VINCIRE (*slot_ptr).handle AD novo_ptr
+          VINCIRE (*slot_ptr).status AD PssOcioso
+          VINCIRE (*slot_ptr).falhas AD 0
+          VINCIRE (*slot_ptr).ultimo_check AD agora
+          VINCIRE (*p).metricas.reconexoes AD (*p).metricas.reconexoes + 1
+        ALITER
+          VINCIRE (*slot_ptr).status AD PssMorto
+          VINCIRE (*slot_ptr).falhas AD (*slot_ptr).falhas + 1
+          VINCIRE (*p).metricas.ociosas AD (*p).metricas.ociosas - 1
+          VINCIRE (*p).metricas.mortas AD (*p).metricas.mortas + 1
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE (*p).ultimo_check AD agora
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pool_metrics(SPECULUM NIHIL pool_ptr) REDDE PoolMetrics
+  EVOCA SPECULUM Pool p AD pool_ptr
+  REDDE (*p).metricas
+EXPLICIT RITUALE
+
+RITUALE pool_status_log(SPECULUM NIHIL pool_ptr) REDDE NIHIL
+  EVOCA SPECULUM Pool p AD pool_ptr
+  SI (*p).logger == NIHIL
+    REDDE
+  FIN SI
+  EVOCA PoolMetrics m AD (*p).metricas
+  EVOCA VERBUM campos AD "{\"total\":"
+  VINCIRE campos AD CONIURA concat(campos, CONIURA stringify_int(m.total))
+  VINCIRE campos AD CONIURA concat(campos, ",\"ativas\":")
+  VINCIRE campos AD CONIURA concat(campos, CONIURA stringify_int(m.ativas))
+  VINCIRE campos AD CONIURA concat(campos, ",\"ociosas\":")
+  VINCIRE campos AD CONIURA concat(campos, CONIURA stringify_int(m.ociosas))
+  VINCIRE campos AD CONIURA concat(campos, ",\"mortas\":")
+  VINCIRE campos AD CONIURA concat(campos, CONIURA stringify_int(m.mortas))
+  VINCIRE campos AD CONIURA concat(campos, "}")
+  CONIURA log_info((*p).logger, "pool: status", campos)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE pool_tick(SPECULUM NIHIL pool_ptr) REDDE NIHIL
+  EVOCA SPECULUM Pool p AD pool_ptr
+  EVOCA REX agora AD CONIURA now_ms()
+  EVOCA REX ultimo_ms AD (*p).ultimo_check * 1000
+  SI agora - ultimo_ms >= (*p).config.health_intervalo
+    CONIURA pool_health_check(pool_ptr)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE com_pool(SPECULUM NIHIL pool_ptr, SPECULUM NIHIL fn) REDDE VERUM
+  EVOCA SPECULUM NIHIL handle_ptr AD CONIURA pool_acquire(pool_ptr)
+  SI handle_ptr == NIHIL
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM DbHandle h_ptr AD handle_ptr
+  EVOCA VERUM ok AD CONIURA callback_invoke1 GENUS(DbHandle, VERUM)(fn, *h_ptr)
+  CONIURA pool_release(pool_ptr, handle_ptr)
+  REDDE ok
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_social_reaction"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "social.cct"
+
+RITUALE reaction_has(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM actor_id, ReactionKind kind) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM civitas_reactions WHERE object_type = ? AND object_id = ? AND actor_id = ? AND kind = ?")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_text(stmt, 3, actor_id)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA reaction_kind_to_int(kind))
+  EVOCA VERUM has_reaction AD FALSUM
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE has_reaction AD CONIURA stmt_get_int(stmt, 0) > 0
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE has_reaction
+EXPLICIT RITUALE
+
+RITUALE reaction_toggle(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM actor_id, ReactionKind kind) REDDE VERUM
+  CONIURA social_ensure_schema(db)
+  SI CONIURA reaction_has(db, object_type, object_id, actor_id, kind)
+    EVOCA SPECULUM NIHIL del_stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_reactions WHERE object_type = ? AND object_id = ? AND actor_id = ? AND kind = ?")
+    CONIURA stmt_bind_text(del_stmt, 1, object_type)
+    CONIURA stmt_bind_int(del_stmt, 2, object_id)
+    CONIURA stmt_bind_text(del_stmt, 3, actor_id)
+    CONIURA stmt_bind_int(del_stmt, 4, CONIURA reaction_kind_to_int(kind))
+    CONIURA stmt_step(del_stmt)
+    CONIURA stmt_finalize(del_stmt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL ins_stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_reactions (object_type, object_id, actor_id, kind, created_at) VALUES (?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(ins_stmt, 1, object_type)
+  CONIURA stmt_bind_int(ins_stmt, 2, object_id)
+  CONIURA stmt_bind_text(ins_stmt, 3, actor_id)
+  CONIURA stmt_bind_int(ins_stmt, 4, CONIURA reaction_kind_to_int(kind))
+  CONIURA stmt_bind_int(ins_stmt, 5, CONIURA social_now())
+  CONIURA stmt_step(ins_stmt)
+  CONIURA stmt_finalize(ins_stmt)
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE reaction_count(SPECULUM NIHIL db, VERBUM object_type, REX object_id, ReactionKind kind) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM civitas_reactions WHERE object_type = ? AND object_id = ? AND kind = ?")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA reaction_kind_to_int(kind))
+  EVOCA REX total AD 0
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE total AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE total
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

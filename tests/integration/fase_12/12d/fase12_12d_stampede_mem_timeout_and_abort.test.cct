@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase12_12d_stampede_mem_timeout_and_abort"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/stampede.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12d-stampede-timeout")
+  EVOCA StampedeHandle sh AD CONIURA stampede_handle_mem(SPECULUM h, "civitas:inflight:view")
+  VINCIRE sh.poll_interval_ms AD 1
+  VINCIRE sh.max_polls AD 1
+
+  EVOCA StampedeResult first AD CONIURA stampede_try(sh, "slow-key")
+  SI first.status != SsClaimed
+    REDDE 1
+  FIN SI
+  EVOCA StampedeResult second AD CONIURA stampede_try(sh, "slow-key")
+  SI second.status != SsTimeout
+    REDDE 2
+  FIN SI
+  CONIURA stampede_abort(sh, "slow-key")
+  EVOCA StampedeResult third AD CONIURA stampede_try(sh, "slow-key")
+  SI third.status != SsClaimed
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

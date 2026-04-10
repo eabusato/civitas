@@ -1,0 +1,49 @@
+INCIPIT grimoire "civitas_auth_token_refresh"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "auth_token.cct"
+ADVOCARE "auth_token_issue.cct"
+
+RITUALE refresh_token_buscar_por_id(SPECULUM NIHIL db, VERBUM refresh_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, user_id, emitido_em, expira_em, familia, revogado FROM refresh_tokens WHERE id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, refresh_id)
+  CONIURA stmt_step(stmt)
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(RefreshToken)()
+  FIN SI
+  EVOCA RefreshToken rt AD CONIURA token_refresh_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(RefreshToken)(rt)
+EXPLICIT RITUALE
+
+RITUALE refresh_token_rotate(SPECULUM NIHIL db, TokenConfig cfg, VERBUM refresh_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL rt_opt AD CONIURA refresh_token_buscar_por_id(db, refresh_id)
+  SI CONIURA option_is_none GENUS(RefreshToken)(rt_opt)
+    CONIURA option_free GENUS(RefreshToken)(rt_opt)
+    REDDE CONIURA Err GENUS(RefreshToken, TokenError)(TokenMalformado)
+  FIN SI
+  EVOCA RefreshToken rt AD CONIURA option_unwrap GENUS(RefreshToken)(rt_opt)
+  CONIURA option_free GENUS(RefreshToken)(rt_opt)
+
+  SI rt.revogado
+    EVOCA SPECULUM NIHIL stmt_fam AD CONIURA db_prepare(db, "UPDATE refresh_tokens SET revogado = 1 WHERE familia = ?")
+    CONIURA stmt_bind_text(stmt_fam, 1, rt.familia)
+    CONIURA token_exec_stmt_no_rows(stmt_fam)
+    REDDE CONIURA Err GENUS(RefreshToken, TokenError)(TokenRevogado)
+  FIN SI
+
+  SI CONIURA token_now_unix() > rt.expira_em
+    REDDE CONIURA Err GENUS(RefreshToken, TokenError)(TokenExpirado)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt_rev AD CONIURA db_prepare(db, "UPDATE refresh_tokens SET revogado = 1 WHERE id = ?")
+  CONIURA stmt_bind_text(stmt_rev, 1, refresh_id)
+  CONIURA token_exec_stmt_no_rows(stmt_rev)
+
+  REDDE CONIURA Ok GENUS(RefreshToken, TokenError)(CONIURA refresh_token_issue(db, cfg, rt.user_id, rt.familia))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

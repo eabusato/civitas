@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase15_15e_permission_guard"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_context.cct"
+ADVOCARE "../../../../lib/civitas/auth_middleware/auth_guards.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_db.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_assign.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_stack_db_open("15e_permission_guard")
+  EVOCA AuthConfig auth_cfg AD CONIURA auth_config_default()
+  EVOCA User user AD CONIURA result_unwrap GENUS(User, AuthError)(CONIURA auth_criar_usuario(db, auth_cfg, "perm@example.com", "S3nh@Forte!"))
+  CONIURA perm_registrar(db, "admin.usuarios.ver", "Admin users")
+  EVOCA LocalContext ctx AD CONIURA phase15_ctx_authenticated(user.id, "session", "")
+  SI CONIURA auth_guard_permissao(db, ctx, "admin.usuarios.ver")
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  CONIURA user_perm_conceder(db, user.id, "admin.usuarios.ver")
+  SI NON CONIURA auth_guard_permissao(db, ctx, "admin.usuarios.ver")
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

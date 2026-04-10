@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase14_14e_list_formatting"
+
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt.cct"
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt_rules.cct"
+ADVOCARE "../../../../lib/civitas/l10n_fmt/l10n_fmt_list.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL itens AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM a AD "Alice"
+  EVOCA VERBUM b AD "Bob"
+  EVOCA VERBUM c AD "Carol"
+  CONIURA fluxus_push(itens, SPECULUM a)
+  CONIURA fluxus_push(itens, SPECULUM b)
+  CONIURA fluxus_push(itens, SPECULUM c)
+  EVOCA L10nFmtRules pt AD CONIURA l10n_fmt_rules_pt_br()
+  EVOCA L10nFmtRules en AD CONIURA l10n_fmt_rules_en_us()
+  SI CONIURA compare(CONIURA l10n_format_list(itens, SPECULUM pt), "Alice, Bob e Carol") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_list(itens, SPECULUM en), "Alice, Bob, and Carol") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

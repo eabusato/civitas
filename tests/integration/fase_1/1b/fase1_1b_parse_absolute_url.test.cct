@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase1_1b_parse_absolute_url_test"
+
+ADVOCARE "../../../../lib/civitas/url.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA url_parse("https://example.com:8443/a/b?q=1#frag")
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  EVOCA WebUrl url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(res)
+  SI CONIURA compare(url.scheme, "https") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(url.host, "example.com") != 0
+    REDDE 3
+  FIN SI
+  SI url.port != 8443
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(url.path, "/a/b") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(url.query_raw, "q=1") != 0
+    REDDE 6
+  FIN SI
+  SI CONIURA compare(url.fragment, "frag") != 0
+    REDDE 7
+  FIN SI
+  SI NON CONIURA url_is_absolute(url)
+    REDDE 8
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

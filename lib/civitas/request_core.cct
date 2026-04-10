@@ -1,0 +1,408 @@
+INCIPIT grimoire "civitas_request_core"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cookie.cct"
+ADVOCARE "url.cct"
+
+SIGILLUM WebRequest
+  method: VERBUM
+  raw_target: VERBUM
+  path: VERBUM
+  version: VERBUM
+  headers: SPECULUM NIHIL
+  query_params: SPECULUM NIHIL
+  path_params: SPECULUM NIHIL
+  cookies: SPECULUM NIHIL
+  body: VERBUM
+  corpo_bruto: SPECULUM NIHIL
+  corpo_bruto_ativo: VERUM
+  client_ip: VERBUM
+  scheme: VERBUM
+  host: VERBUM
+  request_id: VERBUM
+  proxy_ip: VERBUM
+  remote_addr: VERBUM
+  local_addr: VERBUM
+FIN SIGILLUM
+
+SIGILLUM WebRequestBasicAuth
+  username: VERBUM
+  password: VERBUM
+FIN SIGILLUM
+
+RITUALE request_ok(WebRequest req) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(WebRequest, VERBUM)(req)
+EXPLICIT RITUALE
+
+RITUALE request_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(WebRequest, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE request_basic_auth_ok(WebRequestBasicAuth value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(WebRequestBasicAuth, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE request_basic_auth_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(WebRequestBasicAuth, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE request_empty_params() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE request_empty_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE request_copy_string_map(SPECULUM NIHIL src) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(src)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD CONIURA concat("", *key_ptr)
+    EVOCA SPECULUM NIHIL value_opt AD CONIURA map_get GENUS(VERBUM, VERBUM)(src, *key_ptr)
+    SI CONIURA option_is_some GENUS(VERBUM)(value_opt)
+      EVOCA VERBUM copied_value AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(value_opt))
+      CONIURA map_insert GENUS(VERBUM, VERBUM)(out, key, copied_value)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE request_fill(SPECULUM WebRequest dest, WebRequest src) REDDE NIHIL
+  VINCIRE (*dest).method AD src.method
+  VINCIRE (*dest).raw_target AD src.raw_target
+  VINCIRE (*dest).path AD src.path
+  VINCIRE (*dest).version AD src.version
+  VINCIRE (*dest).headers AD src.headers
+  VINCIRE (*dest).query_params AD src.query_params
+  VINCIRE (*dest).path_params AD src.path_params
+  VINCIRE (*dest).cookies AD src.cookies
+  VINCIRE (*dest).body AD src.body
+  VINCIRE (*dest).corpo_bruto AD src.corpo_bruto
+  VINCIRE (*dest).corpo_bruto_ativo AD src.corpo_bruto_ativo
+  VINCIRE (*dest).client_ip AD src.client_ip
+  VINCIRE (*dest).scheme AD src.scheme
+  VINCIRE (*dest).host AD src.host
+  VINCIRE (*dest).request_id AD src.request_id
+  VINCIRE (*dest).proxy_ip AD src.proxy_ip
+  VINCIRE (*dest).remote_addr AD src.remote_addr
+  VINCIRE (*dest).local_addr AD src.local_addr
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE request_header_or(SPECULUM NIHIL headers, VERBUM name, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM target AD CONIURA to_lower(name)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM current AD *key_ptr
+    SI CONIURA compare(CONIURA to_lower(current), target) == 0
+      REDDE CONIURA concat("", CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, current, fallback))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE request_build_cookie_map(SPECULUM NIHIL headers) REDDE SPECULUM NIHIL
+  EVOCA VERBUM raw_cookie AD CONIURA request_header_or(headers, "cookie", "")
+  SI CONIURA len(raw_cookie) == 0
+    REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+  FIN SI
+  REDDE CONIURA cookie_parse_header(raw_cookie)
+EXPLICIT RITUALE
+
+RITUALE request_build_query_map(VERBUM raw_target, VERBUM fallback_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parsed AD CONIURA url_parse(raw_target)
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(parsed)
+    SI CONIURA compare(fallback_path, raw_target) == 0
+      REDDE CONIURA map_init GENUS(VERBUM, UrlQueryMulti)()
+    FIN SI
+    EVOCA VERBUM synthetic AD fallback_path
+    SI NON CONIURA starts_with(synthetic, "/")
+      VINCIRE synthetic AD CONIURA concat("/", synthetic)
+    FIN SI
+    VINCIRE synthetic AD CONIURA concat(synthetic, "?")
+    REDDE CONIURA url_parse_query_multi(synthetic)
+  FIN SI
+  EVOCA WebUrl url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(parsed)
+  REDDE CONIURA url_parse_query_multi(url.query_raw)
+EXPLICIT RITUALE
+
+RITUALE request_path_from_target(VERBUM raw_target, VERBUM fallback_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parsed AD CONIURA url_parse(raw_target)
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(parsed)
+    SI CONIURA len(fallback_path) == 0
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)("request path invalido")
+    FIN SI
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(fallback_path)
+  FIN SI
+  EVOCA WebUrl url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(parsed)
+  EVOCA VERBUM path AD url.path
+  SI CONIURA len(path) == 0
+    VINCIRE path AD "/"
+  FIN SI
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(path)
+EXPLICIT RITUALE
+
+RITUALE request_build(
+  VERBUM method,
+  VERBUM raw_target,
+  VERBUM version,
+  SPECULUM NIHIL headers,
+  VERBUM body,
+  VERBUM client_ip,
+  VERBUM scheme,
+  VERBUM host,
+  VERBUM request_id,
+  VERBUM proxy_ip,
+  VERBUM remote_addr,
+  VERBUM local_addr
+) REDDE SPECULUM NIHIL
+  EVOCA WebRequest req
+  EVOCA SPECULUM NIHIL path_res AD CONIURA request_path_from_target(raw_target, raw_target)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(path_res)
+    REDDE CONIURA request_err(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(path_res))
+  FIN SI
+
+  VINCIRE req.method AD method
+  VINCIRE req.raw_target AD raw_target
+  VINCIRE req.path AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(path_res)
+  VINCIRE req.version AD version
+  VINCIRE req.headers AD headers
+  VINCIRE req.query_params AD CONIURA request_build_query_map(raw_target, req.path)
+  VINCIRE req.path_params AD CONIURA request_empty_params()
+  VINCIRE req.cookies AD CONIURA request_build_cookie_map(headers)
+  VINCIRE req.body AD body
+  VINCIRE req.corpo_bruto AD NIHIL
+  VINCIRE req.corpo_bruto_ativo AD FALSUM
+  VINCIRE req.client_ip AD client_ip
+  VINCIRE req.scheme AD scheme
+  SI CONIURA len(host) == 0
+    VINCIRE req.host AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, "host", "")
+  ALITER
+    VINCIRE req.host AD host
+  FIN SI
+  VINCIRE req.request_id AD request_id
+  VINCIRE req.proxy_ip AD proxy_ip
+  VINCIRE req.remote_addr AD remote_addr
+  VINCIRE req.local_addr AD local_addr
+  REDDE CONIURA request_ok(req)
+EXPLICIT RITUALE
+
+RITUALE request_build_with_raw_body(
+  VERBUM method,
+  VERBUM raw_target,
+  VERBUM version,
+  SPECULUM NIHIL headers,
+  VERBUM body,
+  SPECULUM NIHIL corpo_bruto,
+  VERBUM client_ip,
+  VERBUM scheme,
+  VERBUM host,
+  VERBUM request_id,
+  VERBUM proxy_ip,
+  VERBUM remote_addr,
+  VERBUM local_addr
+) REDDE SPECULUM NIHIL
+  EVOCA WebRequest req
+  EVOCA SPECULUM NIHIL path_res AD CONIURA request_path_from_target(raw_target, raw_target)
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(path_res)
+    REDDE CONIURA request_err(CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(path_res))
+  FIN SI
+
+  VINCIRE req.method AD method
+  VINCIRE req.raw_target AD raw_target
+  VINCIRE req.path AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(path_res)
+  VINCIRE req.version AD version
+  VINCIRE req.headers AD headers
+  VINCIRE req.query_params AD CONIURA request_build_query_map(raw_target, req.path)
+  VINCIRE req.path_params AD CONIURA request_empty_params()
+  VINCIRE req.cookies AD CONIURA request_build_cookie_map(headers)
+  VINCIRE req.body AD body
+  VINCIRE req.corpo_bruto AD corpo_bruto
+  VINCIRE req.corpo_bruto_ativo AD corpo_bruto != NIHIL
+  VINCIRE req.client_ip AD client_ip
+  VINCIRE req.scheme AD scheme
+  SI CONIURA len(host) == 0
+    VINCIRE req.host AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, "host", "")
+  ALITER
+    VINCIRE req.host AD host
+  FIN SI
+  VINCIRE req.request_id AD request_id
+  VINCIRE req.proxy_ip AD proxy_ip
+  VINCIRE req.remote_addr AD remote_addr
+  VINCIRE req.local_addr AD local_addr
+  REDDE CONIURA request_ok(req)
+EXPLICIT RITUALE
+
+RITUALE request_header(WebRequest req, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM value AD CONIURA request_header_or(req.headers, name, "")
+  SI CONIURA len(value) == 0 ET NON CONIURA request_has_header(req, name)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE request_has_header(WebRequest req, VERBUM name) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(req.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM target AD CONIURA to_lower(name)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(CONIURA to_lower(*key_ptr), target) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE request_query_first(WebRequest req, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL values_opt AD CONIURA url_query_multi_get(req.query_params, name)
+  SI CONIURA option_is_none GENUS(UrlQueryMulti)(values_opt)
+    CONIURA option_free GENUS(UrlQueryMulti)(values_opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA UrlQueryMulti values AD CONIURA option_unwrap GENUS(UrlQueryMulti)(values_opt)
+  CONIURA option_free GENUS(UrlQueryMulti)(values_opt)
+  SI CONIURA fluxus_len(values.items) == 0
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA SPECULUM VERBUM first_ptr AD CONIURA fluxus_get(values.items, 0)
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA concat("", *first_ptr))
+EXPLICIT RITUALE
+
+RITUALE request_query_all(WebRequest req, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL values_opt AD CONIURA url_query_multi_get(req.query_params, name)
+  SI CONIURA option_is_none GENUS(UrlQueryMulti)(values_opt)
+    CONIURA option_free GENUS(UrlQueryMulti)(values_opt)
+    REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+  FIN SI
+
+  EVOCA UrlQueryMulti values AD CONIURA option_unwrap GENUS(UrlQueryMulti)(values_opt)
+  CONIURA option_free GENUS(UrlQueryMulti)(values_opt)
+  REDDE CONIURA fluxus_copy GENUS(VERBUM)(values.items)
+EXPLICIT RITUALE
+
+RITUALE request_param(WebRequest req, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(req.path_params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, name) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(req.path_params, *key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE request_cookie(WebRequest req, VERBUM name) REDDE SPECULUM NIHIL
+  REDDE CONIURA cookie_get(req.cookies, name)
+EXPLICIT RITUALE
+
+RITUALE request_content_type(WebRequest req) REDDE VERBUM
+  REDDE CONIURA request_header_or(req.headers, "content-type", "")
+EXPLICIT RITUALE
+
+RITUALE request_has_raw_body(WebRequest req) REDDE VERUM
+  REDDE req.corpo_bruto_ativo
+EXPLICIT RITUALE
+
+RITUALE request_is_secure(WebRequest req) REDDE VERUM
+  REDDE CONIURA compare(CONIURA to_lower(req.scheme), "https") == 0
+EXPLICIT RITUALE
+
+RITUALE request_set_path_params(SPECULUM WebRequest req, SPECULUM NIHIL params) REDDE NIHIL
+  VINCIRE (*req).path_params AD params
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE request_as_text(WebRequest req) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(req.body)
+EXPLICIT RITUALE
+
+RITUALE request_as_form(WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA VERBUM content_type AD CONIURA to_lower(CONIURA request_content_type(req))
+  SI CONIURA len(content_type) != 0 ET NON CONIURA starts_with(content_type, "application/x-www-form-urlencoded")
+    REDDE CONIURA Err GENUS(SPECULUM NIHIL, VERBUM)("content-type nao e form-urlencoded")
+  FIN SI
+  REDDE CONIURA Ok GENUS(SPECULUM NIHIL, VERBUM)(CONIURA form_decode_multi(req.body))
+EXPLICIT RITUALE
+
+RITUALE request_auth_header_payload(WebRequest req, VERBUM scheme) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL auth_opt AD CONIURA request_header(req, "authorization")
+  SI CONIURA option_is_none GENUS(VERBUM)(auth_opt)
+    CONIURA option_free GENUS(VERBUM)(auth_opt)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  EVOCA VERBUM auth AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(auth_opt))
+  CONIURA option_free GENUS(VERBUM)(auth_opt)
+  EVOCA VERBUM lowered AD CONIURA to_lower(auth)
+  EVOCA VERBUM prefix AD CONIURA to_lower(CONIURA concat(scheme, " "))
+  SI NON CONIURA starts_with(lowered, prefix)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA trim(CONIURA substring(auth, CONIURA len(prefix), CONIURA len(auth))))
+EXPLICIT RITUALE
+
+RITUALE request_bearer_token(WebRequest req) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_auth_header_payload(req, "Bearer")
+EXPLICIT RITUALE
+
+RITUALE request_basic_auth(WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL payload_opt AD CONIURA request_auth_header_payload(req, "Basic")
+  SI CONIURA option_is_none GENUS(VERBUM)(payload_opt)
+    CONIURA option_free GENUS(VERBUM)(payload_opt)
+    REDDE CONIURA request_basic_auth_err("basic auth ausente")
+  FIN SI
+
+  EVOCA VERBUM encoded AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(payload_opt))
+  CONIURA option_free GENUS(VERBUM)(payload_opt)
+  EVOCA SPECULUM NIHIL decoded_opt AD CONIURA base64_decode(encoded)
+  SI CONIURA option_is_none GENUS(VERBUM)(decoded_opt)
+    CONIURA option_free GENUS(VERBUM)(decoded_opt)
+    REDDE CONIURA request_basic_auth_err("basic auth invalido")
+  FIN SI
+
+  EVOCA VERBUM decoded AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(decoded_opt))
+  CONIURA option_free GENUS(VERBUM)(decoded_opt)
+  EVOCA REX colon AD CONIURA find(decoded, ":")
+  SI colon == -1
+    REDDE CONIURA request_basic_auth_err("basic auth invalido")
+  FIN SI
+
+  EVOCA WebRequestBasicAuth auth
+  VINCIRE auth.username AD CONIURA substring(decoded, 0, colon)
+  VINCIRE auth.password AD CONIURA substring(decoded, colon + 1, CONIURA len(decoded))
+  REDDE CONIURA request_basic_auth_ok(auth)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

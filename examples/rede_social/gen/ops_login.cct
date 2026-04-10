@@ -1,0 +1,45 @@
+-- Generated from ops_login.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_ops_login"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../apps/shared/template_contexts.cct"
+ADVOCARE "../apps/shared/types.cct"
+
+RITUALE render_ops_login(RedeOpsLoginPageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"/static/app.css\">\n</head>\n<body>\n  <header class=\"topbar\">\n    <div class=\"brand\"><a href=\"/\">rede_social</a></div>\n    <nav>\n      <a href=\"/\">Feed</a>\n      <a href=\"/lounge\">Lounge</a>\n      <a href=\"/api/feed\">API</a>\n      <a href=\"/sigilos-vivos\">Sigilos</a>\n      <a href=\"/ops\">Ops</a>\n      ")
+  SI ctx.has_user
+    CONIURA builder_append(b, "\n        <span class=\"chip\">@")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.current_user))
+    CONIURA builder_append(b, "</span>\n        <form method=\"POST\" action=\"/sair\" class=\"inline-form\">\n          <button type=\"submit\">Logout</button>\n        </form>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <a href=\"/entrar\">Login</a>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </nav>\n  </header>\n  <main class=\"shell\">\n    ")
+  CONIURA builder_append(b, "\n<section class=\"hero\">\n  <div>\n    <p class=\"eyebrow\">Operations</p>\n    <h1>Ops access</h1>\n    <p>Use the local admin credential for sigils, traces and operational reports. Wrong credentials stay inside this page and do not poison the browser.</p>\n  </div>\n</section>\n<section class=\"narrow\">\n  ")
+  SI ctx.has_notice
+    CONIURA builder_append(b, "\n    <div class=\"alert\">")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.notice))
+    CONIURA builder_append(b, "</div>\n  ")
+  FIN SI
+  CONIURA builder_append(b, "\n  <form method=\"POST\" action=\"/ops/login\" class=\"card stack-form\">\n    ")
+  CONIURA builder_append(b, ctx.csrf_html)
+  CONIURA builder_append(b, "\n    <input type=\"hidden\" name=\"next\" value=\"")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.next_path))
+  CONIURA builder_append(b, "\">\n    <label>User<input name=\"username\" value=\"admin\" autocomplete=\"username\"></label>\n    <label>Password<input type=\"password\" name=\"password\" autocomplete=\"current-password\"></label>\n    <button type=\"submit\">Enter ops</button>\n  </form>\n</section>\n")
+  CONIURA builder_append(b, "\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

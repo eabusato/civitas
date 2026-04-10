@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase19_19d_redirects"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/seo/seo.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_redirects() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19d_redirects")
+  CONIURA seo_schema_up(stack.db)
+  CONIURA seo_redirect_upsert(stack.db, "/old-post", "/new-post", 301, VERUM)
+  EVOCA LegacyRedirect found AD CONIURA seo_redirect_lookup(stack.db, "/old-post")
+  SI NON found.active VEL CONIURA compare(found.to_path, "/new-post") != 0
+    IACE "redirect lookup mismatch"
+  FIN SI
+  EVOCA WebResponse res AD CONIURA seo_redirect_response_or_empty(stack.db, "/old-post")
+  SI res.status != 301
+    IACE "redirect response status mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_redirects()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

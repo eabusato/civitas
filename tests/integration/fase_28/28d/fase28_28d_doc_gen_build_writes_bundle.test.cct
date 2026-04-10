@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase28_28d_doc_gen_build_writes_bundle"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/doc_gen.cct"
+ADVOCARE "../../../../lib/civitas/doc_gen/doc_gen.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28d_doc_build")
+  EVOCA DocConfig cfg AD CONIURA doc_gen_config_default(root)
+  CONIURA doc_gen_build(cfg)
+  SI NON CONIURA exists(CONIURA path_join(root, "quickstart.md"))
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "api-reference.md"))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "index.md"))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

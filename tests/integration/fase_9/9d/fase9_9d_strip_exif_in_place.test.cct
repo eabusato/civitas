@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase9_9d_strip_exif_in_place"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_exif.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("strip_exif")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM image_path AD CONIURA phase9_9d_make_image(root, "sample.jpg", "red", 320, 240)
+  CONIURA phase9_9d_add_gps_exif(image_path)
+
+  SI CONIURA len(CONIURA phase9_9d_exif_value(image_path, "GPSLatitude")) == 0
+    IACE "fixture should contain gps exif before strip"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL strip_res AD CONIURA image_strip_exif(image_path)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(strip_res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(strip_res)
+  FIN SI
+  SI CONIURA len(CONIURA phase9_9d_exif_value(image_path, "GPSLatitude")) != 0
+    IACE "gps exif should be removed after strip"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

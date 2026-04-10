@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase7_7a_missing_boundary_error_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  EVOCA FormParseConfig cfg AD CONIURA form_parse_config_default()
+  CONIURA phase7_set_content_type(headers, "multipart/form-data")
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/upload", headers, "--bad")
+  EVOCA SPECULUM NIHIL res AD CONIURA form_parse_multipart(SPECULUM req, cfg)
+
+  SI NON OBSECRO result_is_err(res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA form_parse_error_message(FpeMissingBoundary), "boundary multipart ausente") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

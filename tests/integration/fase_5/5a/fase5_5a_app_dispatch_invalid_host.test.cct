@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase5_5a_app_dispatch_invalid_host_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/security.cct"
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5a_tmp_dir("5a_invalid_host")
+  EVOCA Application app AD CONIURA phase5_5a_new_app(
+    root,
+    "[app]\nname = \"f5\"\nallowed_hosts = [\"example.test\"]\n"
+  )
+  EVOCA WebRequest req AD CONIURA phase5_request_with_body("GET", "/ok", CONIURA phase5_headers(), "", "http", "evil.test", "127.0.0.1")
+  EVOCA WebResponse res AD CONIURA response_new(500)
+  CONIURA phase5_5a_register_ok_route(SPECULUM app, "/ok")
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM req, SPECULUM res)
+
+  SI res.status != 400
+    REDDE 1
+  FIN SI
+  SI CONIURA app_security_metric_host_rejected(SPECULUM app) != 1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

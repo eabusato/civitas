@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase19_19c_paths_and_security"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/openapi/openapi.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_paths_and_security() REDDE NIHIL
+  EVOCA ApiViewConfig cfg
+  EVOCA ViewSetConfig viewset
+  EVOCA ApiViewSetRegistry reg
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  CONIURA api_view_config_add_filter_field(SPECULUM cfg, "title")
+  VINCIRE cfg.auth_required AD VERUM
+  CONIURA api_viewset_registry_init(SPECULUM reg)
+  CONIURA api_viewset_config_init(SPECULUM viewset, "posts", "/api/v1/posts", "v1", SPECULUM cfg)
+  CONIURA api_viewset_registry_put(SPECULUM reg, viewset)
+  EVOCA Json paths AD CONIURA openapi_build_paths(SPECULUM reg)
+  EVOCA VERBUM text AD CONIURA json_stringify(paths)
+  SI CONIURA find(text, "\"/api/v1/posts\"") == -1
+    IACE "collection path missing"
+  FIN SI
+  SI CONIURA find(text, "\"/api/v1/posts/{pk}\"") == -1
+    IACE "detail path missing"
+  FIN SI
+  SI CONIURA find(text, "\"bearerAuth\"") == -1
+    IACE "security scheme reference missing"
+  FIN SI
+  SI CONIURA find(text, "\"title\"") == -1
+    IACE "filter param missing"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_paths_and_security()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

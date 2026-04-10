@@ -1,0 +1,166 @@
+INCIPIT grimoire "civitas_media_video_transcode"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "video_types.cct"
+
+RITUALE video_transcode_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE video_transcode_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE video_transcode_one(VERBUM source_path, TranscodeSpec spec, VERBUM dest_path, VideoProcessConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA VERBUM scale_filter AD CONIURA format_2(
+    "scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2",
+    CONIURA stringify_int(spec.max_width),
+    CONIURA stringify_int(spec.max_height)
+  )
+  EVOCA VERBUM cmd AD ""
+
+  SI CONIURA len(cfg.watermark_path) > 0
+    VINCIRE cmd AD CONIURA concat(
+      "ffmpeg -i \"",
+      CONIURA concat(
+        source_path,
+        CONIURA concat(
+          "\" -i \"",
+          CONIURA concat(
+            cfg.watermark_path,
+            CONIURA concat(
+              "\" -filter_complex \"[0:v]",
+              CONIURA concat(
+                scale_filter,
+                CONIURA concat(
+                  "[scaled];[scaled][1:v]overlay=10:10[vout]\" -map \"[vout]\" -map \"0:a?\" -c:v ",
+                  CONIURA concat(
+                    spec.video_codec,
+                    CONIURA concat(
+                      " -b:v ",
+                      CONIURA concat(
+                        CONIURA stringify_int(spec.bitrate_kbps),
+                        CONIURA concat(
+                          "k -c:a ",
+                          CONIURA concat(
+                            spec.audio_codec,
+                            CONIURA concat(
+                              " -b:a ",
+                              CONIURA concat(
+                                CONIURA stringify_int(spec.audio_bitrate_kbps),
+                                CONIURA concat(
+                                  "k -shortest \"",
+                                  CONIURA concat(dest_path, "\" -y >/dev/null 2>&1")
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ALITER
+    VINCIRE cmd AD CONIURA concat(
+      "ffmpeg -i \"",
+      CONIURA concat(
+        source_path,
+        CONIURA concat(
+          "\" -vf \"",
+          CONIURA concat(
+            scale_filter,
+            CONIURA concat(
+              "\" -map \"0:v:0\" -map \"0:a?\" -c:v ",
+              CONIURA concat(
+                spec.video_codec,
+                CONIURA concat(
+                  " -b:v ",
+                  CONIURA concat(
+                    CONIURA stringify_int(spec.bitrate_kbps),
+                    CONIURA concat(
+                      "k -c:a ",
+                      CONIURA concat(
+                        spec.audio_codec,
+                        CONIURA concat(
+                          " -b:a ",
+                          CONIURA concat(
+                            CONIURA stringify_int(spec.audio_bitrate_kbps),
+                            CONIURA concat("k -shortest \"", CONIURA concat(dest_path, "\" -y >/dev/null 2>&1"))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  FIN SI
+
+  EVOCA REX rc AD CONIURA run_timeout(cmd, cfg.transcode_timeout_ms)
+  SI rc != 0
+    REDDE CONIURA video_transcode_err(CONIURA concat("ffmpeg transcode failed with exit code ", CONIURA stringify_int(rc)))
+  FIN SI
+  SI NON CONIURA exists(dest_path)
+    REDDE CONIURA video_transcode_err("transcode output file was not created")
+  FIN SI
+  REDDE CONIURA video_transcode_ok()
+EXPLICIT RITUALE
+
+RITUALE video_transcode_all(VERBUM source_path, VideoProcessConfig cfg, MediaStore store, VERBUM artifact_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL created_paths AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX total AD 0
+
+  SI cfg.specs != NIHIL
+    VINCIRE total AD CONIURA fluxus_len(cfg.specs)
+  FIN SI
+
+  DUM i < total
+    EVOCA SPECULUM TranscodeSpec spec_ptr AD CONIURA fluxus_get(cfg.specs, i)
+    EVOCA TranscodeSpec spec AD *spec_ptr
+    EVOCA VERBUM dest_name AD CONIURA format_3(
+      "{}_{}.{}",
+      artifact_id,
+      spec.name,
+      spec.extension
+    )
+    EVOCA VERBUM dest_path AD CONIURA path_join(CONIURA media_store_zone_dir(store, MEDIA_ZONE_PROCESSED), dest_name)
+    EVOCA SPECULUM NIHIL transcode_res AD CONIURA video_transcode_one(source_path, spec, dest_path, cfg)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(transcode_res)
+      EVOCA REX j AD 0
+      EVOCA REX created_total AD CONIURA fluxus_len(created_paths)
+      DUM j < created_total
+        EVOCA SPECULUM VERBUM path_ptr AD CONIURA fluxus_get(created_paths, j)
+        SI CONIURA exists(*path_ptr)
+          CONIURA delete_file(*path_ptr)
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+      REDDE CONIURA video_transcode_err(CONIURA result_unwrap_err GENUS(REX, VERBUM)(transcode_res))
+    FIN SI
+    CONIURA fluxus_push(created_paths, SPECULUM dest_path)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA video_transcode_ok()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

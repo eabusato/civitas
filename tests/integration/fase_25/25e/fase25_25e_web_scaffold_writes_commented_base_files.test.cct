@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase25_25e_web_scaffold_writes_commented_base_files"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase25e_reset_root("25e_web_scaffold_writes_commented_base_files")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg("aurora25", TemplateWeb, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(cfg))
+    REDDE 1
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "aurora25/project/main.cct"), "This is the bootstrap owned by the project.")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "aurora25/apps/core/views/index.cct"), "Put HTTP handlers for the core app here")
+    REDDE 3
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "aurora25/templates/base.html"), "/static/css/main.css")
+    REDDE 4
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "aurora25/settings/dev.toml"), "Civitas currently reads civitas.toml as the canonical runtime config.")
+    REDDE 5
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "aurora25/.gitignore"), ".civitas/")
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

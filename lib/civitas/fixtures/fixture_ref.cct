@@ -1,0 +1,54 @@
+INCIPIT grimoire "civitas_fixture_ref"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "fixture.cct"
+
+SIGILLUM FixtureRef
+  entradas: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE fixture_ref_build(SPECULUM NIHIL suites, REX n_suites) REDDE FixtureRef
+  EVOCA FixtureRef ref
+  VINCIRE ref.entradas AD CONIURA fluxus_init(MENSURA(FixtureEntry))
+  SI n_suites == 1
+    EVOCA SPECULUM FixtureSuite only_suite AD suites
+    EVOCA REX only_ne AD CONIURA fluxus_len((*only_suite).entradas)
+    EVOCA REX only_ei AD 0
+    DUM only_ei < only_ne
+      EVOCA SPECULUM FixtureEntry ep AD CONIURA fluxus_get((*only_suite).entradas, only_ei)
+      CONIURA fluxus_push(ref.entradas, SPECULUM (*ep))
+      VINCIRE only_ei AD only_ei + 1
+    FIN DUM
+    REDDE ref
+  FIN SI
+  EVOCA REX si AD 0
+  DUM si < n_suites
+    EVOCA SPECULUM FixtureSuite sp AD CONIURA fluxus_get(suites, si)
+    EVOCA REX ne AD CONIURA fluxus_len((*sp).entradas)
+    EVOCA REX ei AD 0
+    DUM ei < ne
+      EVOCA SPECULUM FixtureEntry ep AD CONIURA fluxus_get((*sp).entradas, ei)
+      CONIURA fluxus_push(ref.entradas, SPECULUM (*ep))
+      VINCIRE ei AD ei + 1
+    FIN DUM
+    VINCIRE si AD si + 1
+  FIN DUM
+  REDDE ref
+EXPLICIT RITUALE
+
+RITUALE fixture_ref_get(FixtureRef ref, VERBUM modelo, VERBUM pk) REDDE SPECULUM NIHIL
+  EVOCA REX n AD CONIURA fluxus_len(ref.entradas)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FixtureEntry ep AD CONIURA fluxus_get(ref.entradas, i)
+    SI CONIURA compare((*ep).modelo, modelo) == 0 ET CONIURA compare((*ep).pk, pk) == 0
+      REDDE CONIURA Some GENUS(FixtureEntry)(*ep)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(FixtureEntry)()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

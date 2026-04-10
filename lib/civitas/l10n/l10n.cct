@@ -1,0 +1,34 @@
+INCIPIT grimoire "civitas_l10n_types"
+
+SIGILLUM NumberRules
+  sep_decimal: MILES
+  sep_milhar: MILES
+  grupos: REX
+FIN SIGILLUM
+
+SIGILLUM DateRules
+  formato_data: VERBUM
+  formato_hora: VERBUM
+  formato_datetime: VERBUM
+  hora_24: VERUM
+FIN SIGILLUM
+
+SIGILLUM CurrencyRules
+  simbolo_prefixo: VERUM
+  espaco_simbolo: VERUM
+  casas_decimais: REX
+FIN SIGILLUM
+
+SIGILLUM LocaleRules
+  locale: VERBUM
+  numero: NumberRules
+  data: DateRules
+  moeda: CurrencyRules
+FIN SIGILLUM
+
+SIGILLUM L10nRulesRegistry
+  regras: SPECULUM NIHIL
+  padrao: VERBUM
+FIN SIGILLUM
+
+EXPLICIT grimoire

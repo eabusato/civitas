@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase6_6c_tag_and_attrs_test"
+
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL node AD CONIURA html_div("card")
+  EVOCA VERBUM html AD ""
+
+  CONIURA html_id(node, "hero")
+  CONIURA html_data(node, "role", "main")
+  CONIURA html_text(node, "Conteudo")
+  VINCIRE html AD CONIURA html_render_free(node)
+
+  SI CONIURA compare(html, "<div class=\"card\" id=\"hero\" data-role=\"main\">Conteudo</div>") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

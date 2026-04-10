@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase24_24c_custom_queue"
+
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/test_tasks/test_tasks.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_custom_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  REDDE CONIURA task_callback_result_ok("{\"queue\":\"media\"}")
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL q AD CONIURA test_tasks_setup()
+  CONIURA test_tasks_set_queue(q, "media")
+  CONIURA test_tasks_register(q, "media.process", phase24_custom_task)
+  SI CONIURA len(CONIURA test_tasks_enqueue(q, "media.process", "{\"asset\":9}")) == 0
+    REDDE 1
+  FIN SI
+  CONIURA assert_task_enqueued(q, "media.process")
+  SI CONIURA test_tasks_flush(q) != 1
+    REDDE 1
+  FIN SI
+  CONIURA assert_task_ran(q, "media.process")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

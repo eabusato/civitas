@@ -1,0 +1,364 @@
+INCIPIT grimoire "civitas_security_audit"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../csrf_middleware.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../static/static.cct"
+
+ORDO VulnSeverity
+  VULN_SEV_CRITICAL
+  VULN_SEV_HIGH
+  VULN_SEV_MEDIUM
+  VULN_SEV_LOW
+  VULN_SEV_INFO
+FIN ORDO
+
+ORDO VulnType
+  VULN_HEADER_MISSING
+  VULN_CSRF_COVERAGE
+  VULN_PATH_TRAVERSAL
+  VULN_TRANSPORT_EXPOSURE
+FIN ORDO
+
+SIGILLUM VulnLocation
+  module_name: VERBUM
+  file_path: VERBUM
+  context: VERBUM
+FIN SIGILLUM
+
+SIGILLUM Vuln
+  id: VERBUM
+  tipo: VulnType
+  severidade: VulnSeverity
+  titulo: VERBUM
+  descricao: VERBUM
+  evidencia: VERBUM
+  remediacao: VERBUM
+  localizacao: VulnLocation
+FIN SIGILLUM
+
+SIGILLUM ScanConfig
+  scan_headers: VERUM
+  scan_csrf: VERUM
+  scan_path_traversal: VERUM
+  threshold_fail: VulnSeverity
+FIN SIGILLUM
+
+SIGILLUM ScanResult
+  vulns: SPECULUM NIHIL
+  total: REX
+  critical_count: REX
+  high_count: REX
+  medium_count: REX
+  low_count: REX
+  info_count: REX
+  approved: VERUM
+  duration_ms: REX
+FIN SIGILLUM
+
+RITUALE security_audit_scan_config_default() REDDE ScanConfig
+  EVOCA ScanConfig cfg
+  VINCIRE cfg.scan_headers AD VERUM
+  VINCIRE cfg.scan_csrf AD VERUM
+  VINCIRE cfg.scan_path_traversal AD VERUM
+  VINCIRE cfg.threshold_fail AD VULN_SEV_HIGH
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE security_audit_scan_result_new() REDDE ScanResult
+  EVOCA ScanResult out
+  VINCIRE out.vulns AD CONIURA fluxus_init(MENSURA(Vuln))
+  VINCIRE out.total AD 0
+  VINCIRE out.critical_count AD 0
+  VINCIRE out.high_count AD 0
+  VINCIRE out.medium_count AD 0
+  VINCIRE out.low_count AD 0
+  VINCIRE out.info_count AD 0
+  VINCIRE out.approved AD VERUM
+  VINCIRE out.duration_ms AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_audit_location(VERBUM module_name, VERBUM file_path, VERBUM context) REDDE VulnLocation
+  EVOCA VulnLocation loc
+  VINCIRE loc.module_name AD module_name
+  VINCIRE loc.file_path AD file_path
+  VINCIRE loc.context AD context
+  REDDE loc
+EXPLICIT RITUALE
+
+RITUALE security_audit_vuln_new(
+  VulnType tipo,
+  VulnSeverity severidade,
+  VERBUM titulo,
+  VERBUM descricao,
+  VERBUM evidencia,
+  VERBUM remediacao,
+  VulnLocation localizacao
+) REDDE Vuln
+  EVOCA Vuln v
+  VINCIRE v.id AD CONIURA concat("V-", CONIURA stringify_int(CONIURA now_ms()))
+  VINCIRE v.tipo AD tipo
+  VINCIRE v.severidade AD severidade
+  VINCIRE v.titulo AD titulo
+  VINCIRE v.descricao AD descricao
+  VINCIRE v.evidencia AD evidencia
+  VINCIRE v.remediacao AD remediacao
+  VINCIRE v.localizacao AD localizacao
+  REDDE v
+EXPLICIT RITUALE
+
+RITUALE security_audit_severity_fails(VulnSeverity severity, VulnSeverity threshold) REDDE VERUM
+  SI severity == VULN_SEV_CRITICAL
+    REDDE VERUM
+  FIN SI
+  SI threshold == VULN_SEV_CRITICAL
+    REDDE FALSUM
+  FIN SI
+  SI severity == VULN_SEV_HIGH
+    REDDE VERUM
+  FIN SI
+  SI threshold == VULN_SEV_HIGH
+    REDDE FALSUM
+  FIN SI
+  SI severity == VULN_SEV_MEDIUM
+    REDDE VERUM
+  FIN SI
+  SI threshold == VULN_SEV_MEDIUM
+    REDDE FALSUM
+  FIN SI
+  SI severity == VULN_SEV_LOW
+    REDDE VERUM
+  FIN SI
+  SI threshold == VULN_SEV_LOW
+    REDDE FALSUM
+  FIN SI
+  REDDE severity == VULN_SEV_INFO
+EXPLICIT RITUALE
+
+RITUALE security_audit_push(SPECULUM ScanResult result, Vuln vuln, VulnSeverity threshold) REDDE NIHIL
+  CONIURA fluxus_push((*result).vulns, SPECULUM vuln)
+  VINCIRE (*result).total AD (*result).total + 1
+  ELIGE vuln.severidade
+    CASUS VULN_SEV_CRITICAL:
+      VINCIRE (*result).critical_count AD (*result).critical_count + 1
+    CASUS VULN_SEV_HIGH:
+      VINCIRE (*result).high_count AD (*result).high_count + 1
+    CASUS VULN_SEV_MEDIUM:
+      VINCIRE (*result).medium_count AD (*result).medium_count + 1
+    CASUS VULN_SEV_LOW:
+      VINCIRE (*result).low_count AD (*result).low_count + 1
+    ALIOQUIN:
+      VINCIRE (*result).info_count AD (*result).info_count + 1
+  FIN ELIGE
+  SI CONIURA security_audit_severity_fails(vuln.severidade, threshold)
+    VINCIRE (*result).approved AD FALSUM
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_audit_has_middleware(SPECULUM NIHIL middlewares, VERBUM expected_name) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(middlewares)
+  DUM i < n
+    EVOCA SPECULUM MiddlewareBinding binding_ptr AD CONIURA fluxus_get(middlewares, i)
+    SI CONIURA compare((*binding_ptr).name, expected_name) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE security_audit_scan_headers(WebResponse res, ScanConfig cfg) REDDE ScanResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA ScanResult out AD CONIURA security_audit_scan_result_new()
+  SI NON cfg.scan_headers
+    VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+    REDDE out
+  FIN SI
+
+  SI CONIURA len(CONIURA response_header_or(res, "content-security-policy", "")) == 0
+    EVOCA Vuln v_csp AD CONIURA security_audit_vuln_new(
+      VULN_HEADER_MISSING,
+      VULN_SEV_HIGH,
+      "Content-Security-Policy header is missing",
+      "Responses should carry a CSP to reduce reflected or stored script execution risk.",
+      "response missing content-security-policy",
+      "Apply civitas/security headers or set content-security-policy explicitly in the response pipeline.",
+      CONIURA security_audit_location("civitas/security", "lib/civitas/security.cct", "response headers")
+    )
+    CONIURA security_audit_push(
+      SPECULUM out,
+      v_csp,
+      cfg.threshold_fail
+    )
+  FIN SI
+
+  SI CONIURA len(CONIURA response_header_or(res, "x-frame-options", "")) == 0
+    EVOCA Vuln v_xfo AD CONIURA security_audit_vuln_new(
+      VULN_HEADER_MISSING,
+      VULN_SEV_MEDIUM,
+      "X-Frame-Options header is missing",
+      "Clickjacking protection should be explicit on HTML-capable responses.",
+      "response missing x-frame-options",
+      "Apply civitas/security headers or set x-frame-options explicitly.",
+      CONIURA security_audit_location("civitas/security", "lib/civitas/security.cct", "response headers")
+    )
+    CONIURA security_audit_push(
+      SPECULUM out,
+      v_xfo,
+      cfg.threshold_fail
+    )
+  FIN SI
+
+  SI CONIURA len(CONIURA response_header_or(res, "x-content-type-options", "")) == 0
+    EVOCA Vuln v_xcto AD CONIURA security_audit_vuln_new(
+      VULN_HEADER_MISSING,
+      VULN_SEV_MEDIUM,
+      "X-Content-Type-Options header is missing",
+      "nosniff should be enabled to avoid MIME confusion on browsers.",
+      "response missing x-content-type-options",
+      "Apply civitas/security headers or set x-content-type-options to nosniff.",
+      CONIURA security_audit_location("civitas/security", "lib/civitas/security.cct", "response headers")
+    )
+    CONIURA security_audit_push(
+      SPECULUM out,
+      v_xcto,
+      cfg.threshold_fail
+    )
+  FIN SI
+
+  SI CONIURA len(CONIURA response_header_or(res, "referrer-policy", "")) == 0
+    EVOCA Vuln v_referrer AD CONIURA security_audit_vuln_new(
+      VULN_HEADER_MISSING,
+      VULN_SEV_LOW,
+      "Referrer-Policy header is missing",
+      "Referrer leakage should be constrained explicitly at the framework edge.",
+      "response missing referrer-policy",
+      "Apply civitas/security headers or set referrer-policy explicitly.",
+      CONIURA security_audit_location("civitas/security", "lib/civitas/security.cct", "response headers")
+    )
+    CONIURA security_audit_push(
+      SPECULUM out,
+      v_referrer,
+      cfg.threshold_fail
+    )
+  FIN SI
+
+  VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_audit_scan_router(Router router, ScanConfig cfg) REDDE ScanResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA ScanResult out AD CONIURA security_audit_scan_result_new()
+  EVOCA SPECULUM NIHIL manifest AD CONIURA router_sigilo_manifest(router)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(manifest)
+
+  DUM i < n
+    EVOCA SPECULUM RouteSigiloEntry entry_ptr AD CONIURA fluxus_get(manifest, i)
+
+    SI cfg.scan_csrf
+      SI CONIURA compare((*entry_ptr).method, "POST") == 0 VEL CONIURA compare((*entry_ptr).method, "PUT") == 0 VEL CONIURA compare((*entry_ptr).method, "PATCH") == 0 VEL CONIURA compare((*entry_ptr).method, "DELETE") == 0
+        SI NON CONIURA security_audit_has_middleware((*entry_ptr).middlewares, "csrf")
+          EVOCA Vuln v_csrf AD CONIURA security_audit_vuln_new(
+            VULN_CSRF_COVERAGE,
+            VULN_SEV_HIGH,
+            "Mutating route is missing CSRF middleware",
+            "Unsafe HTTP methods should be covered by the CSRF middleware or an equivalent explicit protection.",
+            CONIURA concat((*entry_ptr).method, CONIURA concat(" ", (*entry_ptr).pattern)),
+            "Bind civitas_csrf_middleware on the route or on the router global pipeline for browser-originated forms.",
+            CONIURA security_audit_location("civitas/csrf_middleware", "lib/civitas/csrf_middleware.cct", (*entry_ptr).name)
+          )
+          CONIURA security_audit_push(
+            SPECULUM out,
+            v_csrf,
+            cfg.threshold_fail
+          )
+        FIN SI
+      FIN SI
+    FIN SI
+
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA fluxus_free(manifest)
+  VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_audit_scan_static_root(VERBUM root, ScanConfig cfg) REDDE ScanResult
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA ScanResult out AD CONIURA security_audit_scan_result_new()
+  SI NON cfg.scan_path_traversal
+    VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+    REDDE out
+  FIN SI
+
+  EVOCA SPECULUM NIHIL probes AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM probe0 AD "../../etc/passwd"
+  EVOCA VERBUM probe1 AD "..\\..\\secret.txt"
+  EVOCA VERBUM probe2 AD "/../app.db"
+  EVOCA VERBUM probe3 AD "nested/../../secret.txt"
+  CONIURA fluxus_push(probes, SPECULUM probe0)
+  CONIURA fluxus_push(probes, SPECULUM probe1)
+  CONIURA fluxus_push(probes, SPECULUM probe2)
+  CONIURA fluxus_push(probes, SPECULUM probe3)
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(probes)
+  DUM i < n
+    EVOCA SPECULUM VERBUM probe_ptr AD CONIURA fluxus_get(probes, i)
+    EVOCA VERBUM resolved AD CONIURA static_caminho_seguro(root, *probe_ptr)
+    SI CONIURA len(resolved) != 0
+      EVOCA Vuln v_path AD CONIURA security_audit_vuln_new(
+        VULN_PATH_TRAVERSAL,
+        VULN_SEV_HIGH,
+        "Static path traversal probe resolved inside the filesystem",
+        "The static path guard accepted an unsafe relative probe and resolved it to a concrete path.",
+        *probe_ptr,
+        "Use static_caminho_seguro and reject traversal probes before reading from disk.",
+        CONIURA security_audit_location("civitas/static", "lib/civitas/static/static.cct", "static root")
+      )
+      CONIURA security_audit_push(
+        SPECULUM out,
+        v_path,
+        cfg.threshold_fail
+      )
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA fluxus_free(probes)
+  VINCIRE out.duration_ms AD CONIURA now_ms() - started_ms
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE security_audit_merge(SPECULUM ScanResult dest, ScanResult src, VulnSeverity threshold) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(src.vulns)
+  DUM i < n
+    EVOCA SPECULUM Vuln vuln_ptr AD CONIURA fluxus_get(src.vulns, i)
+    CONIURA security_audit_push(dest, *vuln_ptr, threshold)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE (*dest).duration_ms AD (*dest).duration_ms + src.duration_ms
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE security_audit_scan_all(Router router, WebResponse sample_response, VERBUM static_root, ScanConfig cfg) REDDE ScanResult
+  EVOCA ScanResult out AD CONIURA security_audit_scan_result_new()
+  CONIURA security_audit_merge(SPECULUM out, CONIURA security_audit_scan_router(router, cfg), cfg.threshold_fail)
+  CONIURA security_audit_merge(SPECULUM out, CONIURA security_audit_scan_headers(sample_response, cfg), cfg.threshold_fail)
+  CONIURA security_audit_merge(SPECULUM out, CONIURA security_audit_scan_static_root(static_root, cfg), cfg.threshold_fail)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

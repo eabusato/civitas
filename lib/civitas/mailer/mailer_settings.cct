@@ -1,0 +1,109 @@
+INCIPIT grimoire "civitas_mailer_settings"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/mail_spool.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../core/settings.cct"
+ADVOCARE "../core/settings_schema.cct"
+ADVOCARE "mailer.cct"
+
+RITUALE mailer_config_smtp(VERBUM host, REX port, VERBUM username, VERBUM password, VERUM starttls, VERBUM from_email, VERBUM from_name) REDDE MailerConfig
+  EVOCA MailerConfig cfg
+  VINCIRE cfg.backend AD CONIURA mail_backend_smtp(host, port, username, password, MAIL_AUTH_PLAIN, starttls)
+  VINCIRE cfg.spool_opts AD CONIURA mail_spool_default_options()
+  VINCIRE cfg.from_email AD from_email
+  VINCIRE cfg.from_name AD from_name
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE mailer_config_file(VERBUM out_dir, VERBUM from_email, VERBUM from_name) REDDE MailerConfig
+  EVOCA MailerConfig cfg
+  VINCIRE cfg.backend AD CONIURA mail_backend_file(out_dir)
+  VINCIRE cfg.spool_opts AD CONIURA mail_spool_default_options()
+  VINCIRE cfg.from_email AD from_email
+  VINCIRE cfg.from_name AD from_name
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE mailer_config_memory(VERBUM from_email, VERBUM from_name) REDDE MailerConfig
+  EVOCA MailerConfig cfg
+  VINCIRE cfg.backend AD CONIURA mail_backend_memory()
+  VINCIRE cfg.spool_opts AD CONIURA mail_spool_default_options()
+  VINCIRE cfg.from_email AD from_email
+  VINCIRE cfg.from_name AD from_name
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE mailer_setting_verbum(SPECULUM Settings settings, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI NON CONIURA settings_has(settings, key)
+    REDDE fallback
+  FIN SI
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_get_verbum(settings, key)
+  SI CONIURA result_is_err GENUS(VERBUM, SettingsError)(res)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERBUM, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE mailer_setting_rex(SPECULUM Settings settings, VERBUM key, REX fallback) REDDE REX
+  SI NON CONIURA settings_has(settings, key)
+    REDDE fallback
+  FIN SI
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_get_rex(settings, key)
+  SI CONIURA result_is_err GENUS(REX, SettingsError)(res)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(REX, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE mailer_setting_bool(SPECULUM Settings settings, VERBUM key, VERUM fallback) REDDE VERUM
+  SI NON CONIURA settings_has(settings, key)
+    REDDE fallback
+  FIN SI
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_get_bool(settings, key)
+  SI CONIURA result_is_err GENUS(VERUM, SettingsError)(res)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERUM, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE mailer_config_from_settings(SPECULUM Settings settings) REDDE MailerConfig
+  EVOCA VERBUM backend_name AD CONIURA to_lower(CONIURA mailer_setting_verbum(settings, "mail.backend", "memory"))
+  EVOCA VERBUM from_email AD CONIURA mailer_setting_verbum(settings, "mail.default_from", "")
+  EVOCA VERBUM from_name AD CONIURA mailer_setting_verbum(settings, "mail.from_name", "")
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_memory(from_email, from_name)
+
+  VINCIRE cfg.spool_opts.max_attempts AD CONIURA mailer_setting_rex(settings, "mail.spool_max_attempts", 3)
+  VINCIRE cfg.spool_opts.base_retry_seconds AD CONIURA mailer_setting_rex(settings, "mail.spool_base_retry_seconds", 30)
+  VINCIRE cfg.spool_opts.root_dir AD CONIURA mailer_setting_verbum(settings, "mail.spool_root_dir", "")
+
+  SI CONIURA compare(backend_name, "smtp") == 0
+    VINCIRE cfg AD CONIURA mailer_config_smtp(
+      CONIURA mailer_setting_verbum(settings, "mail.host", ""),
+      CONIURA mailer_setting_rex(settings, "mail.port", 587),
+      CONIURA mailer_setting_verbum(settings, "mail.username", ""),
+      CONIURA mailer_setting_verbum(settings, "mail.password", ""),
+      CONIURA mailer_setting_bool(settings, "mail.use_starttls", VERUM),
+      from_email,
+      from_name
+    )
+  ALITER
+    SI CONIURA compare(backend_name, "file") == 0
+      VINCIRE cfg AD CONIURA mailer_config_file(
+        CONIURA mailer_setting_verbum(settings, "mail.out_dir", "tmp/emails"),
+        from_email,
+        from_name
+      )
+    ALITER
+      VINCIRE cfg AD CONIURA mailer_config_memory(from_email, from_name)
+    FIN SI
+  FIN SI
+
+  VINCIRE cfg.spool_opts.max_attempts AD CONIURA mailer_setting_rex(settings, "mail.spool_max_attempts", cfg.spool_opts.max_attempts)
+  VINCIRE cfg.spool_opts.base_retry_seconds AD CONIURA mailer_setting_rex(settings, "mail.spool_base_retry_seconds", cfg.spool_opts.base_retry_seconds)
+  VINCIRE cfg.spool_opts.root_dir AD CONIURA mailer_setting_verbum(settings, "mail.spool_root_dir", cfg.spool_opts.root_dir)
+  REDDE cfg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

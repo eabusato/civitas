@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase7_7b_email_and_custom_message_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldSchema email_fs AD CONIURA field_schema_new("email")
+  CONIURA field_schema_add_rule(SPECULUM email_fs, CONIURA rule_email())
+  EVOCA SPECULUM NIHIL email_erros AD CONIURA validate_field(email_fs, "nao-e-email")
+  EVOCA ValidationRule custom AD CONIURA rule_required_msg("Informe seu nome.")
+
+  SI CONIURA fluxus_len(email_erros) != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA validation_message(custom), "Informe seu nome.") != 0
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(email_erros, 0)
+  SI CONIURA compare(*msg_ptr, "Endereco de e-mail invalido.") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

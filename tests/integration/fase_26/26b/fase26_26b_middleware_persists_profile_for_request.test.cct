@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase26_26b_middleware_persists_profile_for_request"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "../../../../lib/civitas/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26b_middleware_persists_profile_for_request")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "profiles.db"))
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(db, 2)
+  EVOCA Router router AD CONIURA phase26_profiler_router()
+  CONIURA profiler_enable(SPECULUM state)
+  CONIURA profiler_middleware_add(SPECULUM router, SPECULUM state)
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_client_get(SPECULUM client, "/profiled")
+  CONIURA test_client_free(SPECULUM client)
+  CONIURA profiler_disable(SPECULUM state)
+  SI res.status != 200
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM request_profiles") != 1
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT n1_found FROM request_profiles LIMIT 1") != 1
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase25_25a_bus_flush_old"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse/sse.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25a_bus_flush_old")
+  EVOCA SPECULUM SseBus bus AD CONIURA sse_bus_new(db, "presence")
+  CONIURA sse_bus_emit(bus, "alive", "{\"user\":1}")
+  CONIURA db_exec(db, "UPDATE sse_bus_events SET criado_em = 0")
+  CONIURA sse_bus_flush_old(bus, 1)
+
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sse_bus_events") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(CONIURA sse_bus_poll(bus)) != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

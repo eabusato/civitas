@@ -1,0 +1,85 @@
+INCIPIT grimoire "civitas_mail_tpl_base"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "../mailer/mailer.cct"
+
+RITUALE mail_tpl_builder_take(SPECULUM NIHIL b) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mail_html_head(VERBUM title) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html><head>")
+  CONIURA builder_append(b, "<meta charset=\"UTF-8\">")
+  CONIURA builder_append(b, "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
+  CONIURA builder_append(b, "<title>")
+  CONIURA builder_append(b, CONIURA html_encode(title))
+  CONIURA builder_append(b, "</title>")
+  CONIURA builder_append(b, "<style>")
+  CONIURA builder_append(b, "body{margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;color:#333333;}")
+  CONIURA builder_append(b, ".container{max-width:600px;margin:32px auto;background:#ffffff;border-radius:6px;overflow:hidden;}")
+  CONIURA builder_append(b, ".header{background-color:#3B6FE8;padding:24px 32px;}")
+  CONIURA builder_append(b, ".header h1{margin:0;font-size:20px;color:#ffffff;font-weight:600;}")
+  CONIURA builder_append(b, ".body{padding:32px;}")
+  CONIURA builder_append(b, ".body p{margin:0 0 16px;line-height:1.6;font-size:15px;}")
+  CONIURA builder_append(b, ".footer{padding:16px 32px;background:#f4f4f4;font-size:12px;color:#888888;text-align:center;}")
+  CONIURA builder_append(b, "</style>")
+  CONIURA builder_append(b, "</head><body><div class=\"container\">")
+  REDDE CONIURA mail_tpl_builder_take(b)
+EXPLICIT RITUALE
+
+RITUALE mail_html_foot() REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<div class=\"footer\">")
+  CONIURA builder_append(b, "This email was sent automatically. Please do not reply to this address.")
+  CONIURA builder_append(b, "</div>")
+  CONIURA builder_append(b, "</div></body></html>")
+  REDDE CONIURA mail_tpl_builder_take(b)
+EXPLICIT RITUALE
+
+RITUALE mail_html_botao(VERBUM url, VERBUM texto) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<p style=\"text-align:center;margin:24px 0;\">")
+  CONIURA builder_append(b, "<a href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(url))
+  CONIURA builder_append(b, "\" style=\"background-color:#3B6FE8;color:#ffffff;padding:12px 24px;border-radius:4px;text-decoration:none;display:inline-block;font-size:15px;font-weight:600;\">")
+  CONIURA builder_append(b, CONIURA html_encode(texto))
+  CONIURA builder_append(b, "</a>")
+  CONIURA builder_append(b, "</p>")
+  REDDE CONIURA mail_tpl_builder_take(b)
+EXPLICIT RITUALE
+
+RITUALE mail_html_aviso(VERBUM texto) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<p style=\"background:#f5f5f5;border-left:4px solid #3B6FE8;padding:12px;font-size:14px;color:#555555;margin:16px 0;\">")
+  CONIURA builder_append(b, CONIURA html_encode(texto))
+  CONIURA builder_append(b, "</p>")
+  REDDE CONIURA mail_tpl_builder_take(b)
+EXPLICIT RITUALE
+
+RITUALE mail_html_fallback_link(VERBUM url) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<p style=\"font-size:13px;color:#888888;\">If the button does not work, copy and paste this URL into your browser:<br><a href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(url))
+  CONIURA builder_append(b, "\" style=\"color:#3B6FE8;word-break:break-all;\">")
+  CONIURA builder_append(b, CONIURA html_encode(url))
+  CONIURA builder_append(b, "</a></p>")
+  REDDE CONIURA mail_tpl_builder_take(b)
+EXPLICIT RITUALE
+
+RITUALE mail_tpl_message(MailerConfig mcfg, VERBUM to_email, VERBUM to_name, VERBUM subject, VERBUM text_body, VERBUM html_body) REDDE MailMessage
+  EVOCA MailMessage msg AD CONIURA mail_message_new()
+  CONIURA mail_message_set_from(SPECULUM msg, CONIURA mail_address(mcfg.from_email, mcfg.from_name))
+  CONIURA mail_message_add_to(SPECULUM msg, CONIURA mail_address(to_email, to_name))
+  CONIURA mail_message_set_subject(SPECULUM msg, subject)
+  CONIURA mail_message_set_text(SPECULUM msg, text_body)
+  CONIURA mail_message_set_html(SPECULUM msg, html_body)
+  REDDE msg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

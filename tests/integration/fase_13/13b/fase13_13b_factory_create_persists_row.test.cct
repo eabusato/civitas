@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase13_13b_factory_create_persists_row"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_seq.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA factory_seq_reset()
+  EVOCA SPECULUM NIHIL db AD CONIURA phase13_db_open("13b_factory_create_persists_row")
+  CONIURA phase13_seed_schema(db)
+  CONIURA db_exec(db, "INSERT INTO categorias(id, nome, slug, ativo) VALUES(1, 'Tecnologia', 'tecnologia', 1)")
+  EVOCA FactoryDef def AD CONIURA factory_def_new("posts")
+  CONIURA factory_def_add_const(def, "titulo", "Hello")
+  CONIURA factory_def_add_seq(def, "slug", "post-")
+  CONIURA factory_def_add_const(def, "categoria_id", "1")
+  CONIURA factory_def_add_nulo(def, "email")
+  EVOCA REX id AD CONIURA factory_create(db, def)
+  SI id != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA db_scalar_text(db, "SELECT slug FROM posts WHERE id = 1"), "post-1") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

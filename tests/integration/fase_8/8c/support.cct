@@ -1,0 +1,117 @@
+INCIPIT grimoire "fase8_8c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_redis.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase8_8c_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase8_tmp_dir(CONIURA concat("8c_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_fake_redis_source() REDDE VERBUM
+  REDDE "tests/integration/fase_8/8c/fixtures/fake_redis_server.cct"
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_fake_redis_binary() REDDE VERBUM
+  REDDE "tests/integration/fase_8/8c/fixtures/fake_redis_server"
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_build_fake_redis(VERBUM root) REDDE REX
+  EVOCA VERBUM log AD CONIURA path_join(root, "build.log")
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase8_8c_fake_redis_source())
+  REDDE CONIURA run_to_log(cmd, log)
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_start_fake_redis(VERBUM root) REDDE REX
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  EVOCA VERBUM log AD CONIURA path_join(root, "server.log")
+  SI CONIURA phase8_8c_build_fake_redis(root) != 0
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM cmd AD "CIVITAS_FAKE_REDIS_READY_FILE="
+  VINCIRE cmd AD CONIURA concat(cmd, ready)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase8_8c_fake_redis_binary())
+  REDDE CONIURA spawn_to_log_with_pid(cmd, log, pid_file)
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_process_alive(VERBUM root) REDDE VERUM
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  SI NON CONIURA exists(pid_file)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM cmd AD "kill -0 "
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_file)))
+  VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1")
+  REDDE CONIURA run(cmd) == 0
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_wait_ready(VERBUM root, REX timeout_ms) REDDE VERUM
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  SI CONIURA wait_for_file(ready, timeout_ms)
+    REDDE VERUM
+  FIN SI
+  SI NON CONIURA phase8_8c_process_alive(root)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA wait_for_file(ready, timeout_ms)
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_fake_redis_port(VERBUM root) REDDE REX
+  EVOCA VERBUM ready AD CONIURA path_join(root, "ready.txt")
+  SI NON CONIURA phase8_8c_wait_ready(root, 10000)
+    SI CONIURA phase8_8c_start_fake_redis(root) != 0
+      IACE "fake redis restart failed"
+    FIN SI
+    SI NON CONIURA phase8_8c_wait_ready(root, 15000)
+      IACE "fake redis did not become ready"
+    FIN SI
+  FIN SI
+  REDDE CONIURA parse_int(CONIURA trim(CONIURA read_all(ready)))
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_stop_fake_redis(VERBUM root) REDDE NIHIL
+  EVOCA VERBUM pid_file AD CONIURA path_join(root, "pid.txt")
+  SI CONIURA exists(pid_file)
+    CONIURA run(CONIURA concat("kill -TERM ", CONIURA trim(CONIURA read_all(pid_file))))
+    CONIURA sleep_ms(100)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_connect_fake_redis(VERBUM root) REDDE SPECULUM NIHIL
+  EVOCA RedisOptions opts AD CONIURA redis_default_options()
+  VINCIRE opts.port AD CONIURA phase8_8c_fake_redis_port(root)
+  VINCIRE opts.read_timeout_ms AD 1000
+  VINCIRE opts.connect_timeout_ms AD 1000
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_connect_with_options(opts)
+  SI CONIURA result_is_err GENUS(Redis, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(Redis, VERBUM)(res)
+  FIN SI
+  EVOCA Redis redis_value AD CONIURA result_unwrap GENUS(Redis, VERBUM)(res)
+  EVOCA SPECULUM Redis redis_ptr AD OBSECRO mem_alloc(MENSURA(Redis))
+  VINCIRE (*redis_ptr).handle AD redis_value.handle
+  VINCIRE (*redis_ptr).last_error AD redis_value.last_error
+  VINCIRE (*redis_ptr).read_timeout_ms AD redis_value.read_timeout_ms
+  VINCIRE (*redis_ptr).open AD redis_value.open
+  REDDE redis_ptr
+EXPLICIT RITUALE
+
+RITUALE phase8_8c_store(VERBUM root) REDDE SessionStore
+  EVOCA SessionRedisConfig cfg AD CONIURA session_redis_config_default()
+  REDDE CONIURA session_store_redis(cfg, CONIURA phase8_8c_connect_fake_redis(root))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

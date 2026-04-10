@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase24_24a_post_json"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_json_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL json_res AD CONIURA json_try_parse((*req).body)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(json_res)
+    CONIURA response_fill(out, CONIURA response_bad_request("json invalido"))
+    REDDE
+  FIN SI
+  CONIURA response_fill(out, CONIURA response_json_text(CONIURA json_stringify(CONIURA result_unwrap GENUS(Json, JsonError)(json_res))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA SPECULUM NIHIL add_res AD CONIURA router_add(SPECULUM router, "POST", "/json", "json", "phase24_json_handler", phase24_json_handler)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(add_res)
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_client_post_json(SPECULUM client, "/json", "{\"name\":\"luna\",\"tags\":[\"a\",\"b\"]}")
+  CONIURA assert_ok(res)
+  CONIURA assert_json_str(res, "name", "luna")
+  CONIURA assert_json_arr_len(res, "tags", 2)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,53 @@
+INCIPIT grimoire "fase7_7a_multipart_text_fields_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM boundary AD "----CivitasBoundaryA"
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  EVOCA FormParseConfig cfg AD CONIURA form_parse_config_default()
+  EVOCA VERBUM part_nome AD CONIURA phase7_multipart_text_part("nome", "Ada")
+  EVOCA VERBUM part_tag_a AD CONIURA phase7_multipart_text_part("tag", "red")
+  EVOCA VERBUM part_tag_b AD CONIURA phase7_multipart_text_part("tag", "blue")
+
+  CONIURA fluxus_push(parts, SPECULUM part_nome)
+  CONIURA fluxus_push(parts, SPECULUM part_tag_a)
+  CONIURA fluxus_push(parts, SPECULUM part_tag_b)
+  CONIURA phase7_set_content_type(headers, CONIURA concat("multipart/form-data; boundary=", boundary))
+
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/multipart", headers, CONIURA phase7_multipart_body(boundary, parts))
+  EVOCA FormData fd AD CONIURA phase7_form_unwrap(CONIURA form_parse_multipart(SPECULUM req, cfg))
+  EVOCA SPECULUM NIHIL tags_opt AD CONIURA form_data_get_multi(fd, "tag")
+
+  SI CONIURA compare(fd.content_type, "multipart") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA form_data_get_or(fd, "nome", ""), "Ada") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA option_is_none GENUS(FormValues)(tags_opt)
+    REDDE 3
+  FIN SI
+  EVOCA FormValues tags AD CONIURA option_unwrap GENUS(FormValues)(tags_opt)
+  SI CONIURA fluxus_len(tags.items) != 2
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM VERBUM tag0_ptr AD CONIURA fluxus_get(tags.items, 0)
+  EVOCA SPECULUM VERBUM tag1_ptr AD CONIURA fluxus_get(tags.items, 1)
+  SI CONIURA compare(*tag0_ptr, "red") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(*tag1_ptr, "blue") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

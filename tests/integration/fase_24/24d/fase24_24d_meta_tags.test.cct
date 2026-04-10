@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase24_24d_meta_tags"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase24_meta_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_html("<html><head><link rel=\"canonical\" href=\"https://example.test/posts/neon\"><link rel=\"alternate\" hreflang=\"en-US\" href=\"https://example.test/en/posts/neon\"><meta property=\"og:title\" content=\"Neon Bridge\"></head><body>ok</body></html>"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/posts/neon", "meta", "phase24_meta_handler", phase24_meta_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_client_get(SPECULUM client, "/posts/neon")
+  CONIURA assert_canonical(res, "https://example.test/posts/neon")
+  CONIURA assert_hreflang(res, "en-US", "https://example.test/en/posts/neon")
+  CONIURA assert_og_title(res, "Neon Bridge")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

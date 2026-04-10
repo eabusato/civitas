@@ -1,0 +1,40 @@
+INCIPIT grimoire "rede_social_public_views"
+
+ADVOCARE "../../../gen/home.cct"
+ADVOCARE "../../../gen/profile.cct"
+ADVOCARE "../../shared/template_contexts.cct"
+ADVOCARE "../../shared/types.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_render_home(SPECULUM NIHIL posts, VERBUM current_user, VERBUM csrf_html, REX online_count, SPECULUM NIHIL activity, REX liked_user_id) REDDE VERBUM
+  EVOCA RedeHomePageContext ctx
+  VINCIRE ctx.page_title AD "rede_social"
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.online_count AD online_count
+  VINCIRE ctx.posts AD CONIURA rede_post_card_contexts(posts, ctx.has_user, csrf_html, liked_user_id > 0, "/")
+  VINCIRE ctx.activity AD activity
+  EVOCA VERBUM out AD CONIURA render_home(ctx)
+  CONIURA fluxus_free(ctx.posts)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_render_profile(RedeProfile profile, SPECULUM NIHIL posts, VERBUM current_user, VERBUM csrf_html) REDDE VERBUM
+  EVOCA RedeProfilePageContext ctx
+  EVOCA VERBUM return_path AD CONIURA concat("/perfil/", profile.user.handle)
+  VINCIRE ctx.page_title AD CONIURA concat("@", profile.user.handle)
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.profile AD profile
+  VINCIRE ctx.can_follow AD ctx.has_user ET CONIURA compare(current_user, profile.user.handle) != 0
+  VINCIRE ctx.follow_action AD CONIURA concat(return_path, "/follow")
+  VINCIRE ctx.posts AD CONIURA rede_post_card_contexts(posts, ctx.has_user, csrf_html, FALSUM, return_path)
+  EVOCA VERBUM out AD CONIURA render_profile(ctx)
+  CONIURA fluxus_free(ctx.posts)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_test_db_root"
+
+ADVOCARE "test_db/test_db.cct"
+ADVOCARE "test_db/test_db_setup.cct"
+ADVOCARE "test_db/test_db_tx.cct"
+ADVOCARE "test_db/test_db_assert.cct"
+
+EXPLICIT grimoire

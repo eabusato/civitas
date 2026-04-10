@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase19_19d_sitemap_and_feeds"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/seo/seo.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_sitemap_and_feeds() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19d_sitemap")
+  EVOCA SeoPublicConfig cfg AD CONIURA seo_public_config_default("https://example.test")
+  CONIURA seo_schema_up(stack.db)
+  CONIURA phase19_create_pages_table(stack.db)
+  CONIURA phase19_insert_page(stack.db, "pt-BR", "ola", "Ola", "https://example.test/ola", 100)
+  CONIURA phase19_insert_page(stack.db, "en", "hello", "Hello", "", 101)
+  EVOCA SeoStaticPage page
+  VINCIRE page.path AD "/sobre"
+  VINCIRE page.template_name AD "about"
+  VINCIRE page.title AD "Sobre"
+  VINCIRE page.meta_description AD "Quem somos"
+  VINCIRE page.canonical_override AD ""
+  VINCIRE page.locale AD "pt-BR"
+  VINCIRE page.published AD VERUM
+  CONIURA seo_static_page_upsert(stack.db, page)
+  EVOCA VERBUM sitemap AD CONIURA seo_sitemap_xml(stack.db, cfg)
+  EVOCA VERBUM rss AD CONIURA seo_feed_rss(stack.db, cfg)
+  EVOCA VERBUM atom AD CONIURA seo_feed_atom(stack.db, cfg)
+  SI CONIURA find(sitemap, "https://example.test/ola") == -1 VEL CONIURA find(sitemap, "https://example.test/sobre") == -1
+    IACE "sitemap missing entries"
+  FIN SI
+  SI CONIURA find(rss, "<item><title>Ola</title>") == -1
+    IACE "rss missing item"
+  FIN SI
+  SI CONIURA find(atom, "<entry><title>Ola</title>") == -1
+    IACE "atom missing entry"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_sitemap_and_feeds()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

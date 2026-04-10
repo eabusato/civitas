@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase26_26a_history_persists_latest_result"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26a_history_persists_latest_result")
+  EVOCA VERBUM db_path AD CONIURA path_join(root, "bench.db")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(db_path)
+  EVOCA Router router AD CONIURA phase26_bench_router()
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new("/fast", "GET")
+  CONIURA bench_config_set_n(SPECULUM cfg, 2)
+  CONIURA bench_config_set_warmup(SPECULUM cfg, 0)
+  CONIURA bench_history_insert(db, "home.fast", CONIURA bench_run_inprocess(SPECULUM router, cfg))
+  SI CONIURA bench_history_count(db) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL latest_opt AD CONIURA bench_history_latest(db, "home.fast")
+  SI CONIURA option_is_none GENUS(BenchResult)(latest_opt)
+    CONIURA option_free GENUS(BenchResult)(latest_opt)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA BenchResult latest AD CONIURA option_unwrap GENUS(BenchResult)(latest_opt)
+  CONIURA option_free GENUS(BenchResult)(latest_opt)
+  CONIURA db_close(db)
+  SI CONIURA compare(latest.config_url, "/fast") != 0
+    REDDE 3
+  FIN SI
+  SI latest.n_requests != 2
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

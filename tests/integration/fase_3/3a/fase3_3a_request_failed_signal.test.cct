@@ -1,0 +1,68 @@
+INCIPIT grimoire "fase3_3a_request_failed_signal_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE exploding_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  IACE "handler exploded"
+EXPLICIT RITUALE
+
+RITUALE on_failed(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM RequestFailedPayload payload
+  EVOCA VERBUM line AD ""
+  VINCIRE env AD env_ref
+  VINCIRE payload AD (*env).payload_ref
+  VINCIRE line AD CONIURA concat(line, (*payload).route_name)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, (*payload).error_kind)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, (*payload).error_message_safe)
+  CONIURA write_all("tests/tmp/fase_3/3a_request_failed/failed.log", line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE on_post_request(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM RequestFinishedPayload payload
+  VINCIRE env AD env_ref
+  VINCIRE payload AD (*env).payload_ref
+  CONIURA write_all("tests/tmp/fase_3/3a_request_failed/post.log", CONIURA stringify_int((*payload).status_code))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA RequestSignals signals
+  EVOCA VERBUM dir AD CONIURA phase3_3a_tmp_dir("3a_request_failed")
+  EVOCA WebResponse res AD CONIURA response_new(500)
+
+  CONIURA request_signals_init(SPECULUM signals)
+  CONIURA phase3_3a_reset_dir(dir)
+  CONIURA phase3_3a_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/explode", "explode.show", "exploding_handler", exploding_handler))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signals.request_failed, "on_failed", on_failed))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signals.post_request, "on_post_request", on_post_request))
+
+  CONIURA response_fill(SPECULUM res, CONIURA signals_dispatch_router_request(SPECULUM signals, router, CONIURA phase3_3a_request("GET", "/explode")))
+  SI res.status != 500
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(res.body, "internal server error") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA find(CONIURA read_all(CONIURA concat(dir, "/failed.log")), "explode.show|fractum|handler exploded") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/post.log")), "500") != 0
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

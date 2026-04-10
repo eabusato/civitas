@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase8_8c_auth_context_anonymous_require_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/auth_context/auth_context.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocalContext ctx AD CONIURA local_context_new()
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA local_context_open(SPECULUM ctx)
+  CONIURA auth_context_populate(SPECULUM ctx, sess)
+  SI CONIURA auth_context_is_authenticated(ctx)
+    REDDE 1
+  FIN SI
+  SI CONIURA option_is_some GENUS(VERBUM)(CONIURA auth_context_user_id(ctx))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(VERBUM, VERBUM)(CONIURA auth_context_require(ctx))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,96 @@
+INCIPIT grimoire "fase7_support_common"
+
+ADVOCARE "../../fase_5/support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase7_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE phase7_quote() REDDE VERBUM
+  REDDE CONIURA from_char(34)
+EXPLICIT RITUALE
+
+RITUALE phase7_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_7/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase7_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE phase7_request(VERBUM method, VERBUM target, SPECULUM NIHIL headers, VERBUM body) REDDE WebRequest
+  REDDE CONIURA phase5_request_with_body(method, target, headers, body, "http", "example.test", "127.0.0.1")
+EXPLICIT RITUALE
+
+RITUALE phase7_set_content_type(SPECULUM NIHIL headers, VERBUM content_type) REDDE NIHIL
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "content-type", content_type)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase7_form_unwrap(SPECULUM NIHIL res) REDDE FormData
+  SI OBSECRO result_is_err(res)
+    IACE "form parse falhou"
+  FIN SI
+  EVOCA SPECULUM FormData ptr AD OBSECRO result_unwrap_ptr(res)
+  REDDE *ptr
+EXPLICIT RITUALE
+
+RITUALE phase7_multipart_text_part(VERBUM name, VERBUM value) REDDE VERBUM
+  EVOCA VERBUM part AD "Content-Disposition: form-data; name="
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, name)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  VINCIRE part AD CONIURA concat(part, value)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  REDDE part
+EXPLICIT RITUALE
+
+RITUALE phase7_multipart_file_part(VERBUM name, VERBUM filename, VERBUM content_type, VERBUM data) REDDE VERBUM
+  EVOCA VERBUM part AD "Content-Disposition: form-data; name="
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, name)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, "; filename=")
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, filename)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_quote())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  VINCIRE part AD CONIURA concat(part, "Content-Type: ")
+  VINCIRE part AD CONIURA concat(part, content_type)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  VINCIRE part AD CONIURA concat(part, data)
+  VINCIRE part AD CONIURA concat(part, CONIURA phase7_crlf())
+  REDDE part
+EXPLICIT RITUALE
+
+RITUALE phase7_multipart_body(VERBUM boundary, SPECULUM NIHIL parts) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    VINCIRE out AD CONIURA concat(out, "--")
+    VINCIRE out AD CONIURA concat(out, boundary)
+    VINCIRE out AD CONIURA concat(out, CONIURA phase7_crlf())
+    VINCIRE out AD CONIURA concat(out, *part_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE out AD CONIURA concat(out, "--")
+  VINCIRE out AD CONIURA concat(out, boundary)
+  VINCIRE out AD CONIURA concat(out, "--")
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

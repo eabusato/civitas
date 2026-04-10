@@ -1,0 +1,216 @@
+INCIPIT grimoire "civitas_config"
+
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM CivitasProject
+  name: VERBUM
+  version: VERBUM
+  entry: VERBUM
+  host: VERBUM
+  port: REX
+  db_driver: VERBUM
+  db_url: VERBUM
+  src_dir: VERBUM
+  poll_ms: REX
+  build_cmd: VERBUM
+  server_cmd: VERBUM
+  static_src_dir: VERBUM
+  static_out_dir: VERBUM
+  static_url_prefix: VERBUM
+  admin_prefix: VERBUM
+  migrations_dir: VERBUM
+  templates_dir: VERBUM
+  tests_dir: VERBUM
+  models_dir: VERBUM
+  handlers_dir: VERBUM
+  dest_dir: VERBUM
+  config_path: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DoctorCheck
+  code: VERBUM
+  ok: VERUM
+  message: VERBUM
+  suggestion: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DoctorReport
+  ok: VERUM
+  errors: REX
+  warnings: REX
+  checks: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE civitas_cfg_expand_env(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM out AD value
+  DUM CONIURA contains(out, "${")
+    EVOCA REX start AD CONIURA find(out, "${")
+    EVOCA REX finish AD CONIURA find_from(out, "}", start)
+    SI finish == -1
+      RECEDE
+    FIN SI
+    EVOCA VERBUM name AD CONIURA substring(out, start + 2, finish)
+    EVOCA VERBUM replacement AD ""
+    SI CONIURA has_env(name)
+      VINCIRE replacement AD CONIURA getenv(name)
+    FIN SI
+    EVOCA VERBUM placeholder AD CONIURA concat("${", CONIURA concat(name, "}"))
+    VINCIRE out AD CONIURA replace(out, placeholder, replacement)
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_cfg_str(TomlDocument doc, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI NON CONIURA toml_is_valid(doc)
+    REDDE fallback
+  FIN SI
+  SI NON CONIURA toml_has(doc, key)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA civitas_cfg_expand_env(CONIURA toml_get_string(doc, key))
+EXPLICIT RITUALE
+
+RITUALE civitas_cfg_int(TomlDocument doc, VERBUM key, REX fallback) REDDE REX
+  SI NON CONIURA toml_is_valid(doc)
+    REDDE fallback
+  FIN SI
+  EVOCA SPECULUM NIHIL opt AD CONIURA toml_get_int(doc, key)
+  SI CONIURA option_is_none GENUS(REX)(opt)
+    CONIURA option_free GENUS(REX)(opt)
+    REDDE fallback
+  FIN SI
+  EVOCA REX out AD CONIURA option_unwrap GENUS(REX)(opt)
+  CONIURA option_free GENUS(REX)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_project_default(VERBUM config_path) REDDE CivitasProject
+  EVOCA CivitasProject proj
+  VINCIRE proj.dest_dir AD CONIURA path_dirname(config_path)
+  VINCIRE proj.config_path AD config_path
+  VINCIRE proj.name AD ""
+  VINCIRE proj.version AD "0.1.0"
+  VINCIRE proj.entry AD CONIURA path_join(proj.dest_dir, "project/main.cct")
+  VINCIRE proj.host AD "0.0.0.0"
+  VINCIRE proj.port AD 8080
+  VINCIRE proj.db_driver AD "sqlite"
+  VINCIRE proj.db_url AD CONIURA path_join(proj.dest_dir, "data/db/app.db")
+  VINCIRE proj.src_dir AD proj.dest_dir
+  VINCIRE proj.poll_ms AD 250
+  VINCIRE proj.build_cmd AD "sh -c 'CCT_BIN=\"${CCT_BIN:-$(command -v cct-host || command -v cct)}\"; \"$CCT_BIN\" project/main.cct'"
+  VINCIRE proj.server_cmd AD "./project/main"
+  VINCIRE proj.static_src_dir AD CONIURA path_join(proj.dest_dir, "static")
+  VINCIRE proj.static_out_dir AD CONIURA path_join(proj.dest_dir, "public/static")
+  VINCIRE proj.static_url_prefix AD "/static"
+  VINCIRE proj.admin_prefix AD "/admin"
+  VINCIRE proj.migrations_dir AD CONIURA path_join(proj.dest_dir, "migrations")
+  VINCIRE proj.templates_dir AD CONIURA path_join(proj.dest_dir, "templates")
+  VINCIRE proj.tests_dir AD CONIURA path_join(proj.dest_dir, "tests")
+  VINCIRE proj.models_dir AD CONIURA path_join(proj.dest_dir, "apps/core/models")
+  VINCIRE proj.handlers_dir AD CONIURA path_join(proj.dest_dir, "apps/core/views")
+  REDDE proj
+EXPLICIT RITUALE
+
+RITUALE civitas_project_load(VERBUM config_path) REDDE CivitasProject
+  EVOCA CivitasProject proj AD CONIURA civitas_project_default(config_path)
+  EVOCA TomlDocument root AD CONIURA toml_parse_file(config_path)
+  SI NON CONIURA toml_is_valid(root)
+    REDDE proj
+  FIN SI
+  VINCIRE proj.name AD CONIURA civitas_cfg_str(root, "project.name", proj.name)
+  VINCIRE proj.version AD CONIURA civitas_cfg_str(root, "project.version", proj.version)
+  VINCIRE proj.entry AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "project.entry", "project/main.cct"))
+  VINCIRE proj.host AD CONIURA civitas_cfg_str(root, "server.host", proj.host)
+  VINCIRE proj.port AD CONIURA civitas_cfg_int(root, "server.port", proj.port)
+  VINCIRE proj.db_driver AD CONIURA civitas_cfg_str(root, "database.driver", proj.db_driver)
+  VINCIRE proj.db_url AD CONIURA civitas_cfg_str(root, "database.url", proj.db_url)
+  SI NON CONIURA is_absolute(proj.db_url) ET CONIURA compare(CONIURA to_lower(proj.db_driver), "sqlite") == 0
+    VINCIRE proj.db_url AD CONIURA path_join(proj.dest_dir, proj.db_url)
+  FIN SI
+  VINCIRE proj.src_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dev.src_dir", "."))
+  VINCIRE proj.poll_ms AD CONIURA civitas_cfg_int(root, "dev.poll_ms", proj.poll_ms)
+  VINCIRE proj.build_cmd AD CONIURA civitas_cfg_str(root, "dev.build_cmd", proj.build_cmd)
+  VINCIRE proj.server_cmd AD CONIURA civitas_cfg_str(root, "dev.server_cmd", proj.server_cmd)
+  VINCIRE proj.static_src_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "static.src_dir", "static"))
+  VINCIRE proj.static_out_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "static.out_dir", "public/static"))
+  VINCIRE proj.static_url_prefix AD CONIURA civitas_cfg_str(root, "static.url_prefix", proj.static_url_prefix)
+  VINCIRE proj.admin_prefix AD CONIURA civitas_cfg_str(root, "admin.prefix", proj.admin_prefix)
+  VINCIRE proj.migrations_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dirs.migrations", "migrations"))
+  VINCIRE proj.templates_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dirs.templates", "templates"))
+  VINCIRE proj.tests_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dirs.tests", "tests"))
+  VINCIRE proj.models_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dirs.models", "apps/core/models"))
+  VINCIRE proj.handlers_dir AD CONIURA path_join(proj.dest_dir, CONIURA civitas_cfg_str(root, "dirs.handlers", "apps/core/views"))
+  REDDE proj
+EXPLICIT RITUALE
+
+RITUALE civitas_project_find(VERBUM start_dir) REDDE VERBUM
+  EVOCA VERBUM direct AD CONIURA path_join(start_dir, "civitas.toml")
+  SI CONIURA exists(direct)
+    REDDE direct
+  FIN SI
+  REDDE direct
+EXPLICIT RITUALE
+
+RITUALE civitas_project_validate(CivitasProject proj) REDDE SPECULUM NIHIL
+  SI CONIURA len(CONIURA trim(proj.name)) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("project.name is required")
+  FIN SI
+  SI CONIURA len(CONIURA trim(proj.entry)) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("project.entry is required")
+  FIN SI
+  SI CONIURA len(CONIURA trim(proj.db_url)) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("database.url is required")
+  FIN SI
+  SI CONIURA compare(CONIURA to_lower(proj.db_driver), "sqlite") != 0 ET CONIURA compare(CONIURA to_lower(proj.db_driver), "postgres") != 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("database.driver must be sqlite or postgres")
+  FIN SI
+  SI proj.port <= 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("server.port must be positive")
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE civitas_doctor_check(VERBUM code, VERUM ok, VERBUM message, VERBUM suggestion) REDDE DoctorCheck
+  EVOCA DoctorCheck check
+  VINCIRE check.code AD code
+  VINCIRE check.ok AD ok
+  VINCIRE check.message AD message
+  VINCIRE check.suggestion AD suggestion
+  REDDE check
+EXPLICIT RITUALE
+
+RITUALE civitas_doctor_push(SPECULUM DoctorReport report, DoctorCheck check) REDDE NIHIL
+  CONIURA fluxus_push((*report).checks, SPECULUM check)
+  SI NON check.ok
+    VINCIRE (*report).ok AD FALSUM
+    VINCIRE (*report).errors AD (*report).errors + 1
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_doctor_run(CivitasProject proj) REDDE DoctorReport
+  EVOCA DoctorReport report
+  VINCIRE report.ok AD VERUM
+  VINCIRE report.errors AD 0
+  VINCIRE report.warnings AD 0
+  VINCIRE report.checks AD CONIURA fluxus_init(MENSURA(DoctorCheck))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("config", CONIURA exists(proj.config_path), "civitas.toml found", "create civitas.toml at the project root"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("project.name", CONIURA len(CONIURA trim(proj.name)) > 0, "project name configured", "set [project].name"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("project.entry", CONIURA exists(proj.entry), "entry file exists", "create project/main.cct or fix [project].entry"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("database.driver", CONIURA compare(CONIURA to_lower(proj.db_driver), "sqlite") == 0 VEL CONIURA compare(CONIURA to_lower(proj.db_driver), "postgres") == 0, "database driver accepted", "use sqlite or postgres"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("database.url", CONIURA len(CONIURA trim(proj.db_url)) > 0, "database url configured", "set [database].url"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("dirs.migrations", CONIURA exists(proj.migrations_dir), "migrations directory exists", "create migrations/"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("dirs.tests", CONIURA exists(proj.tests_dir), "tests directory exists", "create tests/"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("static.src_dir", CONIURA exists(proj.static_src_dir), "static source exists", "create static/ or fix [static].src_dir"))
+  CONIURA civitas_doctor_push(SPECULUM report, CONIURA civitas_doctor_check("admin.prefix", CONIURA starts_with(proj.admin_prefix, "/"), "admin prefix normalized", "use a leading slash in [admin].prefix"))
+  REDDE report
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

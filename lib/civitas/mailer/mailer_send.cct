@@ -1,0 +1,65 @@
+INCIPIT grimoire "civitas_mailer_send"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/mail_spool.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "mailer.cct"
+
+RITUALE mailer_new_message() REDDE MailMessage
+  REDDE CONIURA mail_message_new()
+EXPLICIT RITUALE
+
+RITUALE mailer_simple(VERBUM to_email, VERBUM to_name, VERBUM subject, VERBUM text_body, VERBUM html_body) REDDE MailMessage
+  EVOCA MailMessage msg AD CONIURA mail_message_new()
+  CONIURA mail_message_add_to(SPECULUM msg, CONIURA mail_address(to_email, to_name))
+  CONIURA mail_message_set_subject(SPECULUM msg, subject)
+  CONIURA mail_message_set_text(SPECULUM msg, text_body)
+  SI CONIURA len(html_body) > 0
+    CONIURA mail_message_set_html(SPECULUM msg, html_body)
+  FIN SI
+  REDDE msg
+EXPLICIT RITUALE
+
+RITUALE mailer_send(SPECULUM Mailer m, MailMessage msg) REDDE SPECULUM NIHIL
+  SI NON (*m).aberto VEL (*m).client == NIHIL
+    REDDE CONIURA mailer_err_send(MailerNaoAberto)
+  FIN SI
+
+  EVOCA MailMessage prepared AD msg
+  SI CONIURA len(prepared.from.email) == 0
+    CONIURA mail_message_set_from(SPECULUM prepared, CONIURA mail_address((*m).config.from_email, (*m).config.from_name))
+  FIN SI
+
+  EVOCA VERBUM validation_error AD CONIURA mail_message_validation_error(prepared)
+  SI CONIURA len(validation_error) > 0
+    REDDE CONIURA mailer_err_send(MailerMensagemInvalida(validation_error))
+  FIN SI
+
+  EVOCA SPECULUM MailClient client_ptr AD (*m).client
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mail_send(client_ptr, prepared)
+  SI CONIURA result_is_err GENUS(MailSendResult, VERBUM)(send_res)
+    SI (*m).spool != NIHIL
+      EVOCA SPECULUM MailSpool spool_ptr AD (*m).spool
+      EVOCA SPECULUM NIHIL enq_res AD CONIURA mail_spool_enqueue(*spool_ptr, prepared)
+      SI NON CONIURA result_is_err GENUS(MailSpoolItem, VERBUM)(enq_res)
+        EVOCA SPECULUM NIHIL drain_res AD CONIURA mail_spool_drain(*spool_ptr, client_ptr, 1)
+        SI NON CONIURA result_is_err GENUS(MailSpoolDrainResult, VERBUM)(drain_res)
+          VINCIRE send_res AD CONIURA mail_send(client_ptr, prepared)
+          SI NON CONIURA result_is_err GENUS(MailSendResult, VERBUM)(send_res)
+            REDDE CONIURA mailer_ok_send(CONIURA result_unwrap GENUS(MailSendResult, VERBUM)(send_res))
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    REDDE CONIURA mailer_err_send(MailerEnvioFalhou(CONIURA result_unwrap_err GENUS(MailSendResult, VERBUM)(send_res)))
+  FIN SI
+
+  REDDE CONIURA mailer_ok_send(CONIURA result_unwrap GENUS(MailSendResult, VERBUM)(send_res))
+EXPLICIT RITUALE
+
+RITUALE mailer_send_now(SPECULUM Mailer m, MailMessage msg) REDDE SPECULUM NIHIL
+  REDDE CONIURA mailer_send(m, msg)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

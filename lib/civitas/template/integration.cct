@@ -1,0 +1,79 @@
+INCIPIT grimoire "civitas_template_integration"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../csrf.cct"
+
+RITUALE tpl_csrf_input_field(VERBUM field_name, VERBUM token) REDDE VERBUM
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  EVOCA VERBUM resolved_token AD token
+  VINCIRE cfg.field_name AD field_name
+  SI CONIURA len(resolved_token) == 0 ET CONIURA has_env("CIVITAS_TEMPLATE_CSRF_TOKEN")
+    VINCIRE resolved_token AD CONIURA getenv("CIVITAS_TEMPLATE_CSRF_TOKEN")
+  FIN SI
+  REDDE CONIURA csrf_input_field(SPECULUM cfg, resolved_token)
+EXPLICIT RITUALE
+
+RITUALE tpl_csrf_input() REDDE VERBUM
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  REDDE CONIURA tpl_csrf_input_field(cfg.field_name, "")
+EXPLICIT RITUALE
+
+RITUALE tpl_manifest_lookup(VERBUM manifest_path, VERBUM asset_path) REDDE SPECULUM NIHIL
+  SI NON CONIURA exists(manifest_path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(CONIURA read_all(manifest_path), "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD CONIURA trim(*line_ptr)
+    EVOCA REX eq AD CONIURA find(line, "=")
+    SI eq > 0
+      EVOCA VERBUM key AD CONIURA substring(line, 0, eq)
+      EVOCA VERBUM value AD CONIURA substring(line, eq + 1, CONIURA len(line))
+      SI CONIURA compare(key, asset_path) == 0
+        REDDE CONIURA Some GENUS(VERBUM)(value)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE tpl_static_url(VERBUM asset_path) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(asset_path)
+  EVOCA SPECULUM NIHIL url_opt
+  SI CONIURA len(cleaned) == 0
+    REDDE "/static/"
+  FIN SI
+  SI CONIURA starts_with(cleaned, "/")
+    REDDE cleaned
+  FIN SI
+  SI CONIURA has_env("CIVITAS_STATIC_MANIFEST_FILE")
+    VINCIRE url_opt AD CONIURA tpl_manifest_lookup(CONIURA getenv("CIVITAS_STATIC_MANIFEST_FILE"), cleaned)
+    SI CONIURA option_is_some GENUS(VERBUM)(url_opt)
+      REDDE CONIURA option_unwrap GENUS(VERBUM)(url_opt)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(url_opt)
+  FIN SI
+  REDDE CONIURA concat("/static/", cleaned)
+EXPLICIT RITUALE
+
+RITUALE tpl_nonce() REDDE VERBUM
+  SI CONIURA has_env("CIVITAS_TEMPLATE_NONCE")
+    REDDE CONIURA getenv("CIVITAS_TEMPLATE_NONCE")
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE tpl_nonce_attr() REDDE VERBUM
+  REDDE CONIURA html_encode(CONIURA tpl_nonce())
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

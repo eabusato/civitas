@@ -1,0 +1,34 @@
+INCIPIT grimoire "rede_social_social_views"
+
+ADVOCARE "../../../gen/lounge.cct"
+ADVOCARE "../../../gen/post_detail.cct"
+ADVOCARE "../../shared/template_contexts.cct"
+ADVOCARE "../../shared/types.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_render_post_detail(RedePost post, SPECULUM NIHIL comments, VERBUM current_user, VERBUM csrf_html, VERUM liked) REDDE VERBUM
+  EVOCA RedePostDetailPageContext ctx
+  EVOCA VERBUM post_path AD CONIURA concat("/posts/", post.slug)
+  VINCIRE ctx.page_title AD post.title
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.post AD post
+  VINCIRE ctx.post_card AD CONIURA rede_post_card_context(post, ctx.has_user, csrf_html, liked, post_path)
+  VINCIRE ctx.comments AD comments
+  VINCIRE ctx.can_comment AD ctx.has_user
+  VINCIRE ctx.comment_action AD CONIURA concat(post_path, "/comment")
+  REDDE CONIURA render_post_detail(ctx)
+EXPLICIT RITUALE
+
+RITUALE rede_render_lounge(SPECULUM NIHIL events, VERBUM current_user, VERBUM csrf_html) REDDE VERBUM
+  EVOCA RedeLoungePageContext ctx
+  VINCIRE ctx.page_title AD "Lounge"
+  VINCIRE ctx.current_user AD current_user
+  VINCIRE ctx.has_user AD CONIURA len(current_user) > 0
+  VINCIRE ctx.csrf_html AD csrf_html
+  VINCIRE ctx.events AD events
+  REDDE CONIURA render_lounge(ctx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

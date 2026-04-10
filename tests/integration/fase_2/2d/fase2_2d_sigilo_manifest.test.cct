@@ -1,0 +1,85 @@
+INCIPIT grimoire "fase2_2d_sigilo_manifest_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE api_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE global_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE group_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE route_mw(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA SPECULUM NIHIL group_middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  EVOCA SPECULUM NIHIL manifest
+  EVOCA SPECULUM RouteSigiloEntry entry_ptr
+  EVOCA SPECULUM MiddlewareBinding mw0
+  EVOCA SPECULUM MiddlewareBinding mw1
+  EVOCA SPECULUM MiddlewareBinding mw2
+
+  CONIURA router_add_global_middleware(SPECULUM router, CONIURA middleware_binding_named("global_mw", global_mw))
+  CONIURA middleware_bindings_push(group_middlewares, "group_mw", group_mw)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add_group_route(SPECULUM router, "/api/v1", group_middlewares, "GET", "/posts/{id:int}", "api.posts.show", "api_handler", api_handler), 1)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add_middleware(SPECULUM router, "api.posts.show", CONIURA middleware_binding_named("route_mw", route_mw)), 2)
+
+  VINCIRE manifest AD CONIURA router_sigilo_manifest(router)
+  SI CONIURA fluxus_len(manifest) != 1
+    REDDE 1
+  FIN SI
+
+  VINCIRE entry_ptr AD CONIURA fluxus_get(manifest, 0)
+  SI CONIURA compare((*entry_ptr).method, "GET") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare((*entry_ptr).pattern, "/api/v1/posts/{id:int}") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare((*entry_ptr).name, "api.posts.show") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare((*entry_ptr).handler_symbol, "api_handler") != 0
+    REDDE 5
+  FIN SI
+  SI CONIURA compare((*entry_ptr).group_prefix, "/api/v1") != 0
+    REDDE 6
+  FIN SI
+  SI CONIURA compare((*entry_ptr).sigilo_id, "get:/api/v1/posts/{id:int}") != 0
+    REDDE 7
+  FIN SI
+  SI CONIURA fluxus_len((*entry_ptr).middlewares) != 3
+    REDDE 8
+  FIN SI
+
+  VINCIRE mw0 AD CONIURA fluxus_get((*entry_ptr).middlewares, 0)
+  VINCIRE mw1 AD CONIURA fluxus_get((*entry_ptr).middlewares, 1)
+  VINCIRE mw2 AD CONIURA fluxus_get((*entry_ptr).middlewares, 2)
+  SI CONIURA compare((*mw0).name, "global_mw") != 0
+    REDDE 9
+  FIN SI
+  SI CONIURA compare((*mw1).name, "group_mw") != 0
+    REDDE 10
+  FIN SI
+  SI CONIURA compare((*mw2).name, "route_mw") != 0
+    REDDE 11
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

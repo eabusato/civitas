@@ -1,0 +1,102 @@
+INCIPIT grimoire "civitas_doc_gen"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../core/version.cct"
+
+SIGILLUM DocConfig
+  out_dir: VERBUM
+  include_examples: VERUM
+FIN SIGILLUM
+
+RITUALE doc_gen_config_default(VERBUM out_dir) REDDE DocConfig
+  EVOCA DocConfig cfg
+  VINCIRE cfg.out_dir AD out_dir
+  VINCIRE cfg.include_examples AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE doc_gen_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA mkdir_all(CONIURA path_dirname(path))
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_quickstart(DocConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "# Civitas Quickstart\n\n")
+  CONIURA builder_append(b, "Current framework baseline: `")
+  CONIURA builder_append(b, CONIURA civitas_version())
+  CONIURA builder_append(b, "`.\n\n")
+  CONIURA builder_append(b, "## Create a project\n\n```sh\ncivitas new myapp\ncd myapp\nCCT_BIN=${CCT_BIN:-$(command -v cct-host || command -v cct)}\n\"$CCT_BIN\" project/main.cct\n./project/main\n```\n\n")
+  CONIURA builder_append(b, "## Project layout\n\n- `project/` bootstraps settings, routes and runtime wiring.\n- `apps/` contains user-owned apps such as `core`, `accounts` or `backoffice`.\n- `settings/` splits base, dev and prod config.\n- `data/` and `.civitas/` store runtime state outside user source.\n\n")
+  CONIURA builder_append(b, "## First population steps\n\n1. Add routes in `project/urls.cct`.\n2. Implement handlers in `apps/core/views`.\n3. Add models in `apps/core/models`.\n4. Run migrations and tests through the management surface.\n")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "quickstart.md"), out)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_user_guide(DocConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "# Civitas User Guide\n\n")
+  CONIURA builder_append(b, "This guide covers router, middleware, templates, forms, auth, jobs, realtime, profiling and operational tooling.\n\n")
+  CONIURA builder_append(b, "## Recommended app structure\n\n- `apps/core/routes.cct` for app-local URL composition.\n- `apps/core/views/` for handlers.\n- `apps/core/models/` for domain records.\n- `apps/core/services/` when business logic should stay out of handlers.\n- `apps/core/jobs/` for background work.\n\n")
+  CONIURA builder_append(b, "## URL hierarchy\n\nUse `project/urls.cct` as the composition root, then mount app routes under stable prefixes. Keep browser pages and API routes separated by prefix.\n")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "user-guide.md"), out)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_api_reference(DocConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "# Civitas API Reference\n\n")
+  CONIURA builder_append(b, "Public modules highlighted for 1.0 readiness:\n\n")
+  CONIURA builder_append(b, "- `civitas/router`\n- `civitas/response`\n- `civitas/test_client`\n- `civitas/bench`\n- `civitas/profiler`\n- `civitas/memory_profiler`\n- `civitas/trace_render`\n- `civitas/security_audit`\n- `civitas/load_test`\n- `civitas/dep_review`\n- `civitas/release`\n\n")
+  CONIURA builder_append(b, "The generated reference is intentionally curated around the stable surface the framework expects third-party projects to build on.\n")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "api-reference.md"), out)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_production(DocConfig cfg) REDDE NIHIL
+  EVOCA VERBUM content AD "# Civitas Production Guide\n\nUse file-backed storage topology, backup/restore, scheduler workers, mail transports and realtime endpoints behind explicit reverse-proxy policy. Always review CSP, allowed hosts, CSRF and backup recovery before release.\n"
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "production.md"), content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_security(DocConfig cfg) REDDE NIHIL
+  EVOCA VERBUM content AD "# Civitas Security Guide\n\nChecklist:\n\n- enable `civitas/security`\n- keep mutating browser routes behind CSRF middleware\n- use prepared statements only\n- keep static paths behind `static_caminho_seguro`\n- run `security_audit` and `dep_review` before release\n"
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "security.md"), content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_contributing(DocConfig cfg) REDDE NIHIL
+  EVOCA VERBUM content AD "# Contributing\n\nFollow the phase-by-phase contract, keep integration coverage real, update manuals/specs/release notes to implemented behavior and do not hide missing CCT capabilities.\n"
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "contributing.md"), content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_index(DocConfig cfg) REDDE NIHIL
+  EVOCA VERBUM content AD "# Civitas Documentation Bundle\n\n- [Quickstart](quickstart.md)\n- [User Guide](user-guide.md)\n- [API Reference](api-reference.md)\n- [Production Guide](production.md)\n- [Security Guide](security.md)\n- [Contributing](contributing.md)\n"
+  CONIURA doc_gen_write(CONIURA path_join(cfg.out_dir, "index.md"), content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE doc_gen_build(DocConfig cfg) REDDE NIHIL
+  CONIURA mkdir_all(cfg.out_dir)
+  CONIURA doc_gen_quickstart(cfg)
+  CONIURA doc_gen_user_guide(cfg)
+  CONIURA doc_gen_api_reference(cfg)
+  CONIURA doc_gen_production(cfg)
+  CONIURA doc_gen_security(cfg)
+  CONIURA doc_gen_contributing(cfg)
+  CONIURA doc_gen_index(cfg)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

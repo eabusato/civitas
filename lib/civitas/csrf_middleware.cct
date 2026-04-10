@@ -1,0 +1,161 @@
+INCIPIT grimoire "civitas_csrf_middleware"
+
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cookie.cct"
+ADVOCARE "middleware.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "response.cct"
+ADVOCARE "security.cct"
+ADVOCARE "csrf.cct"
+ADVOCARE "core/keyring.cct"
+ADVOCARE "core/secrets.cct"
+
+RITUALE csrf_context_config_key() REDDE VERBUM
+  REDDE "civitas.csrf.config"
+EXPLICIT RITUALE
+
+RITUALE csrf_context_logger_key() REDDE VERBUM
+  REDDE "civitas.csrf.logger"
+EXPLICIT RITUALE
+
+RITUALE csrf_context_secret_registry_key() REDDE VERBUM
+  REDDE "civitas.csrf.secret_registry"
+EXPLICIT RITUALE
+
+RITUALE csrf_context_set(SPECULUM RequestContext ctx, SPECULUM CsrfConfig cfg, SPECULUM Logger logger) REDDE NIHIL
+  CONIURA middleware_context_set(ctx, CONIURA csrf_context_config_key(), cfg)
+  CONIURA middleware_context_set(ctx, CONIURA csrf_context_logger_key(), logger)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_context_set_secret_registry(SPECULUM RequestContext ctx, SPECULUM NIHIL registry_ref) REDDE NIHIL
+  CONIURA middleware_context_set(ctx, CONIURA csrf_context_secret_registry_key(), registry_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_request_has_bearer(SPECULUM WebRequest req) REDDE VERUM
+  EVOCA SPECULUM NIHIL bearer_opt AD CONIURA request_bearer_token(*req)
+  EVOCA VERUM has_bearer AD CONIURA option_is_some GENUS(VERBUM)(bearer_opt)
+  CONIURA option_free GENUS(VERBUM)(bearer_opt)
+  REDDE has_bearer
+EXPLICIT RITUALE
+
+RITUALE csrf_log_failure(SPECULUM Logger logger, CsrfError err, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM message AD CONIURA csrf_error_message(err)
+  VINCIRE message AD CONIURA concat(message, " method=")
+  VINCIRE message AD CONIURA concat(message, (*req).method)
+  VINCIRE message AD CONIURA concat(message, " path=")
+  VINCIRE message AD CONIURA concat(message, (*req).path)
+  VINCIRE message AD CONIURA concat(message, " ip=")
+  VINCIRE message AD CONIURA concat(message, (*req).client_ip)
+  CONIURA log_warn(logger, message, CONIURA log_fields_empty())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_log_validation_failure(SPECULUM Logger logger, SPECULUM NIHIL validation_res, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM message AD CONIURA csrf_validation_error_message(validation_res)
+  VINCIRE message AD CONIURA concat(message, " method=")
+  VINCIRE message AD CONIURA concat(message, (*req).method)
+  VINCIRE message AD CONIURA concat(message, " path=")
+  VINCIRE message AD CONIURA concat(message, (*req).path)
+  VINCIRE message AD CONIURA concat(message, " ip=")
+  VINCIRE message AD CONIURA concat(message, (*req).client_ip)
+  CONIURA log_warn(logger, message, CONIURA log_fields_empty())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_secret_candidates_from_registry(SPECULUM NIHIL registry_ref) REDDE SPECULUM NIHIL
+  REDDE CONIURA secrets_verify_candidates_or_empty(registry_ref, SECRET_DOMAIN_CSRF)
+EXPLICIT RITUALE
+
+RITUALE csrf_validate_with_candidates(SPECULUM CsrfConfig cfg, SPECULUM NIHIL candidates, SPECULUM WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(candidates)
+
+  DUM i < n
+    EVOCA SPECULUM SecretKey key_ptr AD CONIURA fluxus_get(candidates, i)
+    EVOCA SPECULUM NIHIL validation_res AD CONIURA csrf_validate_request(cfg, (*key_ptr).material, (*req).headers, (*req).body)
+    SI CONIURA result_is_ok GENUS(REX, CsrfError)(validation_res)
+      REDDE validation_res
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI n == 0
+    REDDE CONIURA csrf_validation_err(CsrfErrSecretMissing)
+  FIN SI
+  REDDE CONIURA csrf_validation_err(CsrfErrInvalidToken)
+EXPLICIT RITUALE
+
+RITUALE csrf_middleware(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  EVOCA SPECULUM CsrfConfig cfg
+  EVOCA SPECULUM Logger logger
+  EVOCA SPECULUM NIHIL registry_ref
+  EVOCA SPECULUM NIHIL validation_res
+  EVOCA VERBUM binding AD ""
+  EVOCA VERUM blocked AD FALSUM
+  EVOCA VERUM secure_cookie AD FALSUM
+
+  VINCIRE req AD req_ref
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+
+  SI NON CONIURA middleware_context_has(*ctx, CONIURA csrf_context_config_key())
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  VINCIRE cfg AD CONIURA middleware_context_get(*ctx, CONIURA csrf_context_config_key())
+  VINCIRE logger AD CONIURA middleware_context_get(*ctx, CONIURA csrf_context_logger_key())
+
+  SI CONIURA cookie_has((*req).cookies, (*cfg).cookie_name)
+    EVOCA SPECULUM NIHIL binding_opt AD CONIURA cookie_get((*req).cookies, (*cfg).cookie_name)
+    SI CONIURA option_is_some GENUS(VERBUM)(binding_opt)
+      VINCIRE binding AD CONIURA option_unwrap GENUS(VERBUM)(binding_opt)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(binding_opt)
+  FIN SI
+
+  SI NON ((*cfg).exclude_bearer ET CONIURA csrf_request_has_bearer(req))
+    SI CONIURA csrf_request_needs_check((*req).method, (*req).headers)
+      SI NON CONIURA middleware_context_has(*ctx, CONIURA csrf_context_secret_registry_key())
+        CONIURA csrf_log_failure(logger, CsrfErrSecretMissing, req)
+        CONIURA response_fill(out, CONIURA response_with_body(403, "csrf forbidden", WEB_RESPONSE_TEXT))
+        VINCIRE blocked AD VERUM
+      FIN SI
+      SI NON blocked
+        VINCIRE registry_ref AD CONIURA middleware_context_get(*ctx, CONIURA csrf_context_secret_registry_key())
+        VINCIRE validation_res AD CONIURA csrf_validate_with_candidates(cfg, CONIURA csrf_secret_candidates_from_registry(registry_ref), req)
+        SI CONIURA result_is_err GENUS(REX, CsrfError)(validation_res)
+          CONIURA csrf_log_validation_failure(logger, validation_res, req)
+          CONIURA response_fill(out, CONIURA response_with_body(403, "csrf forbidden", WEB_RESPONSE_TEXT))
+          VINCIRE blocked AD VERUM
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN SI
+
+  SI NON blocked
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  FIN SI
+
+  SI CONIURA len(binding) == 0
+    VINCIRE binding AD CONIURA csrf_binding_generate()
+    VINCIRE secure_cookie AD CONIURA request_is_secure(*req)
+    SI CONIURA middleware_context_has(*ctx, CONIURA security_context_config_key())
+      EVOCA SPECULUM SecurityConfig security_cfg AD CONIURA middleware_context_get(*ctx, CONIURA security_context_config_key())
+      VINCIRE secure_cookie AD secure_cookie VEL (*security_cfg).enforce_https
+    FIN SI
+    CONIURA response_set_cookie(out, CONIURA csrf_binding_cookie(cfg, binding, secure_cookie))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

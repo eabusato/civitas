@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase20_20a_span_helpers_emit"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_spans.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+  EVOCA REX router_span AD CONIURA civitas_span_router("GET", "/posts/:id")
+  EVOCA REX mw_span AD CONIURA civitas_span_middleware("auth")
+  CONIURA civitas_span_end(mw_span)
+  EVOCA REX handler_span AD CONIURA civitas_span_handler("PostDetailView")
+  CONIURA civitas_span_end(handler_span)
+  CONIURA civitas_span_end(router_span)
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace("trace-20a")
+  SI CONIURA trace_span_count(trace) != 3
+    CONIURA trace_free(SPECULUM trace)
+    REDDE 1
+  FIN SI
+  EVOCA Span root AD CONIURA trace_get_span(trace, 0)
+  SI CONIURA compare(root.name, "router:GET /posts/:id") != 0
+    CONIURA trace_free(SPECULUM trace)
+    REDDE 2
+  FIN SI
+  EVOCA Span child AD CONIURA trace_get_span(trace, 1)
+  SI CONIURA compare(child.name, "middleware:auth") != 0
+    CONIURA trace_free(SPECULUM trace)
+    REDDE 3
+  FIN SI
+  EVOCA Span handler AD CONIURA trace_get_span(trace, 2)
+  SI CONIURA compare(handler.name, "handler:PostDetailView") != 0
+    CONIURA trace_free(SPECULUM trace)
+    REDDE 4
+  FIN SI
+  CONIURA trace_free(SPECULUM trace)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,28 @@
+INCIPIT grimoire "civitas_trace_mail"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE trace_mail_begin(VERBUM template_name) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_MAIL), CONIURA concat("mail:send:", template_name))
+  CONIURA instrument_span_attr(span_id, "mail.template", template_name)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_mail_attr_recipient(REX span_id, VERBUM to_address) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, "mail.to", to_address)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_mail_attr_count(REX span_id, REX count) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, "mail.to_count", CONIURA stringify_int(count))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_mail_end(REX span_id) REDDE NIHIL
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

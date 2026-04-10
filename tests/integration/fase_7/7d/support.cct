@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase7_7d_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/contact.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/html.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/text.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/url.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase7_7d_nbsp_text() REDDE VERBUM
+  REDDE CONIURA concat("A", CONIURA concat(CONIURA concat(CONIURA from_char(194), CONIURA from_char(160)), "B"))
+EXPLICIT RITUALE
+
+RITUALE phase7_7d_validation_schema_min_len(VERBUM campo, REX min) REDDE FormSchema
+  EVOCA FormSchema schema AD CONIURA form_schema_new()
+  EVOCA FieldSchema field AD CONIURA field_schema_new(campo)
+  CONIURA field_schema_add_rule(SPECULUM field, CONIURA rule_required())
+  CONIURA field_schema_add_rule(SPECULUM field, CONIURA rule_min_len(min))
+  CONIURA form_schema_add_field(SPECULUM schema, field)
+  REDDE schema
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

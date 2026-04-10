@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_generate_root"
+
+ADVOCARE "civitas_generate/civitas_generate.cct"
+
+EXPLICIT grimoire

@@ -1,0 +1,961 @@
+INCIPIT grimoire "civitas_core_app"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/metrics.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../events.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../security.cct"
+ADVOCARE "../signals.cct"
+ADVOCARE "../csrf.cct"
+ADVOCARE "../csrf_runtime.cct"
+ADVOCARE "../cookie.cct"
+ADVOCARE "app_module.cct"
+ADVOCARE "keyring.cct"
+ADVOCARE "lifecycle.cct"
+ADVOCARE "secrets.cct"
+ADVOCARE "settings.cct"
+ADVOCARE "settings_schema.cct"
+
+SIGILLUM AppOpaqueValueBox
+  raw: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AppHealthComponent
+  name: VERBUM
+  status: VERBUM
+  detail: VERBUM
+  essential: VERUM
+FIN SIGILLUM
+
+SIGILLUM HealthStatus
+  status: VERBUM
+  app_name: VERBUM
+  version: VERBUM
+  environment: VERBUM
+  uptime_ms: REX
+  components: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM Application
+  settings_ref: SPECULUM Settings
+  name: VERBUM
+  version: VERBUM
+  environment: VERBUM
+  router_ref: SPECULUM Router
+  signals_ref: SPECULUM RequestSignals
+  events_ref: SPECULUM EventBus
+  state: AppLifecycleState
+  started_at_ms: REX
+  stopped_at_ms: REX
+  last_error: VERBUM
+  modules: SPECULUM NIHIL
+  startup_hooks: SPECULUM NIHIL
+  shutdown_hooks: SPECULUM NIHIL
+  health_contributors: SPECULUM NIHIL
+  services: SPECULUM NIHIL
+  startup_completed_hooks: REX
+  health_enabled: VERUM
+FIN SIGILLUM
+
+RITUALE app_ok(Application value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(Application, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE app_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE app_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(Application, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE app_err_unit(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE app_storage_key(SPECULUM NIHIL values, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, AppOpaqueValueBox)(values)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE app_health_component(VERBUM name, VERBUM status, VERBUM detail, VERUM essential) REDDE AppHealthComponent
+  EVOCA AppHealthComponent component
+  VINCIRE component.name AD name
+  VINCIRE component.status AD status
+  VINCIRE component.detail AD detail
+  VINCIRE component.essential AD essential
+  REDDE component
+EXPLICIT RITUALE
+
+RITUALE app_signal_fill(SPECULUM Signal dest, Signal src) REDDE NIHIL
+  VINCIRE (*dest).name AD src.name
+  VINCIRE (*dest).error_policy AD src.error_policy
+  VINCIRE (*dest).handlers AD src.handlers
+  VINCIRE (*dest).next_handler_id AD src.next_handler_id
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_settings_fill(SPECULUM Settings dest, Settings src) REDDE NIHIL
+  VINCIRE (*dest).project_root AD src.project_root
+  VINCIRE (*dest).environment AD src.environment
+  VINCIRE (*dest).strict_mode AD src.strict_mode
+  VINCIRE (*dest).values AD src.values
+  VINCIRE (*dest).diagnostics AD src.diagnostics
+  VINCIRE (*dest).schema AD src.schema
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_router_fill(SPECULUM Router dest, Router src) REDDE NIHIL
+  VINCIRE (*dest).routes AD src.routes
+  VINCIRE (*dest).named_routes AD src.named_routes
+  VINCIRE (*dest).global_middlewares AD src.global_middlewares
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_request_signals_fill(SPECULUM RequestSignals dest, RequestSignals src) REDDE NIHIL
+  CONIURA app_signal_fill(SPECULUM (*dest).request_started, src.request_started)
+  CONIURA app_signal_fill(SPECULUM (*dest).request_finished, src.request_finished)
+  CONIURA app_signal_fill(SPECULUM (*dest).request_failed, src.request_failed)
+  CONIURA app_signal_fill(SPECULUM (*dest).post_request, src.post_request)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_event_bus_fill(SPECULUM EventBus dest, EventBus src) REDDE NIHIL
+  VINCIRE (*dest).name AD src.name
+  VINCIRE (*dest).subscribers AD src.subscribers
+  VINCIRE (*dest).next_subscriber_id AD src.next_subscriber_id
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_health_status_new(SPECULUM Application app) REDDE HealthStatus
+  EVOCA HealthStatus health
+  VINCIRE health.status AD "ok"
+  VINCIRE health.app_name AD (*app).name
+  VINCIRE health.version AD (*app).version
+  VINCIRE health.environment AD (*app).environment
+  VINCIRE health.uptime_ms AD CONIURA app_uptime_ms(*app)
+  VINCIRE health.components AD CONIURA fluxus_init(MENSURA(AppHealthComponent))
+  SI (*app).state == APP_LIFECYCLE_FAILED VEL (*app).state == APP_LIFECYCLE_STOPPED
+    VINCIRE health.status AD "failed"
+  ALITER
+    SI (*app).state != APP_LIFECYCLE_STARTED
+      VINCIRE health.status AD "degraded"
+    FIN SI
+  FIN SI
+  REDDE health
+EXPLICIT RITUALE
+
+RITUALE app_health_add_component(
+  SPECULUM HealthStatus health,
+  VERBUM name,
+  VERBUM status,
+  VERBUM detail,
+  VERUM essential
+) REDDE NIHIL
+  EVOCA AppHealthComponent component AD CONIURA app_health_component(name, status, detail, essential)
+  CONIURA fluxus_push((*health).components, SPECULUM component)
+  SI CONIURA compare(status, "failed") == 0
+    VINCIRE (*health).status AD "failed"
+    REDDE
+  FIN SI
+  SI essential ET CONIURA compare(status, "degraded") == 0 ET CONIURA compare((*health).status, "failed") != 0
+    VINCIRE (*health).status AD "degraded"
+    REDDE
+  FIN SI
+  SI CONIURA compare(status, "degraded") == 0 ET CONIURA compare((*health).status, "ok") == 0
+    VINCIRE (*health).status AD "degraded"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_health_mark_degraded(SPECULUM HealthStatus health, VERBUM component_name, VERBUM detail) REDDE NIHIL
+  CONIURA app_health_add_component(health, component_name, "degraded", detail, FALSUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_health_mark_failed(SPECULUM HealthStatus health, VERBUM component_name, VERBUM detail) REDDE NIHIL
+  CONIURA app_health_add_component(health, component_name, "failed", detail, VERUM)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_health_status_code(HealthStatus health) REDDE REX
+  SI CONIURA compare(health.status, "failed") == 0
+    REDDE 503
+  FIN SI
+  REDDE 200
+EXPLICIT RITUALE
+
+RITUALE app_health_json_component(AppHealthComponent component) REDDE VERBUM
+  EVOCA VERBUM out AD "{\"name\":\""
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(component.name))
+  VINCIRE out AD CONIURA concat(out, "\",\"status\":\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(component.status))
+  VINCIRE out AD CONIURA concat(out, "\",\"detail\":\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(component.detail))
+  VINCIRE out AD CONIURA concat(out, "\",\"essential\":")
+  SI component.essential
+    VINCIRE out AD CONIURA concat(out, "true")
+  ALITER
+    VINCIRE out AD CONIURA concat(out, "false")
+  FIN SI
+  VINCIRE out AD CONIURA concat(out, "}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE app_health_json(HealthStatus health) REDDE VERBUM
+  EVOCA VERBUM out AD "{\"app_name\":\""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(health.components)
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(health.app_name))
+  VINCIRE out AD CONIURA concat(out, "\",\"version\":\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(health.version))
+  VINCIRE out AD CONIURA concat(out, "\",\"environment\":\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(health.environment))
+  VINCIRE out AD CONIURA concat(out, "\",\"uptime_ms\":")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(health.uptime_ms))
+  VINCIRE out AD CONIURA concat(out, ",\"status\":\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(health.status))
+  VINCIRE out AD CONIURA concat(out, "\",\"components\":[")
+  DUM i < n
+    EVOCA SPECULUM AppHealthComponent component_ptr AD CONIURA fluxus_get(health.components, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, ",")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA app_health_json_component(*component_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "]}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE app_module_id(AppModule module) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat(module.namespace, "::"), module.name)
+EXPLICIT RITUALE
+
+RITUALE app_has_module(Application app, VERBUM module_id) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(app.modules)
+  DUM i < n
+    EVOCA SPECULUM AppModule module_ptr AD CONIURA fluxus_get(app.modules, i)
+    SI CONIURA compare(CONIURA app_module_id(*module_ptr), module_id) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE app_has_hook_named(SPECULUM NIHIL hooks, VERBUM name) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(hooks)
+  DUM i < n
+    EVOCA SPECULUM AppLifecycleHookBinding hook_ptr AD CONIURA fluxus_get(hooks, i)
+    SI CONIURA compare((*hook_ptr).name, name) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE app_has_health_named(SPECULUM NIHIL contributors, VERBUM name) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(contributors)
+  DUM i < n
+    EVOCA SPECULUM AppHealthContributorBinding binding_ptr AD CONIURA fluxus_get(contributors, i)
+    SI CONIURA compare((*binding_ptr).name, name) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE app_name(Application app) REDDE VERBUM
+  REDDE app.name
+EXPLICIT RITUALE
+
+RITUALE app_version(Application app) REDDE VERBUM
+  REDDE app.version
+EXPLICIT RITUALE
+
+RITUALE app_environment(Application app) REDDE VERBUM
+  REDDE app.environment
+EXPLICIT RITUALE
+
+RITUALE app_uptime_ms(Application app) REDDE REX
+  SI app.started_at_ms <= 0
+    REDDE 0
+  FIN SI
+  SI app.state == APP_LIFECYCLE_STOPPED ET app.stopped_at_ms >= app.started_at_ms
+    REDDE app.stopped_at_ms - app.started_at_ms
+  FIN SI
+  REDDE CONIURA now_ms() - app.started_at_ms
+EXPLICIT RITUALE
+
+RITUALE app_is_started(Application app) REDDE VERUM
+  REDDE CONIURA app_lifecycle_is_started(app.state)
+EXPLICIT RITUALE
+
+RITUALE app_router(SPECULUM Application app) REDDE SPECULUM Router
+  REDDE (*app).router_ref
+EXPLICIT RITUALE
+
+RITUALE app_signals(SPECULUM Application app) REDDE SPECULUM RequestSignals
+  REDDE (*app).signals_ref
+EXPLICIT RITUALE
+
+RITUALE app_events(SPECULUM Application app) REDDE SPECULUM EventBus
+  REDDE (*app).events_ref
+EXPLICIT RITUALE
+
+RITUALE app_settings(SPECULUM Application app) REDDE SPECULUM Settings
+  REDDE (*app).settings_ref
+EXPLICIT RITUALE
+
+RITUALE app_service_secret_registry_key() REDDE VERBUM
+  REDDE "civitas.secrets.registry"
+EXPLICIT RITUALE
+
+RITUALE app_service_security_config_key() REDDE VERBUM
+  REDDE "civitas.security.config"
+EXPLICIT RITUALE
+
+RITUALE app_service_security_rate_limiter_key() REDDE VERBUM
+  REDDE "civitas.security.rate_limiter"
+EXPLICIT RITUALE
+
+RITUALE app_service_security_metrics_key() REDDE VERBUM
+  REDDE "civitas.security.metrics"
+EXPLICIT RITUALE
+
+RITUALE app_service_security_logger_key() REDDE VERBUM
+  REDDE "civitas.security.logger"
+EXPLICIT RITUALE
+
+RITUALE app_security_metric_host_rejected(SPECULUM Application app) REDDE REX
+  EVOCA SPECULUM SecurityMetrics metrics_ptr AD CONIURA app_service_get(*app, CONIURA app_service_security_metrics_key())
+  REDDE (*metrics_ptr).host_rejected
+EXPLICIT RITUALE
+
+RITUALE app_security_metric_rate_limited(SPECULUM Application app) REDDE REX
+  EVOCA SPECULUM SecurityMetrics metrics_ptr AD CONIURA app_service_get(*app, CONIURA app_service_security_metrics_key())
+  REDDE (*metrics_ptr).rate_limited
+EXPLICIT RITUALE
+
+RITUALE app_security_config_fill_from_settings(SPECULUM SecurityConfig cfg, SPECULUM Settings settings) REDDE NIHIL
+  EVOCA SecurityConfig defaults AD CONIURA security_config_default()
+  CONIURA app_security_config_fill(cfg, SPECULUM defaults)
+  VINCIRE (*cfg).allowed_hosts AD CONIURA result_unwrap GENUS(SPECULUM NIHIL, SettingsError)(CONIURA settings_get_list_verbum(settings, "app.allowed_hosts"))
+  VINCIRE (*cfg).enforce_https AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.enforce_https"))
+  VINCIRE (*cfg).rate_limit_enabled AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.rate_limit_enabled"))
+  VINCIRE (*cfg).rate_limit_max_rps AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "security.rate_limit_max_rps"))
+  VINCIRE (*cfg).rate_limit_burst AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "security.rate_limit_burst"))
+  VINCIRE (*cfg).hsts.max_age_seconds AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "security.hsts_max_age_seconds"))
+  VINCIRE (*cfg).hsts.include_subdomains AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.hsts_include_subdomains"))
+  VINCIRE (*cfg).hsts.preload AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.hsts_preload"))
+  VINCIRE (*cfg).csp.default_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.default_src"))
+  VINCIRE (*cfg).csp.script_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.script_src"))
+  VINCIRE (*cfg).csp.style_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.style_src"))
+  VINCIRE (*cfg).csp.img_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.img_src"))
+  VINCIRE (*cfg).csp.font_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.font_src"))
+  VINCIRE (*cfg).csp.connect_src AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.connect_src"))
+  VINCIRE (*cfg).csp.frame_ancestors AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.csp.frame_ancestors"))
+  VINCIRE (*cfg).csp.use_nonces AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.csp.use_nonces"))
+  VINCIRE (*cfg).x_frame_options AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.x_frame_options"))
+  VINCIRE (*cfg).x_content_type_options AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "security.x_content_type_options"))
+  VINCIRE (*cfg).referrer_policy AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "security.referrer_policy"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_security_config_fill(SPECULUM SecurityConfig dest, SPECULUM SecurityConfig src) REDDE NIHIL
+  VINCIRE (*dest).hsts AD (*src).hsts
+  VINCIRE (*dest).csp AD (*src).csp
+  VINCIRE (*dest).x_frame_options AD (*src).x_frame_options
+  VINCIRE (*dest).x_content_type_options AD (*src).x_content_type_options
+  VINCIRE (*dest).referrer_policy AD (*src).referrer_policy
+  VINCIRE (*dest).allowed_hosts AD (*src).allowed_hosts
+  VINCIRE (*dest).enforce_https AD (*src).enforce_https
+  VINCIRE (*dest).rate_limit_enabled AD (*src).rate_limit_enabled
+  VINCIRE (*dest).rate_limit_max_rps AD (*src).rate_limit_max_rps
+  VINCIRE (*dest).rate_limit_burst AD (*src).rate_limit_burst
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_rate_limiter_fill(SPECULUM RateLimiter dest, SPECULUM RateLimiter src) REDDE NIHIL
+  VINCIRE (*dest).buckets AD (*src).buckets
+  VINCIRE (*dest).max_rps AD (*src).max_rps
+  VINCIRE (*dest).burst AD (*src).burst
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_security_metrics_fill(SPECULUM SecurityMetrics dest, SPECULUM SecurityMetrics src) REDDE NIHIL
+  VINCIRE (*dest).host_rejected AD (*src).host_rejected
+  VINCIRE (*dest).rate_limited AD (*src).rate_limited
+  VINCIRE (*dest).path_traversal_blocked AD (*src).path_traversal_blocked
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_logger_fill(SPECULUM Logger dest, SPECULUM Logger src) REDDE NIHIL
+  VINCIRE (*dest).module_name AD (*src).module_name
+  VINCIRE (*dest).level AD (*src).level
+  VINCIRE (*dest).sink_kind AD (*src).sink_kind
+  VINCIRE (*dest).sink_file_path AD (*src).sink_file_path
+  VINCIRE (*dest).rate_limiter_enabled AD (*src).rate_limiter_enabled
+  VINCIRE (*dest).rate_max_per_second AD (*src).rate_max_per_second
+  VINCIRE (*dest).rate_burst AD (*src).rate_burst
+  VINCIRE (*dest).rate_window_start_unix AD (*src).rate_window_start_unix
+  VINCIRE (*dest).rate_count AD (*src).rate_count
+  VINCIRE (*dest).rate_dropped AD (*src).rate_dropped
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_security_log_warn(SPECULUM Logger logger, VERBUM reason, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM message AD reason
+  VINCIRE message AD CONIURA concat(message, " method=")
+  VINCIRE message AD CONIURA concat(message, (*req).method)
+  VINCIRE message AD CONIURA concat(message, " path=")
+  VINCIRE message AD CONIURA concat(message, (*req).path)
+  VINCIRE message AD CONIURA concat(message, " ip=")
+  VINCIRE message AD CONIURA concat(message, (*req).client_ip)
+  CONIURA log_warn(logger, message, CONIURA log_fields_empty())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_security_response_too_many_requests() REDDE WebResponse
+  REDDE CONIURA response_with_body(429, "too many requests", WEB_RESPONSE_TEXT)
+EXPLICIT RITUALE
+
+RITUALE app_ensure_security_services(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA SecurityConfig cfg
+  EVOCA SecurityMetrics metrics AD CONIURA security_metrics_new()
+  EVOCA Logger logger AD CONIURA security_logger_new()
+  EVOCA SPECULUM SecurityConfig cfg_ptr
+  EVOCA SPECULUM RateLimiter limiter_ptr
+  EVOCA SPECULUM SecurityMetrics metrics_ptr
+  EVOCA SPECULUM Logger logger_ptr
+
+  SI CONIURA app_service_has(*app, CONIURA app_service_security_config_key())
+    REDDE CONIURA app_ok_unit()
+  FIN SI
+
+  CONIURA app_security_config_fill_from_settings(SPECULUM cfg, (*app).settings_ref)
+  EVOCA RateLimiter limiter AD CONIURA rate_limiter_new(cfg.rate_limit_max_rps, cfg.rate_limit_burst)
+  VINCIRE cfg_ptr AD OBSECRO mem_alloc(MENSURA(SecurityConfig))
+  VINCIRE limiter_ptr AD OBSECRO mem_alloc(MENSURA(RateLimiter))
+  VINCIRE metrics_ptr AD OBSECRO mem_alloc(MENSURA(SecurityMetrics))
+  VINCIRE logger_ptr AD OBSECRO mem_alloc(MENSURA(Logger))
+
+  CONIURA app_security_config_fill(cfg_ptr, SPECULUM cfg)
+  CONIURA app_rate_limiter_fill(limiter_ptr, SPECULUM limiter)
+  CONIURA app_security_metrics_fill(metrics_ptr, SPECULUM metrics)
+  CONIURA app_logger_fill(logger_ptr, SPECULUM logger)
+
+  CONIURA app_service_set(app, CONIURA app_service_security_config_key(), cfg_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_security_rate_limiter_key(), limiter_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_security_metrics_key(), metrics_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_security_logger_key(), logger_ptr)
+
+  SI CONIURA fluxus_len(cfg.allowed_hosts) == 0
+    CONIURA log_warn(logger_ptr, "allowed_hosts vazio bloqueia toda request", CONIURA log_fields_empty())
+  FIN SI
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_ensure_csrf_services(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_from_settings((*app).settings_ref)
+  EVOCA Logger logger AD CONIURA csrf_logger_new()
+  EVOCA SPECULUM CsrfConfig cfg_ptr
+  EVOCA SPECULUM Logger logger_ptr
+
+  SI CONIURA app_service_has(*app, CONIURA app_service_csrf_config_key())
+    REDDE CONIURA app_ok_unit()
+  FIN SI
+
+  VINCIRE cfg_ptr AD OBSECRO mem_alloc(MENSURA(CsrfConfig))
+  VINCIRE logger_ptr AD OBSECRO mem_alloc(MENSURA(Logger))
+  CONIURA csrf_config_fill(cfg_ptr, SPECULUM cfg)
+  CONIURA csrf_logger_fill(logger_ptr, SPECULUM logger)
+  CONIURA app_service_set(app, CONIURA app_service_csrf_config_key(), cfg_ptr)
+  CONIURA app_service_set(app, CONIURA app_service_csrf_logger_key(), logger_ptr)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_ensure_secret_registry(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL registry_res
+  EVOCA SPECULUM NIHIL registry_ptr
+
+  SI CONIURA app_service_has(*app, CONIURA app_service_secret_registry_key())
+    REDDE CONIURA app_ok_unit()
+  FIN SI
+
+  VINCIRE registry_res AD CONIURA secrets_load((*app).settings_ref)
+  SI CONIURA result_is_err GENUS(SecretRegistry, VERBUM)(registry_res)
+    REDDE CONIURA app_err_unit(CONIURA result_unwrap_err GENUS(SecretRegistry, VERBUM)(registry_res))
+  FIN SI
+
+  EVOCA SecretRegistry registry AD CONIURA result_unwrap GENUS(SecretRegistry, VERBUM)(registry_res)
+  VINCIRE registry_ptr AD OBSECRO mem_alloc(MENSURA(SecretRegistry))
+  CONIURA secret_registry_fill_from_opaque(registry_ptr, registry)
+  CONIURA app_service_set(app, CONIURA app_service_secret_registry_key(), registry_ptr)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_service_set(SPECULUM Application app, VERBUM key, SPECULUM NIHIL value) REDDE NIHIL
+  EVOCA AppOpaqueValueBox boxed
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA app_storage_key((*app).services, key)
+  VINCIRE boxed.raw AD value
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, AppOpaqueValueBox)((*app).services, stored_key, boxed)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  CONIURA map_insert GENUS(VERBUM, AppOpaqueValueBox)((*app).services, key, boxed)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_service_has(Application app, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA app_storage_key(app.services, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE VERUM
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE app_service_get(Application app, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA app_storage_key(app.services, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    IACE CONIURA concat("app service ausente: ", key)
+  FIN SI
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL boxed_opt AD CONIURA map_get GENUS(VERBUM, AppOpaqueValueBox)(app.services, stored_key)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  SI CONIURA option_is_none GENUS(AppOpaqueValueBox)(boxed_opt)
+    CONIURA option_free GENUS(AppOpaqueValueBox)(boxed_opt)
+    IACE CONIURA concat("app service ausente: ", key)
+  FIN SI
+  EVOCA AppOpaqueValueBox boxed AD CONIURA option_unwrap GENUS(AppOpaqueValueBox)(boxed_opt)
+  CONIURA option_free GENUS(AppOpaqueValueBox)(boxed_opt)
+  REDDE boxed.raw
+EXPLICIT RITUALE
+
+RITUALE app_add_global_middleware(SPECULUM Application app, MiddlewareBinding binding) REDDE NIHIL
+  CONIURA router_add_global_middleware((*app).router_ref, binding)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_add_route(
+  SPECULUM Application app,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA router_add((*app).router_ref, method, pattern, route_name, handler_symbol, handler_ref)
+EXPLICIT RITUALE
+
+RITUALE app_register_startup_hook(SPECULUM Application app, VERBUM name, SPECULUM NIHIL callback_ref) REDDE SPECULUM NIHIL
+  EVOCA AppLifecycleHookBinding binding
+  SI CONIURA len(CONIURA trim(name)) == 0
+    REDDE CONIURA app_err_unit("startup hook name nao pode ser vazio")
+  FIN SI
+  SI CONIURA app_has_hook_named((*app).startup_hooks, name)
+    REDDE CONIURA app_err_unit("startup hook duplicado")
+  FIN SI
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD callback_ref
+  CONIURA fluxus_push((*app).startup_hooks, SPECULUM binding)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_register_shutdown_hook(SPECULUM Application app, VERBUM name, SPECULUM NIHIL callback_ref) REDDE SPECULUM NIHIL
+  EVOCA AppLifecycleHookBinding binding
+  SI CONIURA len(CONIURA trim(name)) == 0
+    REDDE CONIURA app_err_unit("shutdown hook name nao pode ser vazio")
+  FIN SI
+  SI CONIURA app_has_hook_named((*app).shutdown_hooks, name)
+    REDDE CONIURA app_err_unit("shutdown hook duplicado")
+  FIN SI
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD callback_ref
+  CONIURA fluxus_push((*app).shutdown_hooks, SPECULUM binding)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_register_health_contributor(SPECULUM Application app, VERBUM name, SPECULUM NIHIL callback_ref) REDDE SPECULUM NIHIL
+  EVOCA AppHealthContributorBinding binding
+  SI CONIURA len(CONIURA trim(name)) == 0
+    REDDE CONIURA app_err_unit("health contributor name nao pode ser vazio")
+  FIN SI
+  SI CONIURA app_has_health_named((*app).health_contributors, name)
+    REDDE CONIURA app_err_unit("health contributor duplicado")
+  FIN SI
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD callback_ref
+  CONIURA fluxus_push((*app).health_contributors, SPECULUM binding)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_invoke_module_registration(SPECULUM Application app, AppModule module) REDDE NIHIL
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(module.register_routes_ref, app)
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(module.register_middleware_ref, app)
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(module.register_signals_ref, app)
+  CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)(module.register_events_ref, app)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE app_new(Settings settings) REDDE SPECULUM NIHIL
+  EVOCA Application app
+  EVOCA SPECULUM NIHIL name_res AD CONIURA settings_get_verbum(SPECULUM settings, "app.name")
+  EVOCA SPECULUM NIHIL version_res AD CONIURA settings_get_verbum(SPECULUM settings, "app.version")
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA RequestSignals signals AD CONIURA request_signals_new()
+  EVOCA EventBus events
+  EVOCA SPECULUM Settings settings_heap AD OBSECRO mem_alloc(MENSURA(Settings))
+  EVOCA SPECULUM Router router_heap AD OBSECRO mem_alloc(MENSURA(Router))
+  EVOCA SPECULUM RequestSignals signals_heap AD OBSECRO mem_alloc(MENSURA(RequestSignals))
+  EVOCA SPECULUM EventBus events_heap AD OBSECRO mem_alloc(MENSURA(EventBus))
+  SI CONIURA result_is_err GENUS(VERBUM, SettingsError)(name_res)
+    REDDE CONIURA app_err(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(VERBUM, SettingsError)(name_res)))
+  FIN SI
+  SI CONIURA result_is_err GENUS(VERBUM, SettingsError)(version_res)
+    REDDE CONIURA app_err(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(VERBUM, SettingsError)(version_res)))
+  FIN SI
+  CONIURA event_bus_init(SPECULUM events, CONIURA result_unwrap GENUS(VERBUM, SettingsError)(name_res))
+  CONIURA app_settings_fill(settings_heap, settings)
+  VINCIRE app.name AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(name_res)
+  VINCIRE app.version AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(version_res)
+  VINCIRE app.environment AD CONIURA settings_environment(SPECULUM settings)
+  CONIURA app_router_fill(router_heap, router)
+  CONIURA app_request_signals_fill(signals_heap, signals)
+  CONIURA app_event_bus_fill(events_heap, events)
+  VINCIRE app.settings_ref AD settings_heap
+  VINCIRE app.router_ref AD router_heap
+  VINCIRE app.signals_ref AD signals_heap
+  VINCIRE app.events_ref AD events_heap
+  VINCIRE app.state AD APP_LIFECYCLE_CREATED
+  VINCIRE app.started_at_ms AD 0
+  VINCIRE app.stopped_at_ms AD 0
+  VINCIRE app.last_error AD ""
+  VINCIRE app.modules AD CONIURA fluxus_init(MENSURA(AppModule))
+  VINCIRE app.startup_hooks AD CONIURA fluxus_init(MENSURA(AppLifecycleHookBinding))
+  VINCIRE app.shutdown_hooks AD CONIURA fluxus_init(MENSURA(AppLifecycleHookBinding))
+  VINCIRE app.health_contributors AD CONIURA fluxus_init(MENSURA(AppHealthContributorBinding))
+  VINCIRE app.services AD CONIURA map_init GENUS(VERBUM, AppOpaqueValueBox)()
+  VINCIRE app.startup_completed_hooks AD 0
+  VINCIRE app.health_enabled AD VERUM
+  REDDE CONIURA app_ok(app)
+EXPLICIT RITUALE
+
+RITUALE app_register_module(SPECULUM Application app, AppModule module) REDDE SPECULUM NIHIL
+  EVOCA VERBUM module_id AD CONIURA app_module_id(module)
+  EVOCA SPECULUM NIHIL res AD CONIURA app_ok_unit()
+  SI (*app).state != APP_LIFECYCLE_CREATED
+    REDDE CONIURA app_err_unit("nao e permitido registrar modulo apos o boot")
+  FIN SI
+  SI CONIURA len(CONIURA trim(module.name)) == 0
+    REDDE CONIURA app_err_unit("module name nao pode ser vazio")
+  FIN SI
+  SI CONIURA len(CONIURA trim(module.namespace)) == 0
+    REDDE CONIURA app_err_unit("module namespace nao pode ser vazio")
+  FIN SI
+  SI CONIURA app_has_module(*app, module_id)
+    REDDE CONIURA app_err_unit("modulo duplicado")
+  FIN SI
+
+  TEMPTA
+    CONIURA app_invoke_module_registration(app, module)
+  CAPE FRACTUM error
+    VINCIRE (*app).last_error AD OBSECRO fractum_to_verbum(error)
+    REDDE CONIURA app_err_unit((*app).last_error)
+  FIN TEMPTA
+
+  SI CONIURA len(module.on_start_name) != 0
+    VINCIRE res AD CONIURA app_register_startup_hook(app, module.on_start_name, module.on_start_ref)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+      REDDE res
+    FIN SI
+  FIN SI
+  SI CONIURA len(module.on_shutdown_name) != 0
+    VINCIRE res AD CONIURA app_register_shutdown_hook(app, module.on_shutdown_name, module.on_shutdown_ref)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+      REDDE res
+    FIN SI
+  FIN SI
+  SI CONIURA len(module.health_name) != 0
+    VINCIRE res AD CONIURA app_register_health_contributor(app, module.health_name, module.health_ref)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+      REDDE res
+    FIN SI
+  FIN SI
+
+  CONIURA fluxus_push((*app).modules, SPECULUM module)
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_start(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*app).startup_hooks)
+  SI (*app).state != APP_LIFECYCLE_CREATED
+    REDDE CONIURA app_err_unit("app_start requer estado created")
+  FIN SI
+  VINCIRE (*app).state AD APP_LIFECYCLE_STARTING
+  VINCIRE (*app).last_error AD ""
+  VINCIRE (*app).startup_completed_hooks AD 0
+  DUM i < n
+    EVOCA SPECULUM AppLifecycleHookBinding hook_ptr AD CONIURA fluxus_get((*app).startup_hooks, i)
+    TEMPTA
+      CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*hook_ptr).opaque_ref, app)
+    CAPE FRACTUM error
+      VINCIRE (*app).last_error AD OBSECRO fractum_to_verbum(error)
+      VINCIRE (*app).state AD APP_LIFECYCLE_FAILED
+      REDDE CONIURA app_err_unit((*app).last_error)
+    FIN TEMPTA
+    VINCIRE (*app).startup_completed_hooks AD (*app).startup_completed_hooks + 1
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE (*app).started_at_ms AD CONIURA now_ms()
+  VINCIRE (*app).stopped_at_ms AD 0
+  VINCIRE (*app).state AD APP_LIFECYCLE_STARTED
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_shutdown(SPECULUM Application app) REDDE SPECULUM NIHIL
+  EVOCA REX limit AD CONIURA fluxus_len((*app).shutdown_hooks)
+  EVOCA REX i AD 0
+  EVOCA VERBUM first_error AD ""
+
+  SI (*app).state == APP_LIFECYCLE_CREATED
+    REDDE CONIURA app_err_unit("app_shutdown requer app iniciada ou falhada")
+  FIN SI
+  SI (*app).state == APP_LIFECYCLE_STOPPED
+    REDDE CONIURA app_err_unit("app ja foi desligada")
+  FIN SI
+
+  SI (*app).state == APP_LIFECYCLE_FAILED ET (*app).startup_completed_hooks < limit
+    VINCIRE limit AD (*app).startup_completed_hooks
+  FIN SI
+
+  VINCIRE (*app).state AD APP_LIFECYCLE_STOPPING
+  VINCIRE i AD limit - 1
+  DUM i >= 0
+    EVOCA SPECULUM AppLifecycleHookBinding hook_ptr AD CONIURA fluxus_get((*app).shutdown_hooks, i)
+    TEMPTA
+      CONIURA callback_invoke1_void GENUS(SPECULUM NIHIL)((*hook_ptr).opaque_ref, app)
+    CAPE FRACTUM error
+      SI CONIURA len(first_error) == 0
+        VINCIRE first_error AD OBSECRO fractum_to_verbum(error)
+      FIN SI
+    FIN TEMPTA
+    SI i == 0
+      FRANGE
+    FIN SI
+    VINCIRE i AD i - 1
+  FIN DUM
+
+  VINCIRE (*app).stopped_at_ms AD CONIURA now_ms()
+  VINCIRE (*app).state AD APP_LIFECYCLE_STOPPED
+  VINCIRE (*app).startup_completed_hooks AD 0
+  SI CONIURA len(first_error) != 0
+    VINCIRE (*app).last_error AD first_error
+    REDDE CONIURA app_err_unit(first_error)
+  FIN SI
+  REDDE CONIURA app_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE app_health_status(SPECULUM Application app) REDDE HealthStatus
+  EVOCA HealthStatus health AD CONIURA app_health_status_new(app)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*app).health_contributors)
+  DUM i < n
+    EVOCA SPECULUM AppHealthContributorBinding binding_ptr AD CONIURA fluxus_get((*app).health_contributors, i)
+    TEMPTA
+      CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL)((*binding_ptr).opaque_ref, app, SPECULUM health)
+    CAPE FRACTUM error
+      CONIURA app_health_mark_failed(SPECULUM health, (*binding_ptr).name, OBSECRO fractum_to_verbum(error))
+    FIN TEMPTA
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE health
+EXPLICIT RITUALE
+
+RITUALE app_health_response(SPECULUM Application app) REDDE HttpResponse
+  EVOCA HealthStatus health AD CONIURA app_health_status(app)
+  EVOCA HttpResponse out AD CONIURA http_response_new(CONIURA app_health_status_code(health), CONIURA app_health_json(health))
+  CONIURA http_headers_set_or_push(CONIURA http_response_headers_handle(out), "Content-Type", "application/json")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE app_health_web_response(SPECULUM Application app) REDDE WebResponse
+  EVOCA HealthStatus health AD CONIURA app_health_status(app)
+  EVOCA WebResponse out AD CONIURA response_json_text(CONIURA app_health_json(health))
+  VINCIRE out.status AD CONIURA app_health_status_code(health)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE app_dispatch_is_health(WebRequest req) REDDE VERUM
+  SI CONIURA compare(req.path, "/health") != 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA compare(req.method, "GET") == 0 VEL CONIURA compare(req.method, "HEAD") == 0
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE app_dispatch_fill(SPECULUM Application app, SPECULUM WebRequest req, SPECULUM WebResponse res) REDDE NIHIL
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA VERBUM nonce AD ""
+  CONIURA signal_emit_request_started((*app).signals_ref, *req)
+
+  TEMPTA
+    EVOCA SPECULUM NIHIL phase5_res AD CONIURA app_ensure_security_services(app)
+    EVOCA SPECULUM SecurityConfig security_cfg
+    EVOCA SPECULUM RateLimiter security_limiter
+    EVOCA SPECULUM SecurityMetrics security_metrics
+    EVOCA SPECULUM Logger security_logger
+    EVOCA SPECULUM CsrfConfig csrf_cfg
+    EVOCA SPECULUM Logger csrf_logger
+    EVOCA SPECULUM NIHIL secret_registry_ref
+    EVOCA VERUM has_secret_registry AD FALSUM
+    EVOCA VERBUM existing_binding AD ""
+
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(phase5_res)
+      IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(phase5_res)
+    FIN SI
+    VINCIRE phase5_res AD CONIURA app_ensure_csrf_services(app)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(phase5_res)
+      IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(phase5_res)
+    FIN SI
+
+    VINCIRE security_cfg AD CONIURA app_service_get(*app, CONIURA app_service_security_config_key())
+    VINCIRE security_limiter AD CONIURA app_service_get(*app, CONIURA app_service_security_rate_limiter_key())
+    VINCIRE security_metrics AD CONIURA app_service_get(*app, CONIURA app_service_security_metrics_key())
+    VINCIRE security_logger AD CONIURA app_service_get(*app, CONIURA app_service_security_logger_key())
+    VINCIRE csrf_cfg AD CONIURA app_service_get(*app, CONIURA app_service_csrf_config_key())
+    VINCIRE csrf_logger AD CONIURA app_service_get(*app, CONIURA app_service_csrf_logger_key())
+    VINCIRE nonce AD CONIURA csp_nonce_generate()
+
+    SI NON CONIURA security_host_is_allowed((*security_cfg).allowed_hosts, (*req).host)
+      CONIURA security_metrics_inc_host_rejected(security_metrics)
+      CONIURA app_security_log_warn(security_logger, "host rejeitado", req)
+      CONIURA response_fill(res, CONIURA response_bad_request("invalid host"))
+    ALITER
+      SI (*security_cfg).enforce_https ET NON CONIURA request_is_secure(*req)
+        CONIURA app_security_log_warn(security_logger, "https obrigatorio", req)
+        CONIURA response_fill(res, CONIURA response_bad_request("https required"))
+      ALITER
+        SI (*security_cfg).rate_limit_enabled ET NON CONIURA rate_limiter_check(security_limiter, (*req).client_ip)
+          CONIURA security_metrics_inc_rate_limited(security_metrics)
+          CONIURA app_security_log_warn(security_logger, "rate limit excedido", req)
+          CONIURA response_fill(res, CONIURA app_security_response_too_many_requests())
+        ALITER
+          SI CONIURA csrf_request_needs_check((*req).method, (*req).headers) ET NON ((*csrf_cfg).exclude_bearer ET CONIURA csrf_request_has_bearer(req))
+            SI NON CONIURA app_service_has(*app, CONIURA app_service_secret_registry_key())
+              VINCIRE phase5_res AD CONIURA app_ensure_secret_registry(app)
+            FIN SI
+            SI CONIURA app_service_has(*app, CONIURA app_service_secret_registry_key())
+              VINCIRE secret_registry_ref AD CONIURA app_service_get(*app, CONIURA app_service_secret_registry_key())
+              VINCIRE has_secret_registry AD VERUM
+            FIN SI
+            SI NON has_secret_registry
+              CONIURA csrf_log_failure(csrf_logger, CsrfErrSecretMissing, req)
+              CONIURA response_fill(res, CONIURA response_with_body(403, "csrf forbidden", WEB_RESPONSE_TEXT))
+            ALITER
+              EVOCA SPECULUM NIHIL validation_res AD CONIURA csrf_validate_with_candidates(csrf_cfg, CONIURA csrf_secret_candidates_from_registry(secret_registry_ref), req)
+              SI CONIURA result_is_err GENUS(REX, CsrfError)(validation_res)
+                CONIURA csrf_log_validation_failure(csrf_logger, validation_res, req)
+                CONIURA response_fill(res, CONIURA response_with_body(403, "csrf forbidden", WEB_RESPONSE_TEXT))
+              ALITER
+                SI (*app).health_enabled ET CONIURA app_dispatch_is_health(*req)
+                  CONIURA response_fill(res, CONIURA app_health_web_response(app))
+                ALITER
+                  CONIURA response_fill(res, CONIURA router_dispatch(*((*app).router_ref), *req))
+                FIN SI
+              FIN SI
+            FIN SI
+          ALITER
+            SI (*app).health_enabled ET CONIURA app_dispatch_is_health(*req)
+              CONIURA response_fill(res, CONIURA app_health_web_response(app))
+            ALITER
+              CONIURA response_fill(res, CONIURA router_dispatch(*((*app).router_ref), *req))
+            FIN SI
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+
+    SI CONIURA cookie_has((*req).cookies, (*csrf_cfg).cookie_name)
+      EVOCA SPECULUM NIHIL binding_opt AD CONIURA cookie_get((*req).cookies, (*csrf_cfg).cookie_name)
+      SI CONIURA option_is_some GENUS(VERBUM)(binding_opt)
+        VINCIRE existing_binding AD CONIURA option_unwrap GENUS(VERBUM)(binding_opt)
+      FIN SI
+      CONIURA option_free GENUS(VERBUM)(binding_opt)
+    FIN SI
+    SI CONIURA len(existing_binding) == 0
+      CONIURA response_set_cookie(
+        res,
+        CONIURA csrf_binding_cookie(csrf_cfg, CONIURA csrf_binding_generate(), CONIURA request_is_secure(*req) VEL (*security_cfg).enforce_https)
+      )
+    FIN SI
+    CONIURA security_headers_apply(security_cfg, nonce, (*res).headers)
+  CAPE FRACTUM error
+    EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(error)
+    CONIURA signal_emit_request_failed((*app).signals_ref, *req, "", "fractum", error_text)
+    CONIURA response_fill(res, CONIURA response_internal_error("internal server error"))
+  FIN TEMPTA
+
+  CONIURA signal_emit_request_finished(
+    (*app).signals_ref,
+    *req,
+    CONIURA app_dispatch_route_name(*req),
+    *res,
+    CONIURA now_ms() - started_ms
+  )
+  CONIURA signal_emit_post_request(
+    (*app).signals_ref,
+    *req,
+    CONIURA app_dispatch_route_name(*req),
+    *res,
+    CONIURA now_ms() - started_ms
+  )
+  REDDE
+EXPLICIT RITUALE
+
+
+RITUALE app_dispatch_route_name(WebRequest req) REDDE VERBUM
+  SI CONIURA app_dispatch_is_health(req)
+    REDDE "civitas.health"
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,99 @@
+INCIPIT grimoire "civitas_template_filters"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE tpl_filter_upper(VERBUM v) REDDE VERBUM
+  REDDE CONIURA to_upper(v)
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_lower(VERBUM v) REDDE VERBUM
+  REDDE CONIURA to_lower(v)
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_truncate(VERBUM v, REX n) REDDE VERBUM
+  SI n <= 0
+    REDDE ""
+  FIN SI
+  SI CONIURA len(v) <= n
+    REDDE v
+  FIN SI
+  SI n <= 3
+    REDDE CONIURA substring(v, 0, n)
+  FIN SI
+  REDDE CONIURA concat(CONIURA substring(v, 0, n - 3), "...")
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_default(VERBUM v, VERBUM fallback) REDDE VERBUM
+  SI CONIURA len(v) == 0
+    REDDE fallback
+  FIN SI
+  REDDE v
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_format_int(REX v, VERBUM fmt) REDDE VERBUM
+  EVOCA VERBUM normalized AD CONIURA to_lower(CONIURA trim(fmt))
+  SI CONIURA compare(normalized, "") == 0 VEL CONIURA compare(normalized, "d") == 0 VEL CONIURA compare(normalized, "%d") == 0
+    REDDE CONIURA stringify_int(v)
+  FIN SI
+  SI CONIURA compare(normalized, "hex") == 0 VEL CONIURA compare(normalized, "%x") == 0
+    REDDE CONIURA stringify_int_hex(v)
+  FIN SI
+  SI CONIURA compare(normalized, "hex_upper") == 0 VEL CONIURA compare(normalized, "%x_upper") == 0 VEL CONIURA compare(fmt, "%X") == 0
+    REDDE CONIURA stringify_int_hex_upper(v)
+  FIN SI
+  SI CONIURA compare(normalized, "oct") == 0 VEL CONIURA compare(normalized, "%o") == 0
+    REDDE CONIURA stringify_int_oct(v)
+  FIN SI
+  SI CONIURA compare(normalized, "bin") == 0 VEL CONIURA compare(normalized, "%b") == 0
+    REDDE CONIURA stringify_int_bin(v)
+  FIN SI
+  REDDE CONIURA stringify_int(v)
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_real_precision(VERBUM fmt) REDDE REX
+  EVOCA VERBUM normalized AD CONIURA trim(fmt)
+  SI CONIURA starts_with(normalized, "%.")
+    EVOCA REX suffix_pos AD CONIURA find(normalized, "f")
+    SI suffix_pos > 2
+      REDDE CONIURA fmt_parse_int(CONIURA substring(normalized, 2, suffix_pos))
+    FIN SI
+  FIN SI
+  SI CONIURA starts_with(normalized, "fixed:")
+    REDDE CONIURA fmt_parse_int(CONIURA substring(normalized, 6, CONIURA len(normalized)))
+  FIN SI
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_format_real(UMBRA v, VERBUM fmt) REDDE VERBUM
+  EVOCA VERBUM normalized AD CONIURA to_lower(CONIURA trim(fmt))
+  EVOCA REX prec AD CONIURA tpl_filter_real_precision(normalized)
+  SI prec >= 0
+    REDDE CONIURA stringify_real_fixed(v, prec)
+  FIN SI
+  SI CONIURA compare(normalized, "sci") == 0 VEL CONIURA compare(normalized, "%e") == 0
+    REDDE CONIURA stringify_real_sci(v)
+  FIN SI
+  REDDE CONIURA stringify_real(v)
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_length(SPECULUM NIHIL flux) REDDE REX
+  REDDE CONIURA fluxus_len(flux)
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_abs_int(REX v) REDDE REX
+  SI v < 0
+    REDDE 0 - v
+  FIN SI
+  REDDE v
+EXPLICIT RITUALE
+
+RITUALE tpl_filter_abs_real(UMBRA v) REDDE UMBRA
+  SI v < 0.0
+    REDDE 0.0 - v
+  FIN SI
+  REDDE v
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase16_16d_reset_flow_helper"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_assert.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_flow.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_reset.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  EVOCA User user AD CONIURA fase16_create_user(tdb, "ana@test.local", "old-pass")
+  EVOCA Mailer m AD CONIURA mailer_test_open()
+  EVOCA FlowConfig flow_cfg AD CONIURA fase16_flow_cfg()
+  EVOCA MailerConfig mailer_cfg AD CONIURA mailer_test_config()
+  EVOCA SPECULUM NIHIL tok_res AD CONIURA mail_test_reset_solicitar_e_extrair(tdb.db, SPECULUM m, flow_cfg, mailer_cfg, user.email, "Ana", "https://app.test/reset")
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(tok_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM token AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(tok_res)
+  SI NON CONIURA mail_test_assert_count(m, 1)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL conf_res AD CONIURA auth_flow_reset_confirmar(tdb.db, flow_cfg, CONIURA fase16_auth_cfg(), token, "new-pass")
+  SI CONIURA result_is_err GENUS(VERBUM, FlowError)(conf_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  CONIURA mailer_test_close(SPECULUM m)
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

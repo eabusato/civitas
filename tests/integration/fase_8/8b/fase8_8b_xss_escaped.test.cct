@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase8_8b_xss_escaped_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash_render.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA session_set(SPECULUM sess, "_civitas_flash", "[{\"level\":\"info\",\"texto\":\"<script>alert('xss')</script>\"}]")
+  EVOCA VERBUM html AD CONIURA flash_render_from_session(SPECULUM sess)
+  SI CONIURA find(html, "<script>") != -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "&lt;script&gt;") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

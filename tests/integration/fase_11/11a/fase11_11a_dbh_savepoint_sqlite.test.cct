@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase11_11a_dbh_savepoint_sqlite"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase11_dbh_sqlite("11a_dbh_savepoint_sqlite")
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE logs(id INTEGER PRIMARY KEY)")
+  CONIURA dbh_begin(dbh)
+  CONIURA dbh_exec(dbh, "INSERT INTO logs(id) VALUES(1)", CONIURA dbh_params_new())
+  CONIURA dbh_savepoint(dbh, "inner")
+  CONIURA dbh_exec(dbh, "INSERT INTO logs(id) VALUES(2)", CONIURA dbh_params_new())
+  CONIURA dbh_rollback_to(dbh, "inner")
+  CONIURA dbh_release_savepoint(dbh, "inner")
+  CONIURA dbh_commit(dbh)
+  SI CONIURA dbh_scalar_int(dbh, "SELECT COUNT(*) FROM logs") != 1
+    REDDE 1
+  FIN SI
+  CONIURA db_close(dbh.sqlite_conn)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

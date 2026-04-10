@@ -1,0 +1,47 @@
+INCIPIT grimoire "fase19_19a_paginate_offset"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_paginate_offset_meta_and_data() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19a_offset")
+  EVOCA SPECULUM SerializerConfig post_cfg AD CONIURA phase19_get_post_serializer(stack.serializers)
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "One", "body-1", 10, "{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Two", "body-2", 20, "{\"id\":2,\"name\":\"Bia\",\"email\":\"bia@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Three", "body-3", 30, "{\"id\":3,\"name\":\"Caio\",\"email\":\"caio@example.com\"}")
+  EVOCA DbParams select_params AD CONIURA dbh_params_new()
+  EVOCA DbParams count_params AD CONIURA dbh_params_new()
+  EVOCA ApiPaginatedResult paged AD CONIURA paginate_offset(stack.serializers, *post_cfg, stack.dbh, "SELECT id, title, published_at, author FROM posts ORDER BY id ASC", select_params, "SELECT COUNT(*) FROM posts", count_params, 2, 2)
+  SI paged.meta.total != 3
+    IACE "paginate_offset total mismatch"
+  FIN SI
+  SI paged.meta.total_pages != 2
+    IACE "paginate_offset total_pages mismatch"
+  FIN SI
+  SI NON paged.meta.has_prev
+    IACE "paginate_offset has_prev should be true on page 2"
+  FIN SI
+  SI paged.meta.has_next
+    IACE "paginate_offset has_next should be false on last page"
+  FIN SI
+  SI CONIURA find(paged.data_json, "\"title\":\"Three\"") == -1
+    IACE "paginate_offset data missing last row"
+  FIN SI
+  SI CONIURA find(paged.data_json, "\"title\":\"One\"") != -1
+    IACE "paginate_offset data should not include page 1 row"
+  FIN SI
+  CONIURA dbh_params_free(SPECULUM select_params)
+  CONIURA dbh_params_free(SPECULUM count_params)
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_paginate_offset_meta_and_data()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,143 @@
+INCIPIT grimoire "fase26_26d_support"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "../../../../lib/civitas/trace_render.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE phase26_26d_root(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_26/26d", name)
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase26_26d_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_reset_root(VERBUM name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase26_26d_root(name)
+  SI CONIURA exists(root)
+    CONIURA phase26_26d_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_render_config(VERBUM name) REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg AD CONIURA trace_render_default_config()
+  SI CONIURA has_env("CCT_BIN")
+    VINCIRE cfg.cct_bin AD CONIURA getenv("CCT_BIN")
+  FIN SI
+  VINCIRE cfg.sigil_path AD "tests/integration/fase_22/22b/fase22_22b_render_html_includes_real_sigilo.test.sigil"
+  VINCIRE cfg.sigil_view AD "routes"
+  VINCIRE cfg.hide_timeline AD VERUM
+  VINCIRE cfg.animation_loop AD VERUM
+  VINCIRE cfg.work_dir AD CONIURA path_join(CONIURA phase26_26d_reset_root(name), "render")
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_bench(VERBUM route, REX p95_ms, REX p99_ms, UMBRA throughput) REDDE BenchResult
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new(route, "GET")
+  EVOCA BenchResult out AD CONIURA bench_result_empty(cfg)
+  VINCIRE out.n_requests AD 100
+  VINCIRE out.n_success AD 100
+  VINCIRE out.n_error AD 0
+  VINCIRE out.duration_total_ms AD 1000
+  VINCIRE out.throughput AD throughput
+  VINCIRE out.min_ms AD 10
+  VINCIRE out.max_ms AD p99_ms
+  VINCIRE out.mean_ms AD cast GENUS(UMBRA)(p95_ms)
+  VINCIRE out.p50_ms AD 20
+  VINCIRE out.p95_ms AD p95_ms
+  VINCIRE out.p99_ms AD p99_ms
+  VINCIRE out.timestamp_ms AD 1234
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_profile(VERUM with_n1) REDDE RequestProfile
+  EVOCA RequestProfile profile AD CONIURA profiler_request_profile_new("trace-26d", "req-26d", "/api/posts", "GET", 120, 2)
+  EVOCA RitualStat handler
+  VINCIRE handler.name AD "handler.posts_list"
+  VINCIRE handler.category AD "call"
+  VINCIRE handler.calls AD 1
+  VINCIRE handler.total_us AD 90000
+  VINCIRE handler.pct_request AD 75.0
+  CONIURA fluxus_push(profile.rituals, SPECULUM handler)
+  EVOCA RitualStat db
+  VINCIRE db.name AD "select:comments_by_post"
+  VINCIRE db.category AD "db"
+  VINCIRE db.calls AD 4
+  VINCIRE db.total_us AD 20000
+  VINCIRE db.pct_request AD 16.6
+  CONIURA fluxus_push(profile.rituals, SPECULUM db)
+  VINCIRE profile.spans_count AD 5
+  VINCIRE profile.db_time_us AD 20000
+  VINCIRE profile.cache_time_us AD 3000
+  VINCIRE profile.n_db_calls AD 4
+  SI with_n1
+    EVOCA QueryStat query
+    VINCIRE query.template AD "SELECT comments WHERE post_id = ?"
+    VINCIRE query.calls AD 4
+    VINCIRE query.total_us AD 20000
+    VINCIRE query.possible_n1 AD VERUM
+    CONIURA fluxus_push(profile.queries, SPECULUM query)
+    VINCIRE profile.n1_report.found AD VERUM
+    EVOCA VERBUM label AD "SELECT comments WHERE post_id = ? x4"
+    CONIURA fluxus_push(profile.n1_report.queries, SPECULUM label)
+  FIN SI
+  REDDE profile
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_profiles(VERUM with_n1) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL profiles AD CONIURA fluxus_init(MENSURA(RequestProfile))
+  EVOCA RequestProfile profile AD CONIURA phase26_26d_profile(with_n1)
+  CONIURA fluxus_push(profiles, SPECULUM profile)
+  REDDE profiles
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_mem_report(REX suspected_count) REDDE MemReport
+  EVOCA MemReport report
+  VINCIRE report.n_requests AD 100
+  VINCIRE report.allocs_total AD 4800
+  VINCIRE report.bytes_alloc_total AD 3981440
+  VINCIRE report.mean_allocs_per_request AD 48.0
+  VINCIRE report.mean_bytes_per_request AD 39814.4
+  VINCIRE report.peak_live_bytes_delta AD 1680
+  VINCIRE report.suspected_count AD suspected_count
+  VINCIRE report.deltas AD CONIURA fluxus_init(MENSURA(MemDelta))
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE phase26_26d_report(VERUM with_n1, REX suspected_count) REDDE PerfReport
+  EVOCA SPECULUM NIHIL profiles AD CONIURA phase26_26d_profiles(with_n1)
+  REDDE CONIURA perf_report_build("phase26-demo", CONIURA phase26_26d_bench("/api/posts", 140, 620, 12.5), profiles, CONIURA phase26_26d_mem_report(suspected_count))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

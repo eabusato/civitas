@@ -1,0 +1,69 @@
+-- Generated from profile.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_profile"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../apps/shared/template_contexts.cct"
+ADVOCARE "../apps/shared/types.cct"
+ADVOCARE "partials/post_card.cct"
+
+RITUALE render_profile(RedeProfilePageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"/static/app.css\">\n</head>\n<body>\n  <header class=\"topbar\">\n    <div class=\"brand\"><a href=\"/\">rede_social</a></div>\n    <nav>\n      <a href=\"/\">Feed</a>\n      <a href=\"/lounge\">Lounge</a>\n      <a href=\"/api/feed\">API</a>\n      <a href=\"/sigilos-vivos\">Sigilos</a>\n      <a href=\"/ops\">Ops</a>\n      ")
+  SI ctx.has_user
+    CONIURA builder_append(b, "\n        <span class=\"chip\">@")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.current_user))
+    CONIURA builder_append(b, "</span>\n        <form method=\"POST\" action=\"/sair\" class=\"inline-form\">\n          <button type=\"submit\">Logout</button>\n        </form>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <a href=\"/entrar\">Login</a>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </nav>\n  </header>\n  <main class=\"shell\">\n    ")
+  CONIURA builder_append(b, "\n<section class=\"hero profile-hero\">\n  <img class=\"avatar large\" src=\"")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.profile.user.avatar_url))
+  CONIURA builder_append(b, "\" alt=\"\">\n  <div>\n    <p class=\"eyebrow\">Profile</p>\n    <h1>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.profile.user.display_name))
+  CONIURA builder_append(b, "</h1>\n    <p>@")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.profile.user.handle))
+  CONIURA builder_append(b, "</p>\n    <p>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.profile.user.bio))
+  CONIURA builder_append(b, "</p>\n    <div class=\"stats\">\n      <span>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.profile.followers_count)))
+  CONIURA builder_append(b, " followers</span>\n      <span>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.profile.following_count)))
+  CONIURA builder_append(b, " following</span>\n      <span>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.profile.posts_count)))
+  CONIURA builder_append(b, " posts</span>\n    </div>\n  </div>\n  ")
+  SI ctx.can_follow
+    CONIURA builder_append(b, "\n    <form method=\"POST\" action=\"")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.follow_action))
+    CONIURA builder_append(b, "\" class=\"inline-form\">\n      ")
+    CONIURA builder_append(b, ctx.csrf_html)
+    CONIURA builder_append(b, "\n      <button type=\"submit\">Follow</button>\n    </form>\n  ")
+  FIN SI
+  CONIURA builder_append(b, "\n</section>\n<section class=\"feed-stack\">\n  ")
+  EVOCA REX i_post AD 0
+  EVOCA REX n_post AD CONIURA fluxus_len(ctx.posts)
+  DUM i_post < n_post
+    EVOCA SPECULUM RedePostCardContext item_post AD CONIURA fluxus_get(ctx.posts, i_post)
+    EVOCA LoopContext loop_post AD CONIURA tpl_loop_context(i_post, n_post)
+    CONIURA builder_append(b, "\n    ")
+    CONIURA builder_append(b, CONIURA render_partials_post_card(*item_post))
+    CONIURA builder_append(b, "\n  ")
+    VINCIRE i_post AD i_post + 1
+  FIN DUM
+  CONIURA builder_append(b, "\n</section>\n")
+  CONIURA builder_append(b, "\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

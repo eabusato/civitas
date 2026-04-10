@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase13_13d_export_json_and_csv"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_io.cct"
+ADVOCARE "../../../../lib/civitas/data_io/data_export.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13d_export_json_and_csv")
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "test.db"))
+  CONIURA phase13_seed_schema(db)
+  CONIURA db_exec(db, "INSERT INTO categorias (nome, slug, ativo) VALUES ('Tech', 'tech', 1)")
+  CONIURA db_exec(db, "INSERT INTO categorias (nome, slug, ativo) VALUES ('Vida', 'vida', 0)")
+  EVOCA VERBUM json_path AD CONIURA path_join(root, "cats.json")
+  EVOCA VERBUM csv_path AD CONIURA path_join(root, "cats.csv")
+  EVOCA DataIoResult r_json AD CONIURA data_export_json(db, "categorias", CONIURA phase13_model_categoria(), json_path)
+  SI r_json.ok != 2
+    REDDE 1
+  FIN SI
+  EVOCA DataIoResult r_csv AD CONIURA data_export_csv(db, "categorias", CONIURA phase13_model_categoria(), csv_path)
+  SI r_csv.ok != 2
+    REDDE 2
+  FIN SI
+  SI NON CONIURA contains(CONIURA read_all(json_path), "\"slug\":\"tech\"")
+    REDDE 3
+  FIN SI
+  SI NON CONIURA contains(CONIURA read_all(csv_path), "nome,slug,ativo")
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

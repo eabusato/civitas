@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase17_17b_replace_pending_policy"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/date.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17b_replace_pending_policy")
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  EVOCA SchedulerConfig sched_cfg AD CONIURA phase17_scheduler_cfg()
+  CONIURA scheduled_register_interval(stack.dbh, "job.replace", "echo", "@every 5s", "{\"kind\":\"next\"}")
+  CONIURA db_exec(stack.db, "UPDATE scheduled_jobs SET policy = 'replace_pending', next_run_at_unix = 0 WHERE job_name = 'job.replace'")
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "scheduled:job.replace"
+  CONIURA task_enqueue_json(stack.dbh, task_cfg.queue_name, "echo", "{\"kind\":\"old\"}", options, task_cfg)
+  SI CONIURA scheduler_tick(stack.dbh, task_cfg, sched_cfg, CONIURA datetime_now()) != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(stack.db, "SELECT COUNT(*) FROM task_queue WHERE dedupe_key = 'scheduled:job.replace' AND state = 'queued'") != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

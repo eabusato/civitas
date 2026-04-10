@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase8_8a_roundtrip_and_typed_getters_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA session_set(SPECULUM sess, "usuario", "maria")
+  CONIURA session_set(SPECULUM sess, "pontos", "42")
+  CONIURA session_set(SPECULUM sess, "ativo", "true")
+  CONIURA session_set(SPECULUM sess, "saldo", "3.5")
+
+  EVOCA VERBUM json AD CONIURA session_to_json(SPECULUM sess)
+  EVOCA Session restored AD CONIURA session_from_json(sess.id, json)
+  EVOCA SPECULUM NIHIL usuario_opt AD CONIURA session_get(SPECULUM restored, "usuario")
+  EVOCA SPECULUM NIHIL pontos_opt AD CONIURA session_get_int(SPECULUM restored, "pontos")
+  EVOCA SPECULUM NIHIL ativo_opt AD CONIURA session_get_bool(SPECULUM restored, "ativo")
+  EVOCA SPECULUM NIHIL saldo_opt AD CONIURA session_get_real(SPECULUM restored, "saldo")
+
+  SI CONIURA option_is_none GENUS(VERBUM)(usuario_opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(usuario_opt), "maria") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA option_is_none GENUS(REX)(pontos_opt) VEL CONIURA option_unwrap GENUS(REX)(pontos_opt) != 42
+    REDDE 3
+  FIN SI
+  SI CONIURA option_is_none GENUS(VERUM)(ativo_opt) VEL NON CONIURA option_unwrap GENUS(VERUM)(ativo_opt)
+    REDDE 4
+  FIN SI
+  SI CONIURA option_is_none GENUS(UMBRA)(saldo_opt)
+    REDDE 5
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(usuario_opt)
+  CONIURA option_free GENUS(REX)(pontos_opt)
+  CONIURA option_free GENUS(VERUM)(ativo_opt)
+  CONIURA option_free GENUS(UMBRA)(saldo_opt)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

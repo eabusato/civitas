@@ -1,0 +1,31 @@
+INCIPIT grimoire "civitas_pool_sqlite"
+
+ADVOCARE "../db_handle/db_handle_sqlite.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "pool.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE pool_sqlite_open_handle(VERBUM dsn) REDDE PoolOpenResult
+  EVOCA SPECULUM NIHIL raw_db AD CONIURA db_open(dsn)
+  SI raw_db == NIHIL
+    REDDE CONIURA pool_open_result_new(NIHIL)
+  FIN SI
+  EVOCA DbHandle h AD CONIURA dbh_from_sqlite(raw_db)
+  EVOCA SPECULUM DbHandle h_ptr AD OBSECRO mem_alloc(MENSURA(DbHandle))
+  CONIURA dbh_fill(h_ptr, h)
+  REDDE CONIURA pool_open_result_new(h_ptr)
+EXPLICIT RITUALE
+
+RITUALE pool_config_sqlite(VERBUM path) REDDE PoolConfig
+  EVOCA PoolConfig c AD CONIURA pool_config_new(PbkSqlite, path)
+  VINCIRE c.min AD 1
+  VINCIRE c.max AD 1
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE pool_new_sqlite(VERBUM path, SPECULUM NIHIL logger) REDDE SPECULUM NIHIL
+  EVOCA PoolConfig c AD CONIURA pool_config_sqlite(path)
+  REDDE CONIURA pool_new(c, logger, pool_sqlite_open_handle)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

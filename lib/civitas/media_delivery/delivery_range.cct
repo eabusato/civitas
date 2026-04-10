@@ -1,0 +1,154 @@
+INCIPIT grimoire "civitas_media_delivery_range"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../response.cct"
+
+ORDO DeliveryMode
+  DmDirect
+  DmAccelRedirect
+  DmSendfile
+FIN ORDO
+
+ORDO DeliveryError
+  DeNotFound
+  DeExpired
+  DeInvalidToken
+  DeForbidden
+  DeRangeNotSatisfiable
+FIN ORDO
+
+SIGILLUM DeliveryConfig
+  mode: DeliveryMode
+  accel_prefix: VERBUM
+  max_range_bytes: REX
+  content_disposition: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RangeRequest
+  start: REX
+  end: REX
+  total: REX
+FIN SIGILLUM
+
+RITUALE delivery_config_new(DeliveryMode mode, VERBUM accel_prefix, REX max_range_bytes, VERBUM content_disposition) REDDE DeliveryConfig
+  EVOCA DeliveryConfig cfg
+  VINCIRE cfg.mode AD mode
+  VINCIRE cfg.accel_prefix AD accel_prefix
+  VINCIRE cfg.max_range_bytes AD max_range_bytes
+  VINCIRE cfg.content_disposition AD content_disposition
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE delivery_range_ok(RangeRequest rr) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(RangeRequest, DeliveryError)(rr)
+EXPLICIT RITUALE
+
+RITUALE delivery_range_err(DeliveryError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(RangeRequest, DeliveryError)(err)
+EXPLICIT RITUALE
+
+RITUALE delivery_response_ok(WebResponse res) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(WebResponse, DeliveryError)(res)
+EXPLICIT RITUALE
+
+RITUALE delivery_response_err(DeliveryError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(WebResponse, DeliveryError)(err)
+EXPLICIT RITUALE
+
+RITUALE delivery_unit_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, DeliveryError)(0)
+EXPLICIT RITUALE
+
+RITUALE delivery_unit_err(DeliveryError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, DeliveryError)(err)
+EXPLICIT RITUALE
+
+RITUALE delivery_parse_range(VERBUM range_header, REX file_size) REDDE SPECULUM NIHIL
+  SI file_size <= 0
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+  SI NON CONIURA starts_with(range_header, "bytes=")
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+
+  EVOCA VERBUM range_part AD CONIURA substring(range_header, 6, CONIURA len(range_header))
+  EVOCA REX sep_pos AD CONIURA find(range_part, "-")
+  SI sep_pos < 0
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+
+  EVOCA VERBUM start_str AD CONIURA trim(CONIURA substring(range_part, 0, sep_pos))
+  EVOCA VERBUM end_str AD CONIURA trim(CONIURA substring(range_part, sep_pos + 1, CONIURA len(range_part)))
+  SI CONIURA len(start_str) == 0
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+  SI NON CONIURA is_int(start_str)
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+
+  EVOCA REX start AD CONIURA parse_int(start_str)
+  EVOCA REX finish AD file_size - 1
+  SI CONIURA len(end_str) > 0
+    SI NON CONIURA is_int(end_str)
+      REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+    FIN SI
+    VINCIRE finish AD CONIURA parse_int(end_str)
+  FIN SI
+
+  SI start < 0 VEL finish < 0
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+  SI start > finish
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+  SI start >= file_size VEL finish >= file_size
+    REDDE CONIURA delivery_range_err(DeRangeNotSatisfiable)
+  FIN SI
+
+  EVOCA RangeRequest rr
+  VINCIRE rr.start AD start
+  VINCIRE rr.end AD finish
+  VINCIRE rr.total AD file_size
+  REDDE CONIURA delivery_range_ok(rr)
+EXPLICIT RITUALE
+
+RITUALE delivery_range_headers(RangeRequest rr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(
+    headers,
+    "content-range",
+    CONIURA format_3(
+      "bytes {}-{}/{}",
+      CONIURA stringify_int(rr.start),
+      CONIURA stringify_int(rr.end),
+      CONIURA stringify_int(rr.total)
+    )
+  )
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(
+    headers,
+    "content-length",
+    CONIURA stringify_int(rr.end - rr.start + 1)
+  )
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "accept-ranges", "bytes")
+  REDDE headers
+EXPLICIT RITUALE
+
+RITUALE delivery_apply_headers(SPECULUM WebResponse res, SPECULUM NIHIL headers) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    CONIURA response_set_header(res, key, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, key, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase2_2f_sort_and_direction_validation_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/pagination.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL allowed AD CONIURA phase2_allowed_sorts_basic()
+  EVOCA SPECULUM NIHIL good_res AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts?sort=title&dir=desc"),
+    allowed,
+    20,
+    100,
+    "created_at",
+    SORT_ASC
+  )
+  EVOCA SPECULUM NIHIL bad_sort_res AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts?sort=drop_table"),
+    allowed,
+    20,
+    100,
+    "created_at",
+    SORT_ASC
+  )
+  EVOCA SPECULUM NIHIL bad_dir_res AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts?dir=sideways"),
+    allowed,
+    20,
+    100,
+    "created_at",
+    SORT_ASC
+  )
+
+  SI CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(good_res)
+    REDDE 1
+  FIN SI
+  EVOCA PaginationRequest good AD CONIURA result_unwrap GENUS(PaginationRequest, VERBUM)(good_res)
+  SI CONIURA compare(good.sort_by, "title") != 0
+    REDDE 2
+  FIN SI
+  SI good.sort_direction != SORT_DESC
+    REDDE 3
+  FIN SI
+  SI CONIURA pagination_sort_is_allowed("title", allowed) != VERUM
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA pagination_sort_direction_name(good.sort_direction), "desc") != 0
+    REDDE 5
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(bad_sort_res)
+    REDDE 6
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(bad_dir_res)
+    REDDE 7
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

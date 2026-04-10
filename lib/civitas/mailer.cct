@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_mailer_root"
+
+ADVOCARE "mailer/mailer.cct"
+ADVOCARE "mailer/mailer_settings.cct"
+ADVOCARE "mailer/mailer_send.cct"
+ADVOCARE "mailer/mailer_schema.cct"
+
+EXPLICIT grimoire

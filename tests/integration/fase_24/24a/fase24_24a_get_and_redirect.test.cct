@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase24_24a_get_and_redirect"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_home_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("home-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_redirect_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_redirect("/target"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase24_target_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("target-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/", "home", "phase24_home_handler", phase24_home_handler))
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/redirect", "redirect", "phase24_redirect_handler", phase24_redirect_handler))
+    REDDE 1
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/target", "target", "phase24_target_handler", phase24_target_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse home AD CONIURA test_client_get(SPECULUM client, "/")
+  CONIURA assert_status(home, 200)
+  CONIURA assert_contains(home, "home-ok")
+
+  EVOCA TestResponse redirect AD CONIURA test_client_get(SPECULUM client, "/redirect")
+  CONIURA assert_redirect(redirect, "/target")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

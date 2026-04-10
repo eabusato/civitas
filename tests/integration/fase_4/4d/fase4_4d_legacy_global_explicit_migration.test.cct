@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase4_4d_legacy_global_explicit_migration_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4d_tmp_dir("4d_legacy_global_explicit")
+  EVOCA SPECULUM NIHIL env_pairs AD CONIURA phase4_4d_env_pairs()
+  CONIURA phase4_4d_prepare_project(
+    root,
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"127.0.0.1\"]\n\n[secrets]\nlegacy_global_key_enabled = true\nlegacy_global_key_material_env = \"CIVITAS_SECRET__LEGACY\"\n\n[secrets.session]\nactive_key_id = \"\"\ngrace_seconds = 0\nactive_material_env = \"\"\n\n[secrets.csrf]\nenabled = false\n\n[secrets.signed_cookie]\nenabled = false\n\n[secrets.token]\nenabled = false\n\n[secrets.temporary_link]\nenabled = false\n"
+  )
+  CONIURA phase4_4d_env_add(env_pairs, "CIVITAS_SECRET__LEGACY", "legacy-material")
+  SI CONIURA compare(CONIURA phase4_4d_active_key_id(root, root, "session", env_pairs), "legacy_global") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA phase4_4d_active_material(root, root, "session", env_pairs), "legacy-material") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

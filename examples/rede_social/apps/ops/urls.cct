@@ -1,0 +1,55 @@
+INCIPIT grimoire "rede_social_ops_urls"
+
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE rede_ops_route_assert(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ops_urls_register(SPECULUM Router router) REDDE NIHIL
+  -- Ops routes make phases 20-28 visible without mixing them into the public domain app.
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/api/feed", "api_feed", "api_feed_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/api/activity", "api_activity", "api_activity_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/login", "ops_login_page", "ops_login_page_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "POST", "/ops/login", "ops_login_submit", "ops_login_submit_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "POST", "/ops/logout", "ops_logout_submit", "ops_logout_submit_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops", "ops_dashboard", "ops_dashboard_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/traces", "ops_traces", "ops_traces_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/security", "ops_security", "ops_security_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/deps", "ops_deps", "ops_deps_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/perf", "ops_perf", "ops_perf_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/backup", "ops_backup", "ops_backup_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/docs", "ops_docs", "ops_docs_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/ops/release", "ops_release", "ops_release_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos", "sigilos_list", "sigilos_list_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/export.zip", "sigilos_export", "sigilos_export_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/app", "sigilo_app_detail", "sigilo_app_detail_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/app/viewer", "sigilo_app_viewer", "sigilo_app_viewer_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/app/preview", "sigilo_app_preview", "sigilo_app_preview_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "POST", "/sigilos-vivos/app/generate", "sigilo_app_generate", "sigilo_app_generate_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/app/embed", "sigilo_app_embed", "sigilo_app_embed_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/app/svg", "sigilo_app_svg", "sigilo_app_svg_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/{trace_id}", "sigilo_detail", "sigilo_detail_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/{trace_id}/viewer", "sigilo_viewer", "sigilo_viewer_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/{trace_id}/preview", "sigilo_preview", "sigilo_preview_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "POST", "/sigilos-vivos/{trace_id}/generate", "sigilo_generate", "sigilo_generate_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/{trace_id}/embed", "sigilo_embed", "sigilo_embed_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/sigilos-vivos/{trace_id}/svg", "sigilo_svg", "sigilo_svg_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/civitas/traces", "trace_panel_list", "trace_panel_list_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/civitas/traces/{trace_id}", "trace_panel_detail", "trace_panel_detail_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "GET", "/civitas/traces/{trace_id}/svg", "trace_panel_svg", "trace_panel_svg_handler", middleware_run))
+  CONIURA rede_ops_route_assert(CONIURA router_add(router, "POST", "/civitas/traces/{trace_id}/replay", "trace_panel_replay", "trace_panel_replay_handler", middleware_run))
+  CONIURA router_add_middleware(router, "ops_login_submit", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "ops_logout_submit", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "sigilo_app_generate", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "sigilo_generate", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "trace_panel_replay", CONIURA middleware_binding_named("csrf", middleware_run))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

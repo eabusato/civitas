@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase14_14d_parse_simple_json_catalog"
+
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM raw AD "{\"locale\":\"pt-BR\",\"entries\":{\"nav.home\":\"Inicio\"}}"
+  EVOCA SPECULUM NIHIL parsed AD CONIURA i18n_json_parse(raw)
+  SI CONIURA result_is_err GENUS(JsonCatalog, VERBUM)(parsed)
+    REDDE 1
+  FIN SI
+  EVOCA JsonCatalog cat AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(parsed)
+  SI CONIURA compare(cat.locale, "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(cat.entradas) != 1
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

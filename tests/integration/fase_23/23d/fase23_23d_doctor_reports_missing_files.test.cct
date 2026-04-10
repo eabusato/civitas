@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase23_23d_doctor_reports_missing_files"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_config/civitas_config.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23d_doctor_reports_missing_files")
+  CONIURA write_all(CONIURA path_join(root, "civitas.toml"), "[project]\nname = \"broken\"\nentry = \"project/main.cct\"\n\n[database]\ndriver = \"sqlite\"\nurl = \"var/app.db\"\n")
+  EVOCA CivitasProject proj AD CONIURA civitas_project_load(CONIURA path_join(root, "civitas.toml"))
+  EVOCA DoctorReport report AD CONIURA civitas_doctor_run(proj)
+  SI report.ok
+    REDDE 1
+  FIN SI
+  SI report.errors < 3
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM DoctorCheck first_ptr AD CONIURA fluxus_get(report.checks, 2)
+  SI CONIURA compare((*first_ptr).code, "project.entry") != 0
+    REDDE 3
+  FIN SI
+  SI (*first_ptr).ok
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

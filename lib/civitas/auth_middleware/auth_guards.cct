@@ -1,0 +1,62 @@
+INCIPIT grimoire "civitas_auth_guards"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../permissions/permissions_check.cct"
+ADVOCARE "auth_context.cct"
+
+RITUALE auth_guard_login(LocalContext ctx) REDDE VERUM
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  REDDE ac.autenticado
+EXPLICIT RITUALE
+
+RITUALE auth_guard_escopo(LocalContext ctx, VERBUM escopo_requerido) REDDE VERUM
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  SI NON ac.autenticado
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA compare(ac.via, "session") == 0
+    REDDE VERUM
+  FIN SI
+  EVOCA SPECULUM NIHIL lista AD CONIURA split(ac.escopos, " ")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lista)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(lista, i)
+    SI CONIURA compare(*ptr, escopo_requerido) == 0 VEL CONIURA compare(*ptr, "*") == 0
+      CONIURA fluxus_free(lista)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(lista)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE auth_guard_permissao(SPECULUM NIHIL db, LocalContext ctx, VERBUM permissao) REDDE VERUM
+  SI NON CONIURA auth_guard_login(ctx)
+    REDDE FALSUM
+  FIN SI
+  EVOCA AuthContext ac AD CONIURA auth_context_ler(ctx)
+  REDDE CONIURA usuario_tem_permissao(db, ac.user_id, permissao)
+EXPLICIT RITUALE
+
+RITUALE auth_resposta_nao_autenticado(VERBUM url_login) REDDE HttpResponse
+  EVOCA REX headers AD CONIURA http_headers_new()
+  CONIURA http_headers_set_or_push(headers, "Location", url_login)
+  REDDE CONIURA http_response_with_headers(302, headers, "")
+EXPLICIT RITUALE
+
+RITUALE auth_resposta_sem_permissao() REDDE HttpResponse
+  REDDE CONIURA http_response_new(403, "")
+EXPLICIT RITUALE
+
+RITUALE auth_resposta_nao_autorizado_api() REDDE HttpResponse
+  EVOCA REX headers AD CONIURA http_headers_new()
+  CONIURA http_headers_set_or_push(headers, "WWW-Authenticate", "Bearer realm=\"civitas\"")
+  REDDE CONIURA http_response_with_headers(401, headers, "")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

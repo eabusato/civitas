@@ -1,0 +1,8 @@
+# Production-only notes.
+# Typical uses:
+# - reverse-proxy hostnames
+# - stricter CSP/HSTS
+# - external mail/storage credentials
+
+[runtime]
+debug = false

@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase22_22a_watch_modify"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/dev_server/dev_server.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase22_reset_root("22a_watch_modify")
+  CONIURA mkdir_all(CONIURA path_join(root, "src"))
+  EVOCA VERBUM file_path AD CONIURA path_join(root, "src/main.cct")
+  CONIURA write_all(file_path, "one")
+  EVOCA DevWatcher watcher
+  VINCIRE watcher.config AD CONIURA dev_server_config_default(root, file_path, 18080)
+  VINCIRE watcher.watchers AD CONIURA dev_server_open_watchers(root)
+  VINCIRE watcher.server_pid AD 0
+  VINCIRE watcher.has_error AD FALSUM
+  VINCIRE watcher.error AD CONIURA dev_server_default_compile_error()
+  VINCIRE watcher.reload_count AD 0
+  SI CONIURA dev_server_watch_once(SPECULUM watcher)
+    REDDE 1
+  FIN SI
+  CONIURA sleep_ms(1100)
+  CONIURA write_all(file_path, "two")
+  CONIURA sleep_ms(1100)
+  SI NON CONIURA dev_server_watch_once(SPECULUM watcher)
+    REDDE 2
+  FIN SI
+  CONIURA dev_server_close_watchers(watcher.watchers)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

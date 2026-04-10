@@ -1,0 +1,136 @@
+INCIPIT grimoire "civitas_auth_test_request"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../session/session.cct"
+ADVOCARE "../test_db/test_db.cct"
+ADVOCARE "auth_test_session.cct"
+ADVOCARE "auth_test_token.cct"
+ADVOCARE "auth_test_user.cct"
+
+SIGILLUM AuthTestRequest
+  method: VERBUM
+  path: VERBUM
+  headers: SPECULUM NIHIL
+  body: VERBUM
+FIN SIGILLUM
+
+RITUALE auth_test_req_anonimo(VERBUM method, VERBUM path) REDDE AuthTestRequest
+  EVOCA AuthTestRequest r
+  VINCIRE r.method AD method
+  VINCIRE r.path AD path
+  VINCIRE r.headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE r.body AD ""
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_anonimo_into(SPECULUM AuthTestRequest out, VERBUM method, VERBUM path) REDDE NIHIL
+  VINCIRE (*out).method AD method
+  VINCIRE (*out).path AD path
+  VINCIRE (*out).headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE (*out).body AD ""
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_token(VERBUM method, VERBUM path, VERBUM token) REDDE AuthTestRequest
+  EVOCA AuthTestRequest r AD CONIURA auth_test_req_anonimo(method, path)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(r.headers, "authorization", CONIURA concat("Bearer ", token))
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE auth_test_bearer_header(VERBUM token) REDDE VERBUM
+  REDDE CONIURA concat("Bearer ", token)
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_token_into(SPECULUM AuthTestRequest out, VERBUM method, VERBUM path, VERBUM token) REDDE NIHIL
+  CONIURA auth_test_req_anonimo_into(out, method, path)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).headers, "authorization", CONIURA concat("Bearer ", token))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_sessao(VERBUM method, VERBUM path, VERBUM session_id) REDDE AuthTestRequest
+  EVOCA AuthTestRequest r AD CONIURA auth_test_req_anonimo(method, path)
+  EVOCA SessionConfig ses_cfg AD CONIURA auth_test_session_config()
+  EVOCA VERBUM cookie AD CONIURA concat(ses_cfg.cookie_nome, "=")
+  VINCIRE cookie AD CONIURA concat(cookie, session_id)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(r.headers, "cookie", cookie)
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE auth_test_session_cookie(VERBUM session_id) REDDE VERBUM
+  EVOCA SessionConfig ses_cfg AD CONIURA auth_test_session_config()
+  EVOCA VERBUM cookie AD CONIURA concat(ses_cfg.cookie_nome, "=")
+  VINCIRE cookie AD CONIURA concat(cookie, session_id)
+  REDDE cookie
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_sessao_into(SPECULUM AuthTestRequest out, VERBUM method, VERBUM path, VERBUM session_id) REDDE NIHIL
+  CONIURA auth_test_req_anonimo_into(out, method, path)
+  EVOCA SessionConfig ses_cfg AD CONIURA auth_test_session_config()
+  EVOCA VERBUM cookie AD CONIURA concat(ses_cfg.cookie_nome, "=")
+  VINCIRE cookie AD CONIURA concat(cookie, session_id)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).headers, "cookie", cookie)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_logado(TestDb tdb, VERBUM method, VERBUM path) REDDE AuthTestRequest
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  EVOCA Session sess AD CONIURA auth_test_login(tdb, tu)
+  REDDE CONIURA auth_test_req_com_sessao(method, path, sess.id)
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_logado_cookie(TestDb tdb, VERBUM method, VERBUM path) REDDE VERBUM
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  REDDE CONIURA auth_test_session_cookie(CONIURA auth_test_login_session_id(tdb, tu))
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_logado_into(SPECULUM AuthTestRequest out, TestDb tdb, VERBUM method, VERBUM path) REDDE NIHIL
+  EVOCA AuthTestUser tu
+  CONIURA auth_test_criar_usuario_unico_into(SPECULUM tu, tdb)
+  CONIURA auth_test_req_com_sessao_into(out, method, path, CONIURA auth_test_login_session_id(tdb, tu))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_token_usuario(TestDb tdb, VERBUM method, VERBUM path, VERBUM escopos) REDDE AuthTestRequest
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  EVOCA VERBUM token AD CONIURA auth_test_gerar_token(tu.user.id, escopos)
+  REDDE CONIURA auth_test_req_com_token(method, path, token)
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_token_usuario_header(TestDb tdb, VERBUM method, VERBUM path, VERBUM escopos) REDDE VERBUM
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  REDDE CONIURA auth_test_bearer_header(CONIURA auth_test_gerar_token(tu.user.id, escopos))
+EXPLICIT RITUALE
+
+RITUALE auth_test_req_com_token_usuario_into(SPECULUM AuthTestRequest out, TestDb tdb, VERBUM method, VERBUM path, VERBUM escopos) REDDE NIHIL
+  EVOCA AuthTestUser tu
+  CONIURA auth_test_criar_usuario_unico_into(SPECULUM tu, tdb)
+  CONIURA auth_test_req_com_token_into(out, method, path, CONIURA auth_test_gerar_token(tu.user.id, escopos))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_request_build(AuthTestRequest r) REDDE WebRequest
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(r.method, r.path, "HTTP/1.1", r.headers, r.body, "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "auth_test_request_build: request invalido"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE auth_test_request_build_into(SPECULUM WebRequest out, SPECULUM AuthTestRequest r) REDDE NIHIL
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build((*r).method, (*r).path, "HTTP/1.1", (*r).headers, (*r).body, "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "auth_test_request_build_into: request invalido"
+  FIN SI
+  CONIURA request_fill(out, CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_request_header_or(SPECULUM AuthTestRequest r, VERBUM name, VERBUM fallback) REDDE VERBUM
+  REDDE CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*r).headers, name, fallback)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

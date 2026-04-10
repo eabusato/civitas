@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase15_15b_expired_and_revoked"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_issue.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_revoke.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_verify.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_token_db_open("15b_expired_and_revoked")
+  EVOCA TokenConfig expired_cfg AD CONIURA token_config_new("segredo_hmac_32bytes_min_123456789", -5, 86400)
+  EVOCA VERBUM expired_token AD CONIURA token_issue(expired_cfg, "user-expired", "posts.read")
+  EVOCA SPECULUM NIHIL expired_res AD CONIURA token_verify(db, expired_cfg, expired_token)
+  SI NON CONIURA result_is_err GENUS(TokenPayload, TokenError)(expired_res)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA token_error_name(CONIURA result_unwrap_err GENUS(TokenPayload, TokenError)(expired_res)), "TokenExpirado") != 0
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+
+  EVOCA TokenConfig cfg AD CONIURA token_config_new("segredo_hmac_32bytes_min_123456789", 3600, 86400)
+  EVOCA VERBUM active_token AD CONIURA token_issue(cfg, "user-active", "posts.read")
+  EVOCA SPECULUM NIHIL parsed AD CONIURA token_parse_payload(active_token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(parsed)
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  EVOCA TokenPayload p AD CONIURA result_unwrap GENUS(TokenPayload, TokenError)(parsed)
+  CONIURA token_revoke(db, p.jti)
+  SI NON CONIURA token_is_revoked(db, p.jti)
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM NIHIL revoked_res AD CONIURA token_verify(db, cfg, active_token)
+  CONIURA db_close(db)
+  SI NON CONIURA result_is_err GENUS(TokenPayload, TokenError)(revoked_res)
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA token_error_name(CONIURA result_unwrap_err GENUS(TokenPayload, TokenError)(revoked_res)), "TokenRevogado") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

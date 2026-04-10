@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase21_21a_render_file_and_write"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM trace_dir AD CONIURA phase21_trace_dir("21a_render_file")
+  EVOCA VERBUM trace_path AD CONIURA phase21_write_sample_trace(trace_dir, "trace-file")
+  EVOCA TraceRenderConfig cfg AD CONIURA phase21_render_config("21a_render_file")
+  EVOCA SPECULUM NIHIL file_res AD CONIURA trace_render_file(trace_path, cfg)
+  SI CONIURA result_is_err GENUS(TraceRenderResult, VERBUM)(file_res)
+    REDDE 1
+  FIN SI
+  EVOCA TraceRenderResult rendered AD CONIURA result_unwrap GENUS(TraceRenderResult, VERBUM)(file_res)
+  SI CONIURA find(rendered.svg, "data-route-id=\"api.users.list\"") == -1
+    REDDE 2
+  FIN SI
+  EVOCA Trace trace AD CONIURA phase21_sample_trace("trace-write")
+  EVOCA VERBUM out_path AD CONIURA path_join(CONIURA phase21_root("21a_render_file"), "out/rendered.svg")
+  EVOCA SPECULUM NIHIL write_res AD CONIURA trace_render_to_file(trace, cfg, out_path)
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(write_res)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    REDDE 4
+  FIN SI
+  SI CONIURA find(CONIURA read_all(out_path), "trace-packet") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

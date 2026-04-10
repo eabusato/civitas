@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase3_3b_module_a_publisher"
+
+ADVOCARE "../../../../lib/civitas/events.cct"
+
+RITUALE phase3_3b_module_a_publish(SPECULUM EventBus bus, VERBUM request_id) REDDE EventDispatchReport
+  EVOCA SPECULUM NIHIL attrs AD CONIURA event_attributes_new()
+  EVOCA EventEnvelope env
+  CONIURA event_attributes_set(attrs, "scope", "public")
+  CONIURA event_attributes_set(attrs, "publisher", "module_a")
+  CONIURA event_envelope_init(SPECULUM env, "content.published", request_id, "actor-7", attrs, "{\"slug\":\"hello\"}")
+  REDDE CONIURA event_publish(*bus, env)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase2_2f_meta_unknown_total_and_json_test"
+
+ADVOCARE "../../../../lib/civitas/pagination.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PaginationRequest p AD CONIURA pagination_default(20)
+  EVOCA PaginationMeta meta
+  EVOCA VERBUM encoded
+
+  VINCIRE p.page AD 2
+  VINCIRE p.page_size AD 20
+  VINCIRE p.sort_by AD "title"
+  VINCIRE p.sort_direction AD SORT_ASC
+
+  VINCIRE meta AD CONIURA pagination_meta_unknown_total(p, VERUM)
+  SI meta.total_known != FALSUM
+    REDDE 1
+  FIN SI
+  SI meta.has_prev != VERUM
+    REDDE 2
+  FIN SI
+  SI meta.has_next != VERUM
+    REDDE 3
+  FIN SI
+  SI meta.offset != 20
+    REDDE 4
+  FIN SI
+
+  VINCIRE encoded AD CONIURA json_stringify(CONIURA pagination_meta_json(meta))
+  SI CONIURA find(encoded, "\"page\":2") == -1
+    REDDE 5
+  FIN SI
+  SI CONIURA find(encoded, "\"page_size\":20") == -1
+    REDDE 6
+  FIN SI
+  SI CONIURA find(encoded, "\"total_known\":false") == -1
+    REDDE 7
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

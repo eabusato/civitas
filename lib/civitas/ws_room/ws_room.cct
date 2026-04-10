@@ -1,0 +1,390 @@
+INCIPIT grimoire "civitas_ws_room"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO RoomEventTipo
+  ROOM_EV_JOIN
+  ROOM_EV_LEAVE
+  ROOM_EV_MESSAGE
+  ROOM_EV_MUTE
+  ROOM_EV_UNMUTE
+  ROOM_EV_BAN
+  ROOM_EV_KICK
+  ROOM_EV_SYSTEM
+FIN ORDO
+
+SIGILLUM RoomMember
+  conn_id: VERBUM
+  sala_id: VERBUM
+  user_id: REX
+  papel: VERBUM
+  joined_at: REX
+  last_seen: REX
+FIN SIGILLUM
+
+SIGILLUM RoomMute
+  sala_id: VERBUM
+  user_id: REX
+  motivo: VERBUM
+  muted_by: REX
+  muted_at: REX
+  expira_em: REX
+FIN SIGILLUM
+
+SIGILLUM RoomBan
+  sala_id: VERBUM
+  user_id: REX
+  motivo: VERBUM
+  banned_by: REX
+  banned_at: REX
+  expira_em: REX
+FIN SIGILLUM
+
+SIGILLUM RoomEvent
+  id: REX
+  sala_id: VERBUM
+  tipo: RoomEventTipo
+  user_id: REX
+  actor_id: REX
+  payload: VERBUM
+  criado_em: REX
+FIN SIGILLUM
+
+SIGILLUM RoomConfig
+  sala_id: VERBUM
+  max_membros: REX
+  requer_auth: VERUM
+  moderacao_manual: VERUM
+  log_retencao_ms: REX
+FIN SIGILLUM
+
+SIGILLUM WsRoomCtx
+  db: SPECULUM NIHIL
+  cfg: RoomConfig
+FIN SIGILLUM
+
+RITUALE ws_room_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS ws_room_members (conn_id TEXT NOT NULL PRIMARY KEY, sala_id TEXT NOT NULL, user_id INTEGER NOT NULL, papel TEXT NOT NULL DEFAULT 'member', joined_at INTEGER NOT NULL, last_seen INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_ws_room_members_sala ON ws_room_members(sala_id, last_seen)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS ws_room_mutes (sala_id TEXT NOT NULL, user_id INTEGER NOT NULL, motivo TEXT NOT NULL DEFAULT '', muted_by INTEGER NOT NULL, muted_at INTEGER NOT NULL, expira_em INTEGER NOT NULL, PRIMARY KEY (sala_id, user_id))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS ws_room_bans (sala_id TEXT NOT NULL, user_id INTEGER NOT NULL, motivo TEXT NOT NULL DEFAULT '', banned_by INTEGER NOT NULL, banned_at INTEGER NOT NULL, expira_em INTEGER NOT NULL, PRIMARY KEY (sala_id, user_id))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS ws_room_events (id INTEGER PRIMARY KEY AUTOINCREMENT, sala_id TEXT NOT NULL, tipo TEXT NOT NULL, user_id INTEGER NOT NULL, actor_id INTEGER NOT NULL DEFAULT 0, payload TEXT NOT NULL DEFAULT '', criado_em INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_ws_room_events_sala ON ws_room_events(sala_id, criado_em DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_tipo_to_string(RoomEventTipo tipo) REDDE VERBUM
+  ELIGE tipo
+    CASUS ROOM_EV_JOIN:
+      REDDE "join"
+    CASUS ROOM_EV_LEAVE:
+      REDDE "leave"
+    CASUS ROOM_EV_MESSAGE:
+      REDDE "message"
+    CASUS ROOM_EV_MUTE:
+      REDDE "mute"
+    CASUS ROOM_EV_UNMUTE:
+      REDDE "unmute"
+    CASUS ROOM_EV_BAN:
+      REDDE "ban"
+    CASUS ROOM_EV_KICK:
+      REDDE "kick"
+    ALIOQUIN:
+      REDDE "system"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE ws_room_tipo_from_string(VERBUM tipo) REDDE RoomEventTipo
+  SI CONIURA compare(tipo, "join") == 0
+    REDDE ROOM_EV_JOIN
+  FIN SI
+  SI CONIURA compare(tipo, "leave") == 0
+    REDDE ROOM_EV_LEAVE
+  FIN SI
+  SI CONIURA compare(tipo, "message") == 0
+    REDDE ROOM_EV_MESSAGE
+  FIN SI
+  SI CONIURA compare(tipo, "mute") == 0
+    REDDE ROOM_EV_MUTE
+  FIN SI
+  SI CONIURA compare(tipo, "unmute") == 0
+    REDDE ROOM_EV_UNMUTE
+  FIN SI
+  SI CONIURA compare(tipo, "ban") == 0
+    REDDE ROOM_EV_BAN
+  FIN SI
+  SI CONIURA compare(tipo, "kick") == 0
+    REDDE ROOM_EV_KICK
+  FIN SI
+  REDDE ROOM_EV_SYSTEM
+EXPLICIT RITUALE
+
+RITUALE ws_room_join(SPECULUM NIHIL db, VERBUM sala_id, VERBUM conn_id, REX user_id, VERBUM papel) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA REX agora AD CONIURA now_ms()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO ws_room_members(conn_id, sala_id, user_id, papel, joined_at, last_seen) VALUES(?,?,?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, conn_id)
+  CONIURA stmt_bind_text(stmt, 2, sala_id)
+  CONIURA stmt_bind_int(stmt, 3, user_id)
+  CONIURA stmt_bind_text(stmt, 4, papel)
+  CONIURA stmt_bind_int(stmt, 5, agora)
+  CONIURA stmt_bind_int(stmt, 6, agora)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_leave(SPECULUM NIHIL db, VERBUM sala_id, VERBUM conn_id) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_members WHERE conn_id = ? AND sala_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, conn_id)
+  CONIURA stmt_bind_text(stmt, 2, sala_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_heartbeat(SPECULUM NIHIL db, VERBUM sala_id, VERBUM conn_id) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE ws_room_members SET last_seen = ? WHERE conn_id = ? AND sala_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA now_ms())
+  CONIURA stmt_bind_text(stmt, 2, conn_id)
+  CONIURA stmt_bind_text(stmt, 3, sala_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_members(SPECULUM NIHIL db, VERBUM sala_id, REX timeout_ms) REDDE SPECULUM NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RoomMember))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT conn_id, user_id, papel, joined_at, last_seen FROM ws_room_members WHERE sala_id = ? AND last_seen >= ? ORDER BY joined_at")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - timeout_ms)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RoomMember m
+      VINCIRE m.conn_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 0))
+      VINCIRE m.sala_id AD sala_id
+      VINCIRE m.user_id AD CONIURA stmt_get_int(stmt, 1)
+      VINCIRE m.papel AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+      VINCIRE m.joined_at AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE m.last_seen AD CONIURA stmt_get_int(stmt, 4)
+      CONIURA fluxus_push(out, SPECULUM m)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_room_member_count(SPECULUM NIHIL db, VERBUM sala_id, REX timeout_ms) REDDE REX
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(DISTINCT user_id) FROM ws_room_members WHERE sala_id = ? AND last_seen >= ?")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - timeout_ms)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX total AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA stmt_finalize(stmt)
+      REDDE total
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE ws_room_log(SPECULUM NIHIL db, VERBUM sala_id, RoomEventTipo tipo, REX user_id, REX actor_id, VERBUM payload) REDDE REX
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO ws_room_events(sala_id, tipo, user_id, actor_id, payload, criado_em) VALUES(?,?,?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_text(stmt, 2, CONIURA ws_room_tipo_to_string(tipo))
+  CONIURA stmt_bind_int(stmt, 3, user_id)
+  CONIURA stmt_bind_int(stmt, 4, actor_id)
+  CONIURA stmt_bind_text(stmt, 5, payload)
+  CONIURA stmt_bind_int(stmt, 6, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT COALESCE(MAX(id), 0) FROM ws_room_events")
+EXPLICIT RITUALE
+
+RITUALE ws_room_event_list(SPECULUM NIHIL db, VERBUM sala_id, REX limite, REX offset) REDDE SPECULUM NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RoomEvent))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, tipo, user_id, actor_id, payload, criado_em FROM ws_room_events WHERE sala_id = ? ORDER BY criado_em DESC, id DESC LIMIT ? OFFSET ?")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, limite)
+  CONIURA stmt_bind_int(stmt, 3, offset)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RoomEvent ev
+      VINCIRE ev.id AD CONIURA stmt_get_int(stmt, 0)
+      VINCIRE ev.sala_id AD sala_id
+      VINCIRE ev.tipo AD CONIURA ws_room_tipo_from_string(CONIURA stmt_get_text(stmt, 1))
+      VINCIRE ev.user_id AD CONIURA stmt_get_int(stmt, 2)
+      VINCIRE ev.actor_id AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE ev.payload AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+      VINCIRE ev.criado_em AD CONIURA stmt_get_int(stmt, 5)
+      CONIURA fluxus_push(out, SPECULUM ev)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_room_log_purge_old(SPECULUM NIHIL db, VERBUM sala_id, REX max_age_ms) REDDE REX
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_events WHERE sala_id = ? AND criado_em < ?")
+  EVOCA REX before AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_events")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - max_age_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE before - CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_events")
+EXPLICIT RITUALE
+
+RITUALE ws_room_mute(SPECULUM NIHIL db, VERBUM sala_id, REX user_id, VERBUM motivo, REX muted_by, REX expira_em) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO ws_room_mutes(sala_id, user_id, motivo, muted_by, muted_at, expira_em) VALUES(?,?,?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  CONIURA stmt_bind_text(stmt, 3, motivo)
+  CONIURA stmt_bind_int(stmt, 4, muted_by)
+  CONIURA stmt_bind_int(stmt, 5, CONIURA now_ms())
+  CONIURA stmt_bind_int(stmt, 6, expira_em)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_unmute(SPECULUM NIHIL db, VERBUM sala_id, REX user_id) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_mutes WHERE sala_id = ? AND user_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_is_muted(SPECULUM NIHIL db, VERBUM sala_id, REX user_id) REDDE VERUM
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT expira_em FROM ws_room_mutes WHERE sala_id = ? AND user_id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX expira_em AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA stmt_finalize(stmt)
+      REDDE expira_em == 0 VEL expira_em >= CONIURA now_ms()
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE ws_room_mute_sweep(SPECULUM NIHIL db) REDDE REX
+  CONIURA ws_room_schema_up(db)
+  EVOCA REX before AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_mutes")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_mutes WHERE expira_em > 0 AND expira_em < ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE before - CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_mutes")
+EXPLICIT RITUALE
+
+RITUALE ws_room_mute_list(SPECULUM NIHIL db, VERBUM sala_id) REDDE SPECULUM NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RoomMute))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT user_id, motivo, muted_by, muted_at, expira_em FROM ws_room_mutes WHERE sala_id = ? ORDER BY muted_at DESC")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RoomMute mute
+      VINCIRE mute.sala_id AD sala_id
+      VINCIRE mute.user_id AD CONIURA stmt_get_int(stmt, 0)
+      VINCIRE mute.motivo AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+      VINCIRE mute.muted_by AD CONIURA stmt_get_int(stmt, 2)
+      VINCIRE mute.muted_at AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE mute.expira_em AD CONIURA stmt_get_int(stmt, 4)
+      CONIURA fluxus_push(out, SPECULUM mute)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE ws_room_ban(SPECULUM NIHIL db, VERBUM sala_id, REX user_id, VERBUM motivo, REX banned_by, REX expira_em) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO ws_room_bans(sala_id, user_id, motivo, banned_by, banned_at, expira_em) VALUES(?,?,?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  CONIURA stmt_bind_text(stmt, 3, motivo)
+  CONIURA stmt_bind_int(stmt, 4, banned_by)
+  CONIURA stmt_bind_int(stmt, 5, CONIURA now_ms())
+  CONIURA stmt_bind_int(stmt, 6, expira_em)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_unban(SPECULUM NIHIL db, VERBUM sala_id, REX user_id) REDDE NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_bans WHERE sala_id = ? AND user_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE ws_room_is_banned(SPECULUM NIHIL db, VERBUM sala_id, REX user_id) REDDE VERUM
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT expira_em FROM ws_room_bans WHERE sala_id = ? AND user_id = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX expira_em AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA stmt_finalize(stmt)
+      REDDE expira_em == 0 VEL expira_em >= CONIURA now_ms()
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE ws_room_ban_sweep(SPECULUM NIHIL db) REDDE REX
+  CONIURA ws_room_schema_up(db)
+  EVOCA REX before AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_bans")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM ws_room_bans WHERE expira_em > 0 AND expira_em < ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE before - CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM ws_room_bans")
+EXPLICIT RITUALE
+
+RITUALE ws_room_ban_list(SPECULUM NIHIL db, VERBUM sala_id) REDDE SPECULUM NIHIL
+  CONIURA ws_room_schema_up(db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RoomBan))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT user_id, motivo, banned_by, banned_at, expira_em FROM ws_room_bans WHERE sala_id = ? ORDER BY banned_at DESC")
+  CONIURA stmt_bind_text(stmt, 1, sala_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RoomBan ban
+      VINCIRE ban.sala_id AD sala_id
+      VINCIRE ban.user_id AD CONIURA stmt_get_int(stmt, 0)
+      VINCIRE ban.motivo AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+      VINCIRE ban.banned_by AD CONIURA stmt_get_int(stmt, 2)
+      VINCIRE ban.banned_at AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE ban.expira_em AD CONIURA stmt_get_int(stmt, 4)
+      CONIURA fluxus_push(out, SPECULUM ban)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,54 @@
+INCIPIT grimoire "fase18_18d_bulk_best_effort"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_schema.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_queue.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_decide.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_bulk.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+
+RITUALE test_bulk_best_effort() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18d_bulk")
+  EVOCA TaskConfig task_cfg AD CONIURA task_config_default()
+  CONIURA moderation_schema_up(stack.dbh)
+  CONIURA tasks_schema_up(stack.dbh)
+  EVOCA ModerationItem item1
+  VINCIRE item1.id AD "mod-1"
+  VINCIRE item1.kind AD MODERATION_COMMENT
+  VINCIRE item1.state AD MOD_PENDING
+  VINCIRE item1.object_id AD "c1"
+  VINCIRE item1.object_type AD "comment"
+  VINCIRE item1.submitter_id AD "user-1"
+  VINCIRE item1.content_preview_json AD "{}"
+  VINCIRE item1.report_reason AD ""
+  VINCIRE item1.assigned_to AD ""
+  VINCIRE item1.priority AD 1
+  VINCIRE item1.created_at_unix AD 1
+  VINCIRE item1.updated_at_unix AD 1
+  CONIURA moderation_item_create(stack.dbh, item1)
+  EVOCA ModerationItem item2 AD item1
+  VINCIRE item2.id AD "mod-2"
+  VINCIRE item2.object_id AD "c2"
+  CONIURA moderation_item_create(stack.dbh, item2)
+  CONIURA moderation_decide(stack.dbh, "mod-2", "hide", "existing", "mod-z", FALSUM, task_cfg)
+  EVOCA ModerationBulkResult result AD CONIURA moderation_bulk_apply(stack.dbh, "[\"mod-1\",\"mod-2\"]", "reject", "batch", "mod-a", task_cfg)
+  SI result.matched != 2
+    IACE "bulk matched mismatch"
+  FIN SI
+  SI result.changed != 1
+    IACE "bulk changed mismatch"
+  FIN SI
+  SI result.failed != 1
+    IACE "bulk failed mismatch"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_bulk_best_effort()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

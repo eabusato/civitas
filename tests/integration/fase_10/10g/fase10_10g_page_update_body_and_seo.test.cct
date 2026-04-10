@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase10_10g_page_update_body_and_seo"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages_crud.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10g_page_update_body_and_seo")
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  VINCIRE origin.user_id AD "1"
+  VINCIRE origin.request_id AD "req-1"
+  EVOCA Page page AD CONIURA page_create(db, "en", "about", "About", "<p>A</p>", origin)
+  CONIURA page_update_body(db, page.id, "<p>B</p>", origin)
+  EVOCA PageSeo seo AD CONIURA page_seo_default()
+  VINCIRE seo.title AD "About Us"
+  VINCIRE seo.description AD "About page"
+  CONIURA page_update_seo(db, page.id, seo, origin)
+  EVOCA Page loaded AD CONIURA page_get_by_id(db, page.id)
+  SI CONIURA compare(loaded.body_html, "<p>B</p>") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(loaded.seo_title, "About Us") != 0
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

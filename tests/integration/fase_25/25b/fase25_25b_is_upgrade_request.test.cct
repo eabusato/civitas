@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase25_25b_is_upgrade_request"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/websocket/websocket.cct"
+ADVOCARE "cct/http.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HttpRequest req AD CONIURA phase25_http_ws_request("/ws/chat", "dGhlIHNhbXBsZSBub25jZQ==")
+  SI NON CONIURA ws_is_upgrade_request(req)
+    REDDE 1
+  FIN SI
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "Sec-WebSocket-Key", "")
+  SI CONIURA ws_is_upgrade_request(req)
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

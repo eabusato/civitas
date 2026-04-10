@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase12_12b_redis_tag_invalidation"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_tags.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_redis_cache("12b_redis_tag", "view-ns")
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM h, CONIURA phase12_12b_cfg("cv12b", 60), NIHIL)
+  EVOCA WebRequest req1 AD CONIURA phase12_12b_request("GET", "/r1")
+  EVOCA WebRequest req2 AD CONIURA phase12_12b_request("GET", "/r2")
+  CONIURA cache_view_set(cv, req1, CONIURA response_html("one"), 60, "posts")
+  CONIURA cache_view_set(cv, req2, CONIURA response_html("two"), 60, "posts")
+  CONIURA cache_view_invalidar_tag(cv, "posts")
+  EVOCA CacheMaybeViewEntry maybe1 AD CONIURA cache_view_get(cv, req1)
+  EVOCA CacheMaybeViewEntry maybe2 AD CONIURA cache_view_get(cv, req2)
+  SI maybe1.found VEL maybe2.found
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

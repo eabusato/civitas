@@ -1,0 +1,130 @@
+INCIPIT grimoire "civitas_auth_users"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth.cct"
+ADVOCARE "auth_hash.cct"
+
+RITUALE auth_buscar_por_email(SPECULUM NIHIL db, VERBUM email) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "SELECT id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login FROM usuarios WHERE email = ? LIMIT 1"
+  )
+  CONIURA stmt_bind_text(stmt, 1, email)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  EVOCA User u AD CONIURA auth_user_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(User)(u)
+EXPLICIT RITUALE
+
+RITUALE auth_buscar_por_id(SPECULUM NIHIL db, VERBUM user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "SELECT id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login FROM usuarios WHERE id = ? LIMIT 1"
+  )
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  EVOCA User u AD CONIURA auth_user_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(User)(u)
+EXPLICIT RITUALE
+
+RITUALE auth_criar_usuario(SPECULUM NIHIL db, AuthConfig cfg, VERBUM email, VERBUM senha) REDDE SPECULUM NIHIL
+  SI CONIURA len(senha) < cfg.min_senha
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthSenhaFraca)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL existente_opt AD CONIURA auth_buscar_por_email(db, email)
+  SI CONIURA option_is_some GENUS(User)(existente_opt)
+    CONIURA option_free GENUS(User)(existente_opt)
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthEmailJaExiste)
+  FIN SI
+  CONIURA option_free GENUS(User)(existente_opt)
+
+  EVOCA User u AD CONIURA auth_user_empty()
+  VINCIRE u.id AD CONIURA uuid_to_string(CONIURA uuid_v7())
+  VINCIRE u.email AD email
+  VINCIRE u.senha_hash AD CONIURA auth_hash_senha(cfg, senha)
+  VINCIRE u.ativo AD VERUM
+  VINCIRE u.email_verificado AD FALSUM
+  VINCIRE u.email_verificacao_pendente AD ""
+  VINCIRE u.criado_em AD CONIURA auth_now_iso_utc()
+  VINCIRE u.ultimo_login AD ""
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "INSERT INTO usuarios (id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login) VALUES (?, ?, ?, 1, 0, '', ?, '')"
+  )
+  CONIURA stmt_bind_text(stmt, 1, u.id)
+  CONIURA stmt_bind_text(stmt, 2, u.email)
+  CONIURA stmt_bind_text(stmt, 3, u.senha_hash)
+  CONIURA stmt_bind_text(stmt, 4, u.criado_em)
+  CONIURA auth_exec_stmt_no_rows(stmt)
+
+  REDDE CONIURA Ok GENUS(User, AuthError)(u)
+EXPLICIT RITUALE
+
+RITUALE auth_atualizar_senha(SPECULUM NIHIL db, AuthConfig cfg, VERBUM user_id, VERBUM nova_senha) REDDE VERUM
+  SI CONIURA len(nova_senha) < cfg.min_senha
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM hash AD CONIURA auth_hash_senha(cfg, nova_senha)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE usuarios SET senha_hash = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, hash)
+  CONIURA stmt_bind_text(stmt, 2, user_id)
+  CONIURA auth_exec_stmt_no_rows(stmt)
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE auth_deletar_usuario(SPECULUM NIHIL db, VERBUM user_id) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM usuarios WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA auth_exec_stmt_no_rows(stmt)
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE auth_usuario_ativo(SPECULUM NIHIL db, VERBUM user_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "SELECT id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login FROM usuarios WHERE id = ? AND ativo = 1 LIMIT 1"
+  )
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(User)()
+  FIN SI
+  EVOCA User u AD CONIURA auth_user_from_stmt(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(User)(u)
+EXPLICIT RITUALE
+
+RITUALE auth_marcar_inativo(SPECULUM NIHIL db, VERBUM user_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE usuarios SET ativo = 0 WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA auth_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

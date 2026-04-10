@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase21_21a_render_svg_animation_and_step"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Trace trace AD CONIURA phase21_sample_trace("trace-step")
+  EVOCA TraceRenderResult rendered AD CONIURA trace_render_svg(trace, CONIURA phase21_render_config("21a_render_svg_animation_and_step"))
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA find(rendered.svg, "animateMotion") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(rendered.svg, "data-anim-action=\"toggle\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(rendered.svg, "setCurrentTime(0)") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(rendered.svg, "id=\"span-") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

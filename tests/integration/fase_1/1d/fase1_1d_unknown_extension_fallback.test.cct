@@ -1,0 +1,13 @@
+INCIPIT grimoire "fase1_1d_unknown_extension_fallback_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compare(CONIURA mime_from_extension("desconhecido"), "application/octet-stream") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

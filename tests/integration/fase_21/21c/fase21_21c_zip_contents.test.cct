@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase21_21c_zip_contents"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/archive_zip.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase21_reset_root("21c_zip_contents")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase21_trace_db_path("21c_zip_contents"), trace_dir, 20, 24)
+  EVOCA VERBUM file_path AD CONIURA phase21_write_sample_trace(trace_dir, "trace-zip-html")
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-zip-html", "/api/posts", "GET", 500, 180, 4, "u", file_path, 100)
+  EVOCA TraceExportConfig cfg AD CONIURA trace_export_default_config(SPECULUM store, root, "Mural X")
+  VINCIRE cfg.render_cfg AD CONIURA phase21_render_config("21c_zip_contents")
+  EVOCA VERBUM archive_path AD CONIURA path_join(root, "catalog.zip")
+  CONIURA trace_export_write_zip(cfg, archive_path)
+  CONIURA trace_store_close(SPECULUM store)
+  EVOCA ZipArchive archive AD CONIURA result_unwrap GENUS(ZipArchive, VERBUM)(CONIURA zip_open(archive_path))
+  EVOCA VERBUM index_html AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(CONIURA zip_read_text(archive, "index.html"))
+  EVOCA VERBUM css AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(CONIURA zip_read_text(archive, "static/panel.css"))
+  EVOCA VERBUM endpoint_html AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(CONIURA zip_read_text(archive, "endpoints/GET____api__posts.html"))
+  EVOCA VERBUM trace_svg AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(CONIURA zip_read_text(archive, "traces/GET____api__posts.svg"))
+  CONIURA zip_close(SPECULUM archive)
+  SI CONIURA find(index_html, "Mural X Trace Export") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(index_html, "error seen") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(css, ".svg-wrap") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(endpoint_html, "../traces/GET____api__posts.svg") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(trace_svg, "trace-packet") == -1
+    REDDE 5
+  FIN SI
+  SI CONIURA find(trace_svg, "data-route-id=\"api.users.list\"") == -1
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

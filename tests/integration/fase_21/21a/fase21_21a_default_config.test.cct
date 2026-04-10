@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase21_21a_default_config"
+
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TraceRenderConfig cfg AD CONIURA trace_render_default_config()
+  SI cfg.width != 1200
+    REDDE 1
+  FIN SI
+  SI cfg.label_col_width != 220
+    REDDE 2
+  FIN SI
+  SI NON cfg.animate
+    REDDE 3
+  FIN SI
+  SI NON cfg.dark_mode
+    REDDE 4
+  FIN SI
+  SI cfg.min_bar_width != 2
+    REDDE 5
+  FIN SI
+  SI NON cfg.hide_timeline
+    REDDE 6
+  FIN SI
+  SI NON cfg.animation_loop
+    REDDE 7
+  FIN SI
+  SI CONIURA compare(cfg.sigil_view, "routes") != 0
+    REDDE 8
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

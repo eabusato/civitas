@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_django_fixture_import"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "django_migrate.cct"
+ADVOCARE "../data_io/data_import.cct"
+
+RITUALE django_model_resolve_table(SPECULUM NIHIL django_models, VERBUM model_name) REDDE VERBUM
+  EVOCA REX n AD CONIURA fluxus_len(django_models)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM DjangoModel dmp AD CONIURA fluxus_get(django_models, i)
+    EVOCA VERBUM canonical AD CONIURA concat(CONIURA to_lower((*dmp).app), ".")
+    VINCIRE canonical AD CONIURA concat(canonical, CONIURA to_lower((*dmp).nome))
+    SI CONIURA compare(canonical, CONIURA to_lower(model_name)) == 0
+      REDDE (*dmp).db_table
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE django_fixture_import(SPECULUM NIHIL db, VERBUM caminho, SPECULUM NIHIL django_models, DjangoMigrateConfig cfg) REDDE DjangoMigrateResult
+  EVOCA DjangoMigrateResult result AD CONIURA django_migrate_result_new()
+  EVOCA Json arr AD CONIURA json_parse(CONIURA read_all(caminho))
+  EVOCA REX n AD CONIURA json_arr_len(arr)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA Json item AD CONIURA json_arr_get(arr, i)
+    EVOCA VERBUM tabela AD CONIURA django_model_resolve_table(django_models, CONIURA json_expect_str(CONIURA json_get_key(item, "model")))
+    EVOCA Json obj AD CONIURA json_get_key(item, "fields")
+    SI CONIURA json_has_key(item, "pk")
+      CONIURA json_set_key(obj, "id", CONIURA json_get_key(item, "pk"))
+    FIN SI
+    SI CONIURA len(tabela) == 0
+      VINCIRE result.registros_com_erro AD result.registros_com_erro + 1
+    ALITER
+      SI NON cfg.dry_run
+        EVOCA VERBUM err AD CONIURA data_import_insert_json(db, tabela, obj)
+        SI CONIURA len(err) > 0
+          VINCIRE result.registros_com_erro AD result.registros_com_erro + 1
+        ALITER
+          VINCIRE result.registros_importados AD result.registros_importados + 1
+        FIN SI
+      ALITER
+        VINCIRE result.registros_importados AD result.registros_importados + 1
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE result
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

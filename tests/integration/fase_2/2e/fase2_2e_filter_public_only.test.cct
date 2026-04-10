@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase2_2e_filter_public_only_test"
+
+ADVOCARE "../../../../lib/civitas/visibility.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL items AD CONIURA fluxus_init(MENSURA(VisibilityFilterItem))
+  EVOCA VisibilityFilterItem public_item
+  EVOCA VisibilityFilterItem followers_item
+  EVOCA VisibilityFilterItem deleted_item
+  EVOCA SPECULUM NIHIL filtered
+
+  VINCIRE public_item.label AD "public-post"
+  VINCIRE public_item.policy AD VISIBILITY_PUBLIC
+  VINCIRE followers_item.label AD "followers-post"
+  VINCIRE followers_item.policy AD VISIBILITY_FOLLOWERS
+  VINCIRE deleted_item.label AD "deleted-post"
+  VINCIRE deleted_item.policy AD VISIBILITY_DELETED
+
+  CONIURA fluxus_push(items, SPECULUM public_item)
+  CONIURA fluxus_push(items, SPECULUM followers_item)
+  CONIURA fluxus_push(items, SPECULUM deleted_item)
+
+  VINCIRE filtered AD CONIURA visibility_filter_public_only(items)
+  SI CONIURA fluxus_len(filtered) != 1
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM VisibilityFilterItem first_ptr AD CONIURA fluxus_get(filtered, 0)
+  SI CONIURA compare((*first_ptr).label, "public-post") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA visibility_is_public((*first_ptr).policy)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA visibility_is_hidden_from_public(VISIBILITY_PRIVATE)
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

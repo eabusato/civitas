@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase13_13b_factory_build_with_override"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_seq.cct"
+ADVOCARE "../../../../lib/civitas/factory/factory_build.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA factory_seq_reset()
+  EVOCA FactoryDef def AD CONIURA factory_def_new("posts")
+  CONIURA factory_def_add_const(def, "titulo", "Base")
+  CONIURA factory_def_add_seq(def, "slug", "post-")
+  EVOCA Json overrides AD CONIURA json_obj()
+  CONIURA json_obj_push(overrides, "titulo", CONIURA json_str("Changed"))
+  EVOCA Json obj AD CONIURA factory_build_with(def, overrides)
+  SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(obj, "titulo")), "Changed") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(obj, "slug")), "post-1") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

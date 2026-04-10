@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase11_11d_count_sql_and_locale_map"
+
+ADVOCARE "../../../../lib/civitas/search/search.cct"
+ADVOCARE "../../../../lib/civitas/search/search_registry.cct"
+ADVOCARE "../../../../lib/civitas/search/search_build.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compare(CONIURA search_locale_to_dict("pt-BR"), "portuguese") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA search_locale_to_dict("xx"), "simple") != 0
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SearchField title AD CONIURA search_field_new("title", "A")
+  CONIURA fluxus_push(fields, SPECULUM title)
+  EVOCA SearchIndex idx AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(CONIURA search_index_new("page", "pages", "id", "pt-BR", fields))
+  EVOCA SPECULUM NIHIL registry AD CONIURA search_registry_new()
+  CONIURA search_registry_add(registry, idx)
+  EVOCA SearchQuery q AD CONIURA search_query_default("term")
+  EVOCA SPECULUM NIHIL count_sql_result AD CONIURA search_build_count_sql(registry, q)
+  EVOCA VERBUM sql AD CONIURA result_unwrap GENUS(VERBUM, VERBUM)(count_sql_result)
+  SI CONIURA find(sql, "SELECT COUNT(*) FROM") == -1
+    REDDE 3
+  FIN SI
+  SI NON CONIURA result_is_err GENUS(VERBUM, VERBUM)(CONIURA search_build_sql(registry, CONIURA search_query_default("")))
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

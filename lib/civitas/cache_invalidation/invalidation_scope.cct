@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_cache_invalidation_scope"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "invalidation.cct"
+
+RITUALE invalidation_scope_chave(VERBUM chave) REDDE InvalidationScope
+  EVOCA InvalidationScope scope
+  VINCIRE scope.kind AD IskChave
+  VINCIRE scope.valor AD chave
+  REDDE scope
+EXPLICIT RITUALE
+
+RITUALE invalidation_scope_tag(VERBUM tag) REDDE InvalidationScope
+  EVOCA InvalidationScope scope
+  VINCIRE scope.kind AD IskTag
+  VINCIRE scope.valor AD tag
+  REDDE scope
+EXPLICIT RITUALE
+
+RITUALE invalidation_scope_modelo(VERBUM nome_modelo) REDDE InvalidationScope
+  EVOCA InvalidationScope scope
+  VINCIRE scope.kind AD IskModelo
+  VINCIRE scope.valor AD nome_modelo
+  REDDE scope
+EXPLICIT RITUALE
+
+RITUALE invalidation_scope_rota(VERBUM padrao_rota) REDDE InvalidationScope
+  EVOCA InvalidationScope scope
+  VINCIRE scope.kind AD IskRota
+  VINCIRE scope.valor AD padrao_rota
+  REDDE scope
+EXPLICIT RITUALE
+
+RITUALE invalidation_scope_locale(VERBUM locale) REDDE InvalidationScope
+  EVOCA InvalidationScope scope
+  VINCIRE scope.kind AD IskLocale
+  VINCIRE scope.valor AD locale
+  REDDE scope
+EXPLICIT RITUALE
+
+RITUALE invalidation_scope_tag_value(InvalidationScope scope) REDDE VERBUM
+  ELIGE scope.kind
+    CASUS IskTag:
+      REDDE scope.valor
+    CASUS IskModelo:
+      REDDE CONIURA concat("model:", scope.valor)
+    CASUS IskRota:
+      REDDE CONIURA concat("route:", scope.valor)
+    CASUS IskLocale:
+      REDDE CONIURA concat("locale:", scope.valor)
+    ALIOQUIN:
+      REDDE scope.valor
+  FIN ELIGE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

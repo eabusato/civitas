@@ -1,0 +1,334 @@
+INCIPIT grimoire "mural_expandido_example_server_timeout_smoke_test"
+
+ADVOCARE "../../fase_1/support/common.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE muralx_smoke_root() REDDE VERBUM
+  REDDE "tests/tmp/examples/mural_expandido/server_timeout_smoke"
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_file(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA muralx_smoke_root(), name)
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_db_path() REDDE VERBUM
+  REDDE CONIURA resolve(CONIURA path_join(CONIURA cwd(), CONIURA muralx_smoke_file("mural_expandido.db")))
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_cleanup_file(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    TEMPTA
+      CONIURA delete_file(path)
+    CAPE FRACTUM erro
+      EVOCA VERBUM err_text AD OBSECRO fractum_to_verbum(erro)
+      SI CONIURA find(err_text, "nao encontrado") == -1
+        IACE OBSECRO fractum_to_verbum(erro)
+      FIN SI
+    FIN TEMPTA
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_stop_existing_server() REDDE NIHIL
+  EVOCA VERBUM pid_path AD CONIURA muralx_smoke_file("pid.txt")
+  EVOCA VERBUM cmd AD ""
+  SI CONIURA exists(pid_path)
+    VINCIRE cmd AD "kill -0 "
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_path)))
+    VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1 && kill -TERM ")
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA trim(CONIURA read_all(pid_path)))
+    VINCIRE cmd AD CONIURA concat(cmd, " >/dev/null 2>&1 || true")
+    CONIURA run(cmd)
+    CONIURA sleep_ms(250)
+    CONIURA muralx_smoke_cleanup_file(pid_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_pick_port() REDDE REX
+  REDDE 24000 + (CONIURA now_ms() % 6000)
+EXPLICIT RITUALE
+
+RITUALE muralx_status_line(VERBUM raw_response) REDDE VERBUM
+  EVOCA REX crlf_idx AD CONIURA find(raw_response, CONIURA crlf())
+  SI crlf_idx == -1
+    REDDE raw_response
+  FIN SI
+  REDDE CONIURA substring(raw_response, 0, crlf_idx)
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_body(VERBUM raw_response) REDDE VERBUM
+  EVOCA VERBUM sep AD CONIURA concat(CONIURA crlf(), CONIURA crlf())
+  EVOCA REX idx AD CONIURA find(raw_response, sep)
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(raw_response, idx + CONIURA len(sep), CONIURA len(raw_response))
+EXPLICIT RITUALE
+
+RITUALE muralx_extract_cookie_value(VERBUM set_cookie_header, VERBUM cookie_name) REDDE VERBUM
+  EVOCA VERBUM prefix AD CONIURA concat(cookie_name, "=")
+  EVOCA REX semi AD 0
+  SI NON CONIURA starts_with(set_cookie_header, prefix)
+    REDDE ""
+  FIN SI
+  VINCIRE semi AD CONIURA find(set_cookie_header, ";")
+  SI semi == -1
+    REDDE CONIURA substring(set_cookie_header, CONIURA len(prefix), CONIURA len(set_cookie_header))
+  FIN SI
+  REDDE CONIURA substring(set_cookie_header, CONIURA len(prefix), semi)
+EXPLICIT RITUALE
+
+RITUALE muralx_header_value(VERBUM raw_response, VERBUM header_name) REDDE VERBUM
+  EVOCA VERBUM lower_raw AD CONIURA to_lower(raw_response)
+  EVOCA VERBUM marker AD CONIURA concat(CONIURA to_lower(header_name), ": ")
+  EVOCA REX idx AD CONIURA find(lower_raw, marker)
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  EVOCA REX start AD idx + CONIURA len(marker)
+  EVOCA REX end_idx AD CONIURA find(CONIURA substring(raw_response, start, CONIURA len(raw_response)), CONIURA crlf())
+  SI end_idx == -1
+    REDDE CONIURA substring(raw_response, start, CONIURA len(raw_response))
+  FIN SI
+  REDDE CONIURA substring(raw_response, start, start + end_idx)
+EXPLICIT RITUALE
+
+RITUALE muralx_extract_href_after(VERBUM html, VERBUM marker) REDDE VERBUM
+  EVOCA REX idx AD CONIURA find(html, marker)
+  SI idx == -1
+    REDDE ""
+  FIN SI
+  EVOCA REX start AD idx + CONIURA len(marker)
+  EVOCA REX rel_end AD CONIURA find(CONIURA substring(html, start, CONIURA len(html)), "\"")
+  SI rel_end == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(html, start, start + rel_end)
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_raw_http(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  REDDE CONIURA http_read_response_raw(sock)
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_raw_http_headers(REX port, VERBUM payload) REDDE VERBUM
+  EVOCA SPECULUM NIHIL sock AD CONIURA open_local_socket_with_timeout(port, 1500)
+  SI CONIURA send_raw(sock, payload) != 0
+    IACE "failed to send raw request"
+  FIN SI
+  REDDE CONIURA http_read_headers(sock)
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_compile_or_fail(VERBUM source_path, VERBUM log_name) REDDE NIHIL
+  EVOCA VERBUM cmd AD CONIURA concat(CONIURA compiler_bin(), " ")
+  VINCIRE cmd AD CONIURA concat(cmd, source_path)
+  SI CONIURA run_to_log(cmd, CONIURA muralx_smoke_file(log_name)) != 0
+    IACE CONIURA concat("compile failed: ", source_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_prepare() REDDE NIHIL
+  CONIURA mkdir_all(CONIURA muralx_smoke_root())
+  CONIURA muralx_smoke_stop_existing_server()
+  CONIURA muralx_smoke_cleanup_file(CONIURA muralx_smoke_file("ready.txt"))
+  CONIURA muralx_smoke_cleanup_file(CONIURA muralx_smoke_file("done.txt"))
+  CONIURA muralx_smoke_cleanup_file(CONIURA muralx_smoke_file("pid.txt"))
+  CONIURA muralx_smoke_cleanup_file(CONIURA muralx_smoke_db_path())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_bootstrap_db() REDDE NIHIL
+  EVOCA VERBUM cmd AD "MURAL_EXPANDIDO_PROJECT_ROOT=examples/mural_expandido MURAL_EXPANDIDO_DATABASE_PATH="
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA muralx_smoke_db_path())
+  VINCIRE cmd AD CONIURA concat(cmd, " ./examples/mural_expandido/bootstrap_db >")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA muralx_smoke_file("bootstrap_run.log"))
+  VINCIRE cmd AD CONIURA concat(cmd, " 2>&1")
+  SI CONIURA run(cmd) != 0
+    IACE "bootstrap_db failed"
+  FIN SI
+  SI NON CONIURA exists(CONIURA muralx_smoke_db_path())
+    IACE "bootstrap_db did not create database"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_smoke_start_server(REX port) REDDE NIHIL
+  EVOCA VERBUM cmd AD "MURAL_EXPANDIDO_PROJECT_ROOT=examples/mural_expandido"
+  VINCIRE cmd AD CONIURA concat(cmd, " MURAL_EXPANDIDO_DATABASE_PATH=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA muralx_smoke_db_path())
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__HOST=127.0.0.1")
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_HTTP__PORT=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA stringify_int(port))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_APP__ALLOWED_HOSTS=127.0.0.1,localhost")
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_READY_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA muralx_smoke_file("ready.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_DONE_FILE=")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA muralx_smoke_file("done.txt"))
+  VINCIRE cmd AD CONIURA concat(cmd, " CIVITAS_MAX_REQUESTS=8")
+  VINCIRE cmd AD CONIURA concat(cmd, " ./examples/mural_expandido/main")
+  SI CONIURA spawn_to_log_with_pid(cmd, CONIURA muralx_smoke_file("server.log"), CONIURA muralx_smoke_file("pid.txt")) != 0
+    IACE "failed to start mural_expandido server"
+  FIN SI
+  SI NON CONIURA wait_for_file(CONIURA muralx_smoke_file("ready.txt"), 4000)
+    IACE "mural_expandido server did not become ready"
+  FIN SI
+  CONIURA sleep_ms(150)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA REX port AD CONIURA muralx_smoke_pick_port()
+  EVOCA VERBUM raw_home AD ""
+  EVOCA VERBUM raw_admin AD ""
+  EVOCA VERBUM raw_locale AD ""
+  EVOCA VERBUM raw_static AD ""
+  EVOCA VERBUM raw_sigilos AD ""
+  EVOCA VERBUM raw_sigilo_detail AD ""
+  EVOCA VERBUM raw_ops_panel AD ""
+  EVOCA VERBUM raw_export AD ""
+  EVOCA VERBUM cookie_value AD ""
+  EVOCA VERBUM sigilo_tail AD ""
+  EVOCA SPECULUM NIHIL idle_sock
+
+  CONIURA muralx_smoke_prepare()
+  CONIURA muralx_smoke_compile_or_fail("examples/mural_expandido/bootstrap_db.cct", "bootstrap_build.log")
+  CONIURA muralx_smoke_bootstrap_db()
+  CONIURA muralx_smoke_compile_or_fail("examples/mural_expandido/main.cct", "main_build.log")
+  CONIURA muralx_smoke_start_server(port)
+
+  SI CONIURA compare(CONIURA read_all(CONIURA muralx_smoke_file("ready.txt")), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE idle_sock AD CONIURA open_local_socket_with_timeout(port, 1000)
+  CONIURA sleep_ms(5200)
+  CONIURA sock_close(idle_sock)
+  CONIURA sleep_ms(150)
+
+  VINCIRE raw_home AD CONIURA muralx_smoke_raw_http(
+    port,
+    CONIURA concat("GET / HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA crlf()))))))
+  )
+
+  SI CONIURA compare(CONIURA muralx_status_line(raw_home), "HTTP/1.1 200 OK") != 0
+    IACE "server did not survive idle header timeout before GET /"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_home), "Mural Expandido") == -1
+    IACE "GET / body missing expected title"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_home), "/static/app.css") == -1
+    IACE "GET / should include static css reference"
+  FIN SI
+  VINCIRE cookie_value AD CONIURA muralx_extract_cookie_value(CONIURA muralx_header_value(raw_home, "set-cookie"), "muralx_session")
+  SI CONIURA len(cookie_value) == 0
+    IACE "GET / did not issue muralx_session cookie"
+  FIN SI
+
+  VINCIRE raw_static AD CONIURA muralx_smoke_raw_http_headers(
+    port,
+    CONIURA concat("GET /static/app.css HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_static), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK on /static/app.css"
+  FIN SI
+
+  VINCIRE raw_admin AD CONIURA muralx_smoke_raw_http_headers(
+    port,
+    CONIURA concat("GET /admin-lite HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_admin), "HTTP/1.1 401 Unauthorized") != 0
+    IACE "expected 401 Unauthorized on /admin-lite without credentials"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_admin), "connection: close") == -1
+    IACE "admin-lite 401 must force connection close"
+  FIN SI
+
+  VINCIRE raw_locale AD CONIURA muralx_smoke_raw_http_headers(
+    port,
+    CONIURA concat("GET /locale/en-US HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat("Authorization: Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==", CONIURA concat(CONIURA crlf(), CONIURA concat("Referer: http://127.0.0.1:", CONIURA concat(CONIURA stringify_int(port), CONIURA concat("/posts/neon-bridge-session", CONIURA concat(CONIURA crlf(), CONIURA concat("Cookie: muralx_session=", CONIURA concat(cookie_value, CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), ""))))))))))))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_locale), "HTTP/1.1 302 Found") != 0
+    IACE "expected 302 Found on locale switch"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_locale), "location: /") == -1
+    IACE "locale switch should redirect back to /"
+  FIN SI
+
+  VINCIRE raw_sigilos AD CONIURA muralx_smoke_raw_http(
+    port,
+    CONIURA concat("GET /sigilos-vivos HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat("Authorization: Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_sigilos), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK on /sigilos-vivos with admin auth"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_sigilos), "sigil-svg") == -1
+    IACE "sigilos-vivos should render real trace svg sigils"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_sigilos), "trace-packet") == -1
+    IACE "sigilos-vivos gallery must embed the animated CCT sigil packets"
+  FIN SI
+  VINCIRE sigilo_tail AD CONIURA muralx_extract_href_after(CONIURA muralx_smoke_body(raw_sigilos), "class=\"sigil-card\" href=\"/sigilos-vivos/")
+  SI CONIURA len(sigilo_tail) == 0
+    IACE "sigilos-vivos should link to a trace detail page"
+  FIN SI
+
+  VINCIRE raw_sigilo_detail AD CONIURA muralx_smoke_raw_http(
+    port,
+    CONIURA concat("GET /sigilos-vivos/", CONIURA concat(sigilo_tail, CONIURA concat(" HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat("Authorization: Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_sigilo_detail), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK on /sigilos-vivos/<trace_id> with admin auth"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_sigilo_detail), "sigil-svg-large") == -1
+    IACE "sigilo detail should render large real svg"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_sigilo_detail), "animateMotion") == -1
+    IACE "sigilo detail must keep the full animated CCT sigil"
+  FIN SI
+
+  VINCIRE raw_ops_panel AD CONIURA muralx_smoke_raw_http(
+    port,
+    CONIURA concat("GET /ops/traces HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat("Authorization: Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_ops_panel), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK on /ops/traces with admin auth"
+  FIN SI
+  SI CONIURA find(CONIURA muralx_smoke_body(raw_ops_panel), "Trace Panel") == -1
+    IACE "ops traces should use the canonical phase 21 trace panel"
+  FIN SI
+
+  VINCIRE raw_export AD CONIURA muralx_smoke_raw_http_headers(
+    port,
+    CONIURA concat("GET /sigilos-vivos/export.zip HTTP/1.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Host: 127.0.0.1", CONIURA concat(CONIURA crlf(), CONIURA concat("Connection: close", CONIURA concat(CONIURA crlf(), CONIURA concat("Authorization: Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==", CONIURA concat(CONIURA crlf(), CONIURA concat(CONIURA crlf(), "")))))))))
+  )
+  SI CONIURA compare(CONIURA muralx_status_line(raw_export), "HTTP/1.1 200 OK") != 0
+    IACE "expected 200 OK on /sigilos-vivos/export.zip with admin auth"
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(raw_export), "content-type: application/zip") == -1
+    IACE "sigilos export should return application/zip"
+  FIN SI
+
+  SI NON CONIURA wait_for_file(CONIURA muralx_smoke_file("done.txt"), 3000)
+    IACE "server did not finish after handling GET /"
+  FIN SI
+  SI CONIURA compare(CONIURA trim(CONIURA read_all(CONIURA muralx_smoke_file("done.txt"))), "ok") != 0
+    IACE "server did not finish cleanly"
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

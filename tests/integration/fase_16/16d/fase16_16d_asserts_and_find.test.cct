@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase16_16d_asserts_and_find"
+
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_assert.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Mailer m AD CONIURA mailer_test_open()
+  EVOCA MailMessage msg1 AD CONIURA mailer_simple("ana@test.local", "Ana", "First", "Hello Ana", "")
+  EVOCA MailMessage msg2 AD CONIURA mailer_simple("bruno@test.local", "Bruno", "Second", "Hello Bruno", "")
+  CONIURA mailer_send(SPECULUM m, msg1)
+  CONIURA mailer_send(SPECULUM m, msg2)
+  SI NON CONIURA mail_test_assert_count(m, 2)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA mail_test_assert_enviado_para(m, "bruno@test.local")
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA mail_test_assert_subject(m, 1, "Second")
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA mail_test_assert_body_contem(m, 0, "Ana")
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM NIHIL opt_msg AD CONIURA mail_test_find_by_to(m, "ana@test.local")
+  SI CONIURA option_is_none GENUS(MailMessage)(opt_msg)
+    CONIURA option_free GENUS(MailMessage)(opt_msg)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 5
+  FIN SI
+  CONIURA option_free GENUS(MailMessage)(opt_msg)
+  CONIURA mailer_test_close(SPECULUM m)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

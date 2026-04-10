@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_fixtures_root"
+
+ADVOCARE "fixtures/fixture.cct"
+ADVOCARE "fixtures/fixture_loader.cct"
+ADVOCARE "fixtures/fixture_exec.cct"
+ADVOCARE "fixtures/fixture_ref.cct"
+
+EXPLICIT grimoire

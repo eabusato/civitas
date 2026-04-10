@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase10_10d_slug_register_resolve"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/taxonomy/taxonomy.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10d_slug_register_resolve")
+  CONIURA taxonomy_ensure_schema(db)
+  CONIURA taxonomy_slug_register(db, "hello", "page", 7, "en")
+  EVOCA SlugResolution res AD CONIURA taxonomy_slug_resolve(db, "hello", "en")
+  SI NON res.found
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(res.object_type, "page") != 0 VEL res.object_id != 7
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

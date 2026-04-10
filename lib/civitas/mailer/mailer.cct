@@ -1,0 +1,153 @@
+INCIPIT grimoire "civitas_mailer"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/mail_spool.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MailerConfig
+  backend: MailBackendOptions
+  spool_opts: MailSpoolOptions
+  from_email: VERBUM
+  from_name: VERBUM
+FIN SIGILLUM
+
+ORDO MailerError
+  MailerNaoAberto,
+  MailerEnvioFalhou(VERBUM detalhe),
+  MailerMensagemInvalida(VERBUM motivo),
+  MailerErroInterno(VERBUM mensagem)
+FIN ORDO
+
+SIGILLUM Mailer
+  config: MailerConfig
+  client: SPECULUM NIHIL
+  spool: SPECULUM NIHIL
+  aberto: VERUM
+FIN SIGILLUM
+
+RITUALE mailer_ok_mailer(Mailer value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(Mailer, MailerError)(value)
+EXPLICIT RITUALE
+
+RITUALE mailer_err_mailer(MailerError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(Mailer, MailerError)(err)
+EXPLICIT RITUALE
+
+RITUALE mailer_ok_send(MailSendResult value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MailSendResult, MailerError)(value)
+EXPLICIT RITUALE
+
+RITUALE mailer_err_send(MailerError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MailSendResult, MailerError)(err)
+EXPLICIT RITUALE
+
+RITUALE mailer_ok_message(MailMessage value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MailMessage, MailerError)(value)
+EXPLICIT RITUALE
+
+RITUALE mailer_err_message(MailerError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MailMessage, MailerError)(err)
+EXPLICIT RITUALE
+
+RITUALE mailer_error_name(MailerError err) REDDE VERBUM
+  ELIGE err
+    CASUS MailerNaoAberto:
+      REDDE "MailerNaoAberto"
+    CASUS MailerEnvioFalhou(_):
+      REDDE "MailerEnvioFalhou"
+    CASUS MailerMensagemInvalida(_):
+      REDDE "MailerMensagemInvalida"
+    CASUS MailerErroInterno(_):
+      REDDE "MailerErroInterno"
+    ALIOQUIN:
+      REDDE "MailerError"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE mailer_error_caixa_vazia() REDDE MailerError
+  REDDE MailerErroInterno("memory outbox empty")
+EXPLICIT RITUALE
+
+RITUALE mailer_open(MailerConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL client_res AD CONIURA mail_client_open(cfg.backend)
+  SI CONIURA result_is_err GENUS(MailClient, VERBUM)(client_res)
+    REDDE CONIURA mailer_err_mailer(MailerErroInterno(CONIURA result_unwrap_err GENUS(MailClient, VERBUM)(client_res)))
+  FIN SI
+
+  EVOCA MailClient client_value AD CONIURA result_unwrap GENUS(MailClient, VERBUM)(client_res)
+  EVOCA SPECULUM MailClient client_ptr AD OBSECRO mem_alloc(MENSURA(MailClient))
+  VINCIRE (*client_ptr).options AD client_value.options
+  VINCIRE (*client_ptr).memory_outbox AD client_value.memory_outbox
+  VINCIRE (*client_ptr).last_error AD client_value.last_error
+  VINCIRE (*client_ptr).is_open AD client_value.is_open
+
+  EVOCA Mailer m
+  VINCIRE m.config AD cfg
+  VINCIRE m.client AD client_ptr
+  VINCIRE m.spool AD NIHIL
+  VINCIRE m.aberto AD VERUM
+
+  SI CONIURA len(cfg.spool_opts.root_dir) > 0
+    EVOCA SPECULUM NIHIL spool_res AD CONIURA mail_spool_open(cfg.spool_opts)
+    SI CONIURA result_is_err GENUS(MailSpool, VERBUM)(spool_res)
+      CONIURA mail_client_close(client_ptr)
+      OBSECRO mem_free(client_ptr)
+      REDDE CONIURA mailer_err_mailer(MailerErroInterno(CONIURA result_unwrap_err GENUS(MailSpool, VERBUM)(spool_res)))
+    FIN SI
+    EVOCA MailSpool spool_value AD CONIURA result_unwrap GENUS(MailSpool, VERBUM)(spool_res)
+    EVOCA SPECULUM MailSpool spool_ptr AD OBSECRO mem_alloc(MENSURA(MailSpool))
+    VINCIRE (*spool_ptr).options AD spool_value.options
+    VINCIRE m.spool AD spool_ptr
+  FIN SI
+
+  REDDE CONIURA mailer_ok_mailer(m)
+EXPLICIT RITUALE
+
+RITUALE mailer_close(SPECULUM Mailer m) REDDE NIHIL
+  SI (*m).client != NIHIL
+    EVOCA SPECULUM MailClient client_ptr AD (*m).client
+    CONIURA mail_client_close(client_ptr)
+    OBSECRO mem_free(client_ptr)
+    VINCIRE (*m).client AD NIHIL
+  FIN SI
+  SI (*m).spool != NIHIL
+    EVOCA SPECULUM MailSpool spool_ptr AD (*m).spool
+    OBSECRO mem_free(spool_ptr)
+    VINCIRE (*m).spool AD NIHIL
+  FIN SI
+  VINCIRE (*m).aberto AD FALSUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mailer_memory_count(Mailer m) REDDE REX
+  SI m.client == NIHIL
+    REDDE 0
+  FIN SI
+  EVOCA SPECULUM MailClient client_ptr AD m.client
+  REDDE CONIURA mail_memory_count(*client_ptr)
+EXPLICIT RITUALE
+
+RITUALE mailer_memory_get(Mailer m, REX index) REDDE SPECULUM NIHIL
+  SI m.client == NIHIL
+    REDDE CONIURA mailer_err_message(MailerNaoAberto)
+  FIN SI
+  EVOCA SPECULUM MailClient client_ptr AD m.client
+  EVOCA SPECULUM NIHIL get_res AD CONIURA mail_memory_get(*client_ptr, index)
+  SI CONIURA result_is_err GENUS(MailMessage, VERBUM)(get_res)
+    REDDE CONIURA mailer_err_message(MailerErroInterno(CONIURA result_unwrap_err GENUS(MailMessage, VERBUM)(get_res)))
+  FIN SI
+  REDDE CONIURA mailer_ok_message(CONIURA result_unwrap GENUS(MailMessage, VERBUM)(get_res))
+EXPLICIT RITUALE
+
+RITUALE mailer_memory_clear(SPECULUM Mailer m) REDDE NIHIL
+  SI (*m).client == NIHIL
+    REDDE
+  FIN SI
+  EVOCA SPECULUM MailClient client_ptr AD (*m).client
+  VINCIRE (*client_ptr).memory_outbox AD CONIURA fluxus_init(MENSURA(MailMessage))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

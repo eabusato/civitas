@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase23_23a_force_overwrites_and_compiles"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23a_force_overwrites_and_compiles")
+  CONIURA mkdir_all(CONIURA path_join(root, "nova/project"))
+  CONIURA write_all(CONIURA path_join(root, "nova/README.md"), "stale")
+  CONIURA write_all(CONIURA path_join(root, "nova/project/main.cct"), "INCIPIT grimoire \"stale\"\nEXPLICIT grimoire\n")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg("nova", TemplateWeb, root, VERUM)
+  EVOCA SPECULUM NIHIL res AD CONIURA civitas_new_create(cfg)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "nova/README.md"), "Template: `web`.")
+    REDDE 2
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "nova/apps/core/urls.cct")) != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "nova/project/main.cct")) != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,925 @@
+INCIPIT grimoire "civitas_session"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/bytes.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_scan.cct"
+ADVOCARE "../cookie.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+
+ORDO SessionBackendKind
+  SbkMemoria,
+  SbkArquivo,
+  SbkDb,
+  SbkRedis
+FIN ORDO
+
+SIGILLUM SessionStore
+  kind: SessionBackendKind
+  state: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM SessionConfig
+  cookie_nome: VERBUM
+  cookie_seguro: VERUM
+  cookie_http_only: VERUM
+  cookie_same_site: VERBUM
+  cookie_path: VERBUM
+  max_age_segundos: REX
+  idle_timeout_segundos: REX
+  segredo: VERBUM
+  cleanup_probabilidade: REX
+  ttl_segundos: REX
+  http_only: VERUM
+  secure: VERUM
+  samesite: VERBUM
+  max_idle: REX
+FIN SIGILLUM
+
+SIGILLUM Session
+  id: VERBUM
+  dados: SPECULUM NIHIL
+  criado_em: REX
+  acessado_em: REX
+  modificado: VERUM
+  novo: VERUM
+  user_id: VERBUM
+  expira_em: REX
+  ip: VERBUM
+  user_agent: VERBUM
+FIN SIGILLUM
+
+ORDO SessionError
+  SeNilCookie,
+  SeHmacInvalido,
+  SeNaoEncontrada,
+  SeExpirada,
+  SeBackendFalhou
+FIN ORDO
+
+SIGILLUM SessionFileState
+  diretorio: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SessionRedisConfig
+  prefixo_sessao: VERBUM
+  prefixo_user_sessions: VERBUM
+  ttl_user_sessions_extra: REX
+FIN SIGILLUM
+
+SIGILLUM SessionRedisState
+  redis: SPECULUM NIHIL
+  config: SessionRedisConfig
+FIN SIGILLUM
+
+RITUALE session_log_warn(VERBUM message) REDDE NIHIL
+  CONIURA eprintln(CONIURA concat("civitas.session.warn ", message))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_log_error(VERBUM message) REDDE NIHIL
+  CONIURA eprintln(CONIURA concat("civitas.session.error ", message))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_config_default() REDDE SessionConfig
+  EVOCA SessionConfig cfg
+  VINCIRE cfg.cookie_nome AD "civitas_session"
+  VINCIRE cfg.cookie_seguro AD FALSUM
+  VINCIRE cfg.cookie_http_only AD VERUM
+  VINCIRE cfg.cookie_same_site AD "Lax"
+  VINCIRE cfg.cookie_path AD "/"
+  VINCIRE cfg.max_age_segundos AD 0
+  VINCIRE cfg.idle_timeout_segundos AD 3600
+  VINCIRE cfg.segredo AD ""
+  VINCIRE cfg.cleanup_probabilidade AD 0
+  VINCIRE cfg.ttl_segundos AD 1209600
+  VINCIRE cfg.http_only AD cfg.cookie_http_only
+  VINCIRE cfg.secure AD cfg.cookie_seguro
+  VINCIRE cfg.samesite AD cfg.cookie_same_site
+  VINCIRE cfg.max_idle AD 0
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE session_file_state_new(VERBUM diretorio) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SessionFileState state AD OBSECRO mem_alloc(MENSURA(SessionFileState))
+  CONIURA mkdir_all(diretorio)
+  VINCIRE (*state).diretorio AD diretorio
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE session_file_state_get_dir(SPECULUM NIHIL state) REDDE VERBUM
+  EVOCA SPECULUM SessionFileState typed_state AD state
+  REDDE (*typed_state).diretorio
+EXPLICIT RITUALE
+
+RITUALE session_redis_config_default() REDDE SessionRedisConfig
+  EVOCA SessionRedisConfig cfg
+  VINCIRE cfg.prefixo_sessao AD "civitas:session:"
+  VINCIRE cfg.prefixo_user_sessions AD "civitas:user_sessions:"
+  VINCIRE cfg.ttl_user_sessions_extra AD 86400
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE session_redis_state_new(SessionRedisConfig cfg, SPECULUM NIHIL redis_handle) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SessionRedisState state AD OBSECRO mem_alloc(MENSURA(SessionRedisState))
+  VINCIRE (*state).redis AD redis_handle
+  VINCIRE (*state).config AD cfg
+  SI cfg.ttl_user_sessions_extra < 3600
+    CONIURA session_log_warn("ttl_user_sessions_extra menor que 3600 pode expirar o indice antes da sessao")
+  FIN SI
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE session_store_mem_init() REDDE SessionStore
+  EVOCA SessionStore store
+  VINCIRE store.kind AD SbkMemoria
+  VINCIRE store.state AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  REDDE store
+EXPLICIT RITUALE
+
+RITUALE session_store_file_init(VERBUM diretorio) REDDE SessionStore
+  EVOCA SessionStore store
+  VINCIRE store.kind AD SbkArquivo
+  VINCIRE store.state AD CONIURA session_file_state_new(diretorio)
+  REDDE store
+EXPLICIT RITUALE
+
+RITUALE session_store_db_init(VERBUM caminho_db) REDDE SessionStore
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(caminho_db)
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_sessions (id TEXT PRIMARY KEY, dados TEXT NOT NULL, criado_em INTEGER NOT NULL, acessado_em INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_civitas_sessions_acessado_em ON civitas_sessions(acessado_em)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_civitas_sessions_criado_em ON civitas_sessions(criado_em)")
+  EVOCA SessionStore store
+  VINCIRE store.kind AD SbkDb
+  VINCIRE store.state AD db
+  REDDE store
+EXPLICIT RITUALE
+
+RITUALE session_store_redis(SessionRedisConfig redis_cfg, SPECULUM NIHIL redis_handle) REDDE SessionStore
+  EVOCA SessionStore store
+  VINCIRE store.kind AD SbkRedis
+  VINCIRE store.state AD CONIURA session_redis_state_new(redis_cfg, redis_handle)
+  REDDE store
+EXPLICIT RITUALE
+
+RITUALE session_id_new() REDDE VERBUM
+  REDDE CONIURA uuid_to_string(CONIURA uuid_v4())
+EXPLICIT RITUALE
+
+RITUALE session_cookie_sign(VERBUM id, VERBUM segredo) REDDE VERBUM
+  EVOCA VERBUM mac AD CONIURA hmac_sha256(segredo, id)
+  REDDE CONIURA concat(CONIURA concat(id, "."), mac)
+EXPLICIT RITUALE
+
+RITUALE session_cookie_verify(VERBUM cookie_valor, VERBUM segredo) REDDE SPECULUM NIHIL
+  EVOCA REX dot_pos AD CONIURA find(cookie_valor, ".")
+  SI dot_pos <= 0
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA VERBUM id AD CONIURA substring(cookie_valor, 0, dot_pos)
+  EVOCA VERBUM mac_recebido AD CONIURA substring(cookie_valor, dot_pos + 1, CONIURA len(cookie_valor))
+  EVOCA VERBUM mac_esperado AD CONIURA hmac_sha256(segredo, id)
+  SI NON CONIURA constant_time_compare(mac_recebido, mac_esperado)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(id)
+EXPLICIT RITUALE
+
+RITUALE session_new() REDDE Session
+  EVOCA Session sess
+  VINCIRE sess.id AD CONIURA session_id_new()
+  VINCIRE sess.dados AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE sess.criado_em AD CONIURA now_ms()
+  VINCIRE sess.acessado_em AD sess.criado_em
+  VINCIRE sess.modificado AD FALSUM
+  VINCIRE sess.novo AD VERUM
+  VINCIRE sess.user_id AD ""
+  VINCIRE sess.expira_em AD 0
+  VINCIRE sess.ip AD ""
+  VINCIRE sess.user_agent AD ""
+  REDDE sess
+EXPLICIT RITUALE
+
+RITUALE session_data_storage_key(SPECULUM NIHIL dados, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERBUM copied_key AD CONIURA substring(*key_ptr, 0, CONIURA len(*key_ptr))
+      CONIURA fluxus_free(keys)
+      REDDE CONIURA Some GENUS(VERBUM)(copied_key)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE session_get_or(SPECULUM Session sess, VERBUM chave, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, fallback)
+      EVOCA VERBUM copied_value AD CONIURA concat("", value)
+      CONIURA fluxus_free(keys)
+      REDDE copied_value
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA concat("", fallback)
+EXPLICIT RITUALE
+
+RITUALE session_user_id_or(SPECULUM Session sess, VERBUM fallback) REDDE VERBUM
+  REDDE CONIURA session_get_or(sess, "user_id", fallback)
+EXPLICIT RITUALE
+
+RITUALE session_data_keys_sorted(SPECULUM Session sess) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  CONIURA fluxus_sort_verbum(keys)
+  REDDE keys
+EXPLICIT RITUALE
+
+RITUALE session_to_json(SPECULUM Session sess) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json dados AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL keys AD CONIURA session_data_keys_sorted(sess)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  CONIURA json_obj_push(root, "criado_em", CONIURA json_num(cast GENUS(UMBRA)((*sess).criado_em)))
+  CONIURA json_obj_push(root, "acessado_em", CONIURA json_num(cast GENUS(UMBRA)((*sess).acessado_em)))
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA json_obj_push(dados, *key_ptr, CONIURA json_str(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, "")))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA json_obj_push(root, "dados", dados)
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE session_from_json(VERBUM id, VERBUM payload) REDDE Session
+  EVOCA Session sess
+  VINCIRE sess.id AD id
+  VINCIRE sess.dados AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE sess.criado_em AD 0
+  VINCIRE sess.acessado_em AD 0
+  VINCIRE sess.modificado AD FALSUM
+  VINCIRE sess.novo AD FALSUM
+  VINCIRE sess.user_id AD ""
+  VINCIRE sess.expira_em AD 0
+  VINCIRE sess.ip AD ""
+  VINCIRE sess.user_agent AD ""
+
+  SI CONIURA len(CONIURA trim(payload)) == 0
+    REDDE sess
+  FIN SI
+
+  EVOCA SPECULUM NIHIL c AD CONIURA cursor_init(payload)
+  EVOCA Json root AD CONIURA json_parse_value(payload, c)
+  CONIURA cursor_free(c)
+
+  SI NON CONIURA json_is_obj(root)
+    REDDE sess
+  FIN SI
+
+  VINCIRE sess.criado_em AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "criado_em")))
+  VINCIRE sess.acessado_em AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "acessado_em")))
+
+  EVOCA Json dados AD CONIURA json_get_key(root, "dados")
+  SI CONIURA json_is_obj(dados)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA json_obj_len(dados)
+    DUM i < n
+      CONIURA map_insert GENUS(VERBUM, VERBUM)(
+        sess.dados,
+        CONIURA json_obj_key_at(dados, i),
+        CONIURA json_expect_str(CONIURA json_obj_value_at(dados, i))
+      )
+      VINCIRE i AD i + 1
+    FIN DUM
+  FIN SI
+
+  REDDE sess
+EXPLICIT RITUALE
+
+RITUALE session_backend_mem_load(SPECULUM NIHIL state, VERBUM id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL ids AD CONIURA map_keys GENUS(VERBUM, VERBUM)(state)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(ids)
+  DUM i < n
+    EVOCA SPECULUM VERBUM id_ptr AD CONIURA fluxus_get(ids, i)
+    SI CONIURA compare(*id_ptr, id) == 0
+      EVOCA VERBUM json AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(state, *id_ptr, "")
+      CONIURA fluxus_free(ids)
+      REDDE CONIURA Some GENUS(VERBUM)(json)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(ids)
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE session_backend_mem_save(SPECULUM NIHIL state, SPECULUM Session sess, SessionConfig cfg) REDDE NIHIL
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(state, (*sess).id, CONIURA session_to_json(sess))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_mem_delete(SPECULUM NIHIL state, VERBUM id, VERBUM user_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL ids AD CONIURA map_keys GENUS(VERBUM, VERBUM)(state)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(ids)
+  DUM i < n
+    EVOCA SPECULUM VERBUM id_ptr AD CONIURA fluxus_get(ids, i)
+    SI CONIURA compare(*id_ptr, id) == 0
+      CONIURA map_remove GENUS(VERBUM, VERBUM)(state, *id_ptr)
+      CONIURA fluxus_free(ids)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(ids)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_mem_cleanup(SPECULUM NIHIL state, SessionConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL ids AD CONIURA map_keys GENUS(VERBUM, VERBUM)(state)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(ids)
+  DUM i < n
+    EVOCA SPECULUM VERBUM id_ptr AD CONIURA fluxus_get(ids, i)
+    EVOCA SPECULUM NIHIL json_opt AD CONIURA map_get GENUS(VERBUM, VERBUM)(state, *id_ptr)
+    SI CONIURA option_is_some GENUS(VERBUM)(json_opt)
+      EVOCA VERBUM json_text AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(json_opt))
+      EVOCA Session sess AD CONIURA session_from_json(*id_ptr, json_text)
+      SI CONIURA session_is_expired(SPECULUM sess, cfg)
+        CONIURA map_remove GENUS(VERBUM, VERBUM)(state, *id_ptr)
+      FIN SI
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(json_opt)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(ids)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_file_path(SPECULUM NIHIL state, VERBUM id) REDDE VERBUM
+  EVOCA VERBUM dir AD CONIURA session_file_state_get_dir(state)
+  REDDE CONIURA concat(CONIURA concat(dir, "/"), CONIURA concat(id, ".json"))
+EXPLICIT RITUALE
+
+RITUALE session_backend_file_load(SPECULUM NIHIL state, VERBUM id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM path AD CONIURA session_backend_file_path(state, id)
+  SI NON CONIURA exists(path)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(CONIURA read_all(path))
+EXPLICIT RITUALE
+
+RITUALE session_backend_file_save(SPECULUM NIHIL state, SPECULUM Session sess, SessionConfig cfg) REDDE NIHIL
+  CONIURA write_all(CONIURA session_backend_file_path(state, (*sess).id), CONIURA session_to_json(sess))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_file_delete(SPECULUM NIHIL state, VERBUM id, VERBUM user_id) REDDE NIHIL
+  EVOCA VERBUM path AD CONIURA session_backend_file_path(state, id)
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_file_cleanup(SPECULUM NIHIL state, SessionConfig cfg) REDDE NIHIL
+  EVOCA VERBUM dir AD CONIURA session_file_state_get_dir(state)
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM entry_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA ends_with(*entry_ptr, ".json")
+      EVOCA VERBUM id AD CONIURA strip_suffix(*entry_ptr, ".json")
+      EVOCA VERBUM path AD CONIURA session_backend_file_path(state, id)
+      EVOCA Session sess AD CONIURA session_from_json(id, CONIURA read_all(path))
+      SI CONIURA session_is_expired(SPECULUM sess, cfg)
+        CONIURA delete_file(path)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_sql_quote(VERBUM value) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat("'", CONIURA replace_all(value, "'", "''")), "'")
+EXPLICIT RITUALE
+
+RITUALE session_backend_db_load(SPECULUM NIHIL db, VERBUM id) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sql AD "SELECT dados FROM civitas_sessions WHERE id = "
+  VINCIRE sql AD CONIURA concat(sql, CONIURA session_sql_quote(id))
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  SI NON CONIURA rows_next(rows)
+    CONIURA rows_close(rows)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA VERBUM dados AD CONIURA rows_get_text(rows, 0)
+  CONIURA rows_close(rows)
+  REDDE CONIURA Some GENUS(VERBUM)(dados)
+EXPLICIT RITUALE
+
+RITUALE session_backend_db_save(SPECULUM NIHIL db, SPECULUM Session sess, SessionConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO civitas_sessions (id, dados, criado_em, acessado_em) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, (*sess).id)
+  CONIURA stmt_bind_text(stmt, 2, CONIURA session_to_json(sess))
+  CONIURA stmt_bind_int(stmt, 3, (*sess).criado_em)
+  CONIURA stmt_bind_int(stmt, 4, (*sess).acessado_em)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_db_delete(SPECULUM NIHIL db, VERBUM id, VERBUM user_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_sessions WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_db_cleanup(SPECULUM NIHIL db, SessionConfig cfg) REDDE NIHIL
+  EVOCA REX agora AD CONIURA now_ms()
+  SI cfg.idle_timeout_segundos > 0
+    EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_sessions WHERE acessado_em < ?")
+    CONIURA stmt_bind_int(stmt, 1, agora - (cfg.idle_timeout_segundos * 1000))
+    CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+  FIN SI
+  SI cfg.max_age_segundos > 0
+    EVOCA SPECULUM NIHIL stmt_abs AD CONIURA db_prepare(db, "DELETE FROM civitas_sessions WHERE criado_em < ?")
+    CONIURA stmt_bind_int(stmt_abs, 1, agora - (cfg.max_age_segundos * 1000))
+    CONIURA stmt_step(stmt_abs)
+    CONIURA stmt_finalize(stmt_abs)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_redis_key(VERBUM prefixo, VERBUM session_id) REDDE VERBUM
+  REDDE CONIURA concat(prefixo, session_id)
+EXPLICIT RITUALE
+
+RITUALE session_redis_user_key(VERBUM prefixo_user, VERBUM user_id) REDDE VERBUM
+  REDDE CONIURA concat(prefixo_user, user_id)
+EXPLICIT RITUALE
+
+RITUALE session_store_ttl_seconds(SessionConfig cfg) REDDE REX
+  SI cfg.max_age_segundos > 0
+    REDDE cfg.max_age_segundos
+  FIN SI
+  REDDE 86400
+EXPLICIT RITUALE
+
+RITUALE session_remaining_ttl_seconds(SPECULUM Session sess, SessionConfig cfg) REDDE REX
+  EVOCA REX ttl AD CONIURA session_store_ttl_seconds(cfg)
+  SI cfg.max_age_segundos <= 0
+    REDDE ttl
+  FIN SI
+  EVOCA REX age_ms AD CONIURA now_ms() - (*sess).criado_em
+  EVOCA REX remaining_ms AD (cfg.max_age_segundos * 1000) - age_ms
+  SI remaining_ms <= 0
+    REDDE 1
+  FIN SI
+  REDDE (remaining_ms + 999) / 1000
+EXPLICIT RITUALE
+
+RITUALE session_backend_redis_load(SPECULUM NIHIL state, VERBUM session_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SessionRedisState rs AD state
+  EVOCA SPECULUM Redis redis AD (*rs).redis
+  EVOCA VERBUM chave AD CONIURA session_redis_key((*rs).config.prefixo_sessao, session_id)
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_get(*redis, chave)
+  SI CONIURA result_is_err GENUS(RedisMaybeText, VERBUM)(res)
+    CONIURA session_log_error(CONIURA concat("session_redis_load: ", CONIURA result_unwrap_err GENUS(RedisMaybeText, VERBUM)(res)))
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA RedisMaybeText maybe AD CONIURA result_unwrap GENUS(RedisMaybeText, VERBUM)(res)
+  SI NON maybe.found
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(maybe.value)
+EXPLICIT RITUALE
+
+RITUALE session_backend_redis_save(SPECULUM NIHIL state, SPECULUM Session sess, SessionConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM SessionRedisState rs AD state
+  EVOCA SPECULUM Redis redis AD (*rs).redis
+  EVOCA VERBUM chave AD CONIURA session_redis_key((*rs).config.prefixo_sessao, (*sess).id)
+  EVOCA REX ttl AD CONIURA session_remaining_ttl_seconds(sess, cfg)
+  EVOCA SPECULUM NIHIL save_res AD CONIURA redis_setex(*redis, chave, ttl, CONIURA session_to_json(sess))
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(save_res)
+    CONIURA session_log_error(CONIURA concat("session_redis_save: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(save_res)))
+    REDDE
+  FIN SI
+
+  EVOCA VERBUM user_id AD CONIURA session_user_id_or(sess, "")
+  SI CONIURA len(user_id) > 0
+    EVOCA VERBUM user_key AD CONIURA session_redis_user_key((*rs).config.prefixo_user_sessions, user_id)
+    EVOCA SPECULUM NIHIL add_res AD CONIURA redis_sadd(*redis, user_key, (*sess).id)
+    SI CONIURA result_is_err GENUS(VERUM, VERBUM)(add_res)
+      CONIURA session_log_error(CONIURA concat("session_redis_save.sadd: ", CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(add_res)))
+      REDDE
+    FIN SI
+    EVOCA REX ttl_user AD ttl + (*rs).config.ttl_user_sessions_extra
+    EVOCA SPECULUM NIHIL exp_res AD CONIURA redis_expire(*redis, user_key, ttl_user)
+    SI CONIURA result_is_err GENUS(VERUM, VERBUM)(exp_res)
+      CONIURA session_log_error(CONIURA concat("session_redis_save.expire: ", CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(exp_res)))
+    FIN SI
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_redis_delete(SPECULUM NIHIL state, VERBUM session_id, VERBUM user_id) REDDE NIHIL
+  EVOCA SPECULUM SessionRedisState rs AD state
+  EVOCA SPECULUM Redis redis AD (*rs).redis
+  EVOCA VERBUM chave AD CONIURA session_redis_key((*rs).config.prefixo_sessao, session_id)
+  EVOCA SPECULUM NIHIL del_res AD CONIURA redis_del(*redis, chave)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(del_res)
+    CONIURA session_log_error(CONIURA concat("session_redis_delete.del: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(del_res)))
+  FIN SI
+
+  SI CONIURA len(user_id) > 0
+    EVOCA VERBUM user_key AD CONIURA session_redis_user_key((*rs).config.prefixo_user_sessions, user_id)
+    EVOCA SPECULUM NIHIL rem_res AD CONIURA redis_srem(*redis, user_key, session_id)
+    SI CONIURA result_is_err GENUS(VERUM, VERBUM)(rem_res)
+      CONIURA session_log_error(CONIURA concat("session_redis_delete.srem: ", CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(rem_res)))
+    FIN SI
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_redis_cleanup(SPECULUM NIHIL state, SessionConfig cfg) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_load(SessionStore store, VERBUM id) REDDE SPECULUM NIHIL
+  ELIGE store.kind
+    CASUS SbkMemoria:
+      REDDE CONIURA session_backend_mem_load(store.state, id)
+    CASUS SbkArquivo:
+      REDDE CONIURA session_backend_file_load(store.state, id)
+    CASUS SbkDb:
+      REDDE CONIURA session_backend_db_load(store.state, id)
+    CASUS SbkRedis:
+      REDDE CONIURA session_backend_redis_load(store.state, id)
+  FIN ELIGE
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE session_backend_save(SessionStore store, SPECULUM Session sess, SessionConfig cfg) REDDE NIHIL
+  ELIGE store.kind
+    CASUS SbkMemoria:
+      CONIURA session_backend_mem_save(store.state, sess, cfg)
+    CASUS SbkArquivo:
+      CONIURA session_backend_file_save(store.state, sess, cfg)
+    CASUS SbkDb:
+      CONIURA session_backend_db_save(store.state, sess, cfg)
+    CASUS SbkRedis:
+      CONIURA session_backend_redis_save(store.state, sess, cfg)
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_delete(SessionStore store, VERBUM id, VERBUM user_id) REDDE NIHIL
+  ELIGE store.kind
+    CASUS SbkMemoria:
+      CONIURA session_backend_mem_delete(store.state, id, user_id)
+    CASUS SbkArquivo:
+      CONIURA session_backend_file_delete(store.state, id, user_id)
+    CASUS SbkDb:
+      CONIURA session_backend_db_delete(store.state, id, user_id)
+    CASUS SbkRedis:
+      CONIURA session_backend_redis_delete(store.state, id, user_id)
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_backend_cleanup(SessionStore store, SessionConfig cfg) REDDE NIHIL
+  ELIGE store.kind
+    CASUS SbkMemoria:
+      CONIURA session_backend_mem_cleanup(store.state, cfg)
+    CASUS SbkArquivo:
+      CONIURA session_backend_file_cleanup(store.state, cfg)
+    CASUS SbkDb:
+      CONIURA session_backend_db_cleanup(store.state, cfg)
+    CASUS SbkRedis:
+      CONIURA session_backend_redis_cleanup(store.state, cfg)
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_is_expired(SPECULUM Session sess, SessionConfig cfg) REDDE VERUM
+  EVOCA REX agora AD CONIURA now_ms()
+  SI cfg.max_age_segundos > 0
+    SI agora - (*sess).criado_em > (cfg.max_age_segundos * 1000)
+      REDDE VERUM
+    FIN SI
+  FIN SI
+  SI cfg.idle_timeout_segundos > 0
+    SI agora - (*sess).acessado_em > (cfg.idle_timeout_segundos * 1000)
+      REDDE VERUM
+    FIN SI
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE session_should_cleanup(SessionConfig cfg) REDDE VERUM
+  SI cfg.cleanup_probabilidade <= 0
+    REDDE FALSUM
+  FIN SI
+  SI cfg.cleanup_probabilidade >= 100
+    REDDE VERUM
+  FIN SI
+  EVOCA SPECULUM NIHIL bytes AD CONIURA csprng_bytes(1)
+  EVOCA REX raw AD cast GENUS(REX)(CONIURA bytes_get(bytes, 0))
+  SI raw < 0
+    VINCIRE raw AD raw + 256
+  FIN SI
+  REDDE raw < ((cfg.cleanup_probabilidade * 256) / 100)
+EXPLICIT RITUALE
+
+RITUALE session_load(WebRequest req, SessionStore store, SessionConfig cfg) REDDE Session
+  EVOCA SPECULUM NIHIL cookie_opt AD CONIURA request_cookie(req, cfg.cookie_nome)
+  SI CONIURA option_is_none GENUS(VERBUM)(cookie_opt)
+    CONIURA option_free GENUS(VERBUM)(cookie_opt)
+    REDDE CONIURA session_new()
+  FIN SI
+
+  EVOCA VERBUM cookie_valor AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(cookie_opt))
+  CONIURA option_free GENUS(VERBUM)(cookie_opt)
+
+  EVOCA SPECULUM NIHIL id_opt AD CONIURA session_cookie_verify(cookie_valor, cfg.segredo)
+  SI CONIURA option_is_none GENUS(VERBUM)(id_opt)
+    CONIURA option_free GENUS(VERBUM)(id_opt)
+    CONIURA session_log_warn("cookie de sessao invalido; nova sessao criada")
+    REDDE CONIURA session_new()
+  FIN SI
+
+  EVOCA VERBUM id AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(id_opt))
+  CONIURA option_free GENUS(VERBUM)(id_opt)
+
+  EVOCA SPECULUM NIHIL json_opt AD CONIURA session_backend_load(store, id)
+  SI CONIURA option_is_none GENUS(VERBUM)(json_opt)
+    CONIURA option_free GENUS(VERBUM)(json_opt)
+    REDDE CONIURA session_new()
+  FIN SI
+
+  EVOCA VERBUM json_text AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(json_opt))
+  EVOCA Session sess AD CONIURA session_from_json(id, json_text)
+  CONIURA option_free GENUS(VERBUM)(json_opt)
+
+  SI CONIURA session_is_expired(SPECULUM sess, cfg)
+    CONIURA session_backend_delete(store, sess.id, CONIURA session_user_id_or(SPECULUM sess, ""))
+    REDDE CONIURA session_new()
+  FIN SI
+
+  VINCIRE sess.acessado_em AD CONIURA now_ms()
+  VINCIRE sess.novo AD FALSUM
+  VINCIRE sess.modificado AD FALSUM
+
+  SI CONIURA session_should_cleanup(cfg)
+    CONIURA session_backend_cleanup(store, cfg)
+  FIN SI
+
+  REDDE sess
+EXPLICIT RITUALE
+
+RITUALE session_set(SPECULUM Session sess, VERBUM chave, VERBUM valor) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERBUM copied_value AD CONIURA concat("", valor)
+      CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, copied_value)
+      CONIURA fluxus_free(keys)
+      VINCIRE (*sess).modificado AD VERUM
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*sess).dados, CONIURA concat("", chave), CONIURA concat("", valor))
+  VINCIRE (*sess).modificado AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_get(SPECULUM Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, "")
+      EVOCA VERBUM copied_value AD CONIURA concat("", value)
+      CONIURA fluxus_free(keys)
+      REDDE CONIURA Some GENUS(VERBUM)(copied_value)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE session_delete(SPECULUM Session sess, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, chave) == 0
+      CONIURA map_remove GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr)
+      CONIURA fluxus_free(keys)
+      VINCIRE (*sess).modificado AD VERUM
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  VINCIRE (*sess).modificado AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_clear(SPECULUM Session sess) REDDE NIHIL
+  EVOCA VERBUM flash AD CONIURA session_get_or(sess, "_civitas_flash", "[]")
+  EVOCA VERBUM flash_pending AD CONIURA session_get_or(sess, "_civitas_flash_pending", "[]")
+  CONIURA map_clear GENUS(VERBUM, VERBUM)((*sess).dados)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash", flash)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash_pending", flash_pending)
+  VINCIRE (*sess).modificado AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_get_verbum(SPECULUM Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  REDDE CONIURA session_get(sess, chave)
+EXPLICIT RITUALE
+
+RITUALE session_get_int(SPECULUM Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_get(sess, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(opt))
+  EVOCA SPECULUM NIHIL out AD CONIURA try_int(raw)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE session_get_bool(SPECULUM Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_get(sess, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE CONIURA None GENUS(VERUM)()
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(opt))
+  EVOCA SPECULUM NIHIL out AD CONIURA try_bool(raw)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE session_get_real(SPECULUM Session sess, VERBUM chave) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL opt AD CONIURA session_get(sess, chave)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt)
+    CONIURA option_free GENUS(VERBUM)(opt)
+    REDDE CONIURA None GENUS(UMBRA)()
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA concat("", CONIURA option_unwrap GENUS(VERBUM)(opt))
+  EVOCA SPECULUM NIHIL out AD CONIURA try_real(raw)
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE session_rotate_id(SPECULUM Session sess, SessionStore store, SessionConfig cfg) REDDE NIHIL
+  EVOCA VERBUM id_antigo AD (*sess).id
+  EVOCA VERBUM user_id AD CONIURA session_user_id_or(sess, "")
+  VINCIRE (*sess).id AD CONIURA session_id_new()
+  VINCIRE (*sess).modificado AD VERUM
+  CONIURA session_backend_save(store, sess, cfg)
+  CONIURA session_backend_delete(store, id_antigo, user_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_register_user(SessionStore store, SPECULUM Session sess, VERBUM user_id, SessionConfig cfg) REDDE NIHIL
+  ELIGE store.kind
+    CASUS SbkRedis:
+      EVOCA SPECULUM SessionRedisState rs AD store.state
+      EVOCA SPECULUM Redis redis AD (*rs).redis
+      EVOCA VERBUM user_key AD CONIURA session_redis_user_key((*rs).config.prefixo_user_sessions, user_id)
+      EVOCA SPECULUM NIHIL add_res AD CONIURA redis_sadd(*redis, user_key, (*sess).id)
+      SI CONIURA result_is_err GENUS(VERUM, VERBUM)(add_res)
+        CONIURA session_log_error(CONIURA concat("session_register_user.sadd: ", CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(add_res)))
+        REDDE
+      FIN SI
+      EVOCA SPECULUM NIHIL exp_res AD CONIURA redis_expire(*redis, user_key, CONIURA session_remaining_ttl_seconds(sess, cfg) + (*rs).config.ttl_user_sessions_extra)
+      SI CONIURA result_is_err GENUS(VERUM, VERBUM)(exp_res)
+        CONIURA session_log_error(CONIURA concat("session_register_user.expire: ", CONIURA result_unwrap_err GENUS(VERUM, VERBUM)(exp_res)))
+      FIN SI
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_invalidate_all_for_user(SessionStore store, VERBUM user_id) REDDE SPECULUM NIHIL
+  ELIGE store.kind
+    CASUS SbkRedis:
+      EVOCA SPECULUM SessionRedisState rs AD store.state
+      EVOCA SPECULUM Redis redis AD (*rs).redis
+      EVOCA VERBUM user_key AD CONIURA session_redis_user_key((*rs).config.prefixo_user_sessions, user_id)
+      EVOCA SPECULUM NIHIL members_res AD CONIURA redis_smembers(*redis, user_key)
+      SI CONIURA result_is_err GENUS(RedisTextList, VERBUM)(members_res)
+        EVOCA VERBUM err AD CONIURA result_unwrap_err GENUS(RedisTextList, VERBUM)(members_res)
+        CONIURA session_log_error(CONIURA concat("session_invalidate_all_for_user: ", err))
+        REDDE CONIURA Err GENUS(REX, VERBUM)(err)
+      FIN SI
+      EVOCA RedisTextList members AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(members_res)
+      EVOCA REX i AD 0
+      EVOCA REX n AD CONIURA redis_text_list_len(members)
+      DUM i < n
+        EVOCA VERBUM sid AD CONIURA redis_text_list_get(members, i)
+        EVOCA SPECULUM NIHIL del_res AD CONIURA redis_del(*redis, CONIURA session_redis_key((*rs).config.prefixo_sessao, sid))
+        SI CONIURA result_is_err GENUS(REX, VERBUM)(del_res)
+          CONIURA session_log_error(CONIURA concat("session_invalidate_all_for_user.del: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(del_res)))
+          REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(del_res))
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      EVOCA SPECULUM NIHIL del_set_res AD CONIURA redis_del(*redis, user_key)
+      SI CONIURA result_is_err GENUS(REX, VERBUM)(del_set_res)
+        CONIURA session_log_error(CONIURA concat("session_invalidate_all_for_user.del_set: ", CONIURA result_unwrap_err GENUS(REX, VERBUM)(del_set_res)))
+        REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(del_set_res))
+      FIN SI
+      REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+    CASUS SbkMemoria:
+      CONIURA session_log_warn("session_invalidate_all_for_user: backend memoria requer scan completo; use Redis em producao")
+      REDDE CONIURA Err GENUS(REX, VERBUM)("backend nao suporta invalidacao por usuario sem scan")
+    CASUS SbkArquivo:
+      CONIURA session_log_warn("session_invalidate_all_for_user: backend arquivo requer scan completo; use Redis em producao")
+      REDDE CONIURA Err GENUS(REX, VERBUM)("backend nao suporta invalidacao por usuario sem scan")
+    CASUS SbkDb:
+      CONIURA session_log_warn("session_invalidate_all_for_user: backend SQLite requer schema estendido para eficiencia")
+      REDDE CONIURA Err GENUS(REX, VERBUM)("backend SQLite nao tem indice de user_id em 8A")
+  FIN ELIGE
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE session_build_cookie(VERBUM valor, SessionConfig cfg) REDDE SetCookie
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(cfg.cookie_nome, valor)
+  VINCIRE cookie.path AD cfg.cookie_path
+  VINCIRE cookie.secure AD cfg.cookie_seguro
+  VINCIRE cookie.http_only AD cfg.cookie_http_only
+  VINCIRE cookie.same_site AD cfg.cookie_same_site
+  SI cfg.max_age_segundos > 0
+    VINCIRE cookie.max_age AD cfg.max_age_segundos
+  FIN SI
+  REDDE cookie
+EXPLICIT RITUALE
+
+RITUALE session_finalize(SPECULUM Session sess, SessionStore store, SessionConfig cfg, WebResponse res) REDDE WebResponse
+  EVOCA VERBUM pending AD CONIURA session_get_or(sess, "_civitas_flash_pending", "[]")
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash", pending)
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash_pending", "[]")
+  VINCIRE (*sess).modificado AD VERUM
+
+  SI (*sess).modificado VEL (*sess).novo
+    CONIURA session_backend_save(store, sess, cfg)
+  FIN SI
+
+  CONIURA response_set_cookie(SPECULUM res, CONIURA session_build_cookie(CONIURA session_cookie_sign((*sess).id, cfg.segredo), cfg))
+  VINCIRE (*sess).novo AD FALSUM
+  VINCIRE (*sess).modificado AD FALSUM
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

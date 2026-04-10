@@ -1,0 +1,25 @@
+INCIPIT grimoire "civitas_locale_cookie"
+
+ADVOCARE "cct/option.cct"
+ADVOCARE "../cookie.cct"
+ADVOCARE "../request.cct"
+ADVOCARE "locale.cct"
+
+RITUALE locale_from_cookie(WebRequest req, VERBUM cookie_nome) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL val_opt AD CONIURA request_cookie(req, cookie_nome)
+  SI CONIURA option_is_none GENUS(VERBUM)(val_opt)
+    REDDE CONIURA None GENUS(Locale)()
+  FIN SI
+  EVOCA Locale loc AD CONIURA locale_parse(CONIURA option_unwrap GENUS(VERBUM)(val_opt))
+  CONIURA option_free GENUS(VERBUM)(val_opt)
+  REDDE CONIURA Some GENUS(Locale)(loc)
+EXPLICIT RITUALE
+
+RITUALE locale_to_cookie(Locale loc, VERBUM cookie_nome, REX max_age_dias) REDDE VERBUM
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(cookie_nome, CONIURA locale_to_string(loc))
+  VINCIRE cookie.max_age AD max_age_dias * 86400
+  VINCIRE cookie.same_site AD "Lax"
+  REDDE CONIURA cookie_build_set(cookie)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,63 @@
+INCIPIT grimoire "civitas_locale_accept"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "locale.cct"
+
+SIGILLUM AcceptLangEntry
+  locale: Locale
+  q: UMBRA
+FIN SIGILLUM
+
+RITUALE locale_parse_accept_language(VERBUM header) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL resultado AD CONIURA fluxus_init(MENSURA(AcceptLangEntry))
+  SI CONIURA len(CONIURA trim(header)) == 0
+    REDDE resultado
+  FIN SI
+
+  EVOCA SPECULUM NIHIL tokens AD CONIURA split(header, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(tokens)
+  DUM i < n
+    EVOCA SPECULUM VERBUM token_ptr AD CONIURA fluxus_get(tokens, i)
+    EVOCA VERBUM token AD CONIURA trim(*token_ptr)
+    EVOCA AcceptLangEntry entry
+    VINCIRE entry.q AD 1.0
+
+    EVOCA REX semi AD CONIURA find(token, ";")
+    SI semi >= 0
+      EVOCA VERBUM q_part AD CONIURA trim(CONIURA substring(token, semi + 1, CONIURA len(token)))
+      VINCIRE token AD CONIURA trim(CONIURA substring(token, 0, semi))
+      SI CONIURA starts_with(q_part, "q=")
+        VINCIRE entry.q AD CONIURA fmt_parse_real(CONIURA substring(q_part, 2, CONIURA len(q_part)))
+      FIN SI
+    FIN SI
+
+    VINCIRE entry.locale AD CONIURA locale_parse(token)
+    CONIURA fluxus_push(resultado, SPECULUM entry)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA REX j AD 1
+  EVOCA REX m AD CONIURA fluxus_len(resultado)
+  DUM j < m
+    EVOCA SPECULUM AcceptLangEntry curr_ptr AD CONIURA fluxus_get(resultado, j)
+    EVOCA AcceptLangEntry curr AD *curr_ptr
+    EVOCA REX k AD j - 1
+    DUM k >= 0
+      EVOCA SPECULUM AcceptLangEntry prev_ptr AD CONIURA fluxus_get(resultado, k)
+      SI (*prev_ptr).q >= curr.q
+        FRANGE
+      FIN SI
+      CONIURA fluxus_set(resultado, k + 1, prev_ptr)
+      VINCIRE k AD k - 1
+    FIN DUM
+    CONIURA fluxus_set(resultado, k + 1, SPECULUM curr)
+    VINCIRE j AD j + 1
+  FIN DUM
+
+  REDDE resultado
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

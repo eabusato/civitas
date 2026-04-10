@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase13_13a_load_toml_fixture_suite"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture_loader.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM toml AD "[[categorias]]\npk = \"1\"\nnome = \"Tecnologia\"\nslug = \"tecnologia\"\nativo = \"1\"\n\n[[categorias]]\npk = \"2\"\nnome = \"Ciencia\"\nslug = \"ciencia\"\nativo = \"1\"\n"
+  EVOCA VERBUM path AD CONIURA phase13_write_file("13a_load_toml_fixture_suite", "cats.toml", toml)
+  EVOCA FixtureSuite suite AD CONIURA fixture_load_toml(path, FkReference)
+  SI CONIURA fluxus_len(suite.entradas) != 2
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM FixtureEntry first AD CONIURA fluxus_get(suite.entradas, 0)
+  EVOCA SPECULUM FixtureEntry second AD CONIURA fluxus_get(suite.entradas, 1)
+  SI CONIURA compare((*first).pk, "1") != 0 VEL CONIURA compare((*second).pk, "2") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare((*first).modelo, "categorias") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

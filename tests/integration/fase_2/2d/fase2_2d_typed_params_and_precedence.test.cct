@@ -1,0 +1,79 @@
+INCIPIT grimoire "fase2_2d_typed_params_and_precedence_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE post_new_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("static:new"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE post_slug_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM WebResponse out
+  EVOCA SPECULUM NIHIL slug_opt
+  EVOCA VERBUM slug
+  VINCIRE req AD req_ref
+  VINCIRE out AD out_ref
+  VINCIRE slug_opt AD CONIURA request_param(*req, "slug")
+  SI CONIURA option_is_none GENUS(VERBUM)(slug_opt)
+    REDDE
+  FIN SI
+  VINCIRE slug AD CONIURA option_unwrap GENUS(VERBUM)(slug_opt)
+  CONIURA option_free GENUS(VERBUM)(slug_opt)
+  CONIURA response_fill(out, CONIURA response_text(CONIURA concat("slug:", slug)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE user_show_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM WebResponse out
+  EVOCA SPECULUM NIHIL id_opt
+  EVOCA VERBUM id_text
+  VINCIRE req AD req_ref
+  VINCIRE out AD out_ref
+  VINCIRE id_opt AD CONIURA request_param(*req, "id")
+  SI CONIURA option_is_none GENUS(VERBUM)(id_opt)
+    REDDE
+  FIN SI
+  VINCIRE id_text AD CONIURA option_unwrap GENUS(VERBUM)(id_opt)
+  CONIURA option_free GENUS(VERBUM)(id_opt)
+  CONIURA response_fill(out, CONIURA response_text(CONIURA concat("id:", id_text)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/posts/new", "posts.new", "post_new_handler", post_new_handler), 1)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/posts/{slug:slug}", "posts.slug", "post_slug_handler", post_slug_handler), 2)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/users/{id:int}", "users.show", "user_show_handler", user_show_handler), 3)
+
+  EVOCA WebResponse static_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/posts/new"))
+  SI CONIURA compare(static_res.body, "static:new") != 0
+    REDDE 1
+  FIN SI
+
+  EVOCA WebResponse slug_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/posts/ola-mundo"))
+  SI CONIURA compare(slug_res.body, "slug:ola-mundo") != 0
+    REDDE 2
+  FIN SI
+
+  EVOCA WebResponse user_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/users/42"))
+  SI CONIURA compare(user_res.body, "id:42") != 0
+    REDDE 3
+  FIN SI
+
+  EVOCA WebResponse invalid_int_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/users/nope"))
+  SI invalid_int_res.status != 404
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

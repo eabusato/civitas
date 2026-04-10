@@ -1,0 +1,32 @@
+INCIPIT grimoire "civitas_cache_query_signal"
+
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../signals.cct"
+ADVOCARE "cache_query.cct"
+
+RITUALE cache_query_signal_table(VERBUM signal_name) REDDE VERBUM
+  EVOCA REX pos AD CONIURA find(signal_name, ":")
+  SI pos < 0
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(signal_name, pos + 1, CONIURA len(signal_name))
+EXPLICIT RITUALE
+
+RITUALE cache_query_signal_apply(SPECULUM CacheQuery cq, SignalEnvelope env) REDDE NIHIL
+  SI NON CONIURA starts_with(env.signal_name, "post_save:")
+    SI NON CONIURA starts_with(env.signal_name, "post_delete:")
+      REDDE
+    FIN SI
+  FIN SI
+  EVOCA VERBUM tabela AD CONIURA cache_query_signal_table(env.signal_name)
+  SI CONIURA len(tabela) == 0
+    REDDE
+  FIN SI
+  SI NON CONIURA cache_query_is_registered(*cq, tabela)
+    REDDE
+  FIN SI
+  CONIURA cache_query_invalidar_tabela(cq, tabela)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

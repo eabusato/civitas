@@ -1,0 +1,1129 @@
+INCIPIT grimoire "civitas_settings"
+
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "settings_env.cct"
+ADVOCARE "settings_schema.cct"
+
+SIGILLUM SettingsTomlPath
+  doc_handle: REX
+  leaf_key: VERBUM
+  found: VERUM
+FIN SIGILLUM
+
+RITUALE settings_ok(Settings settings) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(Settings, SettingsError)(settings)
+EXPLICIT RITUALE
+
+RITUALE settings_ok_verbum(VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERBUM, SettingsError)(value)
+EXPLICIT RITUALE
+
+RITUALE settings_ok_bool(VERUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(VERUM, SettingsError)(value)
+EXPLICIT RITUALE
+
+RITUALE settings_ok_rex(REX value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(value)
+EXPLICIT RITUALE
+
+RITUALE settings_ok_source(SettingsSource value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(SettingsSource, SettingsError)(value)
+EXPLICIT RITUALE
+
+RITUALE settings_ok_values(SPECULUM NIHIL values) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(SPECULUM NIHIL, SettingsError)(values)
+EXPLICIT RITUALE
+
+RITUALE settings_err(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(Settings, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_err_verbum(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERBUM, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_err_bool(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(VERUM, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_err_rex(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_err_source(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(SettingsSource, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_err_values(
+  VERBUM key,
+  VERBUM expected_type,
+  VERBUM received_value_safe,
+  SettingsSource origin,
+  VERBUM environment,
+  VERBUM message
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(SPECULUM NIHIL, SettingsError)(
+    CONIURA settings_error_make(key, expected_type, received_value_safe, origin, environment, message)
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_storage_key(SPECULUM NIHIL values, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, SettingsValue)(values)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE settings_schema_find(SPECULUM NIHIL schema, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(schema)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get(schema, i)
+    SI CONIURA compare((*spec_ptr).key, key) == 0
+      REDDE CONIURA Some GENUS(SettingSpec)(*spec_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(SettingSpec)()
+EXPLICIT RITUALE
+
+RITUALE settings_init(SPECULUM Settings settings, VERBUM project_root, VERBUM environment, VERUM strict_mode) REDDE NIHIL
+  VINCIRE (*settings).project_root AD project_root
+  VINCIRE (*settings).environment AD environment
+  VINCIRE (*settings).strict_mode AD strict_mode
+  VINCIRE (*settings).values AD CONIURA map_init GENUS(VERBUM, SettingsValue)()
+  VINCIRE (*settings).diagnostics AD CONIURA fluxus_init(MENSURA(SettingsDiagnostic))
+  VINCIRE (*settings).schema AD CONIURA settings_schema_specs()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_add_diagnostic(SPECULUM Settings settings, VERBUM level, VERBUM key, VERBUM message, SettingsSource source) REDDE NIHIL
+  EVOCA SettingsDiagnostic diag AD CONIURA settings_diagnostic_make(level, key, message, source)
+  CONIURA fluxus_push((*settings).diagnostics, SPECULUM diag)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_set_serialized(
+  SPECULUM Settings settings,
+  VERBUM key,
+  SettingsValueKind kind,
+  VERBUM serialized,
+  SettingsSource source,
+  VERUM sensitive
+) REDDE NIHIL
+  EVOCA SettingsValue value AD CONIURA settings_value_make(key, kind, serialized, source, sensitive)
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA settings_storage_key((*settings).values, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, SettingsValue)((*settings).values, stored_key, value)
+    CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+    REDDE
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(stored_key_opt)
+  CONIURA map_insert GENUS(VERBUM, SettingsValue)((*settings).values, key, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_has(SPECULUM Settings settings, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA settings_storage_key((*settings).values, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE VERUM
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE settings_get_value(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA settings_storage_key((*settings).values, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA Err GENUS(SettingsValue, SettingsError)(
+      CONIURA settings_error_make(key, "", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA concat("setting ausente: ", key))
+    )
+  FIN SI
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE CONIURA Ok GENUS(SettingsValue, SettingsError)(
+    CONIURA map_get_or_default GENUS(VERBUM, SettingsValue)((*settings).values, stored_key, CONIURA settings_value_make(key, SETTINGS_VALUE_VERBUM, "", SETTINGS_SOURCE_DEFAULT, FALSUM))
+  )
+EXPLICIT RITUALE
+
+RITUALE settings_normalize_environment(VERBUM env_name) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA to_lower(CONIURA trim(env_name))
+  SI CONIURA compare(out, "dev") == 0
+    REDDE "development"
+  FIN SI
+  SI CONIURA compare(out, "testing") == 0
+    REDDE "test"
+  FIN SI
+  SI CONIURA compare(out, "prod") == 0
+    REDDE "production"
+  FIN SI
+  SI CONIURA len(out) == 0
+    REDDE "development"
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_resolve_project_root(VERBUM project_root) REDDE VERBUM
+  EVOCA VERBUM normalized AD CONIURA normalize(project_root)
+  SI CONIURA is_absolute(normalized)
+    REDDE normalized
+  FIN SI
+  REDDE CONIURA normalize(CONIURA path_join(CONIURA cwd(), normalized))
+EXPLICIT RITUALE
+
+RITUALE settings_resolve_path(VERBUM project_root, VERBUM raw_value) REDDE VERBUM
+  EVOCA VERBUM trimmed AD CONIURA trim(raw_value)
+  EVOCA VERBUM project_root_norm AD CONIURA normalize(project_root)
+  EVOCA VERBUM cwd_candidate AD ""
+  SI CONIURA len(trimmed) == 0
+    REDDE trimmed
+  FIN SI
+  SI CONIURA is_absolute(trimmed)
+    REDDE CONIURA normalize(trimmed)
+  FIN SI
+  VINCIRE cwd_candidate AD CONIURA normalize(CONIURA path_join(CONIURA cwd(), trimmed))
+  SI CONIURA compare(cwd_candidate, project_root_norm) == 0
+    REDDE cwd_candidate
+  FIN SI
+  SI CONIURA starts_with(cwd_candidate, CONIURA concat(project_root_norm, "/"))
+    REDDE cwd_candidate
+  FIN SI
+  REDDE CONIURA normalize(CONIURA path_join(project_root, trimmed))
+EXPLICIT RITUALE
+
+RITUALE settings_bool_to_serialized(VERUM value) REDDE VERBUM
+  SI value
+    REDDE "true"
+  FIN SI
+  REDDE "false"
+EXPLICIT RITUALE
+
+RITUALE settings_serialize_string_list(SPECULUM NIHIL items) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, "\n")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA trim(*item_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_deserialize_string_list(VERBUM serialized) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  SI CONIURA len(serialized) == 0
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(serialized, "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM item AD CONIURA trim(*part_ptr)
+    SI CONIURA len(item) != 0
+      CONIURA fluxus_push(out, SPECULUM item)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_pretty_serialized(SettingsValue value) REDDE VERBUM
+  SI value.sensitive
+    REDDE "[redacted]"
+  FIN SI
+  SI value.kind == SETTINGS_VALUE_LIST_VERBUM VEL value.kind == SETTINGS_VALUE_LIST_REX VEL value.kind == SETTINGS_VALUE_LIST_BOOL
+    REDDE CONIURA replace_all(value.serialized, "\n", ",")
+  FIN SI
+  REDDE value.serialized
+EXPLICIT RITUALE
+
+RITUALE settings_dump_safe(SPECULUM Settings settings) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).schema)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get((*settings).schema, i)
+    SI CONIURA settings_has(settings, (*spec_ptr).key)
+      EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, (*spec_ptr).key)
+      EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+      SI CONIURA len(out) != 0
+        VINCIRE out AD CONIURA concat(out, "\n")
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, (*spec_ptr).key)
+      VINCIRE out AD CONIURA concat(out, " = ")
+      VINCIRE out AD CONIURA concat(out, CONIURA settings_pretty_serialized(value))
+      VINCIRE out AD CONIURA concat(out, " (")
+      VINCIRE out AD CONIURA concat(out, CONIURA settings_source_name(value.source))
+      VINCIRE out AD CONIURA concat(out, ")")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_origin(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE CONIURA settings_err_source(key, "", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res)))
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  REDDE CONIURA settings_ok_source(value.source)
+EXPLICIT RITUALE
+
+RITUALE settings_is_sensitive(SPECULUM Settings settings, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  REDDE value.sensitive
+EXPLICIT RITUALE
+
+RITUALE settings_environment(SPECULUM Settings settings) REDDE VERBUM
+  REDDE (*settings).environment
+EXPLICIT RITUALE
+
+RITUALE settings_diagnostics(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  REDDE CONIURA settings_ok_values((*settings).diagnostics)
+EXPLICIT RITUALE
+
+RITUALE settings_get_verbum(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE CONIURA settings_err_verbum(key, "VERBUM", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res)))
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  SI value.kind != SETTINGS_VALUE_VERBUM
+    REDDE CONIURA settings_err_verbum(key, "VERBUM", CONIURA settings_pretty_serialized(value), value.source, (*settings).environment, CONIURA concat("tipo inesperado para ", key))
+  FIN SI
+  REDDE CONIURA settings_ok_verbum(value.serialized)
+EXPLICIT RITUALE
+
+RITUALE settings_get_bool(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE CONIURA settings_err_bool(key, "VERUM", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res)))
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  SI value.kind != SETTINGS_VALUE_BOOL
+    REDDE CONIURA settings_err_bool(key, "VERUM", CONIURA settings_pretty_serialized(value), value.source, (*settings).environment, CONIURA concat("tipo inesperado para ", key))
+  FIN SI
+  REDDE CONIURA settings_ok_bool(CONIURA compare(value.serialized, "true") == 0)
+EXPLICIT RITUALE
+
+RITUALE settings_get_rex(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE CONIURA settings_err_rex(key, "REX", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res)))
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  SI value.kind != SETTINGS_VALUE_REX
+    REDDE CONIURA settings_err_rex(key, "REX", CONIURA settings_pretty_serialized(value), value.source, (*settings).environment, CONIURA concat("tipo inesperado para ", key))
+  FIN SI
+  REDDE CONIURA settings_ok_rex(CONIURA parse_int(value.serialized))
+EXPLICIT RITUALE
+
+RITUALE settings_get_list_verbum(SPECULUM Settings settings, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE CONIURA settings_err_values(key, "LIST<VERBUM>", "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res)))
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  SI value.kind != SETTINGS_VALUE_LIST_VERBUM
+    REDDE CONIURA settings_err_values(key, "LIST<VERBUM>", CONIURA settings_pretty_serialized(value), value.source, (*settings).environment, CONIURA concat("tipo inesperado para ", key))
+  FIN SI
+  REDDE CONIURA settings_ok_values(CONIURA settings_deserialize_string_list(value.serialized))
+EXPLICIT RITUALE
+
+RITUALE settings_apply_test_override_verbum(SPECULUM Settings settings, VERBUM key, VERBUM value) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL spec_opt AD CONIURA settings_schema_find((*settings).schema, key)
+  EVOCA VERBUM normalized AD CONIURA trim(value)
+  SI CONIURA option_is_none GENUS(SettingSpec)(spec_opt)
+    CONIURA option_free GENUS(SettingSpec)(spec_opt)
+    REDDE CONIURA settings_err_rex(key, "known key", value, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override desconhecido: ", key))
+  FIN SI
+  EVOCA SettingSpec spec AD CONIURA option_unwrap GENUS(SettingSpec)(spec_opt)
+  CONIURA option_free GENUS(SettingSpec)(spec_opt)
+  SI spec.kind != SETTINGS_VALUE_VERBUM
+    REDDE CONIURA settings_err_rex(key, CONIURA settings_value_kind_name(spec.kind), value, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override tipado invalido para ", key))
+  FIN SI
+  SI spec.normalize_path
+    VINCIRE normalized AD CONIURA settings_resolve_path((*settings).project_root, normalized)
+  FIN SI
+  SI NON spec.allow_empty ET CONIURA len(CONIURA trim(normalized)) == 0
+    REDDE CONIURA settings_err_rex(key, "VERBUM", value, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("valor invalido para ", key))
+  FIN SI
+  CONIURA settings_set_serialized(settings, key, spec.kind, normalized, SETTINGS_SOURCE_TEST_OVERRIDE, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_test_override_bool(SPECULUM Settings settings, VERBUM key, VERUM value) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL spec_opt AD CONIURA settings_schema_find((*settings).schema, key)
+  EVOCA VERBUM serialized AD CONIURA settings_bool_to_serialized(value)
+  SI CONIURA option_is_none GENUS(SettingSpec)(spec_opt)
+    CONIURA option_free GENUS(SettingSpec)(spec_opt)
+    REDDE CONIURA settings_err_rex(key, "known key", serialized, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override desconhecido: ", key))
+  FIN SI
+  EVOCA SettingSpec spec AD CONIURA option_unwrap GENUS(SettingSpec)(spec_opt)
+  CONIURA option_free GENUS(SettingSpec)(spec_opt)
+  SI spec.kind != SETTINGS_VALUE_BOOL
+    REDDE CONIURA settings_err_rex(key, CONIURA settings_value_kind_name(spec.kind), serialized, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override tipado invalido para ", key))
+  FIN SI
+  CONIURA settings_set_serialized(settings, key, spec.kind, serialized, SETTINGS_SOURCE_TEST_OVERRIDE, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_test_override_rex(SPECULUM Settings settings, VERBUM key, REX value) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL spec_opt AD CONIURA settings_schema_find((*settings).schema, key)
+  EVOCA VERBUM serialized AD CONIURA stringify_int(value)
+  SI CONIURA option_is_none GENUS(SettingSpec)(spec_opt)
+    CONIURA option_free GENUS(SettingSpec)(spec_opt)
+    REDDE CONIURA settings_err_rex(key, "known key", serialized, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override desconhecido: ", key))
+  FIN SI
+  EVOCA SettingSpec spec AD CONIURA option_unwrap GENUS(SettingSpec)(spec_opt)
+  CONIURA option_free GENUS(SettingSpec)(spec_opt)
+  SI spec.kind != SETTINGS_VALUE_REX
+    REDDE CONIURA settings_err_rex(key, CONIURA settings_value_kind_name(spec.kind), serialized, SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override tipado invalido para ", key))
+  FIN SI
+  CONIURA settings_set_serialized(settings, key, spec.kind, serialized, SETTINGS_SOURCE_TEST_OVERRIDE, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_test_override_list_verbum(SPECULUM Settings settings, VERBUM key, SPECULUM NIHIL items) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL spec_opt AD CONIURA settings_schema_find((*settings).schema, key)
+  EVOCA SPECULUM NIHIL normalized_items AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+  SI CONIURA option_is_none GENUS(SettingSpec)(spec_opt)
+    CONIURA option_free GENUS(SettingSpec)(spec_opt)
+    REDDE CONIURA settings_err_rex(key, "known key", "", SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override desconhecido: ", key))
+  FIN SI
+  EVOCA SettingSpec spec AD CONIURA option_unwrap GENUS(SettingSpec)(spec_opt)
+  CONIURA option_free GENUS(SettingSpec)(spec_opt)
+  SI spec.kind != SETTINGS_VALUE_LIST_VERBUM
+    REDDE CONIURA settings_err_rex(key, CONIURA settings_value_kind_name(spec.kind), "", SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("override tipado invalido para ", key))
+  FIN SI
+  VINCIRE n AD CONIURA fluxus_len(items)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA VERBUM item AD CONIURA trim(*item_ptr)
+    SI spec.normalize_path
+      VINCIRE item AD CONIURA settings_resolve_path((*settings).project_root, item)
+    FIN SI
+    SI NON spec.allow_empty ET CONIURA len(item) == 0
+      REDDE CONIURA settings_err_rex(key, "LIST<VERBUM>", "", SETTINGS_SOURCE_TEST_OVERRIDE, (*settings).environment, CONIURA concat("valor invalido para ", key))
+    FIN SI
+    CONIURA fluxus_push(normalized_items, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM serialized AD CONIURA settings_serialize_string_list(normalized_items)
+  CONIURA settings_set_serialized(settings, key, spec.kind, serialized, SETTINGS_SOURCE_TEST_OVERRIDE, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_toml_doc(SettingsTomlPath path) REDDE TomlDocument
+  REDDE CONIURA toml_make_document(path.doc_handle)
+EXPLICIT RITUALE
+
+RITUALE settings_toml_path(TomlDocument root, VERBUM key) REDDE SettingsTomlPath
+  EVOCA SettingsTomlPath out
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(key, ".")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA TomlDocument current AD root
+
+  VINCIRE out.doc_handle AD 0
+  VINCIRE out.leaf_key AD ""
+  VINCIRE out.found AD FALSUM
+
+  SI n == 0
+    REDDE out
+  FIN SI
+
+  DUM i + 1 < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    VINCIRE current AD CONIURA toml_get_table(current, *part_ptr)
+    SI NON CONIURA toml_is_valid(current)
+      REDDE out
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA SPECULUM VERBUM leaf_ptr AD CONIURA fluxus_get(parts, n - 1)
+  VINCIRE out.doc_handle AD current.handle
+  VINCIRE out.leaf_key AD *leaf_ptr
+  VINCIRE out.found AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_doc_has_key(TomlDocument root, VERBUM key) REDDE VERUM
+  EVOCA SettingsTomlPath path AD CONIURA settings_toml_path(root, key)
+  SI NON path.found
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA toml_has(CONIURA settings_toml_doc(path), path.leaf_key)
+EXPLICIT RITUALE
+
+RITUALE settings_scan_declared_keys(VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(content, "\n")
+  EVOCA VERBUM current_section AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD CONIURA trim(*line_ptr)
+    EVOCA REX eq AD 0
+    SI NON (CONIURA len(line) == 0 VEL CONIURA starts_with(line, "#"))
+      SI CONIURA starts_with(line, "[[")
+      ALITER
+        SI CONIURA starts_with(line, "[") ET CONIURA ends_with(line, "]")
+          VINCIRE current_section AD CONIURA trim(CONIURA substring(line, 1, CONIURA len(line) - 1))
+        ALITER
+          VINCIRE eq AD CONIURA find(line, "=")
+          SI eq != -1
+            EVOCA VERBUM key AD CONIURA trim(CONIURA substring(line, 0, eq))
+            SI CONIURA len(key) != 0
+              SI CONIURA len(current_section) != 0
+                VINCIRE key AD CONIURA concat(CONIURA concat(current_section, "."), key)
+              FIN SI
+              CONIURA fluxus_push(out, SPECULUM key)
+            FIN SI
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE settings_apply_unknown_key_diagnostics(SPECULUM Settings settings, VERBUM content, SettingsSource source) REDDE NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA settings_scan_declared_keys(content)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA SPECULUM NIHIL spec_opt AD CONIURA settings_schema_find((*settings).schema, *key_ptr)
+    SI CONIURA option_is_none GENUS(SettingSpec)(spec_opt)
+      CONIURA settings_add_diagnostic(settings, "warning", *key_ptr, "chave desconhecida ignorada pelo schema", source)
+    FIN SI
+    CONIURA option_free GENUS(SettingSpec)(spec_opt)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_apply_string_spec(
+  SPECULUM Settings settings,
+  SettingSpec spec,
+  TomlDocument raw_doc,
+  TomlDocument expanded_doc,
+  SettingsSource source
+) REDDE SPECULUM NIHIL
+  EVOCA SettingsTomlPath raw_path AD CONIURA settings_toml_path(raw_doc, spec.key)
+  EVOCA SettingsTomlPath path AD CONIURA settings_toml_path(expanded_doc, spec.key)
+  EVOCA VERBUM raw_value AD ""
+  EVOCA VERBUM value AD ""
+
+  SI NON path.found VEL NON CONIURA toml_has(CONIURA settings_toml_doc(path), path.leaf_key)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+
+  VINCIRE value AD CONIURA toml_get_string(CONIURA settings_toml_doc(path), path.leaf_key)
+  SI raw_path.found
+    VINCIRE raw_value AD CONIURA toml_get_string(CONIURA settings_toml_doc(raw_path), raw_path.leaf_key)
+  FIN SI
+
+  SI NON spec.allow_empty ET CONIURA len(CONIURA trim(value)) == 0
+    REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), value, source, (*settings).environment, CONIURA concat("valor invalido para ", spec.key))
+  FIN SI
+
+  SI spec.normalize_path
+    VINCIRE value AD CONIURA settings_resolve_path((*settings).project_root, value)
+  ALITER
+    VINCIRE value AD CONIURA trim(value)
+  FIN SI
+  CONIURA settings_set_serialized(settings, spec.key, spec.kind, value, source, spec.sensitive)
+
+  SI CONIURA len(raw_value) != 0 ET CONIURA compare(raw_value, value) != 0
+    CONIURA settings_add_diagnostic(settings, "info", spec.key, "valor expandido/normalizado durante o load", source)
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_array_string_spec(SPECULUM Settings settings, SettingSpec spec, TomlDocument doc, SettingsSource source) REDDE SPECULUM NIHIL
+  EVOCA SettingsTomlPath path AD CONIURA settings_toml_path(doc, spec.key)
+  EVOCA SPECULUM NIHIL len_opt
+  EVOCA SPECULUM NIHIL items
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+
+  SI NON path.found VEL NON CONIURA toml_has(CONIURA settings_toml_doc(path), path.leaf_key)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+
+  VINCIRE len_opt AD CONIURA toml_array_len(CONIURA settings_toml_doc(path), path.leaf_key)
+  SI CONIURA option_is_none GENUS(REX)(len_opt)
+    CONIURA option_free GENUS(REX)(len_opt)
+    REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), "", source, (*settings).environment, CONIURA concat("array invalido para ", spec.key))
+  FIN SI
+
+  VINCIRE n AD CONIURA option_unwrap GENUS(REX)(len_opt)
+  CONIURA option_free GENUS(REX)(len_opt)
+  VINCIRE items AD CONIURA fluxus_init(MENSURA(VERBUM))
+  DUM i < n
+    EVOCA VERBUM item AD CONIURA trim(CONIURA toml_array_get_string(CONIURA settings_toml_doc(path), path.leaf_key, i))
+    SI NON spec.allow_empty ET CONIURA len(item) == 0
+      REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), "", source, (*settings).environment, CONIURA concat("item invalido no array ", spec.key))
+    FIN SI
+    SI spec.normalize_path
+      VINCIRE item AD CONIURA settings_resolve_path((*settings).project_root, item)
+    FIN SI
+    CONIURA fluxus_push(items, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA settings_set_serialized(settings, spec.key, spec.kind, CONIURA settings_serialize_string_list(items), source, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_array_numeric_spec(SPECULUM Settings settings, SettingSpec spec, TomlDocument doc, SettingsSource source) REDDE SPECULUM NIHIL
+  EVOCA SettingsTomlPath path AD CONIURA settings_toml_path(doc, spec.key)
+  EVOCA SPECULUM NIHIL len_opt
+  EVOCA SPECULUM NIHIL items AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+  EVOCA VERBUM serialized AD ""
+
+  SI NON path.found VEL NON CONIURA toml_has(CONIURA settings_toml_doc(path), path.leaf_key)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+
+  VINCIRE len_opt AD CONIURA toml_array_len(CONIURA settings_toml_doc(path), path.leaf_key)
+  SI CONIURA option_is_none GENUS(REX)(len_opt)
+    CONIURA option_free GENUS(REX)(len_opt)
+    REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), "", source, (*settings).environment, CONIURA concat("array invalido para ", spec.key))
+  FIN SI
+  VINCIRE n AD CONIURA option_unwrap GENUS(REX)(len_opt)
+  CONIURA option_free GENUS(REX)(len_opt)
+
+  DUM i < n
+    EVOCA VERBUM item AD ""
+    SI spec.kind == SETTINGS_VALUE_LIST_REX
+      EVOCA SPECULUM NIHIL int_opt AD CONIURA toml_array_get_int(CONIURA settings_toml_doc(path), path.leaf_key, i)
+      SI CONIURA option_is_none GENUS(REX)(int_opt)
+        CONIURA option_free GENUS(REX)(int_opt)
+        REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), "", source, (*settings).environment, CONIURA concat("item invalido no array ", spec.key))
+      FIN SI
+      VINCIRE item AD CONIURA stringify_int(CONIURA option_unwrap GENUS(REX)(int_opt))
+      CONIURA option_free GENUS(REX)(int_opt)
+    ALITER
+      EVOCA SPECULUM NIHIL bool_opt AD CONIURA toml_array_get_bool(CONIURA settings_toml_doc(path), path.leaf_key, i)
+      SI CONIURA option_is_none GENUS(VERUM)(bool_opt)
+        CONIURA option_free GENUS(VERUM)(bool_opt)
+        REDDE CONIURA settings_err_rex(spec.key, CONIURA settings_value_kind_name(spec.kind), "", source, (*settings).environment, CONIURA concat("item invalido no array ", spec.key))
+      FIN SI
+      VINCIRE item AD CONIURA settings_bool_to_serialized(CONIURA option_unwrap GENUS(VERUM)(bool_opt))
+      CONIURA option_free GENUS(VERUM)(bool_opt)
+    FIN SI
+    CONIURA fluxus_push(items, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE serialized AD CONIURA settings_serialize_string_list(items)
+  CONIURA settings_set_serialized(settings, spec.key, spec.kind, serialized, source, spec.sensitive)
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_scalar_spec(SPECULUM Settings settings, SettingSpec spec, TomlDocument doc, SettingsSource source) REDDE SPECULUM NIHIL
+  EVOCA SettingsTomlPath path AD CONIURA settings_toml_path(doc, spec.key)
+  SI NON path.found VEL NON CONIURA toml_has(CONIURA settings_toml_doc(path), path.leaf_key)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+
+  SI spec.kind == SETTINGS_VALUE_VERBUM
+    REDDE CONIURA settings_apply_string_spec(settings, spec, doc, doc, source)
+  FIN SI
+  SI spec.kind == SETTINGS_VALUE_BOOL
+    EVOCA SPECULUM NIHIL bool_opt AD CONIURA toml_get_bool(CONIURA settings_toml_doc(path), path.leaf_key)
+    SI CONIURA option_is_none GENUS(VERUM)(bool_opt)
+      CONIURA option_free GENUS(VERUM)(bool_opt)
+      REDDE CONIURA settings_err_rex(spec.key, "VERUM", "", source, (*settings).environment, CONIURA concat("valor invalido para ", spec.key))
+    FIN SI
+    CONIURA settings_set_serialized(settings, spec.key, spec.kind, CONIURA settings_bool_to_serialized(CONIURA option_unwrap GENUS(VERUM)(bool_opt)), source, spec.sensitive)
+    CONIURA option_free GENUS(VERUM)(bool_opt)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+  SI spec.kind == SETTINGS_VALUE_REX
+    EVOCA SPECULUM NIHIL int_opt AD CONIURA toml_get_int(CONIURA settings_toml_doc(path), path.leaf_key)
+    SI CONIURA option_is_none GENUS(REX)(int_opt)
+      CONIURA option_free GENUS(REX)(int_opt)
+      REDDE CONIURA settings_err_rex(spec.key, "REX", "", source, (*settings).environment, CONIURA concat("valor invalido para ", spec.key))
+    FIN SI
+    CONIURA settings_set_serialized(settings, spec.key, spec.kind, CONIURA stringify_int(CONIURA option_unwrap GENUS(REX)(int_opt)), source, spec.sensitive)
+    CONIURA option_free GENUS(REX)(int_opt)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+  SI spec.kind == SETTINGS_VALUE_UMBRA
+    EVOCA SPECULUM NIHIL real_opt AD CONIURA toml_get_real(CONIURA settings_toml_doc(path), path.leaf_key)
+    SI CONIURA option_is_none GENUS(UMBRA)(real_opt)
+      CONIURA option_free GENUS(UMBRA)(real_opt)
+      REDDE CONIURA settings_err_rex(spec.key, "UMBRA", "", source, (*settings).environment, CONIURA concat("valor invalido para ", spec.key))
+    FIN SI
+    CONIURA settings_set_serialized(settings, spec.key, spec.kind, CONIURA stringify_real(CONIURA option_unwrap GENUS(UMBRA)(real_opt)), source, spec.sensitive)
+    CONIURA option_free GENUS(UMBRA)(real_opt)
+    REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+  FIN SI
+  SI spec.kind == SETTINGS_VALUE_LIST_VERBUM
+    REDDE CONIURA settings_apply_array_string_spec(settings, spec, doc, source)
+  FIN SI
+  REDDE CONIURA settings_apply_array_numeric_spec(settings, spec, doc, source)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_defaults(SPECULUM Settings settings) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).schema)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get((*settings).schema, i)
+    SI (*spec_ptr).has_default
+      CONIURA settings_set_serialized(settings, (*spec_ptr).key, (*spec_ptr).kind, (*spec_ptr).default_serialized, SETTINGS_SOURCE_DEFAULT, (*spec_ptr).sensitive)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE settings_apply_doc(SPECULUM Settings settings, TomlDocument raw_doc, TomlDocument expanded_doc, VERBUM raw_content, SettingsSource source) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).schema)
+  CONIURA settings_apply_unknown_key_diagnostics(settings, raw_content, source)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get((*settings).schema, i)
+    EVOCA SPECULUM NIHIL res AD CONIURA settings_apply_scalar_spec(settings, *spec_ptr, expanded_doc, source)
+    SI CONIURA result_is_err GENUS(REX, SettingsError)(res)
+      REDDE CONIURA Err GENUS(REX, SettingsError)(CONIURA result_unwrap_err GENUS(REX, SettingsError)(res))
+    FIN SI
+    SI (*spec_ptr).kind == SETTINGS_VALUE_VERBUM
+      EVOCA SettingsTomlPath raw_path AD CONIURA settings_toml_path(raw_doc, (*spec_ptr).key)
+      EVOCA SettingsTomlPath expanded_path AD CONIURA settings_toml_path(expanded_doc, (*spec_ptr).key)
+      SI raw_path.found ET expanded_path.found ET CONIURA toml_has(CONIURA settings_toml_doc(raw_path), raw_path.leaf_key) ET CONIURA toml_has(CONIURA settings_toml_doc(expanded_path), expanded_path.leaf_key)
+        EVOCA VERBUM raw_value AD CONIURA toml_get_string(CONIURA settings_toml_doc(raw_path), raw_path.leaf_key)
+        EVOCA VERBUM expanded_value AD CONIURA toml_get_string(CONIURA settings_toml_doc(expanded_path), expanded_path.leaf_key)
+        SI CONIURA compare(raw_value, expanded_value) != 0
+          CONIURA settings_add_diagnostic(settings, "info", (*spec_ptr).key, "valor expandido via ambiente dentro do TOML", source)
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_apply_env_overrides(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).schema)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get((*settings).schema, i)
+    EVOCA SPECULUM NIHIL raw_opt AD CONIURA settings_env_lookup(*spec_ptr)
+    SI CONIURA option_is_some GENUS(VERBUM)(raw_opt)
+      EVOCA VERBUM raw AD CONIURA option_unwrap GENUS(VERBUM)(raw_opt)
+      EVOCA VERBUM serialized AD CONIURA trim(raw)
+      SI (*spec_ptr).kind == SETTINGS_VALUE_BOOL
+        SI NON CONIURA settings_env_bool_is_valid(raw)
+          CONIURA option_free GENUS(VERBUM)(raw_opt)
+          REDDE CONIURA settings_err_rex((*spec_ptr).key, "VERUM", raw, SETTINGS_SOURCE_ENV, (*settings).environment, CONIURA concat("env override malformado para ", (*spec_ptr).key))
+        FIN SI
+        VINCIRE serialized AD CONIURA settings_env_bool_normalize(raw)
+      FIN SI
+      SI (*spec_ptr).kind == SETTINGS_VALUE_REX ET NON CONIURA is_int(serialized)
+        CONIURA option_free GENUS(VERBUM)(raw_opt)
+        REDDE CONIURA settings_err_rex((*spec_ptr).key, "REX", raw, SETTINGS_SOURCE_ENV, (*settings).environment, CONIURA concat("env override malformado para ", (*spec_ptr).key))
+      FIN SI
+      SI (*spec_ptr).kind == SETTINGS_VALUE_UMBRA ET NON CONIURA is_real(serialized)
+        CONIURA option_free GENUS(VERBUM)(raw_opt)
+        REDDE CONIURA settings_err_rex((*spec_ptr).key, "UMBRA", raw, SETTINGS_SOURCE_ENV, (*settings).environment, CONIURA concat("env override malformado para ", (*spec_ptr).key))
+      FIN SI
+      SI ((*spec_ptr).kind == SETTINGS_VALUE_LIST_VERBUM VEL (*spec_ptr).kind == SETTINGS_VALUE_LIST_REX VEL (*spec_ptr).kind == SETTINGS_VALUE_LIST_BOOL)
+        SI NON CONIURA settings_env_list_is_valid(raw, (*spec_ptr).kind)
+          CONIURA option_free GENUS(VERBUM)(raw_opt)
+          REDDE CONIURA settings_err_rex((*spec_ptr).key, CONIURA settings_value_kind_name((*spec_ptr).kind), raw, SETTINGS_SOURCE_ENV, (*settings).environment, CONIURA concat("env override malformado para ", (*spec_ptr).key))
+        FIN SI
+        VINCIRE serialized AD CONIURA settings_env_list_serialize(raw, (*spec_ptr).kind)
+      FIN SI
+      SI (*spec_ptr).kind == SETTINGS_VALUE_VERBUM ET (*spec_ptr).normalize_path
+        VINCIRE serialized AD CONIURA settings_resolve_path((*settings).project_root, serialized)
+      FIN SI
+      CONIURA settings_set_serialized(settings, (*spec_ptr).key, (*spec_ptr).kind, serialized, SETTINGS_SOURCE_ENV, (*spec_ptr).sensitive)
+      CONIURA settings_add_diagnostic(settings, "info", (*spec_ptr).key, "override aplicado via ambiente", SETTINGS_SOURCE_ENV)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(raw_opt)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA Ok GENUS(REX, SettingsError)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_condition_matches(SPECULUM Settings settings, SettingSpec spec) REDDE VERUM
+  SI CONIURA len(spec.condition_key) == 0
+    REDDE spec.required
+  FIN SI
+  SI NON CONIURA settings_has(settings, spec.condition_key)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, spec.condition_key)
+  SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+  REDDE CONIURA compare(value.serialized, spec.condition_expected_serialized) == 0
+EXPLICIT RITUALE
+
+RITUALE settings_validate_required(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).schema)
+  DUM i < n
+    EVOCA SPECULUM SettingSpec spec_ptr AD CONIURA fluxus_get((*settings).schema, i)
+    EVOCA VERUM required_now AD CONIURA settings_condition_matches(settings, *spec_ptr)
+    SI required_now
+      SI NON CONIURA settings_has(settings, (*spec_ptr).key)
+        REDDE CONIURA settings_err((*spec_ptr).key, CONIURA settings_value_kind_name((*spec_ptr).kind), "", SETTINGS_SOURCE_DEFAULT, (*settings).environment, CONIURA concat("chave obrigatoria ausente: ", (*spec_ptr).key))
+      FIN SI
+      SI ((*spec_ptr).kind == SETTINGS_VALUE_VERBUM VEL (*spec_ptr).kind == SETTINGS_VALUE_LIST_VERBUM) ET NON (*spec_ptr).allow_empty
+        EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings, (*spec_ptr).key)
+        EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+        SI CONIURA len(CONIURA trim(value.serialized)) == 0
+          REDDE CONIURA settings_err((*spec_ptr).key, CONIURA settings_value_kind_name((*spec_ptr).kind), "", value.source, (*settings).environment, CONIURA concat("chave obrigatoria vazia: ", (*spec_ptr).key))
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA settings_ok(*settings)
+EXPLICIT RITUALE
+
+RITUALE settings_strict_unknown_violation(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*settings).diagnostics)
+  DUM i < n
+    EVOCA SPECULUM SettingsDiagnostic diag_ptr AD CONIURA fluxus_get((*settings).diagnostics, i)
+    SI CONIURA compare((*diag_ptr).message, "chave desconhecida ignorada pelo schema") == 0
+      REDDE CONIURA settings_err((*diag_ptr).key, "known key", "", (*diag_ptr).source, (*settings).environment, CONIURA concat("chave desconhecida em modo estrito: ", (*diag_ptr).key))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA settings_ok(*settings)
+EXPLICIT RITUALE
+
+RITUALE settings_load_doc(VERBUM path) REDDE SPECULUM NIHIL
+  EVOCA TomlDocument raw AD CONIURA toml_parse_file(path)
+  SI NON CONIURA toml_is_valid(raw)
+    REDDE CONIURA Err GENUS(TomlDocument, SettingsError)(
+      CONIURA settings_error_make(path, "TOML", "", SETTINGS_SOURCE_FILE_BASE, "", CONIURA toml_last_error())
+    )
+  FIN SI
+  REDDE CONIURA Ok GENUS(TomlDocument, SettingsError)(CONIURA toml_expand_env(raw))
+EXPLICIT RITUALE
+
+RITUALE settings_load_with_env_fill(SPECULUM Settings out, VERBUM project_root, VERBUM explicit_env_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA settings_resolve_project_root(project_root)
+  EVOCA VERBUM base_path AD CONIURA path_join(root, "civitas.toml")
+  EVOCA VERBUM manifest_path AD CONIURA path_join(root, "cct.toml")
+  EVOCA VERBUM strict_env AD ""
+  EVOCA VERUM strict_mode AD FALSUM
+  EVOCA VERBUM env_name AD CONIURA trim(explicit_env_name)
+  EVOCA VERBUM base_content AD ""
+  EVOCA VERBUM env_content AD ""
+  EVOCA TomlDocument base_raw
+  EVOCA TomlDocument base_expanded
+  EVOCA TomlDocument env_raw
+  EVOCA TomlDocument env_expanded
+  EVOCA VERBUM env_path AD ""
+
+  SI CONIURA has_env("CIVITAS_SETTINGS_STRICT")
+    VINCIRE strict_env AD CONIURA getenv("CIVITAS_SETTINGS_STRICT")
+    SI CONIURA settings_env_bool_is_valid(strict_env)
+      VINCIRE strict_mode AD CONIURA compare(CONIURA settings_env_bool_normalize(strict_env), "true") == 0
+    FIN SI
+  FIN SI
+
+  CONIURA settings_init(out, root, "development", strict_mode)
+  CONIURA settings_apply_defaults(out)
+
+  SI NON CONIURA exists(base_path)
+    SI CONIURA exists(manifest_path)
+      REDDE CONIURA Err GENUS(REX, VERBUM)("civitas.toml ausente; cct.toml nao eh arquivo de runtime da aplicacao")
+    FIN SI
+    REDDE CONIURA Err GENUS(REX, VERBUM)("civitas.toml ausente")
+  FIN SI
+
+  VINCIRE base_content AD CONIURA read_all(base_path)
+  VINCIRE base_raw AD CONIURA toml_parse_file(base_path)
+  SI NON CONIURA toml_is_valid(base_raw)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA toml_last_error())
+  FIN SI
+  VINCIRE base_expanded AD CONIURA toml_expand_env(base_raw)
+
+  SI CONIURA len(env_name) == 0 ET CONIURA has_env("CIVITAS_ENV")
+    VINCIRE env_name AD CONIURA getenv("CIVITAS_ENV")
+  FIN SI
+  SI CONIURA len(env_name) == 0 ET CONIURA settings_doc_has_key(base_expanded, "app.environment")
+    EVOCA SettingsTomlPath env_path_ref AD CONIURA settings_toml_path(base_expanded, "app.environment")
+    VINCIRE env_name AD CONIURA toml_get_string(CONIURA settings_toml_doc(env_path_ref), env_path_ref.leaf_key)
+  FIN SI
+  VINCIRE env_name AD CONIURA settings_normalize_environment(env_name)
+  VINCIRE (*out).environment AD env_name
+  CONIURA settings_set_serialized(out, "app.environment", SETTINGS_VALUE_VERBUM, env_name, SETTINGS_SOURCE_DEFAULT, FALSUM)
+
+  EVOCA SPECULUM NIHIL apply_base_res AD CONIURA settings_apply_doc(out, base_raw, base_expanded, base_content, SETTINGS_SOURCE_FILE_BASE)
+  SI CONIURA result_is_err GENUS(REX, SettingsError)(apply_base_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(REX, SettingsError)(apply_base_res)))
+  FIN SI
+
+  VINCIRE env_path AD CONIURA path_join(root, CONIURA concat(CONIURA concat("civitas.", env_name), ".toml"))
+  SI CONIURA exists(env_path)
+    VINCIRE env_content AD CONIURA read_all(env_path)
+    VINCIRE env_raw AD CONIURA toml_parse_file(env_path)
+    SI NON CONIURA toml_is_valid(env_raw)
+      REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA toml_last_error())
+    FIN SI
+    VINCIRE env_expanded AD CONIURA toml_expand_env(env_raw)
+    EVOCA SPECULUM NIHIL apply_env_res AD CONIURA settings_apply_doc(out, env_raw, env_expanded, env_content, SETTINGS_SOURCE_FILE_ENVIRONMENT)
+    SI CONIURA result_is_err GENUS(REX, SettingsError)(apply_env_res)
+      REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(REX, SettingsError)(apply_env_res)))
+    FIN SI
+  FIN SI
+
+  SI CONIURA len(CONIURA trim(explicit_env_name)) != 0 VEL CONIURA has_env("CIVITAS_ENV")
+    CONIURA settings_set_serialized(out, "app.environment", SETTINGS_VALUE_VERBUM, env_name, SETTINGS_SOURCE_ENV, FALSUM)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL apply_env_override_res AD CONIURA settings_apply_env_overrides(out)
+  SI CONIURA result_is_err GENUS(REX, SettingsError)(apply_env_override_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(REX, SettingsError)(apply_env_override_res)))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL validation_res AD CONIURA settings_validate_required(out)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(validation_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(validation_res)))
+  FIN SI
+
+  SI (*out).strict_mode
+    EVOCA SPECULUM NIHIL strict_res AD CONIURA settings_strict_unknown_violation(out)
+    SI CONIURA result_is_err GENUS(Settings, SettingsError)(strict_res)
+      REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(strict_res)))
+    FIN SI
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_load_fill(SPECULUM Settings out, VERBUM project_root) REDDE SPECULUM NIHIL
+  REDDE CONIURA settings_load_with_env_fill(out, project_root, "")
+EXPLICIT RITUALE
+
+RITUALE settings_load_with_env(VERBUM project_root, VERBUM explicit_env_name) REDDE SPECULUM NIHIL
+  EVOCA Settings settings
+  EVOCA SPECULUM NIHIL load_res AD CONIURA settings_load_with_env_fill(SPECULUM settings, project_root, explicit_env_name)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(load_res)
+    REDDE CONIURA Err GENUS(Settings, SettingsError)(
+      CONIURA settings_error_make("settings", "", "", SETTINGS_SOURCE_DEFAULT, settings.environment, CONIURA result_unwrap_err GENUS(REX, VERBUM)(load_res))
+    )
+  FIN SI
+  REDDE CONIURA settings_ok(settings)
+EXPLICIT RITUALE
+
+RITUALE settings_load(VERBUM project_root) REDDE SPECULUM NIHIL
+  REDDE CONIURA settings_load_with_env(project_root, "")
+EXPLICIT RITUALE
+
+RITUALE settings_inspect_with_env(VERBUM project_root, VERBUM explicit_env_name, VERBUM action, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM Settings settings_ptr AD OBSECRO mem_alloc(MENSURA(Settings))
+  EVOCA SPECULUM NIHIL load_res AD CONIURA settings_load_with_env_fill(settings_ptr, project_root, explicit_env_name)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(load_res)
+    EVOCA VERBUM err AD CONIURA result_unwrap_err GENUS(REX, VERBUM)(load_res)
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+  FIN SI
+
+  SI CONIURA compare(action, "get_verbum") == 0
+    EVOCA SPECULUM NIHIL res AD CONIURA settings_get_verbum(settings_ptr, key)
+    SI CONIURA result_is_err GENUS(VERBUM, SettingsError)(res)
+      EVOCA VERBUM err AD CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(VERBUM, SettingsError)(res))
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    EVOCA VERBUM out AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(res)
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+  FIN SI
+
+  SI CONIURA compare(action, "get_rex") == 0
+    EVOCA SPECULUM NIHIL res AD CONIURA settings_get_rex(settings_ptr, key)
+    SI CONIURA result_is_err GENUS(REX, SettingsError)(res)
+      EVOCA VERBUM err AD CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(REX, SettingsError)(res))
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    EVOCA VERBUM out AD CONIURA stringify_int(CONIURA result_unwrap GENUS(REX, SettingsError)(res))
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+  FIN SI
+
+  SI CONIURA compare(action, "get_bool") == 0
+    EVOCA SPECULUM NIHIL res AD CONIURA settings_get_bool(settings_ptr, key)
+    SI CONIURA result_is_err GENUS(VERUM, SettingsError)(res)
+      EVOCA VERBUM err AD CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(VERUM, SettingsError)(res))
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    SI CONIURA result_unwrap GENUS(VERUM, SettingsError)(res)
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("true")
+    FIN SI
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("false")
+  FIN SI
+
+  SI CONIURA compare(action, "origin") == 0
+    EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings_ptr, key)
+    SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+      EVOCA VERBUM err AD CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res))
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+    EVOCA VERBUM out AD CONIURA settings_source_name(value.source)
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+  FIN SI
+
+  SI CONIURA compare(action, "get_list_len") == 0
+    EVOCA SPECULUM NIHIL value_res AD CONIURA settings_get_value(settings_ptr, key)
+    SI CONIURA result_is_err GENUS(SettingsValue, SettingsError)(value_res)
+      EVOCA VERBUM err AD CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(SettingsValue, SettingsError)(value_res))
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    EVOCA SettingsValue value AD CONIURA result_unwrap GENUS(SettingsValue, SettingsError)(value_res)
+    SI value.kind != SETTINGS_VALUE_LIST_VERBUM
+      EVOCA VERBUM err AD CONIURA concat("tipo inesperado para ", key)
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Err GENUS(VERBUM, VERBUM)(err)
+    FIN SI
+    EVOCA SPECULUM NIHIL values AD CONIURA settings_deserialize_string_list(value.serialized)
+    EVOCA VERBUM out AD CONIURA stringify_int(CONIURA fluxus_len(values))
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+  FIN SI
+
+  SI CONIURA compare(action, "has_key") == 0
+    SI CONIURA settings_has(settings_ptr, key)
+      OBSECRO libera(settings_ptr)
+      REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("true")
+    FIN SI
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("false")
+  FIN SI
+
+  SI CONIURA compare(action, "has_diag") == 0
+    EVOCA SPECULUM NIHIL diags AD (*settings_ptr).diagnostics
+    EVOCA REX i AD 0
+    DUM i < CONIURA fluxus_len(diags)
+      EVOCA SPECULUM SettingsDiagnostic diag_ptr AD CONIURA fluxus_get(diags, i)
+      SI CONIURA compare((*diag_ptr).key, key) == 0
+        OBSECRO libera(settings_ptr)
+        REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("true")
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("false")
+  FIN SI
+
+  SI CONIURA compare(action, "dump") == 0
+    EVOCA VERBUM out AD CONIURA settings_dump_safe(settings_ptr)
+    OBSECRO libera(settings_ptr)
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+  FIN SI
+
+  OBSECRO libera(settings_ptr)
+  REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA concat("settings action desconhecida: ", action))
+EXPLICIT RITUALE
+
+RITUALE settings_inspect(VERBUM project_root, VERBUM action, VERBUM key) REDDE SPECULUM NIHIL
+  REDDE CONIURA settings_inspect_with_env(project_root, "", action, key)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

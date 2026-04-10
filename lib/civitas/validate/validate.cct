@@ -1,0 +1,412 @@
+INCIPIT grimoire "civitas_validate"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/regex.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../forms/forms.cct"
+ADVOCARE "sanitize.cct"
+
+ORDO ValidationRuleKind
+  VrkRequired,
+  VrkMinLen,
+  VrkMaxLen,
+  VrkMinVal,
+  VrkMaxVal,
+  VrkRegex,
+  VrkEmail,
+  VrkUrl,
+  VrkChoices
+FIN ORDO
+
+SIGILLUM ValidationRule
+  kind: ValidationRuleKind
+  message: VERBUM
+  int_param: REX
+  real_param: UMBRA
+  verbum_param: VERBUM
+  list_param: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM FieldSchema
+  nome: VERBUM
+  regras: SPECULUM NIHIL
+  sanitizar: VERUM
+FIN SIGILLUM
+
+SIGILLUM CrossFieldRule
+  campo_a: VERBUM
+  campo_b: VERBUM
+  operacao: VERBUM
+  message: VERBUM
+FIN SIGILLUM
+
+SIGILLUM FormSchema
+  campos: SPECULUM NIHIL
+  regras_cruzadas: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM FieldError
+  mensagens: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ValidationResult
+  valido: VERUM
+  errors: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE validation_rule_new(ValidationRuleKind kind) REDDE ValidationRule
+  EVOCA ValidationRule r
+  VINCIRE r.kind AD kind
+  VINCIRE r.message AD ""
+  VINCIRE r.int_param AD 0
+  VINCIRE r.real_param AD 0.0
+  VINCIRE r.verbum_param AD ""
+  VINCIRE r.list_param AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_required() REDDE ValidationRule
+  REDDE CONIURA validation_rule_new(VrkRequired)
+EXPLICIT RITUALE
+
+RITUALE rule_required_msg(VERBUM msg) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA rule_required()
+  VINCIRE r.message AD msg
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_min_len(REX min) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkMinLen)
+  VINCIRE r.int_param AD min
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_max_len(REX max) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkMaxLen)
+  VINCIRE r.int_param AD max
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_min_val(UMBRA min) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkMinVal)
+  VINCIRE r.real_param AD min
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_max_val(UMBRA max) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkMaxVal)
+  VINCIRE r.real_param AD max
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_regex(VERBUM padrao) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkRegex)
+  VINCIRE r.verbum_param AD padrao
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE rule_email() REDDE ValidationRule
+  REDDE CONIURA validation_rule_new(VrkEmail)
+EXPLICIT RITUALE
+
+RITUALE rule_url() REDDE ValidationRule
+  REDDE CONIURA validation_rule_new(VrkUrl)
+EXPLICIT RITUALE
+
+RITUALE rule_choices(SPECULUM NIHIL opcoes) REDDE ValidationRule
+  EVOCA ValidationRule r AD CONIURA validation_rule_new(VrkChoices)
+  VINCIRE r.list_param AD opcoes
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE validation_default_message(ValidationRuleKind kind, ValidationRule rule) REDDE VERBUM
+  ELIGE kind
+    CASUS VrkRequired:
+      REDDE "Este campo e obrigatorio."
+    CASUS VrkMinLen:
+      REDDE CONIURA concat(CONIURA concat("Minimo de ", CONIURA stringify_int(rule.int_param)), " caracteres.")
+    CASUS VrkMaxLen:
+      REDDE CONIURA concat(CONIURA concat("Maximo de ", CONIURA stringify_int(rule.int_param)), " caracteres.")
+    CASUS VrkMinVal:
+      REDDE CONIURA concat("Valor deve ser maior ou igual a ", CONIURA stringify_real(rule.real_param))
+    CASUS VrkMaxVal:
+      REDDE CONIURA concat("Valor deve ser menor ou igual a ", CONIURA stringify_real(rule.real_param))
+    CASUS VrkRegex:
+      REDDE "Formato invalido."
+    CASUS VrkEmail:
+      REDDE "Endereco de e-mail invalido."
+    CASUS VrkUrl:
+      REDDE "URL invalida."
+    CASUS VrkChoices:
+      REDDE "Opcao invalida."
+  FIN ELIGE
+  REDDE "Valor invalido."
+EXPLICIT RITUALE
+
+RITUALE validation_message(ValidationRule rule) REDDE VERBUM
+  SI CONIURA len(rule.message) > 0
+    REDDE rule.message
+  FIN SI
+  REDDE CONIURA validation_default_message(rule.kind, rule)
+EXPLICIT RITUALE
+
+RITUALE apply_rule(ValidationRule rule, VERBUM valor) REDDE VERUM
+  ELIGE rule.kind
+    CASUS VrkRequired:
+      REDDE CONIURA len(valor) > 0
+    CASUS VrkMinLen:
+      REDDE CONIURA len(valor) >= rule.int_param
+    CASUS VrkMaxLen:
+      REDDE CONIURA len(valor) <= rule.int_param
+    CASUS VrkMinVal:
+      EVOCA SPECULUM NIHIL parsed AD CONIURA try_real(valor)
+      SI NON CONIURA option_is_some GENUS(UMBRA)(parsed)
+        REDDE FALSUM
+      FIN SI
+      REDDE CONIURA option_unwrap GENUS(UMBRA)(parsed) >= rule.real_param
+    CASUS VrkMaxVal:
+      EVOCA SPECULUM NIHIL parsed AD CONIURA try_real(valor)
+      SI NON CONIURA option_is_some GENUS(UMBRA)(parsed)
+        REDDE FALSUM
+      FIN SI
+      REDDE CONIURA option_unwrap GENUS(UMBRA)(parsed) <= rule.real_param
+    CASUS VrkRegex:
+      REDDE CONIURA regex_is_match(rule.verbum_param, valor)
+    CASUS VrkEmail:
+      REDDE CONIURA regex_is_email(valor)
+    CASUS VrkUrl:
+      REDDE CONIURA regex_is_url(valor)
+    CASUS VrkChoices:
+      EVOCA REX n AD CONIURA fluxus_len(rule.list_param)
+      EVOCA REX i AD 0
+      DUM i < n
+        EVOCA SPECULUM VERBUM opt_ptr AD CONIURA fluxus_get(rule.list_param, i)
+        SI CONIURA compare(*opt_ptr, valor) == 0
+          REDDE VERUM
+        FIN SI
+        VINCIRE i AD i + 1
+      FIN DUM
+      REDDE FALSUM
+  FIN ELIGE
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE validate_field(FieldSchema schema, VERBUM valor) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL erros AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM v AD valor
+  EVOCA REX n AD CONIURA fluxus_len(schema.regras)
+  EVOCA REX i AD 0
+
+  SI schema.sanitizar
+    VINCIRE v AD CONIURA sanitize_trim(v)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM ValidationRule rule_ptr AD CONIURA fluxus_get(schema.regras, i)
+    EVOCA ValidationRule rule AD *rule_ptr
+    SI CONIURA len(v) == 0 ET rule.kind != VrkRequired
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI NON CONIURA apply_rule(rule, v)
+      EVOCA VERBUM msg AD CONIURA validation_message(rule)
+      CONIURA fluxus_push(erros, SPECULUM msg)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE erros
+EXPLICIT RITUALE
+
+RITUALE validation_result_new() REDDE ValidationResult
+  EVOCA ValidationResult vr
+  VINCIRE vr.valido AD VERUM
+  VINCIRE vr.errors AD CONIURA map_init GENUS(VERBUM, FieldError)()
+  REDDE vr
+EXPLICIT RITUALE
+
+RITUALE validation_error_storage_key(SPECULUM NIHIL errors, VERBUM campo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, FieldError)(errors)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, campo) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE validation_result_add_error(SPECULUM ValidationResult vr, VERBUM campo, VERBUM msg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA validation_error_storage_key((*vr).errors, campo)
+  VINCIRE (*vr).valido AD FALSUM
+
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    EVOCA SPECULUM NIHIL existing AD CONIURA map_get GENUS(VERBUM, FieldError)((*vr).errors, stored_key)
+    SI CONIURA option_is_some GENUS(FieldError)(existing)
+      EVOCA FieldError fe AD CONIURA option_unwrap GENUS(FieldError)(existing)
+      CONIURA fluxus_push(fe.mensagens, SPECULUM msg)
+    FIN SI
+    CONIURA option_free GENUS(FieldError)(existing)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  EVOCA FieldError fe
+  VINCIRE fe.mensagens AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(fe.mensagens, SPECULUM msg)
+  CONIURA map_insert GENUS(VERBUM, FieldError)((*vr).errors, campo, fe)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE validate_cross_rule(CrossFieldRule cr, FormData fd) REDDE VERUM
+  EVOCA VERBUM val_a AD CONIURA form_data_get_or(fd, cr.campo_a, "")
+  EVOCA VERBUM val_b AD CONIURA form_data_get_or(fd, cr.campo_b, "")
+
+  SI CONIURA compare(cr.operacao, "eq") == 0
+    REDDE CONIURA compare(val_a, val_b) == 0
+  FIN SI
+  SI CONIURA compare(cr.operacao, "neq") == 0
+    REDDE CONIURA compare(val_a, val_b) != 0
+  FIN SI
+  SI CONIURA compare(cr.operacao, "gt_int") == 0
+    EVOCA SPECULUM NIHIL a_opt AD CONIURA try_int(val_a)
+    EVOCA SPECULUM NIHIL b_opt AD CONIURA try_int(val_b)
+    SI CONIURA option_is_some GENUS(REX)(a_opt) ET CONIURA option_is_some GENUS(REX)(b_opt)
+      REDDE CONIURA option_unwrap GENUS(REX)(a_opt) > CONIURA option_unwrap GENUS(REX)(b_opt)
+    FIN SI
+    REDDE VERUM
+  FIN SI
+  SI CONIURA compare(cr.operacao, "lt_int") == 0
+    EVOCA SPECULUM NIHIL a_opt AD CONIURA try_int(val_a)
+    EVOCA SPECULUM NIHIL b_opt AD CONIURA try_int(val_b)
+    SI CONIURA option_is_some GENUS(REX)(a_opt) ET CONIURA option_is_some GENUS(REX)(b_opt)
+      REDDE CONIURA option_unwrap GENUS(REX)(a_opt) < CONIURA option_unwrap GENUS(REX)(b_opt)
+    FIN SI
+    REDDE VERUM
+  FIN SI
+
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE validate_form(FormSchema schema, FormData fd) REDDE ValidationResult
+  EVOCA ValidationResult vr AD CONIURA validation_result_new()
+  EVOCA REX n_campos AD CONIURA fluxus_len(schema.campos)
+  EVOCA REX i AD 0
+
+  DUM i < n_campos
+    EVOCA SPECULUM FieldSchema fs_ptr AD CONIURA fluxus_get(schema.campos, i)
+    EVOCA FieldSchema fs AD *fs_ptr
+    EVOCA VERBUM valor AD CONIURA form_data_get_or(fd, fs.nome, "")
+    EVOCA SPECULUM NIHIL erros AD CONIURA validate_field(fs, valor)
+    EVOCA REX n_erros AD CONIURA fluxus_len(erros)
+    EVOCA REX j AD 0
+
+    DUM j < n_erros
+      EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(erros, j)
+      CONIURA validation_result_add_error(SPECULUM vr, fs.nome, *msg_ptr)
+      VINCIRE j AD j + 1
+    FIN DUM
+
+    CONIURA fluxus_free(erros)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA REX n_cross AD CONIURA fluxus_len(schema.regras_cruzadas)
+  VINCIRE i AD 0
+  DUM i < n_cross
+    EVOCA SPECULUM CrossFieldRule cr_ptr AD CONIURA fluxus_get(schema.regras_cruzadas, i)
+    EVOCA CrossFieldRule cr AD *cr_ptr
+    SI NON CONIURA validate_cross_rule(cr, fd)
+      CONIURA validation_result_add_error(SPECULUM vr, cr.campo_a, cr.message)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE vr
+EXPLICIT RITUALE
+
+RITUALE validation_has_error(ValidationResult vr, VERBUM campo) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA validation_error_storage_key(vr.errors, campo)
+  EVOCA VERUM has_key AD CONIURA option_is_some GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE has_key
+EXPLICIT RITUALE
+
+RITUALE validation_get_errors(ValidationResult vr, VERBUM campo) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA validation_error_storage_key(vr.errors, campo)
+  SI NON CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+  FIN SI
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL opt AD CONIURA map_get GENUS(VERBUM, FieldError)(vr.errors, stored_key)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  SI NON CONIURA option_is_some GENUS(FieldError)(opt)
+    CONIURA option_free GENUS(FieldError)(opt)
+    REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+  FIN SI
+  EVOCA FieldError fe AD CONIURA option_unwrap GENUS(FieldError)(opt)
+  CONIURA option_free GENUS(FieldError)(opt)
+  REDDE fe.mensagens
+EXPLICIT RITUALE
+
+RITUALE validation_first_error(ValidationResult vr, VERBUM campo) REDDE VERBUM
+  EVOCA SPECULUM NIHIL msgs AD CONIURA validation_get_errors(vr, campo)
+  SI CONIURA fluxus_len(msgs) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM VERBUM msg_ptr AD CONIURA fluxus_get(msgs, 0)
+  REDDE *msg_ptr
+EXPLICIT RITUALE
+
+RITUALE field_schema_new(VERBUM nome) REDDE FieldSchema
+  EVOCA FieldSchema fs
+  VINCIRE fs.nome AD nome
+  VINCIRE fs.regras AD CONIURA fluxus_init(MENSURA(ValidationRule))
+  VINCIRE fs.sanitizar AD VERUM
+  REDDE fs
+EXPLICIT RITUALE
+
+RITUALE field_schema_add_rule(SPECULUM FieldSchema fs, ValidationRule rule) REDDE NIHIL
+  CONIURA fluxus_push((*fs).regras, SPECULUM rule)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_schema_new() REDDE FormSchema
+  EVOCA FormSchema s
+  VINCIRE s.campos AD CONIURA fluxus_init(MENSURA(FieldSchema))
+  VINCIRE s.regras_cruzadas AD CONIURA fluxus_init(MENSURA(CrossFieldRule))
+  REDDE s
+EXPLICIT RITUALE
+
+RITUALE form_schema_add_field(SPECULUM FormSchema s, FieldSchema fs) REDDE NIHIL
+  CONIURA fluxus_push((*s).campos, SPECULUM fs)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE form_schema_add_cross(SPECULUM FormSchema s, CrossFieldRule cr) REDDE NIHIL
+  CONIURA fluxus_push((*s).regras_cruzadas, SPECULUM cr)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cross_field_rule(VERBUM campo_a, VERBUM campo_b, VERBUM operacao, VERBUM msg) REDDE CrossFieldRule
+  EVOCA CrossFieldRule cr
+  VINCIRE cr.campo_a AD campo_a
+  VINCIRE cr.campo_b AD campo_b
+  VINCIRE cr.operacao AD operacao
+  VINCIRE cr.message AD msg
+  REDDE cr
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

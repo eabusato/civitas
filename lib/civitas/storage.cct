@@ -1,0 +1,7 @@
+INCIPIT grimoire "civitas_storage_root"
+
+ADVOCARE "storage/storage.cct"
+ADVOCARE "storage/storage_gc.cct"
+ADVOCARE "storage/storage_url.cct"
+
+EXPLICIT grimoire

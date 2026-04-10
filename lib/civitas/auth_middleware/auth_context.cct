@@ -1,0 +1,63 @@
+INCIPIT grimoire "civitas_auth_middleware_context"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM AuthContext
+  autenticado: VERUM
+  user_id: VERBUM
+  escopos: VERBUM
+  via: VERBUM
+FIN SIGILLUM
+
+RITUALE auth_context_empty() REDDE AuthContext
+  EVOCA AuthContext ac
+  VINCIRE ac.autenticado AD FALSUM
+  VINCIRE ac.user_id AD ""
+  VINCIRE ac.escopos AD ""
+  VINCIRE ac.via AD "anonymous"
+  REDDE ac
+EXPLICIT RITUALE
+
+RITUALE auth_context_escrever(SPECULUM LocalContext ctx, AuthContext ac) REDDE NIHIL
+  SI ac.autenticado
+    CONIURA local_context_set(ctx, "auth.autenticado", "1")
+  ALITER
+    CONIURA local_context_set(ctx, "auth.autenticado", "0")
+  FIN SI
+  CONIURA local_context_set(ctx, "auth.user_id", ac.user_id)
+  CONIURA local_context_set(ctx, "auth.escopos", ac.escopos)
+  CONIURA local_context_set(ctx, "auth.via", ac.via)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_context_ler(LocalContext ctx) REDDE AuthContext
+  EVOCA AuthContext ac AD CONIURA auth_context_empty()
+  EVOCA SPECULUM NIHIL aut_opt AD CONIURA local_context_get(ctx, "auth.autenticado")
+  SI CONIURA option_is_some GENUS(VERBUM)(aut_opt)
+    VINCIRE ac.autenticado AD CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(aut_opt), "1") == 0
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(aut_opt)
+
+  EVOCA SPECULUM NIHIL uid_opt AD CONIURA local_context_get(ctx, "auth.user_id")
+  SI CONIURA option_is_some GENUS(VERBUM)(uid_opt)
+    VINCIRE ac.user_id AD CONIURA option_unwrap GENUS(VERBUM)(uid_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(uid_opt)
+
+  EVOCA SPECULUM NIHIL scp_opt AD CONIURA local_context_get(ctx, "auth.escopos")
+  SI CONIURA option_is_some GENUS(VERBUM)(scp_opt)
+    VINCIRE ac.escopos AD CONIURA option_unwrap GENUS(VERBUM)(scp_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(scp_opt)
+
+  EVOCA SPECULUM NIHIL via_opt AD CONIURA local_context_get(ctx, "auth.via")
+  SI CONIURA option_is_some GENUS(VERBUM)(via_opt)
+    VINCIRE ac.via AD CONIURA option_unwrap GENUS(VERBUM)(via_opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(via_opt)
+  REDDE ac
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

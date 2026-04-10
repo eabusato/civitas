@@ -1,0 +1,29 @@
+{% EVOCA RedeProfilePageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero profile-hero">
+  <img class="avatar large" src="{{ profile.user.avatar_url }}" alt="">
+  <div>
+    <p class="eyebrow">Profile</p>
+    <h1>{{ profile.user.display_name }}</h1>
+    <p>@{{ profile.user.handle }}</p>
+    <p>{{ profile.user.bio }}</p>
+    <div class="stats">
+      <span>{{ profile.followers_count }} followers</span>
+      <span>{{ profile.following_count }} following</span>
+      <span>{{ profile.posts_count }} posts</span>
+    </div>
+  </div>
+  {% SI can_follow %}
+    <form method="POST" action="{{ follow_action }}" class="inline-form">
+      {{ csrf_html|safe }}
+      <button type="submit">Follow</button>
+    </form>
+  {% FIN SI %}
+</section>
+<section class="feed-stack">
+  {% DUM post IN posts %}
+    {% ADVOCARE "partials/post_card.html" AD post %}
+  {% FIN DUM %}
+</section>
+{% FIN SECTIO %}

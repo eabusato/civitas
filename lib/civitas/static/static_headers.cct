@@ -1,0 +1,65 @@
+INCIPIT grimoire "civitas_static_headers"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE static_normalize_prefix(VERBUM prefix) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(prefix)
+  SI CONIURA len(cleaned) == 0
+    REDDE "/static/"
+  FIN SI
+  SI NON CONIURA starts_with(cleaned, "/")
+    VINCIRE cleaned AD CONIURA concat("/", cleaned)
+  FIN SI
+  SI NON CONIURA ends_with(cleaned, "/")
+    VINCIRE cleaned AD CONIURA concat(cleaned, "/")
+  FIN SI
+  REDDE cleaned
+EXPLICIT RITUALE
+
+RITUALE static_file_hash(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM content AD CONIURA read_all(path)
+  REDDE CONIURA substring(CONIURA sha256(content), 0, 8)
+EXPLICIT RITUALE
+
+RITUALE static_etag(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM content AD CONIURA read_all(path)
+  EVOCA VERBUM digest AD CONIURA substring(CONIURA sha256(content), 0, 32)
+  REDDE CONIURA concat("\"", CONIURA concat(digest, "\""))
+EXPLICIT RITUALE
+
+RITUALE static_last_dot(VERBUM value) REDDE REX
+  REDDE CONIURA last_find(value, ".")
+EXPLICIT RITUALE
+
+RITUALE static_nome_com_hash(VERBUM nome, VERBUM hash8) REDDE VERBUM
+  EVOCA REX pos_ponto AD CONIURA static_last_dot(nome)
+  SI pos_ponto < 0
+    REDDE CONIURA concat(nome, CONIURA concat(".", hash8))
+  FIN SI
+  EVOCA VERBUM base AD CONIURA substring(nome, 0, pos_ponto)
+  EVOCA VERBUM ext AD CONIURA substring(nome, pos_ponto, CONIURA len(nome))
+  REDDE CONIURA concat(base, CONIURA concat(".", CONIURA concat(hash8, ext)))
+EXPLICIT RITUALE
+
+RITUALE static_cache_control_production(REX max_age) REDDE VERBUM
+  REDDE CONIURA concat("public, max-age=", CONIURA concat(CONIURA stringify_int(max_age), ", immutable"))
+EXPLICIT RITUALE
+
+RITUALE static_safe_relative_name(VERBUM nome) REDDE VERUM
+  SI CONIURA len(nome) == 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA is_absolute(nome)
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA contains(nome, "..")
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

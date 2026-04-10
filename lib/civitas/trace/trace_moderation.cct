@@ -1,0 +1,30 @@
+INCIPIT grimoire "civitas_trace_moderation"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+
+RITUALE trace_moderation_decide_begin(VERBUM item_id, VERBUM action) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), "moderation:decide")
+  CONIURA instrument_span_attr(span_id, "moderation.item_id", item_id)
+  CONIURA instrument_span_attr(span_id, "moderation.action", action)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_moderation_decide_end(REX span_id, VERUM approved) REDDE NIHIL
+  SI approved
+    CONIURA instrument_span_attr(span_id, "moderation.result", "approved")
+  ALITER
+    CONIURA instrument_span_attr(span_id, "moderation.result", "rejected")
+  FIN SI
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_moderation_bulk_begin(REX count, VERBUM action) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), "moderation:bulk")
+  CONIURA instrument_span_attr(span_id, "moderation.action", action)
+  CONIURA instrument_span_attr(span_id, "moderation.count", CONIURA stringify_int(count))
+  REDDE span_id
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

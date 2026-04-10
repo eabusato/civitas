@@ -1,0 +1,60 @@
+INCIPIT grimoire "fase3_support_common"
+
+ADVOCARE "../../fase_2/support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase3_request(VERBUM method, VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase2_request(method, target)
+EXPLICIT RITUALE
+
+RITUALE phase3_request_with_headers(VERBUM method, VERBUM target, SPECULUM NIHIL headers) REDDE WebRequest
+  REDDE CONIURA phase2_request_with_headers(method, target, headers)
+EXPLICIT RITUALE
+
+RITUALE phase3_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_3/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase3_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_dir(path)
+    EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(entries)
+    DUM i < n
+      EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+      CONIURA phase3_delete_tree(CONIURA path_join(path, *name_ptr))
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA delete_dir(path)
+    REDDE
+  FIN SI
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_reset_dir(VERBUM path) REDDE NIHIL
+  SI CONIURA exists(path)
+    CONIURA phase3_delete_tree(path)
+  FIN SI
+  CONIURA mkdir_all(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_ok_or_fail(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

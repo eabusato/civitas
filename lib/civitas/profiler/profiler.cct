@@ -1,0 +1,603 @@
+INCIPIT grimoire "civitas_profiler"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../trace/trace_request.cct"
+
+SIGILLUM RitualStat
+  name: VERBUM
+  category: VERBUM
+  calls: REX
+  total_us: REX
+  pct_request: UMBRA
+FIN SIGILLUM
+
+SIGILLUM QueryStat
+  template: VERBUM
+  calls: REX
+  total_us: REX
+  possible_n1: VERUM
+FIN SIGILLUM
+
+SIGILLUM N1Report
+  found: VERUM
+  queries: SPECULUM NIHIL
+  threshold: REX
+FIN SIGILLUM
+
+SIGILLUM RequestProfile
+  trace_id: VERBUM
+  request_id: VERBUM
+  route: VERBUM
+  method: VERBUM
+  duration_ms: REX
+  spans_count: REX
+  db_time_us: REX
+  cache_time_us: REX
+  n_db_calls: REX
+  rituals: SPECULUM NIHIL
+  queries: SPECULUM NIHIL
+  n1_report: N1Report
+  timestamp_ms: REX
+FIN SIGILLUM
+
+SIGILLUM ProfilerState
+  active: VERUM
+  n1_threshold: REX
+  db: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE profiler_n1_report_new(REX threshold) REDDE N1Report
+  EVOCA N1Report out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.queries AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE out.threshold AD threshold
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_request_profile_new(VERBUM trace_id, VERBUM request_id, VERBUM route, VERBUM method, REX duration_ms, REX threshold) REDDE RequestProfile
+  EVOCA RequestProfile out
+  VINCIRE out.trace_id AD trace_id
+  VINCIRE out.request_id AD request_id
+  VINCIRE out.route AD route
+  VINCIRE out.method AD method
+  VINCIRE out.duration_ms AD duration_ms
+  VINCIRE out.spans_count AD 0
+  VINCIRE out.db_time_us AD 0
+  VINCIRE out.cache_time_us AD 0
+  VINCIRE out.n_db_calls AD 0
+  VINCIRE out.rituals AD CONIURA fluxus_init(MENSURA(RitualStat))
+  VINCIRE out.queries AD CONIURA fluxus_init(MENSURA(QueryStat))
+  VINCIRE out.n1_report.found AD FALSUM
+  VINCIRE out.n1_report.queries AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE out.n1_report.threshold AD threshold
+  VINCIRE out.timestamp_ms AD CONIURA now_ms()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_request_profile_free(SPECULUM RequestProfile profile) REDDE NIHIL
+  CONIURA fluxus_free((*profile).rituals)
+  CONIURA fluxus_free((*profile).queries)
+  CONIURA fluxus_free((*profile).n1_report.queries)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_state_new(SPECULUM NIHIL db, REX n1_threshold) REDDE ProfilerState
+  EVOCA ProfilerState out
+  VINCIRE out.active AD FALSUM
+  VINCIRE out.n1_threshold AD n1_threshold
+  VINCIRE out.db AD db
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_enable(SPECULUM ProfilerState state) REDDE NIHIL
+  VINCIRE (*state).active AD VERUM
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_disable(SPECULUM ProfilerState state) REDDE NIHIL
+  VINCIRE (*state).active AD FALSUM
+  CONIURA instrument_disable()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_is_active(ProfilerState state) REDDE VERUM
+  REDDE state.active
+EXPLICIT RITUALE
+
+RITUALE profiler_span_attr_or(InstrumentSpan span, VERBUM key, VERBUM fallback) REDDE VERBUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(span.attrs)
+  DUM i < n
+    EVOCA SPECULUM SpanAttr attr_ptr AD CONIURA fluxus_get(span.attrs, i)
+    SI CONIURA compare((*attr_ptr).key, key) == 0
+      REDDE (*attr_ptr).value
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE profiler_find_ritual_idx(SPECULUM NIHIL rituals, VERBUM category, VERBUM name) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(rituals)
+  DUM i < n
+    EVOCA SPECULUM RitualStat item_ptr AD CONIURA fluxus_get(rituals, i)
+    SI CONIURA compare((*item_ptr).category, category) == 0 ET CONIURA compare((*item_ptr).name, name) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE profiler_find_query_idx(SPECULUM NIHIL queries, VERBUM template) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(queries)
+  DUM i < n
+    EVOCA SPECULUM QueryStat item_ptr AD CONIURA fluxus_get(queries, i)
+    SI CONIURA compare((*item_ptr).template, template) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE profiler_query_template(InstrumentSpan span) REDDE VERBUM
+  EVOCA VERBUM template AD CONIURA profiler_span_attr_or(span, "sql.template", "")
+  SI CONIURA len(template) > 0
+    REDDE template
+  FIN SI
+  VINCIRE template AD CONIURA profiler_span_attr_or(span, "db.target", "")
+  SI CONIURA len(template) > 0
+    REDDE template
+  FIN SI
+  REDDE span.name
+EXPLICIT RITUALE
+
+RITUALE profiler_accumulate_ritual(SPECULUM NIHIL rituals, VERBUM category, VERBUM name, REX duration_us) REDDE NIHIL
+  EVOCA REX idx AD CONIURA profiler_find_ritual_idx(rituals, category, name)
+  SI idx >= 0
+    EVOCA SPECULUM RitualStat item_ptr AD CONIURA fluxus_get(rituals, idx)
+    VINCIRE (*item_ptr).calls AD (*item_ptr).calls + 1
+    VINCIRE (*item_ptr).total_us AD (*item_ptr).total_us + duration_us
+    REDDE
+  FIN SI
+  EVOCA RitualStat item
+  VINCIRE item.name AD name
+  VINCIRE item.category AD category
+  VINCIRE item.calls AD 1
+  VINCIRE item.total_us AD duration_us
+  VINCIRE item.pct_request AD 0.0
+  CONIURA fluxus_push(rituals, SPECULUM item)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_accumulate_query(SPECULUM NIHIL queries, VERBUM template, REX duration_us) REDDE NIHIL
+  EVOCA REX idx AD CONIURA profiler_find_query_idx(queries, template)
+  SI idx >= 0
+    EVOCA SPECULUM QueryStat item_ptr AD CONIURA fluxus_get(queries, idx)
+    VINCIRE (*item_ptr).calls AD (*item_ptr).calls + 1
+    VINCIRE (*item_ptr).total_us AD (*item_ptr).total_us + duration_us
+    REDDE
+  FIN SI
+  EVOCA QueryStat item
+  VINCIRE item.template AD template
+  VINCIRE item.calls AD 1
+  VINCIRE item.total_us AD duration_us
+  VINCIRE item.possible_n1 AD FALSUM
+  CONIURA fluxus_push(queries, SPECULUM item)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_finalize_rituals(SPECULUM RequestProfile profile) REDDE NIHIL
+  EVOCA REX request_us AD (*profile).duration_ms * 1000
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*profile).rituals)
+  DUM i < n
+    EVOCA SPECULUM RitualStat item_ptr AD CONIURA fluxus_get((*profile).rituals, i)
+    SI request_us > 0
+      VINCIRE (*item_ptr).pct_request AD (cast GENUS(UMBRA)((*item_ptr).total_us) * 100.0) / cast GENUS(UMBRA)(request_us)
+    ALITER
+      VINCIRE (*item_ptr).pct_request AD 0.0
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_finalize_n1(SPECULUM RequestProfile profile, REX threshold) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*profile).queries)
+  DUM i < n
+    EVOCA SPECULUM QueryStat item_ptr AD CONIURA fluxus_get((*profile).queries, i)
+    SI (*item_ptr).calls > threshold
+      EVOCA VERBUM label AD (*item_ptr).template
+      VINCIRE label AD CONIURA concat(label, " x")
+      VINCIRE label AD CONIURA concat(label, CONIURA stringify_int((*item_ptr).calls))
+      VINCIRE (*item_ptr).possible_n1 AD VERUM
+      VINCIRE (*profile).n1_report.found AD VERUM
+      CONIURA fluxus_push((*profile).n1_report.queries, SPECULUM label)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_sort_rituals_desc(SPECULUM NIHIL rituals) REDDE NIHIL
+  EVOCA REX i AD 1
+  EVOCA REX n AD CONIURA fluxus_len(rituals)
+  DUM i < n
+    EVOCA SPECULUM RitualStat current_ptr AD CONIURA fluxus_get(rituals, i)
+    EVOCA RitualStat current AD *current_ptr
+    EVOCA REX j AD i - 1
+    DUM j >= 0
+      EVOCA SPECULUM RitualStat prev_ptr AD CONIURA fluxus_get(rituals, j)
+      SI (*prev_ptr).total_us >= current.total_us
+        FRANGE
+      FIN SI
+      EVOCA SPECULUM RitualStat next_ptr AD CONIURA fluxus_get(rituals, j + 1)
+      VINCIRE (*next_ptr) AD *prev_ptr
+      VINCIRE j AD j - 1
+    FIN DUM
+    EVOCA SPECULUM RitualStat slot_ptr AD CONIURA fluxus_get(rituals, j + 1)
+    VINCIRE (*slot_ptr) AD current
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_sort_queries_desc(SPECULUM NIHIL queries) REDDE NIHIL
+  EVOCA REX i AD 1
+  EVOCA REX n AD CONIURA fluxus_len(queries)
+  DUM i < n
+    EVOCA SPECULUM QueryStat current_ptr AD CONIURA fluxus_get(queries, i)
+    EVOCA QueryStat current AD *current_ptr
+    EVOCA REX j AD i - 1
+    DUM j >= 0
+      EVOCA SPECULUM QueryStat prev_ptr AD CONIURA fluxus_get(queries, j)
+      SI (*prev_ptr).total_us >= current.total_us
+        FRANGE
+      FIN SI
+      EVOCA SPECULUM QueryStat next_ptr AD CONIURA fluxus_get(queries, j + 1)
+      VINCIRE (*next_ptr) AD *prev_ptr
+      VINCIRE j AD j - 1
+    FIN DUM
+    EVOCA SPECULUM QueryStat slot_ptr AD CONIURA fluxus_get(queries, j + 1)
+    VINCIRE (*slot_ptr) AD current
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_analyze(
+  SPECULUM ProfilerState state,
+  SPECULUM NIHIL spans,
+  VERBUM trace_id,
+  VERBUM request_id,
+  VERBUM route,
+  VERBUM method,
+  REX duration_ms
+) REDDE RequestProfile
+  EVOCA RequestProfile profile AD CONIURA profiler_request_profile_new(trace_id, request_id, route, method, duration_ms, (*state).n1_threshold)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(spans)
+  VINCIRE profile.spans_count AD n
+  DUM i < n
+    EVOCA SPECULUM InstrumentSpan span_ptr AD CONIURA fluxus_get(spans, i)
+    EVOCA REX duration_us AD 0
+    SI (*span_ptr).end_us > (*span_ptr).start_us
+      VINCIRE duration_us AD (*span_ptr).end_us - (*span_ptr).start_us
+    FIN SI
+    CONIURA profiler_accumulate_ritual(profile.rituals, (*span_ptr).category, (*span_ptr).name, duration_us)
+    SI CONIURA compare((*span_ptr).category, "db") == 0
+      VINCIRE profile.db_time_us AD profile.db_time_us + duration_us
+      VINCIRE profile.n_db_calls AD profile.n_db_calls + 1
+      CONIURA profiler_accumulate_query(profile.queries, CONIURA profiler_query_template(*span_ptr), duration_us)
+    FIN SI
+    SI CONIURA compare((*span_ptr).category, "cache") == 0
+      VINCIRE profile.cache_time_us AD profile.cache_time_us + duration_us
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA profiler_finalize_rituals(SPECULUM profile)
+  CONIURA profiler_finalize_n1(SPECULUM profile, (*state).n1_threshold)
+  CONIURA profiler_sort_rituals_desc(profile.rituals)
+  CONIURA profiler_sort_queries_desc(profile.queries)
+  REDDE profile
+EXPLICIT RITUALE
+
+RITUALE profiler_top_rituals(RequestProfile profile, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_copy GENUS(RitualStat)(profile.rituals)
+  SI limit_count < 0 VEL limit_count >= CONIURA fluxus_len(out)
+    REDDE out
+  FIN SI
+  REDDE CONIURA fluxus_slice GENUS(RitualStat)(out, 0, limit_count)
+EXPLICIT RITUALE
+
+RITUALE profiler_queries_to_json(SPECULUM NIHIL queries) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(queries)
+  DUM i < n
+    EVOCA SPECULUM QueryStat item_ptr AD CONIURA fluxus_get(queries, i)
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "template", CONIURA json_str((*item_ptr).template))
+    CONIURA json_obj_push(obj, "calls", CONIURA json_num(cast GENUS(UMBRA)((*item_ptr).calls)))
+    CONIURA json_obj_push(obj, "total_us", CONIURA json_num(cast GENUS(UMBRA)((*item_ptr).total_us)))
+    CONIURA json_obj_push(obj, "possible_n1", CONIURA json_bool((*item_ptr).possible_n1))
+    CONIURA json_push(root, obj)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE profiler_rituals_to_json(SPECULUM NIHIL rituals) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(rituals)
+  DUM i < n
+    EVOCA SPECULUM RitualStat item_ptr AD CONIURA fluxus_get(rituals, i)
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "name", CONIURA json_str((*item_ptr).name))
+    CONIURA json_obj_push(obj, "category", CONIURA json_str((*item_ptr).category))
+    CONIURA json_obj_push(obj, "calls", CONIURA json_num(cast GENUS(UMBRA)((*item_ptr).calls)))
+    CONIURA json_obj_push(obj, "total_us", CONIURA json_num(cast GENUS(UMBRA)((*item_ptr).total_us)))
+    CONIURA json_obj_push(obj, "pct_request", CONIURA json_num((*item_ptr).pct_request))
+    CONIURA json_push(root, obj)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE profiler_n1_to_json(N1Report report) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json labels AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(report.queries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(report.queries, i)
+    CONIURA json_push(labels, CONIURA json_str(*item_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_obj_push(root, "found", CONIURA json_bool(report.found))
+  CONIURA json_obj_push(root, "threshold", CONIURA json_num(cast GENUS(UMBRA)(report.threshold)))
+  CONIURA json_obj_push(root, "queries", labels)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE profiler_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS request_profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, trace_id TEXT NOT NULL, request_id TEXT NOT NULL, route TEXT NOT NULL, method TEXT NOT NULL, duration_ms INTEGER NOT NULL, spans_count INTEGER NOT NULL, db_time_us INTEGER NOT NULL, cache_time_us INTEGER NOT NULL, n_db_calls INTEGER NOT NULL, n1_found INTEGER NOT NULL, created_at_ms INTEGER NOT NULL, rituals_json TEXT NOT NULL, queries_json TEXT NOT NULL, n1_json TEXT NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_request_profiles_route ON request_profiles(route)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_request_profiles_created_at ON request_profiles(created_at_ms DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_persist(SPECULUM ProfilerState state, RequestProfile profile) REDDE NIHIL
+  SI (*state).db == NIHIL
+    REDDE
+  FIN SI
+  CONIURA profiler_schema_up((*state).db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*state).db, "INSERT INTO request_profiles (trace_id, request_id, route, method, duration_ms, spans_count, db_time_us, cache_time_us, n_db_calls, n1_found, created_at_ms, rituals_json, queries_json, n1_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, profile.trace_id)
+  CONIURA stmt_bind_text(stmt, 2, profile.request_id)
+  CONIURA stmt_bind_text(stmt, 3, profile.route)
+  CONIURA stmt_bind_text(stmt, 4, profile.method)
+  CONIURA stmt_bind_int(stmt, 5, profile.duration_ms)
+  CONIURA stmt_bind_int(stmt, 6, profile.spans_count)
+  CONIURA stmt_bind_int(stmt, 7, profile.db_time_us)
+  CONIURA stmt_bind_int(stmt, 8, profile.cache_time_us)
+  CONIURA stmt_bind_int(stmt, 9, profile.n_db_calls)
+  SI profile.n1_report.found
+    CONIURA stmt_bind_int(stmt, 10, 1)
+  ALITER
+    CONIURA stmt_bind_int(stmt, 10, 0)
+  FIN SI
+  CONIURA stmt_bind_int(stmt, 11, profile.timestamp_ms)
+  CONIURA stmt_bind_text(stmt, 12, CONIURA profiler_rituals_to_json(profile.rituals))
+  CONIURA stmt_bind_text(stmt, 13, CONIURA profiler_queries_to_json(profile.queries))
+  CONIURA stmt_bind_text(stmt, 14, CONIURA profiler_n1_to_json(profile.n1_report))
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_profile_count(SPECULUM ProfilerState state) REDDE REX
+  SI (*state).db == NIHIL
+    REDDE 0
+  FIN SI
+  CONIURA profiler_schema_up((*state).db)
+  REDDE CONIURA db_scalar_int((*state).db, "SELECT COUNT(*) FROM request_profiles")
+EXPLICIT RITUALE
+
+RITUALE profiler_parse_rituals_json(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RitualStat))
+  SI CONIURA len(raw) == 0
+    REDDE out
+  FIN SI
+  EVOCA Json root AD CONIURA json_parse(raw)
+  SI NON CONIURA json_is_arr(root)
+    REDDE out
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(root)
+  DUM i < n
+    EVOCA Json item AD CONIURA json_arr_get(root, i)
+    SI CONIURA json_is_obj(item)
+      EVOCA RitualStat stat
+      VINCIRE stat.name AD CONIURA json_expect_str(CONIURA json_get_key(item, "name"))
+      VINCIRE stat.category AD CONIURA json_expect_str(CONIURA json_get_key(item, "category"))
+      VINCIRE stat.calls AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(item, "calls")))
+      VINCIRE stat.total_us AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(item, "total_us")))
+      VINCIRE stat.pct_request AD CONIURA json_expect_num(CONIURA json_get_key(item, "pct_request"))
+      CONIURA fluxus_push(out, SPECULUM stat)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_parse_queries_json(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(QueryStat))
+  SI CONIURA len(raw) == 0
+    REDDE out
+  FIN SI
+  EVOCA Json root AD CONIURA json_parse(raw)
+  SI NON CONIURA json_is_arr(root)
+    REDDE out
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(root)
+  DUM i < n
+    EVOCA Json item AD CONIURA json_arr_get(root, i)
+    SI CONIURA json_is_obj(item)
+      EVOCA QueryStat stat
+      VINCIRE stat.template AD CONIURA json_expect_str(CONIURA json_get_key(item, "template"))
+      VINCIRE stat.calls AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(item, "calls")))
+      VINCIRE stat.total_us AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(item, "total_us")))
+      VINCIRE stat.possible_n1 AD CONIURA json_expect_bool(CONIURA json_get_key(item, "possible_n1"))
+      CONIURA fluxus_push(out, SPECULUM stat)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_parse_n1_json(VERBUM raw, REX fallback_threshold) REDDE N1Report
+  EVOCA N1Report report AD CONIURA profiler_n1_report_new(fallback_threshold)
+  SI CONIURA len(raw) == 0
+    REDDE report
+  FIN SI
+  EVOCA Json root AD CONIURA json_parse(raw)
+  SI NON CONIURA json_is_obj(root)
+    REDDE report
+  FIN SI
+  VINCIRE report.found AD CONIURA json_expect_bool(CONIURA json_get_key(root, "found"))
+  VINCIRE report.threshold AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "threshold")))
+  EVOCA Json labels AD CONIURA json_get_key(root, "queries")
+  SI CONIURA json_is_arr(labels)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA json_arr_len(labels)
+    DUM i < n
+      EVOCA VERBUM label AD CONIURA json_expect_str(CONIURA json_arr_get(labels, i))
+      CONIURA fluxus_push(report.queries, SPECULUM label)
+      VINCIRE i AD i + 1
+    FIN DUM
+  FIN SI
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE profiler_read_recent(SPECULUM ProfilerState state, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RequestProfile))
+  SI (*state).db == NIHIL
+    REDDE out
+  FIN SI
+  CONIURA profiler_schema_up((*state).db)
+  EVOCA REX bounded_limit AD limit_count
+  SI bounded_limit <= 0
+    VINCIRE bounded_limit AD 20
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*state).db, "SELECT trace_id, request_id, route, method, duration_ms, spans_count, db_time_us, cache_time_us, n_db_calls, n1_found, created_at_ms, rituals_json, queries_json, n1_json FROM request_profiles ORDER BY created_at_ms DESC, id DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, bounded_limit)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RequestProfile profile AD CONIURA profiler_request_profile_new(
+        CONIURA concat("", CONIURA stmt_get_text(stmt, 0)),
+        CONIURA concat("", CONIURA stmt_get_text(stmt, 1)),
+        CONIURA concat("", CONIURA stmt_get_text(stmt, 2)),
+        CONIURA concat("", CONIURA stmt_get_text(stmt, 3)),
+        CONIURA stmt_get_int(stmt, 4),
+        (*state).n1_threshold
+      )
+      VINCIRE profile.spans_count AD CONIURA stmt_get_int(stmt, 5)
+      VINCIRE profile.db_time_us AD CONIURA stmt_get_int(stmt, 6)
+      VINCIRE profile.cache_time_us AD CONIURA stmt_get_int(stmt, 7)
+      VINCIRE profile.n_db_calls AD CONIURA stmt_get_int(stmt, 8)
+      VINCIRE profile.timestamp_ms AD CONIURA stmt_get_int(stmt, 10)
+      CONIURA fluxus_free(profile.rituals)
+      CONIURA fluxus_free(profile.queries)
+      CONIURA fluxus_free(profile.n1_report.queries)
+      VINCIRE profile.rituals AD CONIURA profiler_parse_rituals_json(CONIURA concat("", CONIURA stmt_get_text(stmt, 11)))
+      VINCIRE profile.queries AD CONIURA profiler_parse_queries_json(CONIURA concat("", CONIURA stmt_get_text(stmt, 12)))
+      EVOCA N1Report parsed_n1 AD CONIURA profiler_parse_n1_json(CONIURA concat("", CONIURA stmt_get_text(stmt, 13)), (*state).n1_threshold)
+      VINCIRE profile.n1_report.found AD parsed_n1.found
+      VINCIRE profile.n1_report.threshold AD parsed_n1.threshold
+      VINCIRE profile.n1_report.queries AD parsed_n1.queries
+      CONIURA fluxus_push(out, SPECULUM profile)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE profiler_middleware(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM RequestContext ctx AD ctx_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM ProfilerState state AD CONIURA middleware_current_binding_ctx(*ctx)
+  SI state == NIHIL VEL NON (*state).active
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  EVOCA LocalContext local_ctx AD CONIURA local_context_new()
+  EVOCA VERBUM trace_id AD CONIURA trace_request_new_id()
+  EVOCA VERBUM route_label AD CONIURA middleware_context_verbum_or(*ctx, CONIURA middleware_context_route_pattern_key(), (*req).path)
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA REX root_span_id AD 0
+
+  CONIURA instrument_buffer_clear()
+  CONIURA local_context_open(SPECULUM local_ctx)
+  CONIURA local_context_set(SPECULUM local_ctx, CONIURA local_context_key_request_id(), (*req).request_id)
+  CONIURA local_context_set(SPECULUM local_ctx, CONIURA local_context_key_trace_id(), trace_id)
+  CONIURA local_context_set(SPECULUM local_ctx, CONIURA local_context_key_route_path(), route_label)
+
+  VINCIRE root_span_id AD CONIURA instrument_http_span((*req).method, route_label)
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  CONIURA instrument_span_attr(root_span_id, "http.status", CONIURA stringify_int((*out).status))
+  CONIURA instrument_span_attr(root_span_id, "http.request_id", (*req).request_id)
+  CONIURA instrument_span_end(root_span_id)
+
+  EVOCA SPECULUM NIHIL spans AD CONIURA instrument_buffer_drain()
+  EVOCA RequestProfile profile AD CONIURA profiler_analyze(
+    state,
+    spans,
+    trace_id,
+    (*req).request_id,
+    route_label,
+    (*req).method,
+    CONIURA now_ms() - started_ms
+  )
+  CONIURA profiler_persist(state, profile)
+  CONIURA response_set_header(out, "x-profile-trace-id", trace_id)
+  SI profile.n1_report.found
+    CONIURA response_set_header(out, "x-civitas-profiler-n1", "1")
+  FIN SI
+  CONIURA profiler_request_profile_free(SPECULUM profile)
+  CONIURA instrument_spans_free(spans)
+  CONIURA local_context_close(SPECULUM local_ctx)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE profiler_middleware_binding(SPECULUM ProfilerState state) REDDE MiddlewareBinding
+  REDDE CONIURA middleware_binding_with_ctx("profiler", profiler_middleware, state)
+EXPLICIT RITUALE
+
+RITUALE profiler_middleware_add(SPECULUM Router router, SPECULUM ProfilerState state) REDDE NIHIL
+  CONIURA router_add_global_middleware(router, CONIURA profiler_middleware_binding(state))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

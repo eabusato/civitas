@@ -1,0 +1,401 @@
+INCIPIT grimoire "civitas_query_mut"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../model/model.cct"
+ADVOCARE "query.cct"
+ADVOCARE "query_exec.cct"
+
+SIGILLUM InsertQuery
+  tabela: VERBUM
+  campos: SPECULUM NIHIL
+  valores: SPECULUM NIHIL
+  kinds: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM UpdateQuery
+  tabela: VERBUM
+  sets: SPECULUM NIHIL
+  filtros: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM DeleteQuery
+  tabela: VERBUM
+  filtros: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE insert_into(VERBUM tabela) REDDE InsertQuery
+  EVOCA InsertQuery iq
+  VINCIRE iq.tabela AD tabela
+  VINCIRE iq.campos AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE iq.valores AD CONIURA fluxus_init(MENSURA(QueryFilter))
+  VINCIRE iq.kinds AD CONIURA fluxus_init(MENSURA(FieldKind))
+  VINCIRE iq.logger AD NIHIL
+  REDDE iq
+EXPLICIT RITUALE
+
+RITUALE insert_push_filter(InsertQuery iq, QueryFilter f) REDDE NIHIL
+  CONIURA fluxus_push(iq.campos, SPECULUM f.campo)
+  CONIURA fluxus_push(iq.valores, SPECULUM f)
+  CONIURA fluxus_push(iq.kinds, SPECULUM f.kind)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_set_text(InsertQuery iq, VERBUM campo, VERBUM valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD Eq
+  VINCIRE f.valor_texto AD valor
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkText
+  CONIURA insert_push_filter(iq, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_set_int(InsertQuery iq, VERBUM campo, REX valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD Eq
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD valor
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkInt
+  CONIURA insert_push_filter(iq, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_set_bool(InsertQuery iq, VERBUM campo, VERUM valor) REDDE NIHIL
+  SI valor
+    CONIURA insert_set_int(iq, campo, 1)
+  ALITER
+    CONIURA insert_set_int(iq, campo, 0)
+  FIN SI
+  EVOCA REX last AD CONIURA fluxus_len(iq.valores) - 1
+  EVOCA SPECULUM QueryFilter ptr AD CONIURA fluxus_get(iq.valores, last)
+  VINCIRE (*ptr).kind AD FkBool
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_set_real(InsertQuery iq, VERBUM campo, UMBRA valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD Eq
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD valor
+  VINCIRE f.kind AD FkReal
+  CONIURA insert_push_filter(iq, f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_build_sql(InsertQuery iq) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("INSERT INTO ", iq.tabela)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  EVOCA REX n AD CONIURA fluxus_len(iq.campos)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(iq.campos, i)
+    VINCIRE sql AD CONIURA concat(sql, *ptr)
+    SI i < n - 1
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+  VINCIRE i AD 0
+  DUM i < n
+    VINCIRE sql AD CONIURA concat(sql, "?")
+    SI i < n - 1
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE insert_bind_params(SPECULUM NIHIL stmt, InsertQuery iq) REDDE NIHIL
+  CONIURA query_bind_params(stmt, iq.valores)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE insert_execute(SPECULUM NIHIL db, InsertQuery iq) REDDE REX
+  EVOCA VERBUM sql AD CONIURA insert_build_sql(iq)
+  SI iq.logger != NIHIL
+    CONIURA log_debug(iq.logger, sql, "{\"op\":\"insert\"}")
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA insert_bind_params(stmt, iq)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT last_insert_rowid()")
+EXPLICIT RITUALE
+
+RITUALE insert_query_to_params(InsertQuery iq) REDDE DbParams
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX n AD CONIURA fluxus_len(iq.valores)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM QueryFilter ptr AD CONIURA fluxus_get(iq.valores, i)
+    ELIGE (*ptr).kind
+      CASUS FkInt:
+        CONIURA dbh_param_int(SPECULUM params, (*ptr).valor_int)
+      CASUS FkBool:
+        CONIURA dbh_param_bool(SPECULUM params, (*ptr).valor_int != 0)
+      CASUS FkReal:
+        CONIURA dbh_param_real(SPECULUM params, (*ptr).valor_real)
+      CASUS FkUUID:
+        CONIURA dbh_param_uuid(SPECULUM params, (*ptr).valor_texto)
+      ALIOQUIN:
+        CONIURA dbh_param_text(SPECULUM params, (*ptr).valor_texto)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE params
+EXPLICIT RITUALE
+
+RITUALE insert_execute_dbh(DbHandle dbh, InsertQuery iq) REDDE REX
+  EVOCA VERBUM sql AD CONIURA insert_build_sql(iq)
+  SI iq.logger != NIHIL
+    CONIURA log_debug(iq.logger, sql, "{\"op\":\"insert_dbh\"}")
+  FIN SI
+  EVOCA DbParams params AD CONIURA insert_query_to_params(iq)
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  SI dbh.kind == PbkSqlite
+    REDDE CONIURA db_scalar_int(dbh.sqlite_conn, "SELECT last_insert_rowid()")
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE update_table(VERBUM tabela) REDDE UpdateQuery
+  EVOCA UpdateQuery uq
+  VINCIRE uq.tabela AD tabela
+  VINCIRE uq.sets AD CONIURA fluxus_init(MENSURA(QueryFilter))
+  VINCIRE uq.filtros AD CONIURA fluxus_init(MENSURA(QueryFilter))
+  VINCIRE uq.logger AD NIHIL
+  REDDE uq
+EXPLICIT RITUALE
+
+RITUALE update_set_text(UpdateQuery uq, VERBUM campo, VERBUM valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD Eq
+  VINCIRE f.valor_texto AD valor
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkText
+  CONIURA fluxus_push(uq.sets, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_set_int(UpdateQuery uq, VERBUM campo, REX valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD Eq
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD valor
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkInt
+  CONIURA fluxus_push(uq.sets, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_where(UpdateQuery uq, VERBUM campo, QueryOp op, VERBUM valor) REDDE NIHIL
+  CONIURA update_where_text(uq, campo, op, valor)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_where_text(UpdateQuery uq, VERBUM campo, QueryOp op, VERBUM valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD valor
+  VINCIRE f.valor_int AD 0
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkText
+  CONIURA fluxus_push(uq.filtros, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_where_int(UpdateQuery uq, VERBUM campo, QueryOp op, REX valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD valor
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkInt
+  CONIURA fluxus_push(uq.filtros, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_build_sql(UpdateQuery uq) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("UPDATE ", uq.tabela)
+  VINCIRE sql AD CONIURA concat(sql, " SET ")
+  EVOCA REX ns AD CONIURA fluxus_len(uq.sets)
+  EVOCA REX i AD 0
+  DUM i < ns
+    EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(uq.sets, i)
+    VINCIRE sql AD CONIURA concat(sql, (*fptr).campo)
+    VINCIRE sql AD CONIURA concat(sql, " = ?")
+    SI i < ns - 1
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA REX nf AD CONIURA fluxus_len(uq.filtros)
+  SI nf > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    VINCIRE i AD 0
+    DUM i < nf
+      EVOCA SPECULUM QueryFilter wptr AD CONIURA fluxus_get(uq.filtros, i)
+      VINCIRE sql AD CONIURA concat(sql, CONIURA query_filter_sql(*wptr))
+      SI i < nf - 1
+        VINCIRE sql AD CONIURA concat(sql, " AND ")
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE update_execute(SPECULUM NIHIL db, UpdateQuery uq) REDDE NIHIL
+  EVOCA VERBUM sql AD CONIURA update_build_sql(uq)
+  SI uq.logger != NIHIL
+    CONIURA log_debug(uq.logger, sql, "{\"op\":\"update\"}")
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA query_bind_params(stmt, uq.sets)
+  CONIURA query_bind_params_offset(stmt, uq.filtros, CONIURA fluxus_len(uq.sets) + 1)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE update_query_to_params(UpdateQuery uq) REDDE DbParams
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX ns AD CONIURA fluxus_len(uq.sets)
+  EVOCA REX i AD 0
+  DUM i < ns
+    EVOCA SPECULUM QueryFilter ptr AD CONIURA fluxus_get(uq.sets, i)
+    ELIGE (*ptr).kind
+      CASUS FkInt:
+        CONIURA dbh_param_int(SPECULUM params, (*ptr).valor_int)
+      CASUS FkBool:
+        CONIURA dbh_param_bool(SPECULUM params, (*ptr).valor_int != 0)
+      CASUS FkReal:
+        CONIURA dbh_param_real(SPECULUM params, (*ptr).valor_real)
+      CASUS FkUUID:
+        CONIURA dbh_param_uuid(SPECULUM params, (*ptr).valor_texto)
+      ALIOQUIN:
+        CONIURA dbh_param_text(SPECULUM params, (*ptr).valor_texto)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA REX nf AD CONIURA fluxus_len(uq.filtros)
+  VINCIRE i AD 0
+  DUM i < nf
+    EVOCA SPECULUM QueryFilter ptr AD CONIURA fluxus_get(uq.filtros, i)
+    SI (*ptr).op == IsNull VEL (*ptr).op == IsNotNull
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    ELIGE (*ptr).kind
+      CASUS FkInt:
+        CONIURA dbh_param_int(SPECULUM params, (*ptr).valor_int)
+      CASUS FkBool:
+        CONIURA dbh_param_bool(SPECULUM params, (*ptr).valor_int != 0)
+      CASUS FkReal:
+        CONIURA dbh_param_real(SPECULUM params, (*ptr).valor_real)
+      CASUS FkUUID:
+        CONIURA dbh_param_uuid(SPECULUM params, (*ptr).valor_texto)
+      ALIOQUIN:
+        CONIURA dbh_param_text(SPECULUM params, (*ptr).valor_texto)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE params
+EXPLICIT RITUALE
+
+RITUALE update_execute_dbh(DbHandle dbh, UpdateQuery uq) REDDE NIHIL
+  EVOCA VERBUM sql AD CONIURA update_build_sql(uq)
+  SI uq.logger != NIHIL
+    CONIURA log_debug(uq.logger, sql, "{\"op\":\"update_dbh\"}")
+  FIN SI
+  EVOCA DbParams params AD CONIURA update_query_to_params(uq)
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE delete_from(VERBUM tabela) REDDE DeleteQuery
+  EVOCA DeleteQuery dq
+  VINCIRE dq.tabela AD tabela
+  VINCIRE dq.filtros AD CONIURA fluxus_init(MENSURA(QueryFilter))
+  VINCIRE dq.logger AD NIHIL
+  REDDE dq
+EXPLICIT RITUALE
+
+RITUALE delete_where_int(DeleteQuery dq, VERBUM campo, QueryOp op, REX valor) REDDE NIHIL
+  EVOCA QueryFilter f
+  VINCIRE f.campo AD campo
+  VINCIRE f.op AD op
+  VINCIRE f.valor_texto AD ""
+  VINCIRE f.valor_int AD valor
+  VINCIRE f.valor_real AD 0.0
+  VINCIRE f.kind AD FkInt
+  CONIURA fluxus_push(dq.filtros, SPECULUM f)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE delete_execute(SPECULUM NIHIL db, DeleteQuery dq) REDDE NIHIL
+  EVOCA VERBUM sql AD CONIURA delete_build_sql(dq)
+  SI dq.logger != NIHIL
+    CONIURA log_debug(dq.logger, sql, "{\"op\":\"delete\"}")
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA query_bind_params(stmt, dq.filtros)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE delete_build_sql(DeleteQuery dq) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("DELETE FROM ", dq.tabela)
+  EVOCA REX nf AD CONIURA fluxus_len(dq.filtros)
+  SI nf > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    EVOCA REX fi AD 0
+    DUM fi < nf
+      EVOCA SPECULUM QueryFilter fptr AD CONIURA fluxus_get(dq.filtros, fi)
+      VINCIRE sql AD CONIURA concat(sql, CONIURA query_filter_sql(*fptr))
+      SI fi < nf - 1
+        VINCIRE sql AD CONIURA concat(sql, " AND ")
+      FIN SI
+      VINCIRE fi AD fi + 1
+    FIN DUM
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE delete_execute_dbh(DbHandle dbh, DeleteQuery dq) REDDE NIHIL
+  EVOCA VERBUM sql AD CONIURA delete_build_sql(dq)
+  SI dq.logger != NIHIL
+    CONIURA log_debug(dq.logger, sql, "{\"op\":\"delete_dbh\"}")
+  FIN SI
+  EVOCA DbParams params AD CONIURA query_filter_to_params(dq.filtros)
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

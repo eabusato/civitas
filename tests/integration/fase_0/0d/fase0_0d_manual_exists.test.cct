@@ -1,0 +1,12 @@
+INCIPIT grimoire "fase0_0d_manual_exists_test"
+
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA is_file("docs/manuals/SISTEMA_FASE_0.md")
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase7_7c_text_field_error_and_refill_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FieldDef field AD CONIURA field_def_new("email", "E-mail", IkEmail)
+  EVOCA VERBUM html
+
+  VINCIRE field.css_class AD "wide"
+  CONIURA form_data_put_text(SPECULUM fd, "email", "user@example.com")
+  CONIURA phase7_render_add_error(SPECULUM vr, "email", "Endereco de e-mail invalido.")
+  VINCIRE html AD CONIURA render_field(field, vr, fd)
+
+  SI CONIURA find(html, "form-group wide field-error") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "error-message") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "value=\"user@example.com\"") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "aria-invalid=\"true\"") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

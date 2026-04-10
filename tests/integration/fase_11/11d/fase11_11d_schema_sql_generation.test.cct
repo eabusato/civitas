@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase11_11d_schema_sql_generation"
+
+ADVOCARE "../../../../lib/civitas/search/search.cct"
+ADVOCARE "../../../../lib/civitas/search/search_schema.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(SearchField))
+  EVOCA SearchField title AD CONIURA search_field_new("title", "A")
+  EVOCA SearchField body AD CONIURA search_field_new("body_text", "C")
+  CONIURA fluxus_push(fields, SPECULUM title)
+  CONIURA fluxus_push(fields, SPECULUM body)
+  EVOCA SearchIndex idx AD CONIURA result_unwrap GENUS(SearchIndex, VERBUM)(CONIURA search_index_new("page", "pages", "id", "pt-BR", fields))
+  SI CONIURA find(CONIURA search_index_column_sql(idx), "GENERATED ALWAYS AS") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(CONIURA search_index_create_sql(idx), "USING GIN") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(CONIURA search_index_update_sql(idx, "abc"), "WHERE id = 'abc'") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(CONIURA search_index_rebuild_sql(idx), "UPDATE pages SET search_vector") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

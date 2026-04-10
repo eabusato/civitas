@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase28_28d_quickstart_mentions_project_layout"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/doc_gen.cct"
+ADVOCARE "../../../../lib/civitas/doc_gen/doc_gen.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28d_quickstart")
+  EVOCA DocConfig cfg AD CONIURA doc_gen_config_default(root)
+  CONIURA doc_gen_build(cfg)
+  EVOCA VERBUM quickstart AD CONIURA read_all(CONIURA path_join(root, "quickstart.md"))
+  SI CONIURA find(quickstart, "civitas new myapp") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(quickstart, "apps/") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

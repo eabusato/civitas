@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase2_2c_preserve_cookie_before_next_fill_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cookie_before_next(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set("sid", "abc")
+  VINCIRE out AD out_ref
+  CONIURA response_set_cookie(out, cookie)
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  CONIURA middleware_bindings_push(middlewares, "cookie_before_next", cookie_before_next)
+  EVOCA WebResponse out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request("GET", "/cookie"), terminal)
+  SI CONIURA fluxus_len(out.set_cookies) != 1
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(out.set_cookies, 0)
+  SI CONIURA compare((*cookie_ptr).name, "sid") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare((*cookie_ptr).value, "abc") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

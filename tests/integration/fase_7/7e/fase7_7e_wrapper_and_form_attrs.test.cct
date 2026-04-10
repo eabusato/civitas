@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase7_7e_wrapper_and_form_attrs_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormDef def AD CONIURA form_def_new("/cadastro", CONIURA phase7_render_csrf("token"))
+  EVOCA FieldDef field AD CONIURA field_def_new("nome", "Nome", IkText)
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA VERBUM html
+
+  CONIURA field_def_add_wrapper_attr(SPECULUM field, "data-section", "billing")
+  CONIURA form_def_add_attr(SPECULUM def, "data-form", "signup")
+  CONIURA form_def_add_field(SPECULUM def, field)
+  VINCIRE html AD CONIURA render_form(def, vr, fd)
+
+  SI CONIURA find(html, "data-section=\"billing\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "data-form=\"signup\"") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

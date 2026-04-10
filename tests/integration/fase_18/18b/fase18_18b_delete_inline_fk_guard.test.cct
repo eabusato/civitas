@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase18_18b_delete_inline_fk_guard"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_save.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_query.cct"
+
+RITUALE test_inline_delete_fk_guard() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18b_delete_guard")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA AdminInlineConfig inline_cfg AD CONIURA phase18_register_comment_inline(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Post A", "draft", "u1", 1000)
+  CONIURA phase18_insert_post(stack.db, "Post B", "draft", "u2", 1001)
+  CONIURA phase18_insert_comment(stack.db, 2, "Other", "visible")
+  EVOCA VERUM failed AD FALSUM
+  TEMPTA
+    CONIURA admin_inline_delete_one(inline_cfg, stack.dbh, "1", "1", "actor-1")
+  CAPE FRACTUM error
+    VINCIRE failed AD VERUM
+  FIN TEMPTA
+  SI NON failed
+    IACE "expected inline delete fk mismatch"
+  FIN SI
+  SI CONIURA admin_inline_count(inline_cfg, stack.dbh, "2") != 1
+    IACE "mismatched inline delete removed foreign row"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_inline_delete_fk_guard()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

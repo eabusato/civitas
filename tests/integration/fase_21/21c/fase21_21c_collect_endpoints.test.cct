@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase21_21c_collect_endpoints"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase21_reset_root("21c_collect_endpoints")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase21_trace_db_path("21c_collect_endpoints"), trace_dir, 20, 24)
+  EVOCA VERBUM p1 AD CONIURA phase21_write_sample_trace(trace_dir, "trace-a")
+  EVOCA VERBUM p2 AD CONIURA phase21_write_sample_trace(trace_dir, "trace-b")
+  EVOCA VERBUM p3 AD CONIURA phase21_write_sample_trace(trace_dir, "trace-c")
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-a", "/api/posts", "GET", 200, 180, 4, "u", p1, 100)
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-b", "/api/posts", "GET", 500, 240, 6, "u", p2, 101)
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-c", "/auth/login", "POST", 200, 90, 2, "u", p3, 102)
+  EVOCA SPECULUM NIHIL entries AD CONIURA trace_export_collect_endpoints(SPECULUM store)
+  CONIURA trace_store_close(SPECULUM store)
+  SI CONIURA fluxus_len(entries) != 2
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM EndpointEntry first_ptr AD CONIURA fluxus_get(entries, 0)
+  EVOCA SPECULUM EndpointEntry second_ptr AD CONIURA fluxus_get(entries, 1)
+  SI CONIURA compare((*first_ptr).method, "GET") == 0
+    SI NON (*first_ptr).has_error
+      REDDE 2
+    FIN SI
+    SI CONIURA compare((*first_ptr).best_trace_id, "trace-b") != 0
+      REDDE 3
+    FIN SI
+  ALITER
+    SI NON (*second_ptr).has_error
+      REDDE 4
+    FIN SI
+  FIN SI
+  CONIURA fluxus_free(entries)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

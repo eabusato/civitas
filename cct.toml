@@ -1,0 +1,22 @@
+[project]
+name = "civitas"
+version = "0.1.0"
+entry = "src/main.cct"
+description = "Framework web em CCT"
+license = "MIT"
+cct_min_version = "0.40.0"
+cct_capability_floor = "FASE_40"
+
+[project.requires]
+cct = ">=0.40.0"
+
+[build]
+out_dir = "dist"
+default_profile = "debug"
+example_entry = "examples/salve_civitas/main.cct"
+
+[project.metadata]
+authors = ["Equipe Civitas"]
+keywords = ["web", "framework", "http", "cct"]
+phase = "0"
+phase_block = "0A-0E"

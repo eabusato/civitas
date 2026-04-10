@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase7_7e_html_render_free_repeatable_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormDef a AD CONIURA phase7_7e_large_form(20)
+  EVOCA FormDef b AD CONIURA phase7_7e_large_form(20)
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA VERBUM html_a AD CONIURA render_form(a, vr, fd)
+  EVOCA VERBUM html_b AD CONIURA render_form(b, vr, fd)
+
+  SI CONIURA compare(html_a, html_b) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html_a, "campo_19") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

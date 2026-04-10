@@ -1,0 +1,49 @@
+INCIPIT grimoire "fase7_7a_multipart_file_upload_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM boundary AD "----CivitasBoundaryB"
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase7_headers()
+  EVOCA FormParseConfig cfg AD CONIURA form_parse_config_default()
+  EVOCA VERBUM part_titulo AD CONIURA phase7_multipart_text_part("titulo", "avatar")
+  EVOCA VERBUM part_file AD CONIURA phase7_multipart_file_part("foto", "ada.txt", "text/plain", "hello file")
+
+  CONIURA fluxus_push(parts, SPECULUM part_titulo)
+  CONIURA fluxus_push(parts, SPECULUM part_file)
+  CONIURA phase7_set_content_type(headers, CONIURA concat("multipart/form-data; boundary=", boundary))
+
+  EVOCA WebRequest req AD CONIURA phase7_request("POST", "/upload", headers, CONIURA phase7_multipart_body(boundary, parts))
+  EVOCA FormData fd AD CONIURA phase7_form_unwrap(CONIURA form_parse(SPECULUM req, cfg))
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA form_data_get_file(fd, "foto")
+
+  SI NON CONIURA form_data_has_file(fd, "foto")
+    REDDE 1
+  FIN SI
+  SI CONIURA option_is_none GENUS(UploadedFile)(file_opt)
+    REDDE 2
+  FIN SI
+
+  EVOCA UploadedFile file AD CONIURA option_unwrap GENUS(UploadedFile)(file_opt)
+  SI CONIURA compare(file.filename, "ada.txt") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(file.content_type, "text/plain") != 0
+    REDDE 4
+  FIN SI
+  SI file.size != 10
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA uploaded_file_text(file), "hello file") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

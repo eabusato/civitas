@@ -1,0 +1,189 @@
+INCIPIT grimoire "civitas_data_export"
+
+ADVOCARE "cct/csv.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "data_io.cct"
+ADVOCARE "../model/model.cct"
+
+RITUALE data_model_select_columns(ModelDef def) REDDE VERBUM
+  EVOCA VERBUM cols AD ""
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, i)
+    SI i > 0
+      VINCIRE cols AD CONIURA concat(cols, ", ")
+    FIN SI
+    VINCIRE cols AD CONIURA concat(cols, (*fp).nome)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE cols
+EXPLICIT RITUALE
+
+RITUALE data_row_to_json(SPECULUM NIHIL rows, ModelDef def) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA REX n AD CONIURA fluxus_len(def.campos)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, i)
+    ELIGE (*fp).kind
+      CASUS FkInt:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_num(cast GENUS(UMBRA)(CONIURA rows_get_int(rows, i))))
+      CASUS FkReal:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_num(CONIURA rows_get_real(rows, i)))
+      CASUS FkBool:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_num(cast GENUS(UMBRA)(CONIURA rows_get_int(rows, i))))
+      CASUS FkDateTime:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_num(cast GENUS(UMBRA)(CONIURA rows_get_int(rows, i))))
+      ALIOQUIN:
+        CONIURA json_obj_push(obj, (*fp).nome, CONIURA json_str(CONIURA rows_get_text(rows, i)))
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE data_export_json(SPECULUM NIHIL db, VERBUM tabela, ModelDef def, VERBUM caminho) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", CONIURA data_model_select_columns(def))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  EVOCA Json arr AD CONIURA json_arr()
+  DUM CONIURA rows_next(rows)
+    VINCIRE result.processados AD result.processados + 1
+    VINCIRE result.ok AD result.ok + 1
+    CONIURA json_arr_push(arr, CONIURA data_row_to_json(rows, def))
+  FIN DUM
+  CONIURA rows_close(rows)
+  CONIURA write_all(caminho, CONIURA json_stringify(arr))
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_export_csv(SPECULUM NIHIL db, VERBUM tabela, ModelDef def, VERBUM caminho) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA SPECULUM NIHIL linhas AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL header AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX nf AD CONIURA fluxus_len(def.campos)
+  EVOCA REX fi AD 0
+  DUM fi < nf
+    EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, fi)
+    CONIURA fluxus_push(header, SPECULUM (*fp).nome)
+    VINCIRE fi AD fi + 1
+  FIN DUM
+  EVOCA VERBUM header_line AD CONIURA csv_encode_row(header)
+  CONIURA fluxus_push(linhas, SPECULUM header_line)
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", CONIURA data_model_select_columns(def))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  DUM CONIURA rows_next(rows)
+    EVOCA SPECULUM NIHIL out_fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+    VINCIRE result.processados AD result.processados + 1
+    VINCIRE result.ok AD result.ok + 1
+    VINCIRE fi AD 0
+    DUM fi < nf
+      EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, fi)
+      ELIGE (*fp).kind
+        CASUS FkInt:
+          EVOCA VERBUM v_int AD CONIURA stringify_int(CONIURA rows_get_int(rows, fi))
+          CONIURA fluxus_push(out_fields, SPECULUM v_int)
+        CASUS FkReal:
+          EVOCA VERBUM v_real AD CONIURA stringify_real(CONIURA rows_get_real(rows, fi))
+          CONIURA fluxus_push(out_fields, SPECULUM v_real)
+        CASUS FkBool:
+          EVOCA VERBUM v_bool AD CONIURA stringify_int(CONIURA rows_get_int(rows, fi))
+          CONIURA fluxus_push(out_fields, SPECULUM v_bool)
+        CASUS FkDateTime:
+          EVOCA VERBUM v_dt AD CONIURA stringify_int(CONIURA rows_get_int(rows, fi))
+          CONIURA fluxus_push(out_fields, SPECULUM v_dt)
+        ALIOQUIN:
+          EVOCA VERBUM v_text AD CONIURA rows_get_text(rows, fi)
+          CONIURA fluxus_push(out_fields, SPECULUM v_text)
+      FIN ELIGE
+      VINCIRE fi AD fi + 1
+    FIN DUM
+    EVOCA VERBUM row_line AD CONIURA csv_encode_row(out_fields)
+    CONIURA fluxus_push(linhas, SPECULUM row_line)
+  FIN DUM
+  CONIURA rows_close(rows)
+  EVOCA VERBUM out AD ""
+  EVOCA REX nl AD CONIURA fluxus_len(linhas)
+  EVOCA REX li AD 0
+  DUM li < nl
+    EVOCA SPECULUM VERBUM linep AD CONIURA fluxus_get(linhas, li)
+    SI li > 0
+      VINCIRE out AD CONIURA concat(out, "\n")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *linep)
+    VINCIRE li AD li + 1
+  FIN DUM
+  CONIURA write_all(caminho, out)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_export_toml(SPECULUM NIHIL db, VERBUM tabela, ModelDef def, VERBUM caminho) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", CONIURA data_model_select_columns(def))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  EVOCA VERBUM out AD ""
+  DUM CONIURA rows_next(rows)
+    VINCIRE result.processados AD result.processados + 1
+    VINCIRE result.ok AD result.ok + 1
+    VINCIRE out AD CONIURA concat(out, "[[rows]]\n")
+    EVOCA REX nf AD CONIURA fluxus_len(def.campos)
+    EVOCA REX fi AD 0
+    DUM fi < nf
+      EVOCA SPECULUM FieldDef fp AD CONIURA fluxus_get(def.campos, fi)
+      EVOCA VERBUM line AD CONIURA concat((*fp).nome, " = ")
+      ELIGE (*fp).kind
+        CASUS FkInt:
+          VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(CONIURA rows_get_int(rows, fi)))
+        CASUS FkReal:
+          VINCIRE line AD CONIURA concat(line, CONIURA stringify_real(CONIURA rows_get_real(rows, fi)))
+        CASUS FkBool:
+          SI CONIURA rows_get_int(rows, fi) != 0
+            VINCIRE line AD CONIURA concat(line, "true")
+          ALITER
+            VINCIRE line AD CONIURA concat(line, "false")
+          FIN SI
+        CASUS FkDateTime:
+          VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(CONIURA rows_get_int(rows, fi)))
+        ALIOQUIN:
+          VINCIRE line AD CONIURA concat(line, "\"")
+          VINCIRE line AD CONIURA concat(line, CONIURA rows_get_text(rows, fi))
+          VINCIRE line AD CONIURA concat(line, "\"")
+      FIN ELIGE
+      VINCIRE out AD CONIURA concat(out, line)
+      VINCIRE out AD CONIURA concat(out, "\n")
+      VINCIRE fi AD fi + 1
+    FIN DUM
+    VINCIRE out AD CONIURA concat(out, "\n")
+  FIN DUM
+  CONIURA rows_close(rows)
+  CONIURA write_all(caminho, out)
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_export(SPECULUM NIHIL db, VERBUM tabela, ModelDef def, ExportTarget alvo) REDDE DataIoResult
+  ELIGE alvo
+    CASUS EtJson(path):
+      REDDE CONIURA data_export_json(db, tabela, def, path)
+    CASUS EtToml(path):
+      REDDE CONIURA data_export_toml(db, tabela, def, path)
+    CASUS EtCsv(path):
+      REDDE CONIURA data_export_csv(db, tabela, def, path)
+  FIN ELIGE
+  REDDE CONIURA data_io_result_new()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

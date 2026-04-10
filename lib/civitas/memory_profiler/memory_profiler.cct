@@ -1,0 +1,260 @@
+INCIPIT grimoire "civitas_memory_profiler"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../router.cct"
+
+SIGILLUM MemSnapshot
+  alloc_count: REX
+  alloc_bytes: REX
+  free_count: REX
+  live_count: REX
+  live_bytes: REX
+  timestamp_ms: REX
+FIN SIGILLUM
+
+SIGILLUM MemDelta
+  route: VERBUM
+  request_id: VERBUM
+  alloc_count_delta: REX
+  alloc_bytes_delta: REX
+  free_count_delta: REX
+  live_count_delta: REX
+  live_bytes_delta: REX
+  duration_ms: REX
+  suspected_leak: VERUM
+  timestamp_ms: REX
+FIN SIGILLUM
+
+SIGILLUM MemReport
+  n_requests: REX
+  allocs_total: REX
+  bytes_alloc_total: REX
+  mean_allocs_per_request: UMBRA
+  mean_bytes_per_request: UMBRA
+  peak_live_bytes_delta: REX
+  suspected_count: REX
+  deltas: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM MemProfilerState
+  active: VERUM
+  leak_live_threshold: REX
+  db: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE mem_snapshot_now() REDDE MemSnapshot
+  EVOCA MemSnapshot snap
+  VINCIRE snap.alloc_count AD CONIURA mem_instr_alloc_count()
+  VINCIRE snap.alloc_bytes AD CONIURA mem_instr_alloc_bytes()
+  VINCIRE snap.free_count AD CONIURA mem_instr_free_count()
+  VINCIRE snap.live_count AD CONIURA mem_instr_live_count()
+  VINCIRE snap.live_bytes AD CONIURA mem_instr_live_bytes()
+  VINCIRE snap.timestamp_ms AD CONIURA now_ms()
+  REDDE snap
+EXPLICIT RITUALE
+
+RITUALE mem_snap_begin() REDDE MemSnapshot
+  REDDE CONIURA mem_snapshot_now()
+EXPLICIT RITUALE
+
+RITUALE mem_snap_end(MemSnapshot before, VERBUM route, VERBUM request_id, REX leak_live_threshold) REDDE MemDelta
+  EVOCA MemSnapshot after AD CONIURA mem_snapshot_now()
+  EVOCA MemDelta delta
+  VINCIRE delta.route AD route
+  VINCIRE delta.request_id AD request_id
+  VINCIRE delta.alloc_count_delta AD after.alloc_count - before.alloc_count
+  VINCIRE delta.alloc_bytes_delta AD after.alloc_bytes - before.alloc_bytes
+  VINCIRE delta.free_count_delta AD after.free_count - before.free_count
+  VINCIRE delta.live_count_delta AD after.live_count - before.live_count
+  VINCIRE delta.live_bytes_delta AD after.live_bytes - before.live_bytes
+  VINCIRE delta.duration_ms AD after.timestamp_ms - before.timestamp_ms
+  VINCIRE delta.suspected_leak AD delta.live_count_delta > leak_live_threshold
+  VINCIRE delta.timestamp_ms AD after.timestamp_ms
+  REDDE delta
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_state_new(SPECULUM NIHIL db, REX leak_live_threshold) REDDE MemProfilerState
+  EVOCA MemProfilerState state
+  VINCIRE state.active AD FALSUM
+  VINCIRE state.leak_live_threshold AD leak_live_threshold
+  VINCIRE state.db AD db
+  REDDE state
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_enable(SPECULUM MemProfilerState state) REDDE NIHIL
+  VINCIRE (*state).active AD VERUM
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_disable(SPECULUM MemProfilerState state) REDDE NIHIL
+  VINCIRE (*state).active AD FALSUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_is_active(MemProfilerState state) REDDE VERUM
+  REDDE state.active
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  SI db == NIHIL
+    REDDE
+  FIN SI
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS mem_deltas (id INTEGER PRIMARY KEY AUTOINCREMENT, route TEXT NOT NULL, request_id TEXT NOT NULL, alloc_count_delta INTEGER NOT NULL, alloc_bytes_delta INTEGER NOT NULL, free_count_delta INTEGER NOT NULL, live_count_delta INTEGER NOT NULL, live_bytes_delta INTEGER NOT NULL, duration_ms INTEGER NOT NULL, suspected_leak INTEGER NOT NULL DEFAULT 0, created_at_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_mem_deltas_route ON mem_deltas(route)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_mem_deltas_created ON mem_deltas(created_at_ms DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_mem_deltas_suspected ON mem_deltas(suspected_leak)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_record(SPECULUM MemProfilerState state, MemDelta delta) REDDE NIHIL
+  SI (*state).db == NIHIL
+    REDDE
+  FIN SI
+  CONIURA mem_profiler_schema_up((*state).db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*state).db, "INSERT INTO mem_deltas (route, request_id, alloc_count_delta, alloc_bytes_delta, free_count_delta, live_count_delta, live_bytes_delta, duration_ms, suspected_leak, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, delta.route)
+  CONIURA stmt_bind_text(stmt, 2, delta.request_id)
+  CONIURA stmt_bind_int(stmt, 3, delta.alloc_count_delta)
+  CONIURA stmt_bind_int(stmt, 4, delta.alloc_bytes_delta)
+  CONIURA stmt_bind_int(stmt, 5, delta.free_count_delta)
+  CONIURA stmt_bind_int(stmt, 6, delta.live_count_delta)
+  CONIURA stmt_bind_int(stmt, 7, delta.live_bytes_delta)
+  CONIURA stmt_bind_int(stmt, 8, delta.duration_ms)
+  SI delta.suspected_leak
+    CONIURA stmt_bind_int(stmt, 9, 1)
+  ALITER
+    CONIURA stmt_bind_int(stmt, 9, 0)
+  FIN SI
+  CONIURA stmt_bind_int(stmt, 10, delta.timestamp_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_count(SPECULUM MemProfilerState state) REDDE REX
+  SI (*state).db == NIHIL
+    REDDE 0
+  FIN SI
+  CONIURA mem_profiler_schema_up((*state).db)
+  REDDE CONIURA db_scalar_int((*state).db, "SELECT COUNT(*) FROM mem_deltas")
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_report(SPECULUM MemProfilerState state, REX limit_count) REDDE MemReport
+  EVOCA MemReport out
+  VINCIRE out.n_requests AD 0
+  VINCIRE out.allocs_total AD 0
+  VINCIRE out.bytes_alloc_total AD 0
+  VINCIRE out.mean_allocs_per_request AD 0.0
+  VINCIRE out.mean_bytes_per_request AD 0.0
+  VINCIRE out.peak_live_bytes_delta AD 0
+  VINCIRE out.suspected_count AD 0
+  VINCIRE out.deltas AD CONIURA fluxus_init(MENSURA(MemDelta))
+  SI (*state).db == NIHIL
+    REDDE out
+  FIN SI
+  CONIURA mem_profiler_schema_up((*state).db)
+  EVOCA REX bounded_limit AD limit_count
+  SI bounded_limit <= 0
+    VINCIRE bounded_limit AD 200
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*state).db, "SELECT route, request_id, alloc_count_delta, alloc_bytes_delta, free_count_delta, live_count_delta, live_bytes_delta, duration_ms, suspected_leak, created_at_ms FROM mem_deltas ORDER BY created_at_ms DESC, id DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, bounded_limit)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA MemDelta delta
+      VINCIRE delta.route AD CONIURA concat("", CONIURA stmt_get_text(stmt, 0))
+      VINCIRE delta.request_id AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+      VINCIRE delta.alloc_count_delta AD CONIURA stmt_get_int(stmt, 2)
+      VINCIRE delta.alloc_bytes_delta AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE delta.free_count_delta AD CONIURA stmt_get_int(stmt, 4)
+      VINCIRE delta.live_count_delta AD CONIURA stmt_get_int(stmt, 5)
+      VINCIRE delta.live_bytes_delta AD CONIURA stmt_get_int(stmt, 6)
+      VINCIRE delta.duration_ms AD CONIURA stmt_get_int(stmt, 7)
+      VINCIRE delta.suspected_leak AD CONIURA stmt_get_int(stmt, 8) != 0
+      VINCIRE delta.timestamp_ms AD CONIURA stmt_get_int(stmt, 9)
+      CONIURA fluxus_push(out.deltas, SPECULUM delta)
+      VINCIRE out.n_requests AD out.n_requests + 1
+      VINCIRE out.allocs_total AD out.allocs_total + delta.alloc_count_delta
+      VINCIRE out.bytes_alloc_total AD out.bytes_alloc_total + delta.alloc_bytes_delta
+      SI delta.live_bytes_delta > out.peak_live_bytes_delta
+        VINCIRE out.peak_live_bytes_delta AD delta.live_bytes_delta
+      FIN SI
+      SI delta.suspected_leak
+        VINCIRE out.suspected_count AD out.suspected_count + 1
+      FIN SI
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  SI out.n_requests > 0
+    VINCIRE out.mean_allocs_per_request AD cast GENUS(UMBRA)(out.allocs_total) / cast GENUS(UMBRA)(out.n_requests)
+    VINCIRE out.mean_bytes_per_request AD cast GENUS(UMBRA)(out.bytes_alloc_total) / cast GENUS(UMBRA)(out.n_requests)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_print_alert(MemDelta delta) REDDE NIHIL
+  EVOCA VERBUM line AD "[mem-profiler] ALERT "
+  VINCIRE line AD CONIURA concat(line, delta.route)
+  VINCIRE line AD CONIURA concat(line, " live_count +")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(delta.live_count_delta))
+  VINCIRE line AD CONIURA concat(line, " live_bytes +")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(delta.live_bytes_delta))
+  CONIURA println(line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_print_report(MemReport report) REDDE NIHIL
+  CONIURA println("╔══════════════════════════════════════════════╗")
+  CONIURA println("║  civitas mem-profiler — report               ║")
+  CONIURA println("╠══════════════════════════════════════════════╣")
+  CONIURA println(CONIURA concat("  Requests analyzed:   ", CONIURA stringify_int(report.n_requests)))
+  CONIURA println(CONIURA concat("  Mean allocs/request: ", CONIURA stringify_real_fixed(report.mean_allocs_per_request, 2)))
+  CONIURA println(CONIURA concat("  Mean bytes/request:  ", CONIURA concat(CONIURA stringify_real_fixed(report.mean_bytes_per_request, 2), " bytes")))
+  CONIURA println(CONIURA concat("  Peak live bytes:     ", CONIURA concat(CONIURA stringify_int(report.peak_live_bytes_delta), " bytes")))
+  CONIURA println(CONIURA concat("  Suspected leaks:     ", CONIURA concat(CONIURA stringify_int(report.suspected_count), CONIURA concat(" de ", CONIURA stringify_int(report.n_requests)))))
+  CONIURA println("╚══════════════════════════════════════════════╝")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_middleware(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM RequestContext ctx AD ctx_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM MemProfilerState state AD CONIURA middleware_current_binding_ctx(*ctx)
+  SI state == NIHIL VEL NON (*state).active
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  EVOCA VERBUM route_label AD CONIURA middleware_context_verbum_or(*ctx, CONIURA middleware_context_route_pattern_key(), (*req).path)
+  EVOCA MemSnapshot before AD CONIURA mem_snap_begin()
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  EVOCA MemDelta delta AD CONIURA mem_snap_end(before, route_label, (*req).request_id, (*state).leak_live_threshold)
+  CONIURA mem_profiler_record(state, delta)
+  SI delta.suspected_leak
+    CONIURA response_set_header(out, "x-civitas-mem-leak", "1")
+    CONIURA mem_profiler_print_alert(delta)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_middleware_binding(SPECULUM MemProfilerState state) REDDE MiddlewareBinding
+  REDDE CONIURA middleware_binding_with_ctx("memory_profiler", mem_profiler_middleware, state)
+EXPLICIT RITUALE
+
+RITUALE mem_profiler_middleware_add(SPECULUM Router router, SPECULUM MemProfilerState state) REDDE NIHIL
+  CONIURA router_add_global_middleware(router, CONIURA mem_profiler_middleware_binding(state))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

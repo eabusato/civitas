@@ -1,0 +1,83 @@
+INCIPIT grimoire "mural_expandido_state"
+
+ADVOCARE "../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt.cct"
+ADVOCARE "../../../lib/civitas/l10n_fmt/l10n_fmt_rules.cct"
+ADVOCARE "../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "config.cct"
+ADVOCARE "cct/path.cct"
+
+SIGILLUM MuralExpandidoState
+  cfg: MuralExpandidoConfig
+  session_store: SessionStore
+  session_cfg: SessionConfig
+  cache: CacheHandle
+  i18n: I18nRegistry
+  l10n: L10nFmtRegistry
+  trace_store: TraceStore
+  request_ordinal: REX
+FIN SIGILLUM
+
+RITUALE muralx_i18n_registry(MuralExpandidoConfig cfg) REDDE I18nRegistry
+  EVOCA I18nConfig icfg AD CONIURA i18n_config_new(cfg.default_locale, cfg.locale_dir)
+  VINCIRE icfg.falha_silenciosa AD VERUM
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(icfg)
+  CONIURA i18n_json_load_into_registry(SPECULUM reg, CONIURA path_join(cfg.locale_dir, "pt-BR.json"))
+  CONIURA i18n_json_load_into_registry(SPECULUM reg, CONIURA path_join(cfg.locale_dir, "en-US.json"))
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE muralx_session_config(MuralExpandidoConfig cfg) REDDE SessionConfig
+  EVOCA SessionConfig scfg AD CONIURA session_config_default()
+  VINCIRE scfg.cookie_nome AD "muralx_session"
+  VINCIRE scfg.cookie_same_site AD "Lax"
+  VINCIRE scfg.samesite AD scfg.cookie_same_site
+  VINCIRE scfg.cookie_http_only AD VERUM
+  VINCIRE scfg.http_only AD VERUM
+  VINCIRE scfg.cookie_seguro AD FALSUM
+  VINCIRE scfg.secure AD FALSUM
+  VINCIRE scfg.segredo AD cfg.session_secret
+  VINCIRE scfg.ttl_segundos AD 604800
+  VINCIRE scfg.max_age_segundos AD 604800
+  VINCIRE scfg.idle_timeout_segundos AD 172800
+  VINCIRE scfg.cleanup_probabilidade AD 0
+  REDDE scfg
+EXPLICIT RITUALE
+
+RITUALE muralx_state_new(SPECULUM MuralExpandidoState state, MuralExpandidoConfig cfg, VERBUM root) REDDE NIHIL
+  EVOCA SessionStore session_store AD CONIURA session_store_file_init(CONIURA path_join(root, "var/sessions"))
+  EVOCA CacheHandle cache_handle AD CONIURA cache_mem_new("mural_expandido", cfg.cache_entries)
+  EVOCA I18nRegistry i18n_reg AD CONIURA muralx_i18n_registry(cfg)
+  EVOCA L10nFmtRegistry l10n_reg AD CONIURA l10n_fmt_registry_default()
+  EVOCA TraceStore trace_store AD CONIURA trace_store_open(cfg.database_path, cfg.trace_dir, 300, 168)
+
+  VINCIRE (*state).cfg AD cfg
+  VINCIRE (*state).session_store.kind AD session_store.kind
+  VINCIRE (*state).session_store.state AD session_store.state
+  VINCIRE (*state).session_cfg AD CONIURA muralx_session_config(cfg)
+  VINCIRE (*state).cache.kind AD cache_handle.kind
+  VINCIRE (*state).cache.state AD cache_handle.state
+  VINCIRE (*state).cache.logger AD cache_handle.logger
+  VINCIRE (*state).i18n.config AD i18n_reg.config
+  VINCIRE (*state).i18n.locales AD i18n_reg.locales
+  VINCIRE (*state).l10n.regras AD l10n_reg.regras
+  VINCIRE (*state).l10n.padrao AD l10n_reg.padrao
+  VINCIRE (*state).trace_store.db AD trace_store.db
+  VINCIRE (*state).trace_store.trace_dir AD trace_store.trace_dir
+  VINCIRE (*state).trace_store.max_traces AD trace_store.max_traces
+  VINCIRE (*state).trace_store.max_hours AD trace_store.max_hours
+  VINCIRE (*state).request_ordinal AD 0
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_state_next_request_ordinal(SPECULUM MuralExpandidoState state) REDDE REX
+  VINCIRE (*state).request_ordinal AD (*state).request_ordinal + 1
+  REDDE (*state).request_ordinal
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

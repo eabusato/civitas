@@ -1,0 +1,69 @@
+-- Generated from admin_lite.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_admin_lite"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../lib/template_contexts.cct"
+
+RITUALE render_admin_lite(MuralAdminPageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.css_url))
+  CONIURA builder_append(b, "\">\n</head>\n<body>\n  <main class=\"shell\">\n    <header class=\"hero hero-tight\">\n      <p class=\"eyebrow\">Admin-lite</p>\n      <h1>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</h1>\n      <p class=\"lead\">Protected with HTTP Basic Auth and a simple secret from settings.</p>\n      <p><a class=\"admin-link\" href=\"/\">Back to wall</a></p>\n    </header>\n\n    ")
+  SI ctx.has_flash
+    CONIURA builder_append(b, "\n      <div class=\"flash flash-success\"><p>")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.flash_message))
+    CONIURA builder_append(b, "</p></div>\n    ")
+  FIN SI
+  CONIURA builder_append(b, "\n\n    <section class=\"card\">\n      <div class=\"section-head\">\n        <h2>Stored messages</h2>\n        <span class=\"badge\">")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.message_count)))
+  CONIURA builder_append(b, "</span>\n      </div>\n      ")
+  SI ctx.message_count == 0
+    CONIURA builder_append(b, "\n        <p class=\"empty\">")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.empty_text))
+    CONIURA builder_append(b, "</p>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <ol class=\"messages admin-messages\">\n          ")
+    EVOCA REX i_item AD 0
+    EVOCA REX n_item AD CONIURA fluxus_len(ctx.messages)
+    DUM i_item < n_item
+      EVOCA SPECULUM MuralMessageItemContext item_item AD CONIURA fluxus_get(ctx.messages, i_item)
+      EVOCA LoopContext loop_item AD CONIURA tpl_loop_context(i_item, n_item)
+      CONIURA builder_append(b, "\n            <li class=\"message-card\">\n              <div class=\"message-head\">\n                <strong>#")
+      CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int((*item_item).id)))
+      CONIURA builder_append(b, " ")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).name))
+      CONIURA builder_append(b, "</strong>\n                ")
+      SI (*item_item).has_email
+        CONIURA builder_append(b, "\n                  <span class=\"muted\">")
+        CONIURA builder_append(b, CONIURA html_encode((*item_item).email))
+        CONIURA builder_append(b, "</span>\n                ")
+      FIN SI
+      CONIURA builder_append(b, "\n                <time>")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).created_at))
+      CONIURA builder_append(b, "</time>\n              </div>\n              <p>")
+      CONIURA builder_append(b, CONIURA html_encode((*item_item).body))
+      CONIURA builder_append(b, "</p>\n              <form method=\"post\" action=\"/admin-lite/mensagens/")
+      CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int((*item_item).id)))
+      CONIURA builder_append(b, "/delete\" class=\"inline-form\">\n                <button type=\"submit\" class=\"danger\">Delete message</button>\n              </form>\n            </li>\n          ")
+      VINCIRE i_item AD i_item + 1
+    FIN DUM
+    CONIURA builder_append(b, "\n        </ol>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </section>\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

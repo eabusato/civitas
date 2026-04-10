@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_auth_flows_root"
+
+ADVOCARE "auth_flows/auth_flows.cct"
+ADVOCARE "auth_flows/auth_flows_schema.cct"
+ADVOCARE "auth_flows/auth_flows_history.cct"
+ADVOCARE "auth_flows/auth_flows_reset.cct"
+ADVOCARE "auth_flows/auth_flows_email.cct"
+
+EXPLICIT grimoire

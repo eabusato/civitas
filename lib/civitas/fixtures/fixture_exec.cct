@@ -1,0 +1,76 @@
+INCIPIT grimoire "civitas_fixture_exec"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "fixture.cct"
+
+RITUALE fixture_sql_literal(VERBUM v, VERUM is_null) REDDE VERBUM
+  SI is_null
+    REDDE "NULL"
+  FIN SI
+  EVOCA VERBUM escaped AD CONIURA replace_all(v, "'", "''")
+  REDDE CONIURA concat(CONIURA concat("'", escaped), "'")
+EXPLICIT RITUALE
+
+RITUALE fixture_insert_entry(SPECULUM NIHIL db, FixtureEntry e) REDDE NIHIL
+  EVOCA REX nc AD CONIURA json_obj_len(e.campos)
+  EVOCA VERBUM colunas AD "id"
+  EVOCA VERBUM valores AD CONIURA fixture_sql_literal(e.pk, FALSUM)
+  EVOCA REX fi AD 0
+  DUM fi < nc
+    EVOCA VERBUM nome AD CONIURA json_obj_key_at(e.campos, fi)
+    EVOCA Json valor AD CONIURA json_obj_value_at(e.campos, fi)
+    VINCIRE colunas AD CONIURA concat(colunas, ", ")
+    VINCIRE colunas AD CONIURA concat(colunas, nome)
+    VINCIRE valores AD CONIURA concat(valores, ", ")
+    SI CONIURA json_is_null(valor)
+      VINCIRE valores AD CONIURA concat(valores, "NULL")
+    ALITER
+      VINCIRE valores AD CONIURA concat(valores, CONIURA fixture_sql_literal(CONIURA json_expect_str(valor), FALSUM))
+    FIN SI
+    VINCIRE fi AD fi + 1
+  FIN DUM
+  EVOCA VERBUM sql AD CONIURA concat("INSERT OR REPLACE INTO ", e.modelo)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  VINCIRE sql AD CONIURA concat(sql, colunas)
+  VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+  VINCIRE sql AD CONIURA concat(sql, valores)
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  CONIURA db_exec(db, sql)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_install(SPECULUM NIHIL db, FixtureSuite suite) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len(suite.entradas)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM FixtureEntry ep AD CONIURA fluxus_get(suite.entradas, i)
+    CONIURA fixture_insert_entry(db, *ep)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE fixture_uninstall(SPECULUM NIHIL db, FixtureSuite suite) REDDE NIHIL
+  EVOCA REX n AD CONIURA fluxus_len(suite.entradas)
+  SI n == 0
+    REDDE
+  FIN SI
+  EVOCA REX i AD n - 1
+  DUM i >= 0
+    EVOCA SPECULUM FixtureEntry ep AD CONIURA fluxus_get(suite.entradas, i)
+    EVOCA VERBUM sql AD CONIURA concat("DELETE FROM ", (*ep).modelo)
+    VINCIRE sql AD CONIURA concat(sql, " WHERE id = ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA fixture_sql_literal((*ep).pk, FALSUM))
+    CONIURA db_exec(db, sql)
+    SI i == 0
+      REDDE
+    FIN SI
+    VINCIRE i AD i - 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

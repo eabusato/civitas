@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase26_26d_profiler_read_recent_roundtrip"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_26d_reset_root("profiler_read_recent_roundtrip")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "profiles.db"))
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(db, 2)
+  EVOCA RequestProfile profile AD CONIURA phase26_26d_profile(VERUM)
+  CONIURA profiler_persist(SPECULUM state, profile)
+  EVOCA SPECULUM NIHIL profiles AD CONIURA profiler_read_recent(SPECULUM state, 5)
+  SI CONIURA fluxus_len(profiles) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM RequestProfile loaded AD CONIURA fluxus_get(profiles, 0)
+  SI NON (*loaded).n1_report.found
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI CONIURA fluxus_len((*loaded).rituals) != 2
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  SI CONIURA fluxus_len((*loaded).queries) != 1
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  CONIURA fluxus_free(profiles)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

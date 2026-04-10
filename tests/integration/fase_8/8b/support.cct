@@ -1,0 +1,53 @@
+INCIPIT grimoire "fase8_8b_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../fase_6/support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase8_8b_prepare_template_project(VERBUM root) REDDE NIHIL
+  CONIURA phase6_init_project(root)
+  CONIURA write_all(
+    CONIURA path_join(CONIURA phase6_project_lib_dir(root), "template_contexts.cct"),
+    "INCIPIT grimoire \"fase8_flash_template_contexts\"\n\nADVOCARE \"../../../../../lib/civitas/session/session.cct\"\n\nSIGILLUM FlashTemplateContext\n  session: Session\nFIN SIGILLUM\n\nEXPLICIT grimoire\n"
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase8_8b_flash_probe_source(VERBUM generated_import, VERBUM render_name) REDDE VERBUM
+  EVOCA VERBUM out AD "INCIPIT grimoire \"fase8_flash_render_probe\"\n\n"
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"")
+  VINCIRE out AD CONIURA concat(out, generated_import)
+  VINCIRE out AD CONIURA concat(out, "\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"lib/template_contexts.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"../../../../lib/civitas/session/session.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"../../../../lib/civitas/flash/flash.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"cct/io.cct\"\n\n")
+  VINCIRE out AD CONIURA concat(out, "RITUALE main() REDDE REX\n")
+  VINCIRE out AD CONIURA concat(out, "  EVOCA FlashTemplateContext ctx\n")
+  VINCIRE out AD CONIURA concat(out, "  EVOCA Session sess AD CONIURA session_new()\n")
+  VINCIRE out AD CONIURA concat(out, "  CONIURA session_set(SPECULUM sess, \"_civitas_flash\", \"[{\\\"level\\\":\\\"success\\\",\\\"texto\\\":\\\"Tudo certo\\\"}]\")\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.id AD sess.id\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.dados AD sess.dados\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.criado_em AD sess.criado_em\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.acessado_em AD sess.acessado_em\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.modificado AD sess.modificado\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.session.novo AD sess.novo\n")
+  VINCIRE out AD CONIURA concat(out, "  CONIURA println(CONIURA render_")
+  VINCIRE out AD CONIURA concat(out, render_name)
+  VINCIRE out AD CONIURA concat(out, "(ctx))\n")
+  VINCIRE out AD CONIURA concat(out, "  REDDE 0\n")
+  VINCIRE out AD CONIURA concat(out, "EXPLICIT RITUALE\n\nEXPLICIT grimoire\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase8_8b_render_template(VERBUM root, VERBUM generated_import, VERBUM render_name) REDDE VERBUM
+  EVOCA VERBUM probe_path AD CONIURA path_join(root, "flash_probe.cct")
+  CONIURA write_all(probe_path, CONIURA phase8_8b_flash_probe_source(generated_import, render_name))
+  CONIURA phase6_build_source_or_fail(probe_path)
+  REDDE CONIURA phase6_run_capture(CONIURA without_ext(probe_path))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

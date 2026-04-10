@@ -1,0 +1,18 @@
+INCIPIT grimoire "civitas_trace_i18n"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/instrument.cct"
+
+RITUALE trace_i18n_batch_begin(VERBUM locale) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_CUSTOM), "i18n:batch")
+  CONIURA instrument_span_attr(span_id, "i18n.locale", locale)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_i18n_batch_end(REX span_id, REX count) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, "i18n.count", CONIURA stringify_int(count))
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

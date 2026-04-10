@@ -1,0 +1,97 @@
+INCIPIT grimoire "civitas_django_parity"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "django_migrate.cct"
+
+RITUALE django_parity_count(SPECULUM NIHIL db_django, SPECULUM NIHIL db_civitas, SPECULUM NIHIL tabelas) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL resultado AD CONIURA fluxus_init(MENSURA(DjangoParityCount))
+  EVOCA REX n AD CONIURA fluxus_len(tabelas)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM tabela_ptr AD CONIURA fluxus_get(tabelas, i)
+    EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM ", *tabela_ptr)
+    EVOCA DjangoParityCount pc
+    VINCIRE pc.tabela AD *tabela_ptr
+    VINCIRE pc.contagem_django AD CONIURA db_scalar_int(db_django, sql)
+    VINCIRE pc.contagem_civitas AD CONIURA db_scalar_int(db_civitas, sql)
+    VINCIRE pc.ok AD pc.contagem_django == pc.contagem_civitas
+    CONIURA fluxus_push(resultado, SPECULUM pc)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE resultado
+EXPLICIT RITUALE
+
+RITUALE django_parity_compute_checksum(SPECULUM NIHIL db, VERBUM tabela, VERBUM campo) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COALESCE(", campo)
+  VINCIRE sql AD CONIURA concat(sql, ", '') FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY id")
+  EVOCA SPECULUM NIHIL rows AD CONIURA db_query(db, sql)
+  EVOCA VERBUM acumulado AD ""
+  DUM CONIURA rows_next(rows)
+    VINCIRE acumulado AD CONIURA concat(acumulado, CONIURA rows_get_text(rows, 0))
+  FIN DUM
+  CONIURA rows_close(rows)
+  REDDE CONIURA sha256(acumulado)
+EXPLICIT RITUALE
+
+RITUALE django_parity_checksum_field(SPECULUM NIHIL db_django, SPECULUM NIHIL db_civitas, VERBUM tabela, VERBUM campo) REDDE DjangoParityChecksum
+  EVOCA DjangoParityChecksum pc
+  VINCIRE pc.tabela AD tabela
+  VINCIRE pc.campo AD campo
+  VINCIRE pc.checksum_django AD CONIURA django_parity_compute_checksum(db_django, tabela, campo)
+  VINCIRE pc.checksum_civitas AD CONIURA django_parity_compute_checksum(db_civitas, tabela, campo)
+  VINCIRE pc.ok AD CONIURA compare(pc.checksum_django, pc.checksum_civitas) == 0
+  REDDE pc
+EXPLICIT RITUALE
+
+RITUALE django_parity_report(SPECULUM NIHIL counts, SPECULUM NIHIL checksums) REDDE VERBUM
+  EVOCA VERBUM report AD "=== Django to Civitas parity ===\n\n"
+  VINCIRE report AD CONIURA concat(report, "counts:\n")
+  EVOCA REX nc AD CONIURA fluxus_len(counts)
+  EVOCA REX ci AD 0
+  DUM ci < nc
+    EVOCA SPECULUM DjangoParityCount pcp AD CONIURA fluxus_get(counts, ci)
+    EVOCA VERBUM line AD "  ["
+    SI (*pcp).ok
+      VINCIRE line AD CONIURA concat(line, "OK")
+    ALITER
+      VINCIRE line AD CONIURA concat(line, "FAIL")
+    FIN SI
+    VINCIRE line AD CONIURA concat(line, "] ")
+    VINCIRE line AD CONIURA concat(line, (*pcp).tabela)
+    VINCIRE line AD CONIURA concat(line, ": django=")
+    VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*pcp).contagem_django))
+    VINCIRE line AD CONIURA concat(line, " civitas=")
+    VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*pcp).contagem_civitas))
+    VINCIRE line AD CONIURA concat(line, "\n")
+    VINCIRE report AD CONIURA concat(report, line)
+    VINCIRE ci AD ci + 1
+  FIN DUM
+  VINCIRE report AD CONIURA concat(report, "\nchecksums:\n")
+  EVOCA REX nch AD CONIURA fluxus_len(checksums)
+  EVOCA REX chi AD 0
+  DUM chi < nch
+    EVOCA SPECULUM DjangoParityChecksum pchp AD CONIURA fluxus_get(checksums, chi)
+    EVOCA VERBUM line AD "  ["
+    SI (*pchp).ok
+      VINCIRE line AD CONIURA concat(line, "OK")
+    ALITER
+      VINCIRE line AD CONIURA concat(line, "FAIL")
+    FIN SI
+    VINCIRE line AD CONIURA concat(line, "] ")
+    VINCIRE line AD CONIURA concat(line, (*pchp).tabela)
+    VINCIRE line AD CONIURA concat(line, ".")
+    VINCIRE line AD CONIURA concat(line, (*pchp).campo)
+    VINCIRE line AD CONIURA concat(line, "\n")
+    VINCIRE report AD CONIURA concat(report, line)
+    VINCIRE chi AD chi + 1
+  FIN DUM
+  REDDE report
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

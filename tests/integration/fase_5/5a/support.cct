@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase5_5a_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase5_5a_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase5_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase5_5a_new_app(VERBUM root, VERBUM content) REDDE Application
+  REDDE CONIURA phase5_new_app(root, content)
+EXPLICIT RITUALE
+
+RITUALE phase5_5a_ok_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5a_register_ok_route(SPECULUM Application app, VERBUM path) REDDE NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA app_add_route(app, "GET", path, "", "phase5_5a_ok_handler", phase5_5a_ok_handler)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

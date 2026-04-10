@@ -1,0 +1,44 @@
+INCIPIT grimoire "civitas_media_video_thumb"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE video_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE video_err_unit(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE video_extract_thumb(VERBUM video_path, VERBUM dest_path, UMBRA offset_seconds) REDDE SPECULUM NIHIL
+  EVOCA VERBUM offset_text AD CONIURA stringify_real_fixed(offset_seconds, 3)
+  EVOCA VERBUM cmd AD CONIURA concat(
+    "ffmpeg -ss ",
+    CONIURA concat(
+      offset_text,
+      CONIURA concat(
+        " -i \"",
+        CONIURA concat(
+          video_path,
+          CONIURA concat(
+            "\" -vframes 1 -q:v 2 \"",
+            CONIURA concat(dest_path, "\" -y >/dev/null 2>&1")
+          )
+        )
+      )
+    )
+  )
+  SI CONIURA run(cmd) != 0
+    REDDE CONIURA video_err_unit("ffmpeg thumbnail extraction failed")
+  FIN SI
+  SI NON CONIURA exists(dest_path)
+    REDDE CONIURA video_err_unit("thumbnail file was not created")
+  FIN SI
+  REDDE CONIURA video_ok_unit()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

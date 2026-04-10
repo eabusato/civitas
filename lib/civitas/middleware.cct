@@ -1,0 +1,439 @@
+INCIPIT grimoire "civitas_middleware"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "abuse/abuse.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "response.cct"
+
+SIGILLUM RequestContext
+  values: SPECULUM NIHIL
+  execution_middlewares: SPECULUM NIHIL
+  execution_next_index: REX
+  execution_final_handler_ref: SPECULUM NIHIL
+  route_name: VERBUM
+  route_pattern: VERBUM
+  route_sigilo_id: VERBUM
+  route_handler_symbol: VERBUM
+  route_rate_limit_class: RateLimitClass
+FIN SIGILLUM
+
+SIGILLUM ContextValueBox
+  raw: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM MiddlewareBinding
+  name: VERBUM
+  opaque_ref: SPECULUM NIHIL
+  ctx_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE middleware_context_route_name_key() REDDE VERBUM
+  REDDE "civitas.route.name"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_route_pattern_key() REDDE VERBUM
+  REDDE "civitas.route.pattern"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_route_sigilo_key() REDDE VERBUM
+  REDDE "civitas.route.sigilo_id"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_route_handler_key() REDDE VERBUM
+  REDDE "civitas.route.handler_symbol"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_route_rate_limit_class_key() REDDE VERBUM
+  REDDE "civitas.route.rate_limit_class"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_request_id_key() REDDE VERBUM
+  REDDE "civitas.request_id"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_binding_ctx_key() REDDE VERBUM
+  REDDE "civitas.middleware.binding_ctx"
+EXPLICIT RITUALE
+
+RITUALE middleware_context_storage_key(SPECULUM NIHIL values, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, ContextValueBox)(values)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE middleware_context_new() REDDE RequestContext
+  EVOCA RequestContext ctx
+  VINCIRE ctx.values AD CONIURA map_init GENUS(VERBUM, ContextValueBox)()
+  VINCIRE ctx.execution_middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  VINCIRE ctx.execution_next_index AD 0
+  VINCIRE ctx.route_name AD ""
+  VINCIRE ctx.route_pattern AD ""
+  VINCIRE ctx.route_sigilo_id AD ""
+  VINCIRE ctx.route_handler_symbol AD ""
+  VINCIRE ctx.route_rate_limit_class AD RlcDefault
+  REDDE ctx
+EXPLICIT RITUALE
+
+RITUALE middleware_context_set(SPECULUM RequestContext ctx, VERBUM key, SPECULUM NIHIL value) REDDE NIHIL
+  EVOCA ContextValueBox boxed
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA middleware_context_storage_key((*ctx).values, key)
+  VINCIRE boxed.raw AD value
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, ContextValueBox)((*ctx).values, stored_key, boxed)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  CONIURA map_insert GENUS(VERBUM, ContextValueBox)((*ctx).values, key, boxed)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_has(RequestContext ctx, VERBUM key) REDDE VERUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA middleware_context_storage_key(ctx.values, key)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE VERUM
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE middleware_context_get(RequestContext ctx, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA middleware_context_storage_key(ctx.values, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    IACE "middleware context key ausente"
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  EVOCA SPECULUM NIHIL boxed_opt AD CONIURA map_get GENUS(VERBUM, ContextValueBox)(ctx.values, stored_key)
+  SI CONIURA option_is_none GENUS(ContextValueBox)(boxed_opt)
+    CONIURA option_free GENUS(ContextValueBox)(boxed_opt)
+    IACE "middleware context key ausente"
+  FIN SI
+  EVOCA ContextValueBox boxed AD CONIURA option_unwrap GENUS(ContextValueBox)(boxed_opt)
+  CONIURA option_free GENUS(ContextValueBox)(boxed_opt)
+  REDDE boxed.raw
+EXPLICIT RITUALE
+
+RITUALE middleware_context_delete(SPECULUM RequestContext ctx, VERBUM key) REDDE NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA middleware_context_storage_key((*ctx).values, key)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  CONIURA map_remove GENUS(VERBUM, ContextValueBox)((*ctx).values, stored_key)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_verbum_or(RequestContext ctx, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI CONIURA compare(key, CONIURA middleware_context_route_name_key()) == 0
+    SI CONIURA len(ctx.route_name) == 0
+      REDDE fallback
+    FIN SI
+    REDDE ctx.route_name
+  FIN SI
+  SI CONIURA compare(key, CONIURA middleware_context_route_pattern_key()) == 0
+    SI CONIURA len(ctx.route_pattern) == 0
+      REDDE fallback
+    FIN SI
+    REDDE ctx.route_pattern
+  FIN SI
+  SI CONIURA compare(key, CONIURA middleware_context_route_sigilo_key()) == 0
+    SI CONIURA len(ctx.route_sigilo_id) == 0
+      REDDE fallback
+    FIN SI
+    REDDE ctx.route_sigilo_id
+  FIN SI
+  SI CONIURA compare(key, CONIURA middleware_context_route_handler_key()) == 0
+    SI CONIURA len(ctx.route_handler_symbol) == 0
+      REDDE fallback
+    FIN SI
+    REDDE ctx.route_handler_symbol
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE middleware_binding_named(VERBUM name, SPECULUM NIHIL opaque_ref) REDDE MiddlewareBinding
+  EVOCA MiddlewareBinding binding
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD opaque_ref
+  VINCIRE binding.ctx_ref AD NIHIL
+  REDDE binding
+EXPLICIT RITUALE
+
+RITUALE middleware_binding_with_ctx(VERBUM name, SPECULUM NIHIL opaque_ref, SPECULUM NIHIL ctx_ref) REDDE MiddlewareBinding
+  EVOCA MiddlewareBinding binding
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD opaque_ref
+  VINCIRE binding.ctx_ref AD ctx_ref
+  REDDE binding
+EXPLICIT RITUALE
+
+RITUALE middleware_bindings_copy(SPECULUM NIHIL middlewares) REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_copy GENUS(MiddlewareBinding)(middlewares)
+EXPLICIT RITUALE
+
+RITUALE middleware_bindings_push(SPECULUM NIHIL middlewares, VERBUM name, SPECULUM NIHIL opaque_ref) REDDE NIHIL
+  EVOCA MiddlewareBinding binding
+  VINCIRE binding.name AD name
+  VINCIRE binding.opaque_ref AD opaque_ref
+  VINCIRE binding.ctx_ref AD NIHIL
+  CONIURA fluxus_push(middlewares, SPECULUM binding)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_current_binding_ctx(RequestContext ctx) REDDE SPECULUM NIHIL
+  SI NON CONIURA middleware_context_has(ctx, CONIURA middleware_context_binding_ctx_key())
+    REDDE NIHIL
+  FIN SI
+  REDDE CONIURA middleware_context_get(ctx, CONIURA middleware_context_binding_ctx_key())
+EXPLICIT RITUALE
+
+RITUALE middleware_run(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  CONIURA callback_invoke3_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL, SPECULUM NIHIL)(next_ref, req_ref, ctx_ref, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+
+RITUALE middleware_context_set_route_name(SPECULUM RequestContext ctx, VERBUM value) REDDE NIHIL
+  VINCIRE (*ctx).route_name AD value
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_set_route_pattern(SPECULUM RequestContext ctx, VERBUM value) REDDE NIHIL
+  VINCIRE (*ctx).route_pattern AD value
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_set_route_sigilo_id(SPECULUM RequestContext ctx, VERBUM value) REDDE NIHIL
+  VINCIRE (*ctx).route_sigilo_id AD value
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_set_route_handler_symbol(SPECULUM RequestContext ctx, VERBUM value) REDDE NIHIL
+  VINCIRE (*ctx).route_handler_symbol AD value
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_set_route_rate_limit_class(SPECULUM RequestContext ctx, RateLimitClass value) REDDE NIHIL
+  VINCIRE (*ctx).route_rate_limit_class AD value
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_context_route_rate_limit_class(RequestContext ctx) REDDE RateLimitClass
+  REDDE ctx.route_rate_limit_class
+EXPLICIT RITUALE
+
+RITUALE middleware_execute_current(SPECULUM NIHIL req_ref, SPECULUM RequestContext ctx, SPECULUM NIHIL out_ref) REDDE NIHIL
+  SI (*ctx).execution_next_index >= CONIURA fluxus_len((*ctx).execution_middlewares)
+    CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL)((*ctx).execution_final_handler_ref, req_ref, out_ref)
+    REDDE
+  FIN SI
+
+  EVOCA REX current_index AD (*ctx).execution_next_index
+  EVOCA SPECULUM MiddlewareBinding binding AD CONIURA fluxus_get((*ctx).execution_middlewares, current_index)
+  EVOCA VERUM had_prev_binding_ctx AD CONIURA middleware_context_has(*ctx, CONIURA middleware_context_binding_ctx_key())
+  EVOCA SPECULUM NIHIL prev_binding_ctx AD NIHIL
+  SI had_prev_binding_ctx
+    VINCIRE prev_binding_ctx AD CONIURA middleware_context_get(*ctx, CONIURA middleware_context_binding_ctx_key())
+  FIN SI
+  VINCIRE (*ctx).execution_next_index AD current_index + 1
+  SI (*binding).ctx_ref == NIHIL
+    CONIURA middleware_context_delete(ctx, CONIURA middleware_context_binding_ctx_key())
+  ALITER
+    CONIURA middleware_context_set(ctx, CONIURA middleware_context_binding_ctx_key(), (*binding).ctx_ref)
+  FIN SI
+  CONIURA callback_invoke4_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL, SPECULUM NIHIL, SPECULUM NIHIL)(
+    (*binding).opaque_ref,
+    req_ref,
+    ctx,
+    middleware_next_dispatch,
+    out_ref
+  )
+  SI had_prev_binding_ctx
+    CONIURA middleware_context_set(ctx, CONIURA middleware_context_binding_ctx_key(), prev_binding_ctx)
+  ALITER
+    CONIURA middleware_context_delete(ctx, CONIURA middleware_context_binding_ctx_key())
+  FIN SI
+  VINCIRE (*ctx).execution_next_index AD current_index
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_next_dispatch(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM RequestContext ctx
+  VINCIRE ctx AD ctx_ref
+  CONIURA middleware_execute_current(req_ref, ctx, out_ref)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_chain_with_context(
+  SPECULUM NIHIL middlewares,
+  WebRequest req,
+  SPECULUM RequestContext ctx,
+  SPECULUM NIHIL final_handler_ref
+) REDDE WebResponse
+  EVOCA WebRequest req_copy
+  EVOCA WebResponse out AD CONIURA response_new(500)
+  CONIURA request_fill(SPECULUM req_copy, req)
+  VINCIRE (*ctx).execution_middlewares AD middlewares
+  VINCIRE (*ctx).execution_next_index AD 0
+  VINCIRE (*ctx).execution_final_handler_ref AD final_handler_ref
+
+  CONIURA middleware_next_dispatch(SPECULUM req_copy, ctx, SPECULUM out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE middleware_chain(SPECULUM NIHIL middlewares, WebRequest req, SPECULUM NIHIL final_handler_ref) REDDE WebResponse
+  EVOCA RequestContext ctx AD CONIURA middleware_context_new()
+  REDDE CONIURA middleware_chain_with_context(middlewares, req, SPECULUM ctx, final_handler_ref)
+EXPLICIT RITUALE
+
+RITUALE middleware_log_fields(SPECULUM WebRequest req, SPECULUM RequestContext ctx, SPECULUM WebResponse res, REX duration_ms) REDDE VERBUM
+  EVOCA VERBUM line AD "request_id="
+  VINCIRE line AD CONIURA concat(line, (*req).request_id)
+  VINCIRE line AD CONIURA concat(line, " method=")
+  VINCIRE line AD CONIURA concat(line, (*req).method)
+  VINCIRE line AD CONIURA concat(line, " path=")
+  VINCIRE line AD CONIURA concat(line, (*req).path)
+  VINCIRE line AD CONIURA concat(line, " status=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*res).status))
+  VINCIRE line AD CONIURA concat(line, " duration_ms=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(duration_ms))
+  VINCIRE line AD CONIURA concat(line, " client_ip=")
+  VINCIRE line AD CONIURA concat(line, (*req).client_ip)
+  VINCIRE line AD CONIURA concat(line, " route_name=")
+  VINCIRE line AD CONIURA concat(line, CONIURA middleware_context_verbum_or((*ctx), CONIURA middleware_context_route_name_key(), ""))
+  VINCIRE line AD CONIURA concat(line, " sigilo_id=")
+  VINCIRE line AD CONIURA concat(line, CONIURA middleware_context_verbum_or((*ctx), CONIURA middleware_context_route_sigilo_key(), ""))
+  REDDE line
+EXPLICIT RITUALE
+
+RITUALE middleware_logger(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  VINCIRE req AD req_ref
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  CONIURA eprintln(CONIURA concat("civitas.middleware.logger ", CONIURA middleware_log_fields(req, ctx, out, CONIURA now_ms() - started_ms)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_timing(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA REX started_ms AD CONIURA now_ms()
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  CONIURA response_set_header(out, "x-response-time-ms", CONIURA stringify_int(CONIURA now_ms() - started_ms))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_recovery_error_fields(SPECULUM WebRequest req, SPECULUM RequestContext ctx, VERBUM error) REDDE VERBUM
+  EVOCA VERBUM line AD "request_id="
+  VINCIRE line AD CONIURA concat(line, (*req).request_id)
+  VINCIRE line AD CONIURA concat(line, " method=")
+  VINCIRE line AD CONIURA concat(line, (*req).method)
+  VINCIRE line AD CONIURA concat(line, " path=")
+  VINCIRE line AD CONIURA concat(line, (*req).path)
+  VINCIRE line AD CONIURA concat(line, " route_name=")
+  VINCIRE line AD CONIURA concat(line, CONIURA middleware_context_verbum_or((*ctx), CONIURA middleware_context_route_name_key(), ""))
+  VINCIRE line AD CONIURA concat(line, " sigilo_id=")
+  VINCIRE line AD CONIURA concat(line, CONIURA middleware_context_verbum_or((*ctx), CONIURA middleware_context_route_sigilo_key(), ""))
+  VINCIRE line AD CONIURA concat(line, " error=")
+  VINCIRE line AD CONIURA concat(line, error)
+  REDDE line
+EXPLICIT RITUALE
+
+RITUALE middleware_recovery(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM RequestContext ctx
+  EVOCA SPECULUM WebResponse out
+  VINCIRE req AD req_ref
+  VINCIRE ctx AD ctx_ref
+  VINCIRE out AD out_ref
+  TEMPTA
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  CAPE FRACTUM error
+    EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(error)
+    CONIURA eprintln(CONIURA concat("civitas.middleware.recovery ", CONIURA middleware_recovery_error_fields(req, ctx, error_text)))
+    CONIURA response_fill(out, CONIURA response_internal_error("internal server error"))
+    CONIURA response_set_header(out, "x-civitas-recovered", "1")
+    REDDE
+  FIN TEMPTA
+EXPLICIT RITUALE
+
+RITUALE middleware_cors_methods_default() REDDE VERBUM
+  REDDE "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+EXPLICIT RITUALE
+
+RITUALE middleware_cors_headers_default() REDDE VERBUM
+  REDDE "Authorization, Content-Type"
+EXPLICIT RITUALE
+
+RITUALE middleware_cors_apply_headers(SPECULUM WebResponse res, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM origin AD CONIURA request_header_or((*req).headers, "origin", "")
+  SI CONIURA len(origin) == 0
+    REDDE
+  FIN SI
+
+  CONIURA response_set_header(res, "access-control-allow-origin", origin)
+  CONIURA response_append_vary(res, "Origin")
+  CONIURA response_set_header(res, "access-control-allow-methods", CONIURA request_header_or((*req).headers, "access-control-request-method", CONIURA middleware_cors_methods_default()))
+  CONIURA response_set_header(res, "access-control-allow-headers", CONIURA request_header_or((*req).headers, "access-control-request-headers", CONIURA middleware_cors_headers_default()))
+  CONIURA response_set_header(res, "access-control-max-age", "600")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE middleware_cors_basic(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req
+  EVOCA SPECULUM WebResponse out
+  VINCIRE req AD req_ref
+  VINCIRE out AD out_ref
+  EVOCA VERBUM origin AD CONIURA request_header_or((*req).headers, "origin", "")
+  EVOCA VERBUM preflight_method AD CONIURA request_header_or((*req).headers, "access-control-request-method", "")
+
+  SI CONIURA len(origin) == 0
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  SI CONIURA compare((*req).method, "OPTIONS") == 0 ET CONIURA len(preflight_method) != 0
+    EVOCA WebResponse preflight AD CONIURA response_no_content()
+    CONIURA middleware_cors_apply_headers(SPECULUM preflight, req)
+    CONIURA response_fill(out, preflight)
+    REDDE
+  FIN SI
+
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  CONIURA middleware_cors_apply_headers(out, req)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

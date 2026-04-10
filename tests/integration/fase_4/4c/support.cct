@@ -1,0 +1,172 @@
+INCIPIT grimoire "fase4_4c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/core/app_services.cct"
+ADVOCARE "../../../../lib/civitas/core/external_tools.cct"
+ADVOCARE "../../../../lib/civitas/core/services.cct"
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/core/storage_settings.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase4_4c_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase4_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA phase4_write(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_load_settings(VERBUM root, VERBUM content) REDDE Settings
+  EVOCA SPECULUM NIHIL res
+  CONIURA phase4_4c_reset_dir(root)
+  CONIURA phase4_4c_write(CONIURA path_join(root, "civitas.toml"), content)
+  VINCIRE res AD CONIURA settings_load(root)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(res)
+    IACE CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(res))
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Settings, SettingsError)(res)
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_new_app(VERBUM root, VERBUM content) REDDE Application
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA app_new(settings)
+  SI CONIURA result_is_err GENUS(Application, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(Application, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Application, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_storage_is_err_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  REDDE CONIURA result_is_err GENUS(StorageSettings, VERBUM)(CONIURA settings_storage(SPECULUM settings))
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_media_tools_is_err_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  REDDE CONIURA result_is_err GENUS(MediaToolSettings, VERBUM)(CONIURA settings_media_tools(SPECULUM settings))
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_redis_host_from_content(VERBUM root, VERBUM content) REDDE VERBUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_redis(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(res)
+  FIN SI
+  EVOCA RedisSettings value AD CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(res)
+  REDDE value.host
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_redis_port_from_content(VERBUM root, VERBUM content) REDDE REX
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_redis(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(res)
+  FIN SI
+  EVOCA RedisSettings value AD CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(res)
+  REDDE value.port
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_redis_db_from_content(VERBUM root, VERBUM content) REDDE REX
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_redis(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(res)
+  FIN SI
+  EVOCA RedisSettings value AD CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(res)
+  REDDE value.db_index
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_redis_connect_timeout_from_content(VERBUM root, VERBUM content) REDDE REX
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_redis(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(res)
+  FIN SI
+  EVOCA RedisSettings value AD CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(res)
+  REDDE value.connect_timeout_ms
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_redis_read_timeout_from_content(VERBUM root, VERBUM content) REDDE REX
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_redis(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(RedisSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(RedisSettings, VERBUM)(res)
+  FIN SI
+  EVOCA RedisSettings value AD CONIURA result_unwrap GENUS(RedisSettings, VERBUM)(res)
+  REDDE value.read_timeout_ms
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_mail_backend_name_from_content(VERBUM root, VERBUM content) REDDE VERBUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_mail(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(MailSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(MailSettings, VERBUM)(res)
+  FIN SI
+  EVOCA MailSettings value AD CONIURA result_unwrap GENUS(MailSettings, VERBUM)(res)
+  REDDE value.backend_name
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_mail_open_ok_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_mail(SPECULUM settings)
+  EVOCA SPECULUM NIHIL open_res
+  SI CONIURA result_is_err GENUS(MailSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(MailSettings, VERBUM)(res)
+  FIN SI
+  EVOCA MailSettings value AD CONIURA result_unwrap GENUS(MailSettings, VERBUM)(res)
+  VINCIRE open_res AD CONIURA mail_settings_open(value)
+  REDDE NON CONIURA result_is_err GENUS(MailClient, VERBUM)(open_res)
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_proxy_trusted_count_from_content(VERBUM root, VERBUM content) REDDE REX
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_proxy(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(ProxySettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(ProxySettings, VERBUM)(res)
+  FIN SI
+  EVOCA ProxySettings value AD CONIURA result_unwrap GENUS(ProxySettings, VERBUM)(res)
+  REDDE value.trusted_proxies_count
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_proxy_is_err_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  REDDE CONIURA result_is_err GENUS(ProxySettings, VERBUM)(CONIURA settings_proxy(SPECULUM settings))
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_search_enabled_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Settings settings AD CONIURA phase4_4c_load_settings(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA settings_search(SPECULUM settings)
+  SI CONIURA result_is_err GENUS(SearchSettings, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(SearchSettings, VERBUM)(res)
+  FIN SI
+  EVOCA SearchSettings value AD CONIURA result_unwrap GENUS(SearchSettings, VERBUM)(res)
+  REDDE value.enabled
+EXPLICIT RITUALE
+
+RITUALE phase4_4c_app_storage_layout_ok_from_content(VERBUM root, VERBUM content) REDDE VERUM
+  EVOCA Application app AD CONIURA phase4_4c_new_app(root, content)
+  EVOCA SPECULUM NIHIL res AD CONIURA app_materialize_services(SPECULUM app)
+  EVOCA SPECULUM StorageSettings storage_ptr
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  SI NON CONIURA app_service_has(app, CONIURA app_service_storage_key())
+    REDDE FALSUM
+  FIN SI
+  VINCIRE storage_ptr AD CONIURA app_service_get(app, CONIURA app_service_storage_key())
+  REDDE CONIURA is_dir((*storage_ptr).tmp_dir) ET CONIURA is_dir((*storage_ptr).quarantine_dir) ET CONIURA is_dir((*storage_ptr).processed_dir) ET CONIURA is_dir((*storage_ptr).public_dir) ET CONIURA is_dir((*storage_ptr).private_dir)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

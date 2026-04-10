@@ -1,0 +1,107 @@
+INCIPIT grimoire "fase28_support"
+
+ADVOCARE "../../../lib/civitas/csrf_middleware.cct"
+ADVOCARE "../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/router.cct"
+ADVOCARE "../../../lib/civitas/security.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase28_root(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_28", name)
+EXPLICIT RITUALE
+
+RITUALE phase28_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase28_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase28_reset_root(VERBUM name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase28_root(name)
+  SI CONIURA exists(root)
+    CONIURA phase28_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase28_router_ok_or_fail(SPECULUM NIHIL res, REX code) REDDE NIHIL
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(res)
+    REDDE
+  FIN SI
+  IACE CONIURA stringify_int(code)
+EXPLICIT RITUALE
+
+RITUALE phase28_ok_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase28_mutate_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_no_content())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase28_fast_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("fast"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase28_error_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_internal_error("boom"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase28_router_with_post(VERUM with_csrf) REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase28_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/", "home", "phase28_ok_handler", phase28_ok_handler), 1)
+  CONIURA phase28_router_ok_or_fail(CONIURA router_add(SPECULUM router, "POST", "/posts", "posts_create", "phase28_mutate_handler", phase28_mutate_handler), 2)
+  SI with_csrf
+    EVOCA MiddlewareBinding csrf_binding AD CONIURA middleware_binding_named("csrf", csrf_middleware)
+    CONIURA phase28_router_ok_or_fail(CONIURA router_add_middleware(SPECULUM router, "posts_create", csrf_binding), 3)
+  FIN SI
+  REDDE router
+EXPLICIT RITUALE
+
+RITUALE phase28_security_response() REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_html("<h1>ok</h1>")
+  EVOCA SecurityConfig cfg AD CONIURA security_config_default()
+  VINCIRE cfg.enforce_https AD VERUM
+  CONIURA security_headers_apply(SPECULUM cfg, "nonce-28", res.headers)
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE phase28_load_router() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase28_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/fast", "fast", "phase28_fast_handler", phase28_fast_handler), 1)
+  CONIURA phase28_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/error", "error", "phase28_error_handler", phase28_error_handler), 2)
+  REDDE router
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

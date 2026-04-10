@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase22_22a_compile_error_page"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/dev_server/dev_server.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase22_reset_root("22a_compile_error_page")
+  EVOCA VERBUM src AD CONIURA path_join(root, "broken.cct")
+  CONIURA write_all(src, "line1\nline2\nline3\nbad line\nline5\nline6\n")
+  EVOCA CompileError err AD CONIURA dev_server_default_compile_error()
+  VINCIRE err.filename AD src
+  VINCIRE err.line AD 4
+  VINCIRE err.column AD 3
+  VINCIRE err.message AD "unexpected token"
+  VINCIRE err.raw_output AD CONIURA concat(src, ":4:3: erro: unexpected token")
+  EVOCA VERBUM html AD CONIURA dev_server_compile_error_page(err)
+  SI CONIURA find(html, "Compile Error") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "line-error") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "   4  bad line") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "unexpected token") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(html, "Fix the file and save") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

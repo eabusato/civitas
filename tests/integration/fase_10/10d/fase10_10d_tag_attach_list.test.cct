@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase10_10d_tag_attach_list"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/taxonomy/taxonomy.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10d_tag_attach_list")
+  EVOCA Tag tag AD CONIURA tag_create(db, "Featured", "en")
+  CONIURA tag_attach(db, "post", 12, tag.id)
+  EVOCA SPECULUM NIHIL tags AD CONIURA tag_list_for_object(db, "post", 12)
+  SI CONIURA fluxus_len(tags) != 1
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM Tag first AD CONIURA fluxus_get(tags, 0)
+  SI CONIURA compare((*first).label, "Featured") != 0
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

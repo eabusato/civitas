@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase18_18b_list_and_count_inline"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_query.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_list_and_count_inline() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18b_list_count")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA AdminInlineConfig inline_cfg AD CONIURA phase18_register_comment_inline(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Post A", "draft", "u1", 1000)
+  CONIURA phase18_insert_post(stack.db, "Post B", "draft", "u2", 1001)
+  CONIURA phase18_insert_comment(stack.db, 1, "First", "visible")
+  CONIURA phase18_insert_comment(stack.db, 1, "Second", "hidden")
+  CONIURA phase18_insert_comment(stack.db, 2, "Other", "visible")
+  SI CONIURA admin_inline_count(inline_cfg, stack.dbh, "1") != 2
+    IACE "inline count mismatch for parent"
+  FIN SI
+  EVOCA VERBUM rows_json AD CONIURA admin_inline_list_for_parent(inline_cfg, stack.dbh, "1")
+  SI CONIURA find(rows_json, "\"body\":\"First\"") == -1
+    IACE "first inline row missing"
+  FIN SI
+  SI CONIURA find(rows_json, "\"body\":\"Second\"") == -1
+    IACE "second inline row missing"
+  FIN SI
+  SI CONIURA find(rows_json, "\"body\":\"Other\"") != -1
+    IACE "foreign parent row leaked into inline list"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_list_and_count_inline()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

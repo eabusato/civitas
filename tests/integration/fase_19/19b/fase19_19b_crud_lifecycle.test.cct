@@ -1,0 +1,63 @@
+INCIPIT grimoire "fase19_19b_crud_lifecycle"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_crud_lifecycle() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19b_crud")
+  EVOCA ApiViewConfig cfg
+  EVOCA TokenConfig tok_cfg AD CONIURA auth_test_token_config()
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+
+  EVOCA WebRequest create_req AD CONIURA phase19_request("POST", "/api/v1/posts", "{\"title\":\"Created\",\"body\":\"hidden\",\"published_at\":40,\"author\":{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}}")
+  EVOCA WebResponse create_res AD CONIURA api_view_create(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, create_req)
+  SI create_res.status != 201
+    IACE "create status mismatch"
+  FIN SI
+  SI CONIURA find(create_res.body, "\"title\":\"Created\"") == -1
+    IACE "create response missing row"
+  FIN SI
+
+  EVOCA WebRequest detail_req AD CONIURA phase19_request("GET", "/api/v1/posts/1", "")
+  CONIURA phase19_request_set_param(SPECULUM detail_req, "pk", "1")
+  EVOCA WebResponse detail_res AD CONIURA api_view_detail(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, detail_req)
+  SI detail_res.status != 200
+    IACE "detail status mismatch"
+  FIN SI
+
+  EVOCA WebRequest update_req AD CONIURA phase19_request("PUT", "/api/v1/posts/1", "{\"title\":\"Updated\",\"body\":\"hidden\",\"published_at\":41,\"author\":{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}}")
+  CONIURA phase19_request_set_param(SPECULUM update_req, "pk", "1")
+  EVOCA WebResponse update_res AD CONIURA api_view_update(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, update_req)
+  SI update_res.status != 200 VEL CONIURA find(update_res.body, "\"title\":\"Updated\"") == -1
+    IACE "update result mismatch"
+  FIN SI
+
+  EVOCA WebRequest delete_req AD CONIURA phase19_request("DELETE", "/api/v1/posts/1", "")
+  CONIURA phase19_request_set_param(SPECULUM delete_req, "pk", "1")
+  EVOCA WebResponse delete_res AD CONIURA api_view_delete(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, delete_req)
+  SI delete_res.status != 204
+    IACE "delete status mismatch"
+  FIN SI
+
+  EVOCA WebRequest missing_req AD CONIURA phase19_request("GET", "/api/v1/posts/1", "")
+  CONIURA phase19_request_set_param(SPECULUM missing_req, "pk", "1")
+  EVOCA WebResponse missing_res AD CONIURA api_view_detail(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, missing_req)
+  SI missing_res.status != 404
+    IACE "detail after delete should be 404"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_crud_lifecycle()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

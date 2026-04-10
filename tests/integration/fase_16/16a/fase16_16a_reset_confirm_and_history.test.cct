@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase16_16a_reset_confirm_and_history"
+
+ADVOCARE "../../../../lib/civitas/auth/auth_login.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_reset.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA fase16_test_db_open()
+  EVOCA AuthConfig auth_cfg AD CONIURA fase16_auth_cfg()
+  CONIURA fase16_create_user(tdb, "ana@test.example", "abcd")
+  EVOCA FlowConfig cfg AD CONIURA fase16_flow_cfg()
+  EVOCA SPECULUM NIHIL req1 AD CONIURA auth_flow_reset_solicitar(tdb.db, cfg, "ana@test.example")
+  EVOCA FlowTokenResult tok1 AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(req1)
+  EVOCA SPECULUM NIHIL conf1 AD CONIURA auth_flow_reset_confirmar(tdb.db, cfg, auth_cfg, tok1.token_claro, "nova123")
+  SI CONIURA result_is_err GENUS(VERBUM, FlowError)(conf1)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL login_res AD CONIURA auth_login(tdb.db, auth_cfg, "ana@test.example", "nova123")
+  SI CONIURA result_is_err GENUS(User, AuthError)(login_res)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL req2 AD CONIURA auth_flow_reset_solicitar(tdb.db, cfg, "ana@test.example")
+  EVOCA FlowTokenResult tok2 AD CONIURA result_unwrap GENUS(FlowTokenResult, FlowError)(req2)
+  EVOCA SPECULUM NIHIL conf2 AD CONIURA auth_flow_reset_confirmar(tdb.db, cfg, auth_cfg, tok2.token_claro, "abcd")
+  SI NON CONIURA result_is_err GENUS(VERBUM, FlowError)(conf2)
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA auth_flow_error_name(CONIURA result_unwrap_err GENUS(VERBUM, FlowError)(conf2)), "FlowSenhaReutilizada") != 0
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

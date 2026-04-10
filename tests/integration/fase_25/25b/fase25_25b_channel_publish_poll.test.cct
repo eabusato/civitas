@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase25_25b_channel_publish_poll"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/websocket/websocket.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25b_channel_publish_poll")
+  EVOCA SPECULUM WsConn sender AD CONIURA ws_conn_new(db, NIHIL, "room:42", 10)
+  EVOCA SPECULUM WsConn receiver AD CONIURA ws_conn_new(db, NIHIL, "room:42", 11)
+
+  CONIURA ws_channel_publish(sender, WS_TEXT, "{\"body\":\"hello\"}")
+  EVOCA SPECULUM NIHIL pending AD CONIURA ws_channel_poll(receiver)
+  SI CONIURA fluxus_len(pending) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM WsFrame frame AD CONIURA fluxus_get(pending, 0)
+  SI (*frame).opcode != WS_TEXT
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare((*frame).payload, "{\"body\":\"hello\"}") != 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI (*receiver).last_bus_id != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

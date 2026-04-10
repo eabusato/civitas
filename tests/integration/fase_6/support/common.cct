@@ -1,0 +1,191 @@
+INCIPIT grimoire "fase6_support_common"
+
+ADVOCARE "../../fase_4/support/common.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase6_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_6/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase6_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase6_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA write_all(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase6_project_templates_dir(VERBUM root) REDDE VERBUM
+  REDDE CONIURA path_join(root, "templates")
+EXPLICIT RITUALE
+
+RITUALE phase6_project_gen_dir(VERBUM root) REDDE VERBUM
+  REDDE CONIURA path_join(root, "gen")
+EXPLICIT RITUALE
+
+RITUALE phase6_project_lib_dir(VERBUM root) REDDE VERBUM
+  REDDE CONIURA path_join(root, "lib")
+EXPLICIT RITUALE
+
+RITUALE phase6_init_project(VERBUM root) REDDE NIHIL
+  CONIURA phase6_reset_dir(root)
+  CONIURA mkdir_all(CONIURA phase6_project_templates_dir(root))
+  CONIURA mkdir_all(CONIURA phase6_project_gen_dir(root))
+  CONIURA mkdir_all(CONIURA phase6_project_lib_dir(root))
+  CONIURA write_all(
+    CONIURA path_join(CONIURA phase6_project_lib_dir(root), "template_contexts.cct"),
+    CONIURA read_all("tests/integration/fase_6/support/template_contexts.cct")
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase6_write_template(VERBUM root, VERBUM relative_path, VERBUM content) REDDE VERBUM
+  EVOCA VERBUM full_path AD CONIURA path_join(CONIURA phase6_project_templates_dir(root), relative_path)
+  CONIURA mkdir_all(CONIURA path_dirname(full_path))
+  CONIURA phase6_write(full_path, content)
+  REDDE full_path
+EXPLICIT RITUALE
+
+RITUALE phase6_generated_path(VERBUM root, VERBUM template_relative_path) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase6_project_gen_dir(root), CONIURA with_ext(template_relative_path, ".cct"))
+EXPLICIT RITUALE
+
+RITUALE phase6_template_path(VERBUM root, VERBUM template_relative_path) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase6_project_templates_dir(root), template_relative_path)
+EXPLICIT RITUALE
+
+RITUALE phase6_compile_file_ok(VERBUM root, VERBUM template_relative_path) REDDE VERBUM
+  EVOCA VERBUM template_path AD CONIURA path_join(CONIURA phase6_project_templates_dir(root), template_relative_path)
+  EVOCA VERBUM output_path AD CONIURA phase6_generated_path(root, template_relative_path)
+  EVOCA VERBUM cmd AD ""
+  CONIURA phase6_build_template_compiler_or_fail()
+  VINCIRE cmd AD CONIURA concat("bin/cct-template-compile --template ", template_path)
+  VINCIRE cmd AD CONIURA concat(cmd, " --output ")
+  VINCIRE cmd AD CONIURA concat(cmd, output_path)
+  VINCIRE cmd AD CONIURA concat(cmd, " --root ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase6_project_templates_dir(root))
+  SI CONIURA phase6_run(cmd) != 0
+    IACE CONIURA phase6_run_capture_err(cmd)
+  FIN SI
+  REDDE output_path
+EXPLICIT RITUALE
+
+RITUALE phase6_compile_directory_ok(VERBUM root) REDDE REX
+  EVOCA VERBUM cmd AD ""
+  CONIURA phase6_build_template_compiler_or_fail()
+  VINCIRE cmd AD CONIURA concat("bin/cct-template-compile --dir ", CONIURA phase6_project_templates_dir(root))
+  VINCIRE cmd AD CONIURA concat(cmd, " --out-dir ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase6_project_gen_dir(root))
+  SI CONIURA phase6_run(cmd) != 0
+    IACE CONIURA phase6_run_capture_err(cmd)
+  FIN SI
+  REDDE CONIURA phase6_count_html_templates(CONIURA phase6_project_templates_dir(root))
+EXPLICIT RITUALE
+
+RITUALE phase6_build_source(VERBUM source_path) REDDE REX
+  EVOCA VERBUM compiler AD CONIURA phase4_compiler_bin()
+  REDDE CONIURA run(CONIURA concat(CONIURA concat(compiler, " "), source_path))
+EXPLICIT RITUALE
+
+RITUALE phase6_build_source_or_fail(VERBUM source_path) REDDE NIHIL
+  SI CONIURA phase6_build_source(source_path) != 0
+    IACE CONIURA concat("falha ao compilar source: ", source_path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase6_build_template_compiler_or_fail() REDDE NIHIL
+  CONIURA phase6_build_source_or_fail("bin/cct-template-compile.cct")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase6_run_capture(VERBUM cmd) REDDE VERBUM
+  REDDE CONIURA run_capture(cmd)
+EXPLICIT RITUALE
+
+RITUALE phase6_run_capture_err(VERBUM cmd) REDDE VERBUM
+  REDDE CONIURA run_capture_err(cmd)
+EXPLICIT RITUALE
+
+RITUALE phase6_run(VERBUM cmd) REDDE REX
+  REDDE CONIURA run(cmd)
+EXPLICIT RITUALE
+
+RITUALE phase6_count_html_templates(VERBUM dir_path) REDDE REX
+  SI NON CONIURA exists(dir_path)
+    REDDE 0
+  FIN SI
+  SI CONIURA is_file(dir_path)
+    SI CONIURA compare(CONIURA path_ext(dir_path), ".html") == 0
+      REDDE 1
+    FIN SI
+    REDDE 0
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir_path)
+  EVOCA REX i AD 0
+  EVOCA REX total AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    VINCIRE total AD total + CONIURA phase6_count_html_templates(CONIURA path_join(dir_path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE phase6_blog_probe_source(VERBUM generated_import, VERBUM render_name) REDDE VERBUM
+  EVOCA VERBUM out AD "INCIPIT grimoire \"fase6_render_probe\"\n\n"
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"")
+  VINCIRE out AD CONIURA concat(out, generated_import)
+  VINCIRE out AD CONIURA concat(out, "\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"lib/template_contexts.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"cct/fluxus.cct\"\n")
+  VINCIRE out AD CONIURA concat(out, "ADVOCARE \"cct/io.cct\"\n\n")
+  VINCIRE out AD CONIURA concat(out, "RITUALE main() REDDE REX\n")
+  VINCIRE out AD CONIURA concat(out, "  EVOCA PostCardContext post\n")
+  VINCIRE out AD CONIURA concat(out, "  EVOCA SPECULUM NIHIL posts AD CONIURA fluxus_init(MENSURA(PostCardContext))\n")
+  VINCIRE out AD CONIURA concat(out, "  EVOCA BlogPageContext ctx\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE post.titulo AD \"Primeiro <Post>\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE post.resumo AD \"Resumo & detalhes\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE post.body_html AD \"<strong>Seguro</strong>\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE post.views AD 7\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE post.featured AD VERUM\n")
+  VINCIRE out AD CONIURA concat(out, "  CONIURA fluxus_push(posts, SPECULUM post)\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.page_title AD \"Painel <Admin>\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.nome AD \"Ada <Lovelace>\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.bio_html AD \"<em>matematica</em>\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.is_admin AD FALSUM\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.status AD \"ativo\"\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.post_count AD 1\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.posts AD posts\n")
+  VINCIRE out AD CONIURA concat(out, "  VINCIRE ctx.post AD post\n")
+  VINCIRE out AD CONIURA concat(out, "  CONIURA println(CONIURA render_")
+  VINCIRE out AD CONIURA concat(out, render_name)
+  VINCIRE out AD CONIURA concat(out, "(ctx))\n")
+  VINCIRE out AD CONIURA concat(out, "  REDDE 0\n")
+  VINCIRE out AD CONIURA concat(out, "EXPLICIT RITUALE\n\n")
+  VINCIRE out AD CONIURA concat(out, "EXPLICIT grimoire\n")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase6_render_blog_template(VERBUM root, VERBUM generated_import, VERBUM render_name, VERBUM env_prefix) REDDE VERBUM
+  EVOCA VERBUM probe_path AD CONIURA path_join(root, "render_probe.cct")
+  EVOCA VERBUM command AD ""
+  CONIURA write_all(probe_path, CONIURA phase6_blog_probe_source(generated_import, render_name))
+  CONIURA phase6_build_source_or_fail(probe_path)
+  VINCIRE command AD CONIURA without_ext(probe_path)
+  SI CONIURA len(env_prefix) != 0
+    VINCIRE command AD CONIURA concat(CONIURA concat(env_prefix, " "), command)
+  FIN SI
+  REDDE CONIURA phase6_run_capture(command)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

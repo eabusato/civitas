@@ -1,0 +1,207 @@
+INCIPIT grimoire "civitas_media_image"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "image_derive.cct"
+ADVOCARE "image_exif.cct"
+ADVOCARE "image_types.cct"
+
+RITUALE image_validate_ok(FileType value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(FileType, ImageValidateError)(value)
+EXPLICIT RITUALE
+
+RITUALE image_validate_err(ImageValidateError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(FileType, ImageValidateError)(err)
+EXPLICIT RITUALE
+
+RITUALE image_record_ok(ImageRecord record) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(ImageRecord, VERBUM)(record)
+EXPLICIT RITUALE
+
+RITUALE image_record_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(ImageRecord, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE image_now_iso() REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_now(), "%Y-%m-%dT%H:%M:%S%z")
+EXPLICIT RITUALE
+
+RITUALE image_process_config_new(SPECULUM NIHIL specs, VERUM strip_exif, MediaZone auto_promote_zone) REDDE ImageProcessConfig
+  EVOCA ImageProcessConfig cfg
+  VINCIRE cfg.specs AD specs
+  VINCIRE cfg.strip_exif AD strip_exif
+  VINCIRE cfg.auto_promote_zone AD auto_promote_zone
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE image_validate_error_name(ImageValidateError err) REDDE VERBUM
+  ELIGE err
+    CASUS IveNotAnImage:
+      REDDE "not_image"
+    CASUS IveFileTooLarge:
+      REDDE "file_too_large"
+    CASUS IveDimensionsTooLarge:
+      REDDE "dimensions_too_large"
+    ALIOQUIN:
+      REDDE "corrupted"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE image_validate(VERBUM path, REX max_bytes) REDDE SPECULUM NIHIL
+  EVOCA FileType ft AD CONIURA filetype_detect(path)
+  SI NON CONIURA filetype_is_image(ft)
+    REDDE CONIURA image_validate_err(IveNotAnImage)
+  FIN SI
+
+  EVOCA REX bytes AD CONIURA size(path)
+  SI max_bytes > 0 ET bytes > max_bytes
+    REDDE CONIURA image_validate_err(IveFileTooLarge)
+  FIN SI
+
+  EVOCA Image img AD CONIURA image_load(path)
+  SI NON CONIURA image_is_valid(img)
+    CONIURA image_free(img)
+    REDDE CONIURA image_validate_err(IveCorrupted)
+  FIN SI
+
+  EVOCA ImageDimensions dims AD CONIURA image_get_dimensions(img)
+  CONIURA image_free(img)
+  SI dims.width > 10000 VEL dims.height > 10000
+    REDDE CONIURA image_validate_err(IveDimensionsTooLarge)
+  FIN SI
+
+  REDDE CONIURA image_validate_ok(ft)
+EXPLICIT RITUALE
+
+RITUALE image_process(VERBUM tmp_path, VERBUM original_filename, VERBUM owner_id, ImageProcessConfig cfg, MediaStore store) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL validate_res AD CONIURA image_validate(tmp_path, 20971520)
+  SI CONIURA result_is_err GENUS(FileType, ImageValidateError)(validate_res)
+    EVOCA ImageValidateError err AD CONIURA result_unwrap_err GENUS(FileType, ImageValidateError)(validate_res)
+    REDDE CONIURA image_record_err(CONIURA concat("image validation failed: ", CONIURA image_validate_error_name(err)))
+  FIN SI
+  EVOCA FileType ft AD CONIURA result_unwrap GENUS(FileType, ImageValidateError)(validate_res)
+
+  SI cfg.strip_exif
+    EVOCA SPECULUM NIHIL exif_res AD CONIURA image_strip_exif(tmp_path)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(exif_res)
+      REDDE CONIURA image_record_err(CONIURA result_unwrap_err GENUS(REX, VERBUM)(exif_res))
+    FIN SI
+  FIN SI
+
+  EVOCA Image original_img AD CONIURA image_load(tmp_path)
+  SI NON CONIURA image_is_valid(original_img)
+    CONIURA image_free(original_img)
+    REDDE CONIURA image_record_err("image load failed after validation")
+  FIN SI
+  EVOCA ImageDimensions dims AD CONIURA image_get_dimensions(original_img)
+  CONIURA image_free(original_img)
+
+  EVOCA SPECULUM NIHIL derive_res AD CONIURA image_derive_all(tmp_path, cfg, store)
+  SI CONIURA result_is_err GENUS(SPECULUM NIHIL, VERBUM)(derive_res)
+    REDDE CONIURA image_record_err(CONIURA concat("derivative generation failed: ", CONIURA result_unwrap_err GENUS(SPECULUM NIHIL, VERBUM)(derive_res)))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL put_res AD CONIURA media_store_put_file(store, MEDIA_ZONE_TMP, tmp_path, original_filename)
+  SI CONIURA exists(tmp_path)
+    CONIURA delete_file(tmp_path)
+  FIN SI
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(put_res)
+    REDDE CONIURA image_record_err(CONIURA concat("failed to register original: ", CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(put_res)))
+  FIN SI
+  EVOCA MediaArtifact tmp_artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(put_res)
+
+  EVOCA SPECULUM NIHIL promote_res AD CONIURA media_store_promote(store, tmp_artifact, cfg.auto_promote_zone)
+  SI CONIURA result_is_err GENUS(MediaArtifact, VERBUM)(promote_res)
+    REDDE CONIURA image_record_err(CONIURA concat("failed to promote original: ", CONIURA result_unwrap_err GENUS(MediaArtifact, VERBUM)(promote_res)))
+  FIN SI
+  EVOCA MediaArtifact artifact AD CONIURA result_unwrap GENUS(MediaArtifact, VERBUM)(promote_res)
+
+  EVOCA ImageRecord record
+  EVOCA VERBUM now_iso AD CONIURA image_now_iso()
+  VINCIRE record.artifact_id AD artifact.artifact_id
+  VINCIRE record.owner_id AD owner_id
+  VINCIRE record.original_filename AD original_filename
+  VINCIRE record.content_type AD CONIURA filetype_mime(ft)
+  VINCIRE record.filetype AD ft
+  VINCIRE record.width AD dims.width
+  VINCIRE record.height AD dims.height
+  VINCIRE record.size_bytes AD artifact.size_bytes
+  VINCIRE record.checksum AD artifact.checksum
+  VINCIRE record.zone AD artifact.zone
+  VINCIRE record.moderation_state AD ImsPending
+  VINCIRE record.active AD FALSUM
+  VINCIRE record.deleted AD FALSUM
+  VINCIRE record.created_at_iso AD now_iso
+  VINCIRE record.updated_at_iso AD now_iso
+
+  REDDE CONIURA image_record_ok(record)
+EXPLICIT RITUALE
+
+RITUALE image_approve(SPECULUM ImageRecord record) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD ImsApproved
+  VINCIRE (*record).active AD VERUM
+  VINCIRE (*record).updated_at_iso AD CONIURA image_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE image_reject(SPECULUM ImageRecord record) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD ImsRejected
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).updated_at_iso AD CONIURA image_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE image_mark_unsafe(SPECULUM ImageRecord record) REDDE NIHIL
+  VINCIRE (*record).moderation_state AD ImsUnsafe
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).updated_at_iso AD CONIURA image_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE image_soft_delete(SPECULUM ImageRecord record) REDDE NIHIL
+  VINCIRE (*record).deleted AD VERUM
+  VINCIRE (*record).active AD FALSUM
+  VINCIRE (*record).updated_at_iso AD CONIURA image_now_iso()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE image_spec_avatar() REDDE ImageDerivativeSpec
+  EVOCA ImageDerivativeSpec spec
+  VINCIRE spec.name AD "avatar"
+  VINCIRE spec.max_width AD 128
+  VINCIRE spec.max_height AD 128
+  VINCIRE spec.format AD ImgWebP
+  VINCIRE spec.quality AD 85
+  VINCIRE spec.crop_square AD VERUM
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE image_spec_thumb() REDDE ImageDerivativeSpec
+  EVOCA ImageDerivativeSpec spec
+  VINCIRE spec.name AD "thumb"
+  VINCIRE spec.max_width AD 320
+  VINCIRE spec.max_height AD 320
+  VINCIRE spec.format AD ImgWebP
+  VINCIRE spec.quality AD 80
+  VINCIRE spec.crop_square AD FALSUM
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE image_spec_medium() REDDE ImageDerivativeSpec
+  EVOCA ImageDerivativeSpec spec
+  VINCIRE spec.name AD "medium"
+  VINCIRE spec.max_width AD 800
+  VINCIRE spec.max_height AD 600
+  VINCIRE spec.format AD ImgJPEG
+  VINCIRE spec.quality AD 85
+  VINCIRE spec.crop_square AD FALSUM
+  REDDE spec
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

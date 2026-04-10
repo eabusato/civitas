@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase10_10g_page_schedule_due"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages_crud.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10g_page_schedule_due")
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  VINCIRE origin.user_id AD "1"
+  VINCIRE origin.request_id AD "req-1"
+  EVOCA Page page AD CONIURA page_create(db, "en", "soon", "Soon", "<p>S</p>", origin)
+  CONIURA page_schedule(db, page.id, 100, origin)
+  EVOCA SPECULUM NIHIL due AD CONIURA page_list_scheduled_due(db, 100)
+  SI CONIURA fluxus_len(due) != 1
+    REDDE 1
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

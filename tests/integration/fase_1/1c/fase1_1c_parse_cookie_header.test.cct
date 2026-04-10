@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase1_1c_parse_cookie_header_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL jar AD CONIURA cookie_parse_header("a=1; theme=claro; token = abc")
+  EVOCA SPECULUM NIHIL a_opt AD CONIURA cookie_get(jar, "a")
+  EVOCA SPECULUM NIHIL theme_opt AD CONIURA cookie_get(jar, "theme")
+  EVOCA SPECULUM NIHIL token_opt AD CONIURA cookie_get(jar, "token")
+  SI CONIURA option_is_none GENUS(VERBUM)(a_opt) VEL CONIURA option_is_none GENUS(VERBUM)(theme_opt) VEL CONIURA option_is_none GENUS(VERBUM)(token_opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(a_opt), "1") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(theme_opt), "claro") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(token_opt), "abc") != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

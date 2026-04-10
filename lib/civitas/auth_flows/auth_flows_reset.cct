@@ -1,0 +1,94 @@
+INCIPIT grimoire "civitas_auth_flows_reset"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "auth_flows.cct"
+ADVOCARE "auth_flows_history.cct"
+
+RITUALE auth_flow_reset_solicitar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM email) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL user_opt AD CONIURA auth_buscar_por_email(db, email)
+  SI CONIURA option_is_none GENUS(User)(user_opt)
+    CONIURA option_free GENUS(User)(user_opt)
+    REDDE CONIURA auth_flow_err_token_result(FlowUsuarioNaoEncontrado)
+  FIN SI
+  EVOCA User user AD CONIURA option_unwrap GENUS(User)(user_opt)
+  CONIURA option_free GENUS(User)(user_opt)
+  SI NON user.ativo
+    REDDE CONIURA auth_flow_err_token_result(FlowUsuarioNaoEncontrado)
+  FIN SI
+  REDDE CONIURA auth_flow_inserir_token(db, cfg, user.id, "reset_senha", "", cfg.ttl_reset_senha)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_reset_validar(SPECULUM NIHIL db, FlowConfig cfg, VERBUM token_claro) REDDE SPECULUM NIHIL
+  SI NON CONIURA auth_flow_token_signature_valid(cfg, token_claro)
+    REDDE CONIURA auth_flow_err_token(FlowTokenInvalido)
+  FIN SI
+  EVOCA SPECULUM NIHIL token_res AD CONIURA auth_flow_buscar_token_por_hash(db, CONIURA auth_flow_hash_token(token_claro))
+  SI CONIURA result_is_err GENUS(FlowToken, FlowError)(token_res)
+    REDDE token_res
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA result_unwrap GENUS(FlowToken, FlowError)(token_res)
+  SI CONIURA compare(ft.tipo, "reset_senha") != 0
+    REDDE CONIURA auth_flow_err_token(FlowTokenTipoErrado("reset_senha"))
+  FIN SI
+  SI ft.usado
+    REDDE CONIURA auth_flow_err_token(FlowTokenJaUsado)
+  FIN SI
+  SI ft.expira_em < CONIURA auth_flow_now_unix()
+    REDDE CONIURA auth_flow_err_token(FlowTokenExpirado)
+  FIN SI
+  REDDE CONIURA auth_flow_ok_token(ft)
+EXPLICIT RITUALE
+
+RITUALE auth_flow_reset_confirmar(SPECULUM NIHIL db, FlowConfig cfg, AuthConfig auth_cfg, VERBUM token_claro, VERBUM nova_senha) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL token_res AD CONIURA auth_flow_reset_validar(db, cfg, token_claro)
+  SI CONIURA result_is_err GENUS(FlowToken, FlowError)(token_res)
+    REDDE CONIURA auth_flow_err_verbum(CONIURA result_unwrap_err GENUS(FlowToken, FlowError)(token_res))
+  FIN SI
+  EVOCA FlowToken ft AD CONIURA result_unwrap GENUS(FlowToken, FlowError)(token_res)
+
+  SI CONIURA len(nova_senha) < auth_cfg.min_senha
+    REDDE CONIURA auth_flow_err_verbum(FlowSenhaFraca)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL reuse_res AD CONIURA auth_history_verificar_reuso(db, cfg, auth_cfg, ft.user_id, nova_senha)
+  SI CONIURA result_is_err GENUS(VERUM, FlowError)(reuse_res)
+    REDDE CONIURA auth_flow_err_verbum(CONIURA result_unwrap_err GENUS(VERUM, FlowError)(reuse_res))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL hash_stmt AD CONIURA db_prepare(
+    db,
+    "SELECT senha_hash FROM usuarios WHERE id = ? LIMIT 1"
+  )
+  CONIURA stmt_bind_text(hash_stmt, 1, ft.user_id)
+  SI NON CONIURA stmt_step(hash_stmt)
+    CONIURA stmt_finalize(hash_stmt)
+    REDDE CONIURA auth_flow_err_verbum(FlowUsuarioNaoEncontrado)
+  FIN SI
+  SI NON CONIURA stmt_has_row(hash_stmt)
+    CONIURA stmt_finalize(hash_stmt)
+    REDDE CONIURA auth_flow_err_verbum(FlowUsuarioNaoEncontrado)
+  FIN SI
+  EVOCA VERBUM hash_antigo AD CONIURA stmt_get_text(hash_stmt, 0)
+  CONIURA stmt_finalize(hash_stmt)
+
+  SI NON CONIURA auth_atualizar_senha(db, auth_cfg, ft.user_id, nova_senha)
+    REDDE CONIURA auth_flow_err_verbum(FlowSenhaFraca)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt_usado AD CONIURA db_prepare(db, "UPDATE auth_flow_tokens SET usado = 1 WHERE id = ?")
+  CONIURA stmt_bind_text(stmt_usado, 1, ft.id)
+  CONIURA auth_flow_exec_stmt_no_rows(stmt_usado)
+
+  SI CONIURA len(hash_antigo) > 0
+    CONIURA auth_history_registrar(db, cfg, ft.user_id, hash_antigo)
+  FIN SI
+  CONIURA auth_flow_invalidar_por_user_tipo(db, ft.user_id, "reset_senha")
+  REDDE CONIURA auth_flow_ok_verbum(ft.user_id)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,145 @@
+INCIPIT grimoire "civitas_session_store"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "session.cct"
+
+RITUALE session_store_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_store_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE session_store_data_to_json(SPECULUM Session sess) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA json_obj_push(root, *key_ptr, CONIURA json_str(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, "")))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE session_store_data_from_json(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(raw)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE out
+  FIN SI
+  EVOCA Json root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(root)
+    REDDE out
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_obj_len(root)
+  DUM i < n
+    EVOCA VERBUM key AD CONIURA json_obj_key_at(root, i)
+    EVOCA Json value AD CONIURA json_obj_value_at(root, i)
+    SI CONIURA json_is_str(value)
+      CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(out, key, CONIURA json_expect_str(value))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE session_create(SPECULUM NIHIL db, SessionConfig cfg, VERBUM user_id, VERBUM ip, VERBUM user_agent) REDDE Session
+  EVOCA Session sess AD CONIURA session_new()
+  EVOCA REX agora_unix AD CONIURA session_store_now_unix()
+  VINCIRE sess.user_id AD user_id
+  VINCIRE sess.criado_em AD agora_unix
+  VINCIRE sess.acessado_em AD agora_unix
+  VINCIRE sess.expira_em AD agora_unix + cfg.ttl_segundos
+  VINCIRE sess.ip AD ip
+  VINCIRE sess.user_agent AD user_agent
+  SI CONIURA len(user_id) != 0
+    CONIURA session_set(SPECULUM sess, "user_id", user_id)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO sessoes (id, user_id, dados, criado_em, expira_em, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, sess.id)
+  CONIURA stmt_bind_text(stmt, 2, sess.user_id)
+  CONIURA stmt_bind_text(stmt, 3, CONIURA session_store_data_to_json(SPECULUM sess))
+  CONIURA stmt_bind_int(stmt, 4, sess.criado_em)
+  CONIURA stmt_bind_int(stmt, 5, sess.expira_em)
+  CONIURA stmt_bind_text(stmt, 6, sess.ip)
+  CONIURA stmt_bind_text(stmt, 7, sess.user_agent)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  VINCIRE sess.modificado AD FALSUM
+  VINCIRE sess.novo AD FALSUM
+  REDDE sess
+EXPLICIT RITUALE
+
+RITUALE session_lookup(SPECULUM NIHIL db, VERBUM session_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, user_id, dados, criado_em, expira_em, ip, user_agent FROM sessoes WHERE id = ? AND expira_em > ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, session_id)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA session_store_now_unix())
+  CONIURA stmt_step(stmt)
+  SI NON CONIURA stmt_has_row(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE CONIURA None GENUS(Session)()
+  FIN SI
+
+  EVOCA Session sess AD CONIURA session_new()
+  VINCIRE sess.id AD CONIURA stmt_get_text(stmt, 0)
+  VINCIRE sess.user_id AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE sess.dados AD CONIURA session_store_data_from_json(CONIURA stmt_get_text(stmt, 2))
+  VINCIRE sess.criado_em AD CONIURA stmt_get_int(stmt, 3)
+  VINCIRE sess.acessado_em AD sess.criado_em
+  VINCIRE sess.expira_em AD CONIURA stmt_get_int(stmt, 4)
+  VINCIRE sess.ip AD CONIURA stmt_get_text(stmt, 5)
+  VINCIRE sess.user_agent AD CONIURA stmt_get_text(stmt, 6)
+  VINCIRE sess.modificado AD FALSUM
+  VINCIRE sess.novo AD FALSUM
+  SI CONIURA len(sess.user_id) != 0
+    CONIURA session_set(SPECULUM sess, "user_id", sess.user_id)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA Some GENUS(Session)(sess)
+EXPLICIT RITUALE
+
+RITUALE session_touch(SPECULUM NIHIL db, SessionConfig cfg, VERBUM session_id) REDDE NIHIL
+  EVOCA REX novo_expira AD CONIURA session_store_now_unix() + cfg.ttl_segundos
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sessoes SET expira_em = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, novo_expira)
+  CONIURA stmt_bind_text(stmt, 2, session_id)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_destroy(SPECULUM NIHIL db, VERBUM session_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM sessoes WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, session_id)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE session_destroy_user(SPECULUM NIHIL db, VERBUM user_id) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM sessoes WHERE user_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT changes()")
+EXPLICIT RITUALE
+
+RITUALE session_purge_expiradas(SPECULUM NIHIL db) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM sessoes WHERE expira_em <= ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA session_store_now_unix())
+  CONIURA session_store_exec_stmt_no_rows(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT changes()")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

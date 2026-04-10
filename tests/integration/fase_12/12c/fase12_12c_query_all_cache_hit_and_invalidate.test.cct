@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase12_12c_query_all_cache_hit_and_invalidate"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12c_all_hit")
+  CONIURA phase12_12c_setup_items(dbh)
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12c-all")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM h, 60, "cq12c", NIHIL)
+  EVOCA ModelDef def AD CONIURA phase12_12c_model_items()
+  EVOCA Query q AD CONIURA phase12_12c_query_items()
+
+  EVOCA VERBUM json1 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  CONIURA db_exec(dbh.sqlite_conn, "UPDATE items SET name = 'alpha-new' WHERE id = 1")
+  EVOCA VERBUM json2 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  SI CONIURA compare(json1, json2) != 0
+    REDDE 1
+  FIN SI
+
+  CONIURA cache_query_invalidar_tabela(SPECULUM cq, "items")
+  EVOCA VERBUM json3 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  SI CONIURA compare(json1, json3) == 0
+    REDDE 2
+  FIN SI
+  SI CONIURA find(json3, "alpha-new") == -1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

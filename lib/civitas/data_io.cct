@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_data_io_root"
+
+ADVOCARE "data_io/data_io.cct"
+ADVOCARE "data_io/data_import.cct"
+ADVOCARE "data_io/data_export.cct"
+ADVOCARE "data_io/data_backfill.cct"
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase5_5a_host_allowlist_test"
+
+ADVOCARE "../../../../lib/civitas/security.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL hosts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL empty_hosts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM host_a AD "example.test"
+  EVOCA VERBUM host_b AD "localhost"
+  CONIURA fluxus_push(hosts, SPECULUM host_a)
+  CONIURA fluxus_push(hosts, SPECULUM host_b)
+
+  SI NON CONIURA security_host_is_allowed(hosts, "example.test")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA security_host_is_allowed(hosts, "example.test:8080")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA security_host_is_allowed(hosts, "LOCALHOST")
+    REDDE 3
+  FIN SI
+  SI CONIURA security_host_is_allowed(hosts, "evil.test")
+    REDDE 4
+  FIN SI
+  SI CONIURA security_host_is_allowed(empty_hosts, "example.test")
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

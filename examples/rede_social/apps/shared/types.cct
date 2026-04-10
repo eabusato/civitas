@@ -1,0 +1,137 @@
+INCIPIT grimoire "rede_social_types"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM RedeUser
+  id: REX
+  handle: VERBUM
+  display_name: VERBUM
+  email: VERBUM
+  password_hash: VERBUM
+  bio: VERBUM
+  avatar_url: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeMaybeUser
+  found: VERUM
+  user: RedeUser
+FIN SIGILLUM
+
+SIGILLUM RedePost
+  id: REX
+  author_id: REX
+  author_handle: VERBUM
+  author_name: VERBUM
+  author_avatar_url: VERBUM
+  slug: VERBUM
+  title: VERBUM
+  body: VERBUM
+  media_kind: VERBUM
+  media_url: VERBUM
+  created_at: VERBUM
+  likes_count: REX
+  comments_count: REX
+FIN SIGILLUM
+
+SIGILLUM RedeMaybePost
+  found: VERUM
+  post: RedePost
+FIN SIGILLUM
+
+SIGILLUM RedeComment
+  id: REX
+  post_id: REX
+  author_handle: VERBUM
+  author_name: VERBUM
+  body: VERBUM
+  created_at: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeProfile
+  user: RedeUser
+  followers_count: REX
+  following_count: REX
+  posts_count: REX
+FIN SIGILLUM
+
+SIGILLUM RedeMaybeProfile
+  found: VERUM
+  profile: RedeProfile
+FIN SIGILLUM
+
+SIGILLUM RedeActivity
+  kind: VERBUM
+  title: VERBUM
+  body: VERBUM
+  created_at: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RedeRoomEventView
+  kind: VERBUM
+  actor_id: REX
+  user_id: REX
+  payload: VERBUM
+  created_at: VERBUM
+FIN SIGILLUM
+
+RITUALE rede_empty_user() REDDE RedeUser
+  EVOCA RedeUser out
+  VINCIRE out.id AD 0
+  VINCIRE out.handle AD ""
+  VINCIRE out.display_name AD ""
+  VINCIRE out.email AD ""
+  VINCIRE out.password_hash AD ""
+  VINCIRE out.bio AD ""
+  VINCIRE out.avatar_url AD ""
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_empty_post() REDDE RedePost
+  EVOCA RedePost out
+  VINCIRE out.id AD 0
+  VINCIRE out.author_id AD 0
+  VINCIRE out.author_handle AD ""
+  VINCIRE out.author_name AD ""
+  VINCIRE out.author_avatar_url AD ""
+  VINCIRE out.slug AD ""
+  VINCIRE out.title AD ""
+  VINCIRE out.body AD ""
+  VINCIRE out.media_kind AD ""
+  VINCIRE out.media_url AD ""
+  VINCIRE out.created_at AD ""
+  VINCIRE out.likes_count AD 0
+  VINCIRE out.comments_count AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_empty_profile() REDDE RedeProfile
+  EVOCA RedeProfile out
+  VINCIRE out.user AD CONIURA rede_empty_user()
+  VINCIRE out.followers_count AD 0
+  VINCIRE out.following_count AD 0
+  VINCIRE out.posts_count AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_activity_new(VERBUM kind, VERBUM title, VERBUM body, VERBUM created_at) REDDE RedeActivity
+  EVOCA RedeActivity out
+  VINCIRE out.kind AD kind
+  VINCIRE out.title AD title
+  VINCIRE out.body AD body
+  VINCIRE out.created_at AD created_at
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_room_event_new(VERBUM kind, REX actor_id, REX user_id, VERBUM payload, VERBUM created_at) REDDE RedeRoomEventView
+  EVOCA RedeRoomEventView out
+  VINCIRE out.kind AD kind
+  VINCIRE out.actor_id AD actor_id
+  VINCIRE out.user_id AD user_id
+  VINCIRE out.payload AD payload
+  VINCIRE out.created_at AD created_at
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

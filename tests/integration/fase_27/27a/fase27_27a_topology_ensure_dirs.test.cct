@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase27_27a_topology_ensure_dirs"
+
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_topology_ensure_dirs_creates_full_layout() REDDE NIHIL
+  EVOCA StorageTopology topo AD CONIURA phase27_topology("27a_topology_dirs")
+  CONIURA storage_topology_ensure_dirs(topo)
+
+  SI NON CONIURA is_dir(topo.db_dir)
+    IACE "db dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.media_tmp_dir)
+    IACE "tmp dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.media_processed_dir)
+    IACE "processed dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.media_thumbs_dir)
+    IACE "thumbs dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.media_private_dir)
+    IACE "private dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.backups_db_dir)
+    IACE "backups db dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.backups_media_dir)
+    IACE "backups media dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.logs_dir)
+    IACE "logs dir should exist"
+  FIN SI
+  SI NON CONIURA is_dir(topo.run_dir)
+    IACE "run dir should exist"
+  FIN SI
+EXPLICIT RITUALE
+
+RITUALE test_db_paths_follow_canonical_names() REDDE NIHIL
+  EVOCA StorageTopology topo AD CONIURA phase27_topology("27a_db_paths")
+  SI CONIURA ends_with(CONIURA storage_topology_main_db_path(topo), "/db/main.db") == FALSUM
+    IACE "main db path should end with /db/main.db"
+  FIN SI
+  SI CONIURA ends_with(CONIURA storage_topology_sessions_db_path(topo), "/db/sessions.db") == FALSUM
+    IACE "sessions db path should end with /db/sessions.db"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

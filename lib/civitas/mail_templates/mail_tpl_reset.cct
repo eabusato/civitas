@@ -1,0 +1,49 @@
+INCIPIT grimoire "civitas_mail_tpl_reset"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../html.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "mail_tpl_base.cct"
+
+RITUALE mail_tpl_reset_senha(MailerConfig mcfg, VERBUM user_email, VERBUM user_nome, VERBUM url_reset, REX expira_minutos) REDDE MailMessage
+  EVOCA SPECULUM NIHIL bt AD CONIURA builder_init()
+  CONIURA builder_append(bt, "Password reset\n")
+  CONIURA builder_append(bt, "Hello, ")
+  CONIURA builder_append(bt, user_nome)
+  CONIURA builder_append(bt, ".\n\n")
+  CONIURA builder_append(bt, "We received a request to reset the password for your account.\n\n")
+  CONIURA builder_append(bt, "Open the link below to choose a new password:\n")
+  CONIURA builder_append(bt, url_reset)
+  CONIURA builder_append(bt, "\n\nThis link expires in ")
+  CONIURA builder_append(bt, CONIURA stringify_int(expira_minutos))
+  CONIURA builder_append(bt, " minutes.\n\n")
+  CONIURA builder_append(bt, "If you did not request this reset, ignore this email. Your password will stay unchanged.\n")
+  EVOCA VERBUM corpo_texto AD CONIURA mail_tpl_builder_take(bt)
+
+  EVOCA SPECULUM NIHIL bh AD CONIURA builder_init()
+  CONIURA builder_append(bh, CONIURA mail_html_head("Password reset"))
+  CONIURA builder_append(bh, "<div class=\"header\"><h1>Password reset</h1></div>")
+  CONIURA builder_append(bh, "<div class=\"body\">")
+  CONIURA builder_append(bh, "<p>Hello, ")
+  CONIURA builder_append(bh, CONIURA html_encode(user_nome))
+  CONIURA builder_append(bh, ".</p>")
+  CONIURA builder_append(bh, "<p>We received a request to reset the password for your account. Use the button below to choose a new password.</p>")
+  CONIURA builder_append(bh, CONIURA mail_html_botao(url_reset, "Reset password"))
+  EVOCA SPECULUM NIHIL ba AD CONIURA builder_init()
+  CONIURA builder_append(ba, "This link expires in ")
+  CONIURA builder_append(ba, CONIURA stringify_int(expira_minutos))
+  CONIURA builder_append(ba, " minutes. If you did not request this reset, ignore this email.")
+  CONIURA builder_append(bh, CONIURA mail_html_aviso(CONIURA mail_tpl_builder_take(ba)))
+  CONIURA builder_append(bh, CONIURA mail_html_fallback_link(url_reset))
+  CONIURA builder_append(bh, "</div>")
+  CONIURA builder_append(bh, CONIURA mail_html_foot())
+  EVOCA VERBUM corpo_html AD CONIURA mail_tpl_builder_take(bh)
+
+  REDDE CONIURA mail_tpl_message(mcfg, user_email, user_nome, "Password reset", corpo_texto, corpo_html)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

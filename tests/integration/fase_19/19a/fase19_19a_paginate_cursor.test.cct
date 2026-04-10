@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase19_19a_paginate_cursor"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_paginate_cursor_meta_and_cursor() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19a_cursor")
+  EVOCA SPECULUM SerializerConfig post_cfg AD CONIURA phase19_get_post_serializer(stack.serializers)
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "One", "body-1", 10, "{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Two", "body-2", 20, "{\"id\":2,\"name\":\"Bia\",\"email\":\"bia@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Three", "body-3", 30, "{\"id\":3,\"name\":\"Caio\",\"email\":\"caio@example.com\"}")
+  EVOCA DbParams select_params AD CONIURA dbh_params_new()
+  EVOCA ApiPaginatedResult paged AD CONIURA paginate_cursor(stack.serializers, *post_cfg, stack.dbh, "SELECT id, title, published_at, author FROM posts", select_params, "id", "1", 1)
+  SI NON paged.meta.has_prev
+    IACE "cursor pagination should mark previous cursor when input cursor exists"
+  FIN SI
+  SI NON paged.meta.has_next
+    IACE "cursor pagination should mark next page when more rows exist"
+  FIN SI
+  SI CONIURA compare(paged.meta.prev_cursor, "1") != 0
+    IACE "cursor pagination prev_cursor mismatch"
+  FIN SI
+  SI CONIURA compare(paged.meta.next_cursor, "2") != 0
+    IACE "cursor pagination next_cursor mismatch"
+  FIN SI
+  SI CONIURA find(paged.data_json, "\"title\":\"Two\"") == -1
+    IACE "cursor pagination first page row mismatch"
+  FIN SI
+  SI CONIURA find(paged.data_json, "\"title\":\"Three\"") != -1
+    IACE "cursor pagination should include only one row in page payload"
+  FIN SI
+  CONIURA dbh_params_free(SPECULUM select_params)
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_paginate_cursor_meta_and_cursor()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

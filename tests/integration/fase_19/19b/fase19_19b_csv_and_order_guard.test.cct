@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase19_19b_csv_and_order_guard"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_csv_and_default_order_guard() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19b_csv")
+  EVOCA ApiViewConfig cfg
+  EVOCA TokenConfig tok_cfg AD CONIURA auth_test_token_config()
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "First", "body-1", 10, "{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}")
+  CONIURA phase19_insert_post(stack.dbh, "Second", "body-2", 20, "{\"id\":2,\"name\":\"Bia\",\"email\":\"bia@example.com\"}")
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  VINCIRE cfg.default_order AD "id"
+  VINCIRE cfg.default_order_dir AD "asc"
+  CONIURA api_view_config_add_order_field(SPECULUM cfg, "id")
+  EVOCA WebRequest req AD CONIURA phase19_request_with_accept("GET", "/api/v1/posts?order=drop_table", "", "text/csv")
+  EVOCA WebResponse res AD CONIURA api_view_list(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, req)
+  SI res.status != 200
+    IACE "csv list status mismatch"
+  FIN SI
+  SI CONIURA find(CONIURA response_header_or(res, "content-type", ""), "text/csv") == -1
+    IACE "csv content-type missing"
+  FIN SI
+  SI CONIURA find(res.body, "id,title,published_at,author") == -1
+    IACE "csv header mismatch"
+  FIN SI
+  SI CONIURA find(res.body, "1,First") == -1
+    IACE "csv first row mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_csv_and_default_order_guard()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

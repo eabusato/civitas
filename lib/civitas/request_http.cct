@@ -1,0 +1,59 @@
+INCIPIT grimoire "civitas_request_http"
+
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "request.cct"
+
+RITUALE request_headers_from_http(REX headers_handle) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA request_empty_headers()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(headers_handle)
+
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header_ptr AD CONIURA http_headers_get_ptr(headers_handle, i)
+    EVOCA VERBUM lowered AD CONIURA to_lower((*header_ptr).nome)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(out, lowered, (*header_ptr).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE request_from_http(HttpRequest raw_req, VERBUM client_ip, VERBUM scheme, VERBUM host, VERBUM request_id) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build(
+    CONIURA http_request_method(raw_req),
+    CONIURA http_request_path(raw_req),
+    "HTTP/1.1",
+    CONIURA request_headers_from_http(CONIURA http_request_headers_handle(raw_req)),
+    CONIURA http_request_body(raw_req),
+    client_ip,
+    scheme,
+    host,
+    request_id,
+    "",
+    "",
+    ""
+  )
+EXPLICIT RITUALE
+
+RITUALE request_from_http_with_raw_body(HttpRequest raw_req, SPECULUM NIHIL corpo_bruto, VERBUM client_ip, VERBUM scheme, VERBUM host, VERBUM request_id) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build_with_raw_body(
+    CONIURA http_request_method(raw_req),
+    CONIURA http_request_path(raw_req),
+    "HTTP/1.1",
+    CONIURA request_headers_from_http(CONIURA http_request_headers_handle(raw_req)),
+    CONIURA http_request_body(raw_req),
+    corpo_bruto,
+    client_ip,
+    scheme,
+    host,
+    request_id,
+    "",
+    "",
+    ""
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

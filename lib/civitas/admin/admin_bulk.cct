@@ -1,0 +1,48 @@
+INCIPIT grimoire "civitas_admin_bulk"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_audit.cct"
+ADVOCARE "admin_crud.cct"
+
+RITUALE admin_bulk_action(AdminModelConfig cfg, DbHandle dbh, VERBUM action_name, VERBUM ids_json, VERBUM payload_json, VERBUM actor_id) REDDE AdminBulkResult
+  EVOCA AdminBulkResult out AD CONIURA admin_bulk_result_empty()
+  EVOCA Json ids_arr AD CONIURA json_parse(ids_json)
+  EVOCA Json payload AD CONIURA json_parse(payload_json)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(ids_arr)
+  VINCIRE out.matched AD n
+  DUM i < n
+    EVOCA Json item AD CONIURA json_arr_get(ids_arr, i)
+    EVOCA VERBUM pk_value AD ""
+    SI CONIURA json_is_str(item)
+      VINCIRE pk_value AD CONIURA json_expect_str(item)
+    ALITER
+      VINCIRE pk_value AD CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(item)))
+    FIN SI
+    SI CONIURA compare(action_name, "delete") == 0
+      CONIURA admin_delete(cfg, dbh, pk_value, actor_id)
+      VINCIRE out.changed AD out.changed + 1
+    ALITER
+      SI CONIURA starts_with(action_name, "set:")
+        EVOCA VERBUM field_name AD CONIURA substring(action_name, 4, CONIURA len(action_name))
+        EVOCA Json form AD CONIURA json_obj()
+        SI CONIURA json_has_key(payload, "value")
+          CONIURA json_set_key(form, field_name, CONIURA json_get_key(payload, "value"))
+        FIN SI
+        CONIURA admin_update(cfg, dbh, pk_value, CONIURA json_stringify(form), actor_id)
+        VINCIRE out.changed AD out.changed + 1
+      ALITER
+        VINCIRE out.failed AD out.failed + 1
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA admin_audit_write(dbh, cfg.model_name, "*", ADMIN_AUDIT_BULK, actor_id, payload_json)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

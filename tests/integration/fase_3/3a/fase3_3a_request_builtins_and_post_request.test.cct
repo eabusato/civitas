@@ -1,0 +1,95 @@
+INCIPIT grimoire "fase3_3a_request_builtins_and_post_request_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE ok_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE on_started(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM RequestStartedPayload payload
+  VINCIRE env AD env_ref
+  VINCIRE payload AD (*env).payload_ref
+  CONIURA write_all("tests/tmp/fase_3/3a_request_builtins/started.log", (*payload).request_id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE on_finished(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM RequestFinishedPayload payload
+  EVOCA VERBUM line AD ""
+  VINCIRE env AD env_ref
+  VINCIRE payload AD (*env).payload_ref
+  VINCIRE line AD CONIURA concat((*payload).route_name, "|")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*payload).status_code))
+  CONIURA write_all("tests/tmp/fase_3/3a_request_builtins/finished.log", line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE on_post_request(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env
+  EVOCA SPECULUM RequestFinishedPayload payload
+  EVOCA VERBUM line AD ""
+  VINCIRE env AD env_ref
+  VINCIRE payload AD (*env).payload_ref
+  VINCIRE line AD CONIURA concat(line, (*payload).request_id)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*payload).status_code))
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, (*payload).route_name)
+  VINCIRE line AD CONIURA concat(line, "|")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int((*payload).duration_ms))
+  CONIURA write_all("tests/tmp/fase_3/3a_request_builtins/metrics.log", line)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA RequestSignals signals
+  EVOCA WebResponse res AD CONIURA response_new(500)
+  EVOCA VERBUM dir AD CONIURA phase3_3a_tmp_dir("3a_request_builtins")
+  EVOCA VERBUM metrics_path AD CONIURA concat(dir, "/metrics.log")
+
+  CONIURA request_signals_init(SPECULUM signals)
+  CONIURA phase3_3a_reset_dir(dir)
+  CONIURA phase3_3a_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/metrics", "metrics.show", "ok_handler", ok_handler))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signals.request_started, "on_started", on_started))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signals.request_finished, "on_finished", on_finished))
+  CONIURA phase3_3a_ok_or_fail(CONIURA signal_connect(SPECULUM signals.post_request, "on_post_request", on_post_request))
+
+  CONIURA response_fill(SPECULUM res, CONIURA signals_dispatch_router_request(SPECULUM signals, router, CONIURA phase3_3a_request("GET", "/metrics")))
+  SI res.status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(res.body, "ok") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(metrics_path)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/started.log")), "req-phase2") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/finished.log")), "metrics.show|200") != 0
+    REDDE 5
+  FIN SI
+
+  EVOCA VERBUM line AD CONIURA read_all(metrics_path)
+  SI CONIURA find(line, "req-phase2|200|metrics.show|") == -1
+    REDDE 6
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

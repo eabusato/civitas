@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase23_23b_next_migration_number"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23b_next_migration_number")
+  EVOCA VERBUM migrations_dir AD CONIURA path_join(root, "migrations")
+  CONIURA mkdir_all(migrations_dir)
+  CONIURA write_all(CONIURA path_join(migrations_dir, "0003_seed_tags.sql"), "-- seed")
+  CONIURA write_all(CONIURA path_join(migrations_dir, "0007_create_page.sql"), "-- create")
+  SI CONIURA compare(CONIURA civitas_gen_next_migration_number(migrations_dir), "0008") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

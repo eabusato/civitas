@@ -1,0 +1,383 @@
+INCIPIT grimoire "civitas_html"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+
+ORDO HtmlNodeKind
+  HnElement
+  HnVoid
+  HnText
+  HnRaw
+FIN ORDO
+
+SIGILLUM HtmlAttr
+  name: VERBUM
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM HtmlNode
+  kind: HtmlNodeKind
+  tag: VERBUM
+  attrs: SPECULUM NIHIL
+  children: SPECULUM NIHIL
+  text: VERBUM
+FIN SIGILLUM
+
+RITUALE html_tag(VERBUM tag_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_node_new(HnElement, tag_name, "")
+EXPLICIT RITUALE
+
+RITUALE html_void_tag(VERBUM tag_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_node_new(HnVoid, tag_name, "")
+EXPLICIT RITUALE
+
+RITUALE html_text_node(VERBUM content) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_node_new(HnText, "", content)
+EXPLICIT RITUALE
+
+RITUALE html_raw_node(VERBUM raw_html) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_node_new(HnRaw, "", raw_html)
+EXPLICIT RITUALE
+
+RITUALE html_node_new(HtmlNodeKind kind, VERBUM tag_name, VERBUM text) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM HtmlNode node AD OBSECRO mem_alloc(MENSURA(HtmlNode))
+  VINCIRE (*node).kind AD kind
+  VINCIRE (*node).tag AD tag_name
+  VINCIRE (*node).attrs AD CONIURA fluxus_init(MENSURA(HtmlAttr))
+  VINCIRE (*node).children AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*node).text AD text
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_attr(SPECULUM NIHIL node, VERBUM name, VERBUM value) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  EVOCA REX idx AD CONIURA html_attr_index((*n).attrs, name)
+  EVOCA HtmlAttr attr
+  VINCIRE attr.name AD name
+  VINCIRE attr.value AD value
+  SI idx >= 0
+    EVOCA SPECULUM HtmlAttr existing_ptr AD CONIURA fluxus_get((*n).attrs, idx)
+    VINCIRE (*existing_ptr).value AD value
+    REDDE node
+  FIN SI
+  CONIURA fluxus_push((*n).attrs, SPECULUM attr)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_attr_if(SPECULUM NIHIL node, VERBUM name, VERBUM value, VERUM cond) REDDE SPECULUM NIHIL
+  SI cond
+    REDDE CONIURA html_attr(node, name, value)
+  FIN SI
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_class(SPECULUM NIHIL node, VERBUM class_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  EVOCA REX idx AD CONIURA html_attr_index((*n).attrs, "class")
+  SI idx >= 0
+    EVOCA SPECULUM HtmlAttr attr_ptr AD CONIURA fluxus_get((*n).attrs, idx)
+    SI CONIURA len((*attr_ptr).value) == 0
+      VINCIRE (*attr_ptr).value AD class_name
+    ALITER
+      VINCIRE (*attr_ptr).value AD CONIURA concat(CONIURA concat((*attr_ptr).value, " "), class_name)
+    FIN SI
+    REDDE node
+  FIN SI
+  REDDE CONIURA html_attr(node, "class", class_name)
+EXPLICIT RITUALE
+
+RITUALE html_id(SPECULUM NIHIL node, VERBUM id_value) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_attr(node, "id", id_value)
+EXPLICIT RITUALE
+
+RITUALE html_data(SPECULUM NIHIL node, VERBUM key, VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_attr(node, CONIURA concat("data-", key), value)
+EXPLICIT RITUALE
+
+RITUALE html_text(SPECULUM NIHIL node, VERBUM content) REDDE NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  EVOCA VERBUM encoded AD ""
+  SI (*n).kind == HnVoid
+    REDDE
+  FIN SI
+  VINCIRE encoded AD CONIURA html_encode(content)
+  CONIURA fluxus_push((*n).children, SPECULUM encoded)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_raw(SPECULUM NIHIL node, VERBUM raw_html) REDDE NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  EVOCA VERBUM raw AD raw_html
+  SI (*n).kind == HnVoid
+    REDDE
+  FIN SI
+  CONIURA fluxus_push((*n).children, SPECULUM raw)
+  REDDE
+EXPLICIT RITUALE
+
+-- Contracto de posse: html_child/html_append_child consomem o filho.
+-- O pai guarda apenas o HTML serializado; nao existe arvore DOM persistente.
+RITUALE html_child(SPECULUM NIHIL parent, SPECULUM NIHIL child) REDDE NIHIL
+  EVOCA SPECULUM HtmlNode p AD parent
+  EVOCA VERBUM child_html AD ""
+  SI (*p).kind == HnVoid
+    REDDE
+  FIN SI
+  VINCIRE child_html AD CONIURA html_render_free(child)
+  CONIURA fluxus_push((*p).children, SPECULUM child_html)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_append_child(SPECULUM NIHIL parent, SPECULUM NIHIL child) REDDE NIHIL
+  CONIURA html_child(parent, child)
+  REDDE
+EXPLICIT RITUALE
+
+-- html_render nao consome o no; quem o chamou continua responsavel por html_free.
+RITUALE html_render(SPECULUM NIHIL node) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA html_render_node(node, b)
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+-- html_render_free consome o no raiz apos serializacao.
+RITUALE html_render_free(SPECULUM NIHIL node) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA html_render(node)
+  CONIURA html_free(node)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE html_render_node(SPECULUM NIHIL node, SPECULUM NIHIL b) REDDE NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  ELIGE (*n).kind
+    CASUS HnText:
+      CONIURA builder_append(b, CONIURA html_encode((*n).text))
+    CASUS HnRaw:
+      CONIURA builder_append(b, (*n).text)
+    CASUS HnVoid:
+      CONIURA builder_append(b, "<")
+      CONIURA builder_append(b, (*n).tag)
+      CONIURA html_render_attrs((*n).attrs, b)
+      CONIURA builder_append(b, ">")
+    ALIOQUIN:
+      CONIURA builder_append(b, "<")
+      CONIURA builder_append(b, (*n).tag)
+      CONIURA html_render_attrs((*n).attrs, b)
+      CONIURA builder_append(b, ">")
+      CONIURA html_render_children((*n).children, b)
+      CONIURA builder_append(b, "</")
+      CONIURA builder_append(b, (*n).tag)
+      CONIURA builder_append(b, ">")
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_render_children(SPECULUM NIHIL children, SPECULUM NIHIL b) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(children)
+  DUM i < n
+    EVOCA SPECULUM VERBUM child_html AD CONIURA fluxus_get(children, i)
+    CONIURA builder_append(b, *child_html)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_render_attrs(SPECULUM NIHIL attrs, SPECULUM NIHIL b) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(attrs)
+  DUM i < n
+    EVOCA SPECULUM HtmlAttr attr_ptr AD CONIURA fluxus_get(attrs, i)
+    CONIURA builder_append(b, " ")
+    CONIURA builder_append(b, (*attr_ptr).name)
+    CONIURA builder_append(b, "=\"")
+    CONIURA builder_append(b, CONIURA html_encode((*attr_ptr).value))
+    CONIURA builder_append(b, "\"")
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_free(SPECULUM NIHIL node) REDDE NIHIL
+  EVOCA SPECULUM HtmlNode n AD node
+  CONIURA fluxus_free((*n).attrs)
+  CONIURA fluxus_free((*n).children)
+  OBSECRO mem_free(node)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE html_attr_index(SPECULUM NIHIL attrs, VERBUM name) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(attrs)
+  DUM i < n
+    EVOCA SPECULUM HtmlAttr attr_ptr AD CONIURA fluxus_get(attrs, i)
+    SI CONIURA compare((*attr_ptr).name, name) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE html_div(VERBUM class_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("div")
+  SI CONIURA len(class_name) != 0
+    CONIURA html_class(node, class_name)
+  FIN SI
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_span(VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("span")
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_p(VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("p")
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_h(REX level, VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA VERBUM tag AD CONIURA concat("h", CONIURA stringify_int(level))
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag(tag)
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_a(VERBUM href, VERBUM text) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("a")
+  CONIURA html_attr(node, "href", href)
+  CONIURA html_text(node, text)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_a_safe(VERBUM href, VERBUM text) REDDE SPECULUM NIHIL
+  SI NON CONIURA starts_with(href, "/") ET NON CONIURA starts_with(href, "http://") ET NON CONIURA starts_with(href, "https://")
+    REDDE CONIURA html_a("#", text)
+  FIN SI
+  REDDE CONIURA html_a(href, text)
+EXPLICIT RITUALE
+
+RITUALE html_form(VERBUM method, VERBUM action) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("form")
+  CONIURA html_attr(node, "method", method)
+  CONIURA html_attr(node, "action", action)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_input(VERBUM type_attr, VERBUM name, VERBUM value) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_void_tag("input")
+  CONIURA html_attr(node, "type", type_attr)
+  CONIURA html_attr(node, "name", name)
+  CONIURA html_attr(node, "value", value)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_input_hidden(VERBUM name, VERBUM value) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_input("hidden", name, value)
+EXPLICIT RITUALE
+
+RITUALE html_button(VERBUM text, VERBUM type_attr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("button")
+  CONIURA html_attr(node, "type", type_attr)
+  CONIURA html_text(node, text)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_label(VERBUM for_attr, VERBUM text) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("label")
+  CONIURA html_attr(node, "for", for_attr)
+  CONIURA html_text(node, text)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_select(VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("select")
+  CONIURA html_attr(node, "name", name)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_option(VERBUM value, VERBUM text, VERUM selected) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("option")
+  CONIURA html_attr(node, "value", value)
+  CONIURA html_attr_if(node, "selected", "", selected)
+  CONIURA html_text(node, text)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_textarea(VERBUM name, VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("textarea")
+  CONIURA html_attr(node, "name", name)
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_table(VERBUM class_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("table")
+  SI CONIURA len(class_name) != 0
+    CONIURA html_class(node, class_name)
+  FIN SI
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_thead() REDDE SPECULUM NIHIL
+  REDDE CONIURA html_tag("thead")
+EXPLICIT RITUALE
+
+RITUALE html_tbody() REDDE SPECULUM NIHIL
+  REDDE CONIURA html_tag("tbody")
+EXPLICIT RITUALE
+
+RITUALE html_tr() REDDE SPECULUM NIHIL
+  REDDE CONIURA html_tag("tr")
+EXPLICIT RITUALE
+
+RITUALE html_th(VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("th")
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_td(VERBUM content) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL node AD CONIURA html_tag("td")
+  CONIURA html_text(node, content)
+  REDDE node
+EXPLICIT RITUALE
+
+RITUALE html_csrf_input(VERBUM field_name, VERBUM token) REDDE SPECULUM NIHIL
+  REDDE CONIURA html_input_hidden(field_name, token)
+EXPLICIT RITUALE
+
+RITUALE html_pagination(REX current_page, REX total_pages, VERBUM url_base) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL nav AD CONIURA html_tag("nav")
+  EVOCA SPECULUM NIHIL ul AD CONIURA html_tag("ul")
+  EVOCA REX p AD 1
+  CONIURA html_class(nav, "pagination")
+  CONIURA html_attr(nav, "aria-label", "Paginacao")
+  CONIURA html_class(ul, "pagination-list")
+  DUM p <= total_pages
+    EVOCA SPECULUM NIHIL li AD CONIURA html_tag("li")
+    EVOCA SPECULUM NIHIL link AD CONIURA html_tag("a")
+    EVOCA VERBUM page_str AD CONIURA stringify_int(p)
+    CONIURA html_attr(link, "href", CONIURA concat(url_base, page_str))
+    SI p == current_page
+      CONIURA html_attr(link, "aria-current", "page")
+      CONIURA html_class(link, "active")
+    FIN SI
+    CONIURA html_text(link, page_str)
+    CONIURA html_child(li, link)
+    CONIURA html_child(ul, li)
+    VINCIRE p AD p + 1
+  FIN DUM
+  CONIURA html_child(nav, ul)
+  REDDE nav
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

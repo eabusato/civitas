@@ -1,0 +1,59 @@
+INCIPIT grimoire "fase9_9a_buffer_success_fields_and_file"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload.cct"
+ADVOCARE "../../../../lib/civitas/upload/upload_types.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_tmp_dir("9a_buffer_success")
+  EVOCA VERBUM upload_dir AD CONIURA path_join(root, "uploads")
+  CONIURA phase9_reset_dir(root)
+  CONIURA mkdir_all(upload_dir)
+
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM title_part AD CONIURA phase9_text_part("title", "Avatar")
+  EVOCA VERBUM file_part AD CONIURA phase9_file_part("avatar", "photo.jpeg", "image/jpeg", CONIURA phase9_fake_jpeg())
+  CONIURA fluxus_push(parts, SPECULUM title_part)
+  CONIURA fluxus_push(parts, SPECULUM file_part)
+
+  EVOCA VERBUM boundary AD "phase9-boundary"
+  EVOCA VERBUM body AD CONIURA phase9_multipart_body(boundary, parts)
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase9_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "content-type", CONIURA concat("multipart/form-data; boundary=", boundary))
+
+  EVOCA WebRequest req AD CONIURA phase9_request("POST", "/upload", headers, body)
+  EVOCA UploadConfig cfg AD CONIURA phase9_upload_config(upload_dir)
+  CONIURA upload_config_allow_type(SPECULUM cfg, "image/jpeg")
+  EVOCA SPECULUM NIHIL res AD CONIURA upload_parse(req, cfg)
+  SI CONIURA result_is_err GENUS(MultipartResult, UploadError)(res)
+    IACE "upload should succeed"
+  FIN SI
+
+  EVOCA MultipartResult parsed AD CONIURA result_unwrap GENUS(MultipartResult, UploadError)(res)
+  EVOCA SPECULUM NIHIL title_opt AD CONIURA upload_get_field(parsed, "title")
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA upload_get_file(parsed, "avatar")
+  SI CONIURA option_is_none GENUS(VERBUM)(title_opt) VEL CONIURA option_is_none GENUS(UploadedFile)(file_opt)
+    IACE "expected title and avatar"
+  FIN SI
+
+  EVOCA UploadedFile file AD CONIURA option_unwrap GENUS(UploadedFile)(file_opt)
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(title_opt), "Avatar") != 0
+    IACE "title mismatch"
+  FIN SI
+  SI NON CONIURA exists(file.caminho)
+    IACE "saved file missing"
+  FIN SI
+  SI CONIURA compare(file.mime_type, "image/jpeg") != 0
+    IACE "mime mismatch"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,218 @@
+INCIPIT grimoire "civitas_data_import"
+
+ADVOCARE "cct/csv.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "data_io.cct"
+ADVOCARE "../model/model.cct"
+
+RITUALE data_json_to_sql(Json v) REDDE VERBUM
+  QUANDO v
+    CASO JsonNull:
+      REDDE "NULL"
+    CASO JsonBool(b):
+      SI b
+        REDDE "1"
+      FIN SI
+      REDDE "0"
+    CASO JsonNum(n):
+      SI cast GENUS(REX)(n) == n
+        REDDE CONIURA stringify_int(cast GENUS(REX)(n))
+      FIN SI
+      REDDE CONIURA stringify_real(n)
+    CASO JsonStr(s):
+      EVOCA VERBUM esc AD CONIURA replace_all(s, "'", "''")
+      REDDE CONIURA concat(CONIURA concat("'", esc), "'")
+    CASO JsonArr(h):
+      IACE "data_json_to_sql: array values are not supported"
+    CASO JsonObj(h):
+      IACE "data_json_to_sql: object values are not supported"
+  FIN QUANDO
+  REDDE "NULL"
+EXPLICIT RITUALE
+
+RITUALE data_import_insert_json(SPECULUM NIHIL db, VERBUM tabela, Json obj) REDDE VERBUM
+  EVOCA REX n AD CONIURA json_obj_len(obj)
+  EVOCA VERBUM colunas AD ""
+  EVOCA VERBUM valores AD ""
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA VERBUM k AD CONIURA json_obj_key_at(obj, i)
+    EVOCA Json v AD CONIURA json_obj_value_at(obj, i)
+    SI i > 0
+      VINCIRE colunas AD CONIURA concat(colunas, ", ")
+      VINCIRE valores AD CONIURA concat(valores, ", ")
+    FIN SI
+    VINCIRE colunas AD CONIURA concat(colunas, k)
+    VINCIRE valores AD CONIURA concat(valores, CONIURA data_json_to_sql(v))
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM sql AD CONIURA concat("INSERT INTO ", tabela)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  VINCIRE sql AD CONIURA concat(sql, colunas)
+  VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+  VINCIRE sql AD CONIURA concat(sql, valores)
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  TEMPTA
+    CONIURA db_exec(db, sql)
+  CAPE FRACTUM err
+    REDDE CONIURA db_last_error(db)
+  FIN TEMPTA
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE data_import_json(SPECULUM NIHIL db, VERBUM caminho, VERBUM tabela, ModelDef def) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA VERBUM conteudo AD CONIURA read_all(caminho)
+  EVOCA Json arr AD CONIURA json_parse(conteudo)
+  SI NON CONIURA json_is_arr(arr)
+    IACE "data_import_json: arquivo deve ser um array JSON"
+  FIN SI
+  EVOCA REX n AD CONIURA json_arr_len(arr)
+  EVOCA REX i AD 0
+  DUM i < n
+    VINCIRE result.processados AD result.processados + 1
+    EVOCA VERBUM err AD CONIURA data_import_insert_json(db, tabela, CONIURA json_arr_get(arr, i))
+    SI CONIURA len(err) > 0
+      VINCIRE result.erros AD result.erros + 1
+    ALITER
+      VINCIRE result.ok AD result.ok + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_csv_row_to_json(SPECULUM NIHIL cabecalho, SPECULUM NIHIL campos, CsvColMap mapa) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA REX nc AD CONIURA fluxus_len(cabecalho)
+  EVOCA REX i AD 0
+  DUM i < nc
+    EVOCA SPECULUM VERBUM col_csv_ptr AD CONIURA fluxus_get(cabecalho, i)
+    EVOCA SPECULUM VERBUM valor_ptr AD CONIURA fluxus_get(campos, i)
+    EVOCA VERBUM col_banco AD CONIURA csv_col_map_resolve(mapa, *col_csv_ptr)
+    CONIURA json_obj_push(obj, col_banco, CONIURA json_str(*valor_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE data_import_csv(SPECULUM NIHIL db, VERBUM caminho, VERBUM tabela, ModelDef def, CsvColMap mapa) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA SPECULUM NIHIL linhas AD CONIURA read_lines(caminho)
+  EVOCA REX nl AD CONIURA fluxus_len(linhas)
+  SI nl == 0
+    REDDE result
+  FIN SI
+  EVOCA SPECULUM VERBUM cab_line AD CONIURA fluxus_get(linhas, 0)
+  EVOCA SPECULUM NIHIL cabecalho AD CONIURA csv_parse_row(*cab_line)
+  EVOCA REX li AD 1
+  DUM li < nl
+    VINCIRE result.processados AD result.processados + 1
+    EVOCA SPECULUM VERBUM linha_ptr AD CONIURA fluxus_get(linhas, li)
+    EVOCA VERBUM linha AD *linha_ptr
+    SI CONIURA len(CONIURA trim(linha)) == 0
+      VINCIRE result.pulados AD result.pulados + 1
+    ALITER
+      EVOCA SPECULUM NIHIL campos AD CONIURA csv_parse_row(linha)
+      EVOCA Json obj AD CONIURA data_csv_row_to_json(cabecalho, campos, mapa)
+      EVOCA VERBUM err AD CONIURA data_import_insert_json(db, tabela, obj)
+      SI CONIURA len(err) > 0
+        VINCIRE result.erros AD result.erros + 1
+      ALITER
+        VINCIRE result.ok AD result.ok + 1
+      FIN SI
+    FIN SI
+    VINCIRE li AD li + 1
+  FIN DUM
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_import_toml_parse_row(VERBUM line, Json obj) REDDE NIHIL
+  EVOCA VERBUM clean AD CONIURA trim(line)
+  SI CONIURA len(clean) == 0
+    REDDE
+  FIN SI
+  EVOCA REX eq AD CONIURA find(clean, "=")
+  SI eq < 0
+    REDDE
+  FIN SI
+  EVOCA VERBUM chave AD CONIURA trim(CONIURA slice(clean, 0, eq))
+  EVOCA VERBUM valor AD CONIURA trim(CONIURA slice(clean, eq + 1, CONIURA len(clean) - eq - 1))
+  SI CONIURA starts_with(valor, "\"") ET CONIURA ends_with(valor, "\"")
+    CONIURA json_set_key(obj, chave, CONIURA json_str(CONIURA slice(valor, 1, CONIURA len(valor) - 2)))
+    REDDE
+  FIN SI
+  SI CONIURA compare(valor, "true") == 0
+    CONIURA json_set_key(obj, chave, CONIURA json_bool(VERUM))
+    REDDE
+  FIN SI
+  SI CONIURA compare(valor, "false") == 0
+    CONIURA json_set_key(obj, chave, CONIURA json_bool(FALSUM))
+    REDDE
+  FIN SI
+  SI CONIURA compare(valor, "null") == 0
+    CONIURA json_set_key(obj, chave, CONIURA json_null())
+    REDDE
+  FIN SI
+  CONIURA json_set_key(obj, chave, CONIURA json_num(cast GENUS(UMBRA)(CONIURA parse_int(valor))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE data_import_toml(SPECULUM NIHIL db, VERBUM caminho, VERBUM tabela, ModelDef def) REDDE DataIoResult
+  EVOCA DataIoResult result AD CONIURA data_io_result_new()
+  EVOCA SPECULUM NIHIL linhas AD CONIURA read_lines(caminho)
+  EVOCA REX nl AD CONIURA fluxus_len(linhas)
+  EVOCA Json atual AD JsonNull
+  EVOCA REX li AD 0
+  DUM li < nl
+    EVOCA SPECULUM VERBUM linha_ptr AD CONIURA fluxus_get(linhas, li)
+    EVOCA VERBUM linha AD CONIURA trim(*linha_ptr)
+    SI CONIURA compare(linha, "[[rows]]") == 0
+      SI CONIURA json_is_obj(atual)
+        VINCIRE result.processados AD result.processados + 1
+        EVOCA VERBUM err_prev AD CONIURA data_import_insert_json(db, tabela, atual)
+        SI CONIURA len(err_prev) > 0
+          VINCIRE result.erros AD result.erros + 1
+        ALITER
+          VINCIRE result.ok AD result.ok + 1
+        FIN SI
+      FIN SI
+      VINCIRE atual AD CONIURA json_obj()
+    ALITER
+      SI CONIURA json_is_obj(atual)
+        CONIURA data_import_toml_parse_row(linha, atual)
+      FIN SI
+    FIN SI
+    VINCIRE li AD li + 1
+  FIN DUM
+  SI CONIURA json_is_obj(atual)
+    VINCIRE result.processados AD result.processados + 1
+    EVOCA VERBUM err AD CONIURA data_import_insert_json(db, tabela, atual)
+    SI CONIURA len(err) > 0
+      VINCIRE result.erros AD result.erros + 1
+    ALITER
+      VINCIRE result.ok AD result.ok + 1
+    FIN SI
+  FIN SI
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE data_import(SPECULUM NIHIL db, ImportSource src, VERBUM tabela, ModelDef def) REDDE DataIoResult
+  ELIGE src
+    CASUS IsJson(path):
+      REDDE CONIURA data_import_json(db, path, tabela, def)
+    CASUS IsToml(path):
+      REDDE CONIURA data_import_toml(db, path, tabela, def)
+    CASUS IsCsv(path):
+      REDDE CONIURA data_import_csv(db, path, tabela, def, CONIURA csv_col_map_identity(def))
+  FIN ELIGE
+  REDDE CONIURA data_io_result_new()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

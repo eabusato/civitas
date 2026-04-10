@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase23_23d_doctor_ok_on_healthy_project"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_config/civitas_config.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23d_doctor_ok_on_healthy_project")
+  CONIURA mkdir_all(CONIURA path_join(root, "project"))
+  CONIURA mkdir_all(CONIURA path_join(root, "migrations"))
+  CONIURA mkdir_all(CONIURA path_join(root, "tests"))
+  CONIURA mkdir_all(CONIURA path_join(root, "static"))
+  CONIURA write_all(CONIURA path_join(root, "project/main.cct"), "INCIPIT grimoire \"main\"\nEXPLICIT grimoire\n")
+  CONIURA write_all(CONIURA path_join(root, "civitas.toml"), "[project]\nname = \"healthy\"\nentry = \"project/main.cct\"\n\n[database]\ndriver = \"sqlite\"\nurl = \"var/app.db\"\n")
+  EVOCA CivitasProject proj AD CONIURA civitas_project_load(CONIURA path_join(root, "civitas.toml"))
+  EVOCA DoctorReport report AD CONIURA civitas_doctor_run(proj)
+  SI NON report.ok
+    REDDE 1
+  FIN SI
+  SI report.errors != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA fluxus_len(report.checks) < 8
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

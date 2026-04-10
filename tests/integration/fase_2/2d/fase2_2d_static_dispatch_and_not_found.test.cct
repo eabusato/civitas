@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase2_2d_static_dispatch_and_not_found_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE health_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("health-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/health", "health.show", "health_handler", health_handler), 1)
+
+  EVOCA WebResponse ok_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/health"))
+  SI ok_res.status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(ok_res.body, "health-ok") != 0
+    REDDE 2
+  FIN SI
+
+  EVOCA WebResponse missing_res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("GET", "/missing"))
+  SI missing_res.status != 404
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

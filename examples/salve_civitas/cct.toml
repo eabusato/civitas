@@ -1,0 +1,9 @@
+[project]
+name = "salve_civitas"
+version = "0.1.0"
+entry = "main.cct"
+description = "Exemplo canônico da FASE 0 do Civitas"
+
+[build]
+out_dir = "dist"
+default_profile = "debug"

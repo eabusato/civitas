@@ -1,0 +1,24 @@
+{% EVOCA RedeLoginPageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Accounts</p>
+    <h1>Login</h1>
+    <p>Seed users: luna, nora and ian all use <span class="inline-code">abc123</span>.</p>
+  </div>
+</section>
+<section class="narrow">
+  <div class="card">
+    <form method="POST" action="/entrar" class="stack-form">
+      {{ csrf_html|safe }}
+      {% SI has_error %}
+        <div class="alert">{{ error_message }}</div>
+      {% FIN SI %}
+      <label>Email<input type="email" name="email" placeholder="luna@rede.social"></label>
+      <label>Password<input type="password" name="password" placeholder="abc123"></label>
+      <button type="submit">Enter</button>
+    </form>
+  </div>
+</section>
+{% FIN SECTIO %}

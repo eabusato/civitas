@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase9_9b_serve_ok_headers_and_body"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9b_root("serve_ok")
+  EVOCA VERBUM static_root AD CONIURA phase9_9b_prepare_files(root)
+  EVOCA StaticIndex idx AD CONIURA phase9_9b_index_prod(static_root)
+  EVOCA VERBUM css_url AD CONIURA static_url(idx, "css/app.css")
+  EVOCA WebRequest req AD CONIURA phase9_request("GET", css_url, CONIURA phase9_headers(), "")
+  EVOCA StaticServeResult served AD CONIURA static_serve(idx, req, css_url)
+
+  SI served.kind != SrOk
+    IACE "static serve should return ok"
+  FIN SI
+  SI CONIURA option_is_none GENUS(WebResponse)(served.response)
+    IACE "ok response should be present"
+  FIN SI
+  EVOCA WebResponse response AD CONIURA option_unwrap GENUS(WebResponse)(served.response)
+  SI CONIURA compare(CONIURA response_header_or(response, "content-type", ""), "text/css") != 0
+    IACE "content-type should be css"
+  FIN SI
+  SI NON CONIURA contains(CONIURA response_header_or(response, "cache-control", ""), "immutable")
+    IACE "production cache-control should be immutable"
+  FIN SI
+  SI CONIURA len(CONIURA response_header_or(response, "etag", "")) == 0
+    IACE "etag should be present"
+  FIN SI
+  SI NON CONIURA contains(response.body, "color: red")
+    IACE "body should contain file content"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

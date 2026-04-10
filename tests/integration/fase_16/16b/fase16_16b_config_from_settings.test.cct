@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase16_16b_config_from_settings"
+
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_settings.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Settings settings
+  CONIURA settings_init(SPECULUM settings, ".", "test", FALSUM)
+  CONIURA settings_apply_defaults(SPECULUM settings)
+  CONIURA settings_apply_test_override_verbum(SPECULUM settings, "mail.backend", "file")
+  CONIURA settings_apply_test_override_verbum(SPECULUM settings, "mail.out_dir", "tests/tmp/fase_16/16b_cfg_mail")
+  CONIURA settings_apply_test_override_verbum(SPECULUM settings, "mail.default_from", "dev@test.example")
+  CONIURA settings_apply_test_override_bool(SPECULUM settings, "mail.use_starttls", FALSUM)
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_from_settings(SPECULUM settings)
+  SI cfg.backend.kind != MAIL_BACKEND_FILE
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(cfg.from_email, "dev@test.example") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(cfg.backend.file_out_dir, "tests/tmp/fase_16/16b_cfg_mail") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,55 @@
+INCIPIT grimoire "fase24_24a_post_form"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_form_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA VERBUM content_type AD CONIURA request_content_type(*req)
+  SI NON CONIURA starts_with(CONIURA to_lower(content_type), "application/x-www-form-urlencoded")
+    CONIURA response_fill(out, CONIURA response_bad_request("form invalido"))
+    REDDE
+  FIN SI
+  EVOCA VERBUM raw AD (*req).body
+  EVOCA VERBUM name AD ""
+  EVOCA VERBUM count AD ""
+  SI CONIURA contains(raw, "name=ana+maria") VEL CONIURA contains(raw, "name=ana%20maria")
+    VINCIRE name AD "ana maria"
+  FIN SI
+  SI CONIURA contains(raw, "count=2")
+    VINCIRE count AD "2"
+  FIN SI
+  CONIURA response_fill(out, CONIURA response_json_text(CONIURA concat("{\"name\":\"", CONIURA concat(name, CONIURA concat("\",\"count\":\"", CONIURA concat(count, "\"}"))))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "POST", "/form", "form", "phase24_form_handler", phase24_form_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(TestCookie))
+  EVOCA TestCookie name_field
+  EVOCA TestCookie count_field
+  VINCIRE name_field.nome AD "name"
+  VINCIRE name_field.valor AD "ana maria"
+  VINCIRE count_field.nome AD "count"
+  VINCIRE count_field.valor AD "2"
+  CONIURA fluxus_push(fields, SPECULUM name_field)
+  CONIURA fluxus_push(fields, SPECULUM count_field)
+  EVOCA TestResponse res AD CONIURA test_client_post_form(SPECULUM client, "/form", fields)
+  CONIURA assert_ok(res)
+  CONIURA assert_json_str(res, "name", "ana maria")
+  CONIURA assert_json_str(res, "count", "2")
+  CONIURA fluxus_free(fields)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

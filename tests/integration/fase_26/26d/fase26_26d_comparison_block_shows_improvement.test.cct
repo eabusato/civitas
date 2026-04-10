@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase26_26d_comparison_block_shows_improvement"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/bench.cct"
+ADVOCARE "../../../../lib/civitas/bench/bench.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_26d_reset_root("comparison_block_shows_improvement")
+  EVOCA PerfReport report AD CONIURA phase26_26d_report(FALSUM, 0)
+  EVOCA BenchComparison cmp AD CONIURA bench_compare(CONIURA phase26_26d_bench("/api/posts", 300, 900, 8.0), CONIURA phase26_26d_bench("/api/posts", 120, 400, 25.0))
+  CONIURA perf_report_set_comparison(SPECULUM report, cmp)
+  EVOCA VERBUM out_path AD CONIURA path_join(root, "report.html")
+  CONIURA perf_report_write_html(report, out_path)
+  EVOCA VERBUM html AD CONIURA read_all(out_path)
+  SI CONIURA find(html, "Comparison") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "Improvement detected") == -1
+    REDDE 2
+  FIN SI
+  CONIURA fluxus_free(report.mem_report.deltas)
+  CONIURA fluxus_free(report.profiles)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase9_9e_ingest_pending_record"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_types.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9e_root("ingest")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaStore store AD CONIURA phase9_9e_open_store(root)
+  EVOCA VERBUM path AD CONIURA phase9_9e_make_video(root, "clip.mp4", 1.0, 320, 240)
+  EVOCA SPECULUM NIHIL res AD CONIURA video_ingest(path, "clip.mp4", "user-1", CONIURA phase9_9e_config_default(), store)
+  SI CONIURA result_is_err GENUS(VideoRecord, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(VideoRecord, VERBUM)(res)
+  FIN SI
+  EVOCA VideoRecord record AD CONIURA result_unwrap GENUS(VideoRecord, VERBUM)(res)
+  SI record.process_state != VpsPending
+    IACE "ingested video should start as pending"
+  FIN SI
+  SI record.moderation_state != VmsPending
+    IACE "ingested video moderation should start pending"
+  FIN SI
+  SI record.zone != MEDIA_ZONE_QUARANTINE
+    IACE "ingested video should be stored in quarantine"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

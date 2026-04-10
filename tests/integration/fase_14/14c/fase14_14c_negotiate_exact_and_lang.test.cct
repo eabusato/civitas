@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase14_14c_negotiate_exact_and_lang"
+
+ADVOCARE "../../../../lib/civitas/locale/locale.cct"
+ADVOCARE "../../../../lib/civitas/locale/locale_accept.cct"
+ADVOCARE "../../../../lib/civitas/locale/locale_negotiate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL suportados AD CONIURA fluxus_init(MENSURA(Locale))
+  EVOCA Locale ptbr AD CONIURA locale_new("pt", "BR")
+  EVOCA Locale ptpt AD CONIURA locale_new("pt", "PT")
+  EVOCA Locale enus AD CONIURA locale_new("en", "US")
+  CONIURA fluxus_push(suportados, SPECULUM ptpt)
+  CONIURA fluxus_push(suportados, SPECULUM enus)
+  EVOCA Locale exact AD CONIURA locale_negotiate_from_header("en-US,en;q=0.8", suportados, ptbr)
+  EVOCA Locale lang AD CONIURA locale_negotiate_from_header("pt-BR,fr;q=0.8", suportados, enus)
+  SI CONIURA compare(CONIURA locale_to_string(exact), "en-US") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA locale_to_string(lang), "pt-PT") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

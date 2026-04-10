@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase8_8d_invalid_json_returns_orphan_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor parsed AD CONIURA upload_descriptor_from_json("{\"path\":\"oops\",")
+  SI parsed.state != UsOrphan
+    REDDE 1
+  FIN SI
+  SI CONIURA len(parsed.path) != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,52 @@
+INCIPIT grimoire "fase12_12d_invalidation_route_scope_only_view"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12d_route_scope")
+  CONIURA phase12_12c_setup_items(dbh)
+  EVOCA CacheHandle query_h AD CONIURA phase12_12c_mem_cache("12d-query-route")
+  EVOCA CacheHandle view_h AD CONIURA phase12_12c_mem_cache("12d-view-route")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM query_h, 60, "cq12d", NIHIL)
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM view_h, CONIURA phase12_12d_view_cfg("cv12d", 60), NIHIL)
+  EVOCA ModelDef def AD CONIURA phase12_12c_model_items()
+  EVOCA Query q AD CONIURA phase12_12c_query_items()
+  EVOCA WebRequest req AD CONIURA phase12_12d_request("GET", "/items")
+
+  CONIURA cache_view_set(cv, req, CONIURA response_html("items page"), 60, "route:/items")
+  EVOCA VERBUM json1 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  CONIURA db_exec(dbh.sqlite_conn, "UPDATE items SET name = 'alpha-route' WHERE id = 1")
+
+  EVOCA InvalidationCoord coord AD CONIURA invalidation_coord_new(NIHIL, cv, SPECULUM cq, NIHIL)
+  EVOCA InvalidationResult result AD CONIURA invalidation_on_route_change(coord, "/items")
+  SI result.chaves_removidas != 1
+    REDDE 1
+  FIN SI
+  EVOCA CacheMaybeViewEntry maybe AD CONIURA cache_view_get(cv, req)
+  SI maybe.found
+    REDDE 2
+  FIN SI
+  EVOCA VERBUM json2 AD CONIURA query_all_cache(dbh, q, SPECULUM cq, def)
+  SI CONIURA compare(json1, json2) != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

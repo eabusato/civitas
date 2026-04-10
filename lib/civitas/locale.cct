@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_locale"
+
+ADVOCARE "locale/locale.cct"
+ADVOCARE "locale/locale_accept.cct"
+ADVOCARE "locale/locale_negotiate.cct"
+ADVOCARE "locale/locale_cookie.cct"
+ADVOCARE "locale/locale_middleware.cct"
+
+EXPLICIT grimoire

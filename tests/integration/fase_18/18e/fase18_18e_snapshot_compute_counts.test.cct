@@ -1,0 +1,100 @@
+INCIPIT grimoire "fase18_18e_snapshot_compute_counts"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard.cct"
+ADVOCARE "cct/date.cct"
+
+RITUALE test_snapshot_compute_counts() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_dashboard_stack_open("18e_snapshot_counts")
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  CONIURA phase18_dashboard_insert_page(stack.db, "draft-1", 0, now_unix - 100)
+  CONIURA phase18_dashboard_insert_page(stack.db, "published-1", 2, now_unix - 200)
+  CONIURA phase18_dashboard_insert_page(stack.db, "published-2", 2, now_unix - 300)
+  CONIURA phase18_dashboard_insert_user(stack.db, "user-a", VERUM)
+  CONIURA phase18_dashboard_insert_user(stack.db, "user-b", FALSUM)
+  CONIURA phase18_dashboard_insert_session(stack.db, "sess-a", "user-a", now_unix - 60)
+  CONIURA phase18_dashboard_insert_media_job(stack.dbh, "media-queued", "queued", now_unix - 10)
+  CONIURA phase18_dashboard_insert_media_job(stack.dbh, "media-failed", "failed", now_unix - 20)
+  CONIURA phase18_dashboard_insert_media_job(stack.dbh, "media-dead", "dead", now_unix - 30)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-queued", "default", "mail.send", "queued", "", now_unix - 10, now_unix - 10)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-running", "default", "mail.send", "running", "", now_unix - 20, now_unix - 20)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-retry", "critical", "media.process", "retry", "E_RETRY", now_unix - 30, now_unix - 5)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-done", "default", "editorial.feed", "done", "", now_unix - 40, now_unix - 3)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-dead", "critical", "media.process", "dead", "E_DEAD", now_unix - 50, now_unix - 2)
+  CONIURA phase18_dashboard_insert_dead_letter(stack.dbh, "task-dead", "critical", "media.process", now_unix - 2)
+  CONIURA phase18_dashboard_insert_moderation_item(stack.dbh, "mod-video", "video", "pending", now_unix - 10)
+  CONIURA phase18_dashboard_insert_moderation_item(stack.dbh, "mod-image", "image", "pending", now_unix - 11)
+  CONIURA phase18_dashboard_insert_moderation_item(stack.dbh, "mod-report", "report", "pending", now_unix - 12)
+  CONIURA phase18_dashboard_insert_moderation_decision(stack.dbh, "decision-1", "mod-video", now_unix - 1)
+  EVOCA DashboardSnapshot snap AD CONIURA dashboard_snapshot_compute(stack.dbh)
+  SI snap.content.total_pages != 3
+    IACE "content total_pages mismatch"
+  FIN SI
+  SI snap.content.published_pages != 2
+    IACE "content published_pages mismatch"
+  FIN SI
+  SI snap.content.draft_pages != 1
+    IACE "content draft_pages mismatch"
+  FIN SI
+  SI snap.users.total_users != 2
+    IACE "users total_users mismatch"
+  FIN SI
+  SI snap.users.active_last_30d != 1
+    IACE "users active_last_30d mismatch"
+  FIN SI
+  SI snap.users.banned_users != 1
+    IACE "users banned_users mismatch"
+  FIN SI
+  SI snap.uploads.total_uploads != 3
+    IACE "uploads total mismatch"
+  FIN SI
+  SI snap.uploads.media_jobs_pending != 1
+    IACE "uploads pending mismatch"
+  FIN SI
+  SI snap.uploads.media_jobs_failed != 1
+    IACE "uploads failed mismatch"
+  FIN SI
+  SI snap.uploads.media_jobs_dead != 1
+    IACE "uploads dead mismatch"
+  FIN SI
+  SI snap.tasks.queued != 1
+    IACE "tasks queued mismatch"
+  FIN SI
+  SI snap.tasks.running != 1
+    IACE "tasks running mismatch"
+  FIN SI
+  SI snap.tasks.retry != 1
+    IACE "tasks retry mismatch"
+  FIN SI
+  SI snap.tasks.done_last_24h != 1
+    IACE "tasks done_last_24h mismatch"
+  FIN SI
+  SI snap.tasks.dead_last_24h != 1
+    IACE "tasks dead_last_24h mismatch"
+  FIN SI
+  SI snap.tasks.failed_last_24h != 1
+    IACE "tasks failed_last_24h mismatch"
+  FIN SI
+  SI snap.moderation.pending_videos != 1
+    IACE "moderation pending_videos mismatch"
+  FIN SI
+  SI snap.moderation.pending_images != 1
+    IACE "moderation pending_images mismatch"
+  FIN SI
+  SI snap.moderation.pending_reports != 1
+    IACE "moderation pending_reports mismatch"
+  FIN SI
+  SI snap.moderation.decided_last_24h != 1
+    IACE "moderation decided_last_24h mismatch"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_snapshot_compute_counts()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase6_6b_cli_compile_file_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase6_tmp_dir("6b_cli_compile_file")
+  EVOCA VERBUM out_path AD ""
+  EVOCA VERBUM code AD ""
+  EVOCA VERBUM cmd AD ""
+
+  CONIURA phase6_init_project(root)
+  CONIURA phase6_build_template_compiler_or_fail()
+  CONIURA phase6_write_template(
+    root,
+    "simple.html",
+    "{% EVOCA BlogPageContext %}\n<p>{{ nome }}</p>\n"
+  )
+
+  VINCIRE out_path AD CONIURA phase6_generated_path(root, "simple.html")
+  VINCIRE cmd AD CONIURA concat("bin/cct-template-compile --template ", CONIURA phase6_template_path(root, "simple.html"))
+  VINCIRE cmd AD CONIURA concat(cmd, " --output ")
+  VINCIRE cmd AD CONIURA concat(cmd, out_path)
+  VINCIRE cmd AD CONIURA concat(cmd, " --root ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase6_project_templates_dir(root))
+
+  SI CONIURA phase6_run(cmd) != 0
+    REDDE 1
+  FIN SI
+  SI NON CONIURA is_file(out_path)
+    REDDE 2
+  FIN SI
+  VINCIRE code AD CONIURA read_all(out_path)
+  SI CONIURA find(code, "RITUALE render_simple(") == -1
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

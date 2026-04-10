@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase2_2f_defaults_and_allowlist_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/pagination.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL parsed AD CONIURA pagination_from_request(
+    CONIURA phase2_pagination_request("/posts"),
+    CONIURA phase2_allowed_sorts_basic(),
+    20,
+    100,
+    "created_at",
+    SORT_DESC
+  )
+
+  SI CONIURA result_is_err GENUS(PaginationRequest, VERBUM)(parsed)
+    REDDE 1
+  FIN SI
+
+  EVOCA PaginationRequest p AD CONIURA result_unwrap GENUS(PaginationRequest, VERBUM)(parsed)
+  SI p.page != 1
+    REDDE 2
+  FIN SI
+  SI p.page_size != 20
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(p.sort_by, "created_at") != 0
+    REDDE 4
+  FIN SI
+  SI p.sort_direction != SORT_DESC
+    REDDE 5
+  FIN SI
+  SI CONIURA pagination_offset(p) != 0
+    REDDE 6
+  FIN SI
+  SI CONIURA pagination_limit(p) != 20
+    REDDE 7
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

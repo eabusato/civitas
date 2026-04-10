@@ -1,0 +1,19 @@
+INCIPIT grimoire "rede_social_project_urls"
+
+ADVOCARE "../../../lib/civitas/router.cct"
+ADVOCARE "../apps/public/urls.cct"
+ADVOCARE "../apps/accounts/urls.cct"
+ADVOCARE "../apps/social/urls.cct"
+ADVOCARE "../apps/ops/urls.cct"
+
+RITUALE rede_router_build() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  -- Keep root URL wiring in project/ and let apps own their own slices.
+  CONIURA public_urls_register(SPECULUM router)
+  CONIURA accounts_urls_register(SPECULUM router)
+  CONIURA social_urls_register(SPECULUM router)
+  CONIURA ops_urls_register(SPECULUM router)
+  REDDE router
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

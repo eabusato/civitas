@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase24_24d_sitemap_fetch"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase24_sitemap_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset><url><loc>https://example.test/posts/neon</loc><lastmod>2026-03-30</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url><url><loc>https://example.test/about</loc><lastmod>2026-03-29</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url></urlset>"))
+  CONIURA response_set_header(out, "content-type", "application/xml; charset=utf-8")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/sitemap.xml", "sitemap", "phase24_sitemap_handler", phase24_sitemap_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA SitemapDoc doc AD CONIURA test_sitemap_fetch(SPECULUM client)
+  CONIURA assert_sitemap_count(doc, 2)
+  CONIURA assert_sitemap_contains_url(doc, "/posts/neon")
+  CONIURA assert_sitemap_url_lastmod(doc, "/about")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

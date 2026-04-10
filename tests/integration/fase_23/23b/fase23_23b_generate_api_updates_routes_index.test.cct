@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase23_23b_generate_api_updates_routes_index"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23b_generate_api_updates_routes_index")
+  EVOCA CivitasNewConfig new_cfg AD CONIURA civitas_new_cfg("lyra", TemplateApi, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(new_cfg))
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(ModelField))
+  EVOCA ModelField title_field AD CONIURA civitas_gen_parse_field("titulo:VERBUM")
+  CONIURA fluxus_push(fields, SPECULUM title_field)
+  EVOCA GenerateModelConfig model_cfg
+  VINCIRE model_cfg.model_name AD "Clip"
+  VINCIRE model_cfg.table_name AD "clip"
+  VINCIRE model_cfg.module_name AD "clip"
+  VINCIRE model_cfg.fields AD fields
+  VINCIRE model_cfg.dest_dir AD CONIURA path_join(root, "lyra")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_model_run(model_cfg))
+    REDDE 2
+  FIN SI
+  EVOCA GenerateApiConfig api_cfg
+  VINCIRE api_cfg.model_name AD "Clip"
+  VINCIRE api_cfg.module_name AD "clip"
+  VINCIRE api_cfg.dest_dir AD CONIURA path_join(root, "lyra")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_api_run(api_cfg))
+    REDDE 3
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "lyra/apps/core/urls.cct"), "ADVOCARE \"routes/clip.cct\"")
+    REDDE 4
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "lyra/apps/core/urls.cct"), "clip_routes_register")
+    REDDE 5
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "lyra/apps/core/views/clip.cct")) != 0
+    REDDE 6
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "lyra/apps/core/routes/clip.cct")) != 0
+    REDDE 7
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

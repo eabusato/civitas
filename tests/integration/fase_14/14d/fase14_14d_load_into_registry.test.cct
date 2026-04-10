@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase14_14d_load_into_registry"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM path AD "tests/tmp/fase_14/14d_catalog.json"
+  CONIURA mkdir_all("tests/tmp/fase_14")
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  CONIURA write_all(path, "{\"locale\":\"en-US\",\"entries\":{\"hello\":\"hello\"}}")
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(CONIURA i18n_config_new("pt-BR", ""))
+  EVOCA SPECULUM NIHIL loaded AD CONIURA i18n_json_load_into_registry(SPECULUM reg, path)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(loaded)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t(reg, "en-US", "hello"), "hello") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

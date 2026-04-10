@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase15_15b_bearer_extract_and_scope"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_verify.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL none1 AD CONIURA token_from_bearer_header("")
+  SI NON CONIURA option_is_none GENUS(VERBUM)(none1)
+    CONIURA option_free GENUS(VERBUM)(none1)
+    REDDE 1
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(none1)
+
+  EVOCA SPECULUM NIHIL none2 AD CONIURA token_from_bearer_header("Basic abc")
+  SI NON CONIURA option_is_none GENUS(VERBUM)(none2)
+    CONIURA option_free GENUS(VERBUM)(none2)
+    REDDE 2
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(none2)
+
+  EVOCA SPECULUM NIHIL some AD CONIURA token_from_bearer_header("Bearer abc.def.sig")
+  SI CONIURA option_is_none GENUS(VERBUM)(some)
+    CONIURA option_free GENUS(VERBUM)(some)
+    REDDE 3
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(some)
+  CONIURA option_free GENUS(VERBUM)(some)
+  SI CONIURA compare(token, "abc.def.sig") != 0
+    REDDE 4
+  FIN SI
+
+  EVOCA TokenPayload wildcard AD CONIURA token_payload_empty()
+  VINCIRE wildcard.escopos AD "*"
+  SI NON CONIURA token_tem_escopo(wildcard, "admin.delete")
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

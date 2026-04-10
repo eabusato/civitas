@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase10_10e_view_counter_increment"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "../../../../lib/civitas/social/social_counter.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10e_view_counter_increment")
+  CONIURA view_counter_increment(db, "post", 5)
+  CONIURA view_counter_increment(db, "post", 5)
+  EVOCA ViewCounter counter AD CONIURA view_counter_get(db, "post", 5)
+  SI counter.total != 2
+    REDDE 1
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

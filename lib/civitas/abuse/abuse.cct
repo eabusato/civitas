@@ -1,0 +1,586 @@
+INCIPIT grimoire "civitas_abuse"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../forms/forms.cct"
+
+ORDO RateLimitClass
+  RlcDefault,
+  RlcAuth,
+  RlcUpload,
+  RlcPublicForm,
+  RlcApi
+FIN ORDO
+
+SIGILLUM RateLimitRule
+  class: RateLimitClass
+  max_requests: REX
+  window_seconds: REX
+  burst: REX
+FIN SIGILLUM
+
+SIGILLUM RateLimitKey
+  ip: VERBUM
+  route_class: RateLimitClass
+  actor_id: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RouteRateEntry
+  key: VERBUM
+  window_started_ms: REX
+  window_seconds: REX
+  request_count: REX
+FIN SIGILLUM
+
+SIGILLUM QuotaPolicy
+  max_bytes_per_window: REX
+  window_seconds: REX
+  max_files_per_window: REX
+FIN SIGILLUM
+
+ORDO QuotaCheckResult
+  QcrAllowed,
+  QcrExceededBytes,
+  QcrExceededFiles
+FIN ORDO
+
+SIGILLUM UploadQuotaEntry
+  actor_id: VERBUM
+  window_started_ms: REX
+  window_seconds: REX
+  used_bytes: REX
+  file_count: REX
+FIN SIGILLUM
+
+ORDO SpamSignal
+  SsHoneypotFilled,
+  SsSubmissionTooFast,
+  SsRepeatedContent,
+  SsHighUrlDensity,
+  SsSuspiciousUserAgent
+FIN ORDO
+
+SIGILLUM SpamSignalEntry
+  signal: SpamSignal
+FIN SIGILLUM
+
+SIGILLUM SpamCheckResult
+  signals: SPECULUM NIHIL
+  score: REX
+  blocked: VERUM
+FIN SIGILLUM
+
+SIGILLUM SpamCheckConfig
+  honeypot_field: VERBUM
+  min_submit_seconds: REX
+  max_url_density: REX
+  auto_block_score: REX
+FIN SIGILLUM
+
+SIGILLUM AbuseHookBinding
+  event_type: VERBUM
+  hook_ref: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AbuseHookDecision
+  rejected: VERUM
+  reason: VERBUM
+FIN SIGILLUM
+
+RITUALE abuse_ok_unit() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE abuse_err_unit(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE abuse_result_is_err(SPECULUM NIHIL res) REDDE VERUM
+  REDDE CONIURA result_is_err GENUS(REX, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE abuse_route_rules_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(RateLimitRule))
+EXPLICIT RITUALE
+
+RITUALE abuse_route_rules_add(SPECULUM NIHIL rules, RateLimitRule rule) REDDE NIHIL
+  CONIURA fluxus_push(rules, SPECULUM rule)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE abuse_route_store_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(RouteRateEntry))
+EXPLICIT RITUALE
+
+RITUALE abuse_quota_store_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(UploadQuotaEntry))
+EXPLICIT RITUALE
+
+RITUALE abuse_hook_registry_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(AbuseHookBinding))
+EXPLICIT RITUALE
+
+RITUALE rate_limit_class_name(RateLimitClass class) REDDE VERBUM
+  ELIGE class
+    CASUS RlcAuth:
+      REDDE "auth"
+    CASUS RlcUpload:
+      REDDE "upload"
+    CASUS RlcPublicForm:
+      REDDE "public_form"
+    CASUS RlcApi:
+      REDDE "api"
+    ALIOQUIN:
+      REDDE "default"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE rate_limit_rule_make(RateLimitClass class, REX max_requests, REX window_seconds, REX burst) REDDE RateLimitRule
+  EVOCA RateLimitRule rule
+  VINCIRE rule.class AD class
+  VINCIRE rule.max_requests AD max_requests
+  VINCIRE rule.window_seconds AD window_seconds
+  VINCIRE rule.burst AD burst
+  REDDE rule
+EXPLICIT RITUALE
+
+RITUALE rate_limit_rule_disabled() REDDE RateLimitRule
+  REDDE CONIURA rate_limit_rule_make(RlcDefault, 0, 0, 0)
+EXPLICIT RITUALE
+
+RITUALE quota_policy_make(REX max_bytes_per_window, REX window_seconds, REX max_files_per_window) REDDE QuotaPolicy
+  EVOCA QuotaPolicy policy
+  VINCIRE policy.max_bytes_per_window AD max_bytes_per_window
+  VINCIRE policy.window_seconds AD window_seconds
+  VINCIRE policy.max_files_per_window AD max_files_per_window
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE spam_check_config_default() REDDE SpamCheckConfig
+  EVOCA SpamCheckConfig cfg
+  VINCIRE cfg.honeypot_field AD "website"
+  VINCIRE cfg.min_submit_seconds AD 2
+  VINCIRE cfg.max_url_density AD 30
+  VINCIRE cfg.auto_block_score AD 10
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE quota_check_result_message(QuotaCheckResult result) REDDE VERBUM
+  ELIGE result
+    CASUS QcrExceededBytes:
+      REDDE "quota de bytes excedida"
+    CASUS QcrExceededFiles:
+      REDDE "quota de arquivos excedida"
+    ALIOQUIN:
+      REDDE "quota permitida"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE spam_signal_name(SpamSignal signal) REDDE VERBUM
+  ELIGE signal
+    CASUS SsHoneypotFilled:
+      REDDE "honeypot_filled"
+    CASUS SsSubmissionTooFast:
+      REDDE "submission_too_fast"
+    CASUS SsRepeatedContent:
+      REDDE "repeated_content"
+    CASUS SsHighUrlDensity:
+      REDDE "high_url_density"
+    ALIOQUIN:
+      REDDE "suspicious_user_agent"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE abuse_route_rule_for_class(SPECULUM NIHIL rules, RateLimitClass class) REDDE RateLimitRule
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(rules)
+  DUM i < n
+    EVOCA SPECULUM RateLimitRule rule_ptr AD CONIURA fluxus_get(rules, i)
+    SI (*rule_ptr).class == class
+      REDDE *rule_ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA rate_limit_rule_disabled()
+EXPLICIT RITUALE
+
+RITUALE rate_limit_key_compose(RateLimitKey key) REDDE VERBUM
+  EVOCA VERBUM out AD key.ip
+  VINCIRE out AD CONIURA concat(out, "|")
+  VINCIRE out AD CONIURA concat(out, CONIURA rate_limit_class_name(key.route_class))
+  VINCIRE out AD CONIURA concat(out, "|")
+  VINCIRE out AD CONIURA concat(out, key.actor_id)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE route_rate_entry_index(SPECULUM NIHIL store, VERBUM key) REDDE REX
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(store)
+  DUM i < n
+    EVOCA SPECULUM RouteRateEntry entry_ptr AD CONIURA fluxus_get(store, i)
+    SI CONIURA compare((*entry_ptr).key, key) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE route_rate_entry_reset(SPECULUM RouteRateEntry entry, REX window_seconds, REX now_unix_ms) REDDE NIHIL
+  VINCIRE (*entry).window_started_ms AD now_unix_ms
+  VINCIRE (*entry).window_seconds AD window_seconds
+  VINCIRE (*entry).request_count AD 0
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rate_limit_check_route(SPECULUM NIHIL store, RateLimitKey key, RateLimitRule rule, REX now_unix_ms) REDDE SPECULUM NIHIL
+  EVOCA REX allowed_total AD rule.max_requests
+  EVOCA VERBUM composed_key AD CONIURA rate_limit_key_compose(key)
+  EVOCA REX idx AD -1
+
+  SI rule.burst > 0
+    VINCIRE allowed_total AD allowed_total + rule.burst
+  FIN SI
+  SI allowed_total <= 0 VEL rule.window_seconds <= 0
+    REDDE CONIURA abuse_ok_unit()
+  FIN SI
+
+  VINCIRE idx AD CONIURA route_rate_entry_index(store, composed_key)
+  SI idx == -1
+    EVOCA RouteRateEntry entry
+    VINCIRE entry.key AD composed_key
+    VINCIRE entry.window_started_ms AD now_unix_ms
+    VINCIRE entry.window_seconds AD rule.window_seconds
+    VINCIRE entry.request_count AD 1
+    CONIURA fluxus_push(store, SPECULUM entry)
+    REDDE CONIURA abuse_ok_unit()
+  FIN SI
+
+  EVOCA SPECULUM RouteRateEntry entry_ptr AD CONIURA fluxus_get(store, idx)
+  SI (*entry_ptr).window_seconds != rule.window_seconds VEL now_unix_ms - (*entry_ptr).window_started_ms >= (rule.window_seconds * 1000)
+    CONIURA route_rate_entry_reset(entry_ptr, rule.window_seconds, now_unix_ms)
+  FIN SI
+
+  SI (*entry_ptr).request_count >= allowed_total
+    REDDE CONIURA abuse_err_unit("route rate limit exceeded")
+  FIN SI
+
+  VINCIRE (*entry_ptr).request_count AD (*entry_ptr).request_count + 1
+  REDDE CONIURA abuse_ok_unit()
+EXPLICIT RITUALE
+
+RITUALE rate_limit_retry_after(SPECULUM NIHIL store, RateLimitKey key, RateLimitRule rule, REX now_unix_ms) REDDE REX
+  EVOCA REX idx AD CONIURA route_rate_entry_index(store, CONIURA rate_limit_key_compose(key))
+  SI idx == -1 VEL rule.window_seconds <= 0
+    REDDE 0
+  FIN SI
+
+  EVOCA SPECULUM RouteRateEntry entry_ptr AD CONIURA fluxus_get(store, idx)
+  EVOCA REX window_end_ms AD (*entry_ptr).window_started_ms + ((*entry_ptr).window_seconds * 1000)
+  EVOCA REX remaining_ms AD window_end_ms - now_unix_ms
+  SI remaining_ms <= 0
+    REDDE 0
+  FIN SI
+  REDDE CONIURA quotient(remaining_ms + 999, 1000)
+EXPLICIT RITUALE
+
+RITUALE rate_limit_route_allowed(SPECULUM NIHIL store, RateLimitKey key, RateLimitRule rule, REX now_unix_ms) REDDE VERUM
+  REDDE NON CONIURA abuse_result_is_err(CONIURA rate_limit_check_route(store, key, rule, now_unix_ms))
+EXPLICIT RITUALE
+
+RITUALE quota_actor_normalize(VERBUM actor_id) REDDE VERBUM
+  EVOCA VERBUM normalized AD CONIURA trim(actor_id)
+  SI CONIURA len(normalized) == 0
+    REDDE "anon"
+  FIN SI
+  REDDE normalized
+EXPLICIT RITUALE
+
+RITUALE upload_quota_entry_index(SPECULUM NIHIL store, VERBUM actor_id) REDDE REX
+  EVOCA VERBUM target AD CONIURA quota_actor_normalize(actor_id)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(store)
+  DUM i < n
+    EVOCA SPECULUM UploadQuotaEntry entry_ptr AD CONIURA fluxus_get(store, i)
+    SI CONIURA compare((*entry_ptr).actor_id, target) == 0
+      REDDE i
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE upload_quota_entry_reset(SPECULUM UploadQuotaEntry entry, REX window_seconds, REX now_unix_ms) REDDE NIHIL
+  VINCIRE (*entry).window_started_ms AD now_unix_ms
+  VINCIRE (*entry).window_seconds AD window_seconds
+  VINCIRE (*entry).used_bytes AD 0
+  VINCIRE (*entry).file_count AD 0
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE quota_check(SPECULUM NIHIL store, VERBUM actor_id, QuotaPolicy policy, REX bytes, REX now_unix_ms) REDDE QuotaCheckResult
+  EVOCA VERBUM normalized_actor AD CONIURA quota_actor_normalize(actor_id)
+  EVOCA REX idx AD CONIURA upload_quota_entry_index(store, normalized_actor)
+
+  SI idx == -1
+    EVOCA UploadQuotaEntry entry
+    VINCIRE entry.actor_id AD normalized_actor
+    VINCIRE entry.window_started_ms AD now_unix_ms
+    VINCIRE entry.window_seconds AD policy.window_seconds
+    VINCIRE entry.used_bytes AD 0
+    VINCIRE entry.file_count AD 0
+    CONIURA fluxus_push(store, SPECULUM entry)
+    VINCIRE idx AD CONIURA fluxus_len(store) - 1
+  FIN SI
+
+  EVOCA SPECULUM UploadQuotaEntry entry_ptr AD CONIURA fluxus_get(store, idx)
+  SI policy.window_seconds > 0 ET ((*entry_ptr).window_seconds != policy.window_seconds VEL now_unix_ms - (*entry_ptr).window_started_ms >= (policy.window_seconds * 1000))
+    CONIURA upload_quota_entry_reset(entry_ptr, policy.window_seconds, now_unix_ms)
+  FIN SI
+
+  SI policy.max_files_per_window > 0 ET ((*entry_ptr).file_count + 1) > policy.max_files_per_window
+    REDDE QcrExceededFiles
+  FIN SI
+  SI policy.max_bytes_per_window > 0 ET ((*entry_ptr).used_bytes + bytes) > policy.max_bytes_per_window
+    REDDE QcrExceededBytes
+  FIN SI
+  REDDE QcrAllowed
+EXPLICIT RITUALE
+
+RITUALE quota_record_upload(SPECULUM NIHIL store, VERBUM actor_id, REX bytes, REX now_unix_ms) REDDE NIHIL
+  EVOCA VERBUM normalized_actor AD CONIURA quota_actor_normalize(actor_id)
+  EVOCA REX idx AD CONIURA upload_quota_entry_index(store, normalized_actor)
+  SI idx == -1
+    EVOCA UploadQuotaEntry entry
+    VINCIRE entry.actor_id AD normalized_actor
+    VINCIRE entry.window_started_ms AD now_unix_ms
+    VINCIRE entry.window_seconds AD 0
+    VINCIRE entry.used_bytes AD bytes
+    VINCIRE entry.file_count AD 1
+    CONIURA fluxus_push(store, SPECULUM entry)
+    REDDE
+  FIN SI
+
+  EVOCA SPECULUM UploadQuotaEntry entry_ptr AD CONIURA fluxus_get(store, idx)
+  SI (*entry_ptr).window_seconds > 0 ET now_unix_ms - (*entry_ptr).window_started_ms >= ((*entry_ptr).window_seconds * 1000)
+    CONIURA upload_quota_entry_reset(entry_ptr, (*entry_ptr).window_seconds, now_unix_ms)
+  FIN SI
+  VINCIRE (*entry_ptr).used_bytes AD (*entry_ptr).used_bytes + bytes
+  VINCIRE (*entry_ptr).file_count AD (*entry_ptr).file_count + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE spam_check_result_new() REDDE SpamCheckResult
+  EVOCA SpamCheckResult result
+  VINCIRE result.signals AD CONIURA fluxus_init(MENSURA(SpamSignalEntry))
+  VINCIRE result.score AD 0
+  VINCIRE result.blocked AD FALSUM
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE spam_signal_present(SpamCheckResult result, SpamSignal signal) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(result.signals)
+  DUM i < n
+    EVOCA SPECULUM SpamSignalEntry signal_ptr AD CONIURA fluxus_get(result.signals, i)
+    SI (*signal_ptr).signal == signal
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE spam_result_add_signal(SPECULUM SpamCheckResult result, SpamSignal signal, REX weight) REDDE NIHIL
+  EVOCA SpamSignalEntry entry
+  SI CONIURA spam_signal_present(*result, signal)
+    REDDE
+  FIN SI
+  VINCIRE entry.signal AD signal
+  CONIURA fluxus_push((*result).signals, SPECULUM entry)
+  VINCIRE (*result).score AD (*result).score + weight
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE spam_text_url_hits(VERBUM text) REDDE REX
+  EVOCA VERBUM lower AD CONIURA to_lower(text)
+  EVOCA REX hits AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(lower)
+  DUM i < n
+    EVOCA VERBUM tail AD CONIURA substring(lower, i, n)
+    SI CONIURA starts_with(tail, "http://") VEL CONIURA starts_with(tail, "https://") VEL CONIURA starts_with(tail, "www.")
+      VINCIRE hits AD hits + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE hits
+EXPLICIT RITUALE
+
+RITUALE spam_text_word_count(VERBUM text) REDDE REX
+  EVOCA REX words AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(text)
+  EVOCA VERUM inside_word AD FALSUM
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(text, i)
+    SI ch == 32 VEL ch == 9 VEL ch == 10 VEL ch == 13
+      VINCIRE inside_word AD FALSUM
+    ALITER
+      SI NON inside_word
+        VINCIRE words AD words + 1
+        VINCIRE inside_word AD VERUM
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE words
+EXPLICIT RITUALE
+
+RITUALE spam_form_high_url_density(FormData fd, REX max_url_density) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(fd.raw_fields)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA REX url_hits AD 0
+  EVOCA REX words AD 0
+
+  SI max_url_density <= 0
+    REDDE FALSUM
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM value AD CONIURA form_data_get_or(fd, *key_ptr, "")
+    VINCIRE url_hits AD url_hits + CONIURA spam_text_url_hits(value)
+    VINCIRE words AD words + CONIURA spam_text_word_count(value)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI words <= 0
+    REDDE FALSUM
+  FIN SI
+
+  REDDE CONIURA quotient(url_hits * 100, words) > max_url_density
+EXPLICIT RITUALE
+
+RITUALE spam_form_has_repeated_content(FormData fd) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(fd.raw_fields)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_a_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM value_a AD CONIURA to_lower(CONIURA trim(CONIURA form_data_get_or(fd, *key_a_ptr, "")))
+    EVOCA REX j AD i + 1
+    SI CONIURA len(value_a) >= 12
+      DUM j < n
+        EVOCA SPECULUM VERBUM key_b_ptr AD CONIURA fluxus_get(keys, j)
+        EVOCA VERBUM value_b AD CONIURA to_lower(CONIURA trim(CONIURA form_data_get_or(fd, *key_b_ptr, "")))
+        SI CONIURA compare(value_a, value_b) == 0
+          REDDE VERUM
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE spam_form_suspicious_user_agent(FormData fd) REDDE VERUM
+  EVOCA VERBUM ua AD CONIURA to_lower(CONIURA form_data_get_or(fd, "__user_agent", CONIURA form_data_get_or(fd, "user_agent", "")))
+  SI CONIURA len(ua) == 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA contains(ua, "curl") VEL CONIURA contains(ua, "wget") VEL CONIURA contains(ua, "python-requests") VEL CONIURA contains(ua, "httpclient") VEL CONIURA contains(ua, "scrapy") VEL CONIURA contains(ua, "bot") VEL CONIURA contains(ua, "spider")
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE spam_check(SpamCheckConfig cfg, SPECULUM NIHIL form_data, REX submit_elapsed_seconds) REDDE SpamCheckResult
+  EVOCA SPECULUM FormData fd AD form_data
+  EVOCA SpamCheckResult result AD CONIURA spam_check_result_new()
+  EVOCA VERBUM honeypot_value AD ""
+
+  SI CONIURA len(cfg.honeypot_field) != 0
+    VINCIRE honeypot_value AD CONIURA trim(CONIURA form_data_get_or(*fd, cfg.honeypot_field, ""))
+    SI CONIURA len(honeypot_value) != 0
+      CONIURA spam_result_add_signal(SPECULUM result, SsHoneypotFilled, 10)
+    FIN SI
+  FIN SI
+
+  SI cfg.min_submit_seconds > 0 ET submit_elapsed_seconds >= 0 ET submit_elapsed_seconds < cfg.min_submit_seconds
+    CONIURA spam_result_add_signal(SPECULUM result, SsSubmissionTooFast, 5)
+  FIN SI
+
+  SI CONIURA spam_form_has_repeated_content(*fd)
+    CONIURA spam_result_add_signal(SPECULUM result, SsRepeatedContent, 4)
+  FIN SI
+
+  SI CONIURA spam_form_high_url_density(*fd, cfg.max_url_density)
+    CONIURA spam_result_add_signal(SPECULUM result, SsHighUrlDensity, 4)
+  FIN SI
+
+  SI CONIURA spam_form_suspicious_user_agent(*fd)
+    CONIURA spam_result_add_signal(SPECULUM result, SsSuspiciousUserAgent, 3)
+  FIN SI
+
+  SI cfg.auto_block_score > 0 ET result.score >= cfg.auto_block_score
+    VINCIRE result.blocked AD VERUM
+  FIN SI
+
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE spam_check_fill(SPECULUM SpamCheckResult dest, SpamCheckConfig cfg, SPECULUM NIHIL form_data, REX submit_elapsed_seconds) REDDE NIHIL
+  EVOCA SpamCheckResult computed AD CONIURA spam_check(cfg, form_data, submit_elapsed_seconds)
+  VINCIRE (*dest).signals AD computed.signals
+  VINCIRE (*dest).score AD computed.score
+  VINCIRE (*dest).blocked AD computed.blocked
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE spam_check_result_free(SPECULUM SpamCheckResult result) REDDE NIHIL
+  CONIURA fluxus_free((*result).signals)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE abuse_hook_register(SPECULUM NIHIL registry, VERBUM event_type, SPECULUM NIHIL hook_fn) REDDE NIHIL
+  EVOCA AbuseHookBinding binding
+  VINCIRE binding.event_type AD event_type
+  VINCIRE binding.hook_ref AD hook_fn
+  CONIURA fluxus_push(registry, SPECULUM binding)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE abuse_hook_run(SPECULUM NIHIL registry, VERBUM event_type, SPECULUM NIHIL payload) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(registry)
+  DUM i < n
+    EVOCA SPECULUM AbuseHookBinding binding_ptr AD CONIURA fluxus_get(registry, i)
+    SI CONIURA compare((*binding_ptr).event_type, event_type) == 0
+      EVOCA AbuseHookDecision decision
+      VINCIRE decision.rejected AD FALSUM
+      VINCIRE decision.reason AD ""
+      CONIURA callback_invoke2_void GENUS(SPECULUM NIHIL, SPECULUM NIHIL)(
+        (*binding_ptr).hook_ref,
+        payload,
+        SPECULUM decision
+      )
+      SI decision.rejected
+        REDDE CONIURA abuse_err_unit(decision.reason)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA abuse_ok_unit()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

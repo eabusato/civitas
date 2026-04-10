@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase22_22c_handler_returns_starting_without_gen"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/dev_livereload/dev_livereload.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase22_reset_root("22c_handler_returns_starting_without_gen")
+  EVOCA LivereloadConfig cfg AD CONIURA livereload_config_default()
+  VINCIRE cfg.gen_file AD CONIURA path_join(root, ".civitas-gen")
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/civitas/livereload", "HTTP/1.1", headers, "", "127.0.0.1", "http", "dev.local", "rid-22c-starting", "", "", "")
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA WebResponse res AD CONIURA livereload_handler(req, cfg)
+  SI res.status != 503
+    REDDE 1
+  FIN SI
+  SI CONIURA find(res.body, "starting") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

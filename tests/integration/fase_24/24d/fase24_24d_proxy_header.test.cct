@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase24_24d_proxy_header"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_proxy_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA VERBUM forwarded AD CONIURA request_header_or((*req).headers, "x-forwarded-for", "")
+  CONIURA response_fill(out, CONIURA response_text("proxy"))
+  CONIURA response_set_header(out, "x-forwarded-for", forwarded)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/proxy", "proxy", "phase24_proxy_handler", phase24_proxy_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  CONIURA test_client_set_header(SPECULUM client, "x-forwarded-for", "203.0.113.7")
+  EVOCA TestResponse res AD CONIURA test_client_get(SPECULUM client, "/proxy")
+  CONIURA assert_proxy_header(res, "x-forwarded-for", "203.0.113.7")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

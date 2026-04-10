@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase8_8b_filter_clear_and_session_clear_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA session_set(SPECULUM sess, "_civitas_flash", "[{\"level\":\"warning\",\"texto\":\"Aviso\"},{\"level\":\"error\",\"texto\":\"Erro\"}]")
+  EVOCA SPECULUM NIHIL warnings AD CONIURA flash_get_by_level(SPECULUM sess, FlWarning)
+  SI CONIURA fluxus_len(warnings) != 1
+    REDDE 1
+  FIN SI
+  CONIURA fluxus_free(warnings)
+
+  CONIURA flash_clear(SPECULUM sess)
+  SI CONIURA flash_has(SPECULUM sess)
+    REDDE 2
+  FIN SI
+
+  CONIURA flash_set(SPECULUM sess, FlInfo, "Tchau")
+  CONIURA session_clear(SPECULUM sess)
+  SI NON CONIURA starts_with(CONIURA session_get_or(SPECULUM sess, "_civitas_flash_pending", "[]"), "[")
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase10_10g_page_menu_build"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages_crud.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages_menu.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10g_page_menu_build")
+  EVOCA ContentOrigin origin AD CONIURA content_origin_empty()
+  VINCIRE origin.user_id AD "1"
+  VINCIRE origin.request_id AD "req-1"
+  EVOCA Page page AD CONIURA page_create(db, "en", "docs", "Docs", "<p>D</p>", origin)
+  EVOCA MenuSlot slot AD CONIURA page_menu_slot_empty()
+  VINCIRE slot.name AD "main"
+  VINCIRE slot.label AD "Main"
+  CONIURA page_update_menu_slot(db, page.id, slot, 10, origin)
+  CONIURA page_publish(db, page.id, origin)
+  EVOCA SPECULUM NIHIL menu AD CONIURA page_menu_build(db, "en", "main")
+  SI CONIURA fluxus_len(menu) != 1
+    REDDE 1
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

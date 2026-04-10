@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase24_24c_flush_success"
+
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/test_tasks/test_tasks.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_ok_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  REDDE CONIURA task_callback_result_ok(task.payload_json)
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL q AD CONIURA test_tasks_setup()
+  CONIURA test_tasks_register(q, "send_welcome", phase24_ok_task)
+  SI CONIURA len(CONIURA test_tasks_enqueue(q, "send_welcome", "{\"user\":2}")) == 0
+    REDDE 1
+  FIN SI
+  SI CONIURA test_tasks_flush(q) != 1
+    REDDE 1
+  FIN SI
+  CONIURA assert_task_ran(q, "send_welcome")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

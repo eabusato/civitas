@@ -1,0 +1,47 @@
+INCIPIT grimoire "mural_expandido_example_basic_auth_headers_test"
+
+ADVOCARE "../../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL headers AD CONIURA http_server_headers_new()
+  EVOCA SPECULUM NIHIL req_res
+  EVOCA SPECULUM NIHIL auth_res
+
+  CONIURA http_server_headers_set(headers, "authorization", "Basic YWRtaW46Y2hhbmdlLW1lLWV4cGFuZGVkLWFkbWluLXNlY3JldA==")
+  VINCIRE req_res AD CONIURA request_build(
+    "GET",
+    "/sigilos-vivos",
+    "HTTP/1.1",
+    CONIURA request_copy_string_map(headers),
+    "",
+    "127.0.0.1",
+    "http",
+    "127.0.0.1",
+    "req-1",
+    "",
+    "127.0.0.1:1",
+    "127.0.0.1:2"
+  )
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "request_build should preserve copied authorization header"
+  FIN SI
+
+  VINCIRE auth_res AD CONIURA request_basic_auth(CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res))
+  SI CONIURA result_is_err GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+    IACE "request_basic_auth should parse Authorization after request_copy_string_map"
+  FIN SI
+
+  EVOCA WebRequestBasicAuth auth AD CONIURA result_unwrap GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+  SI CONIURA compare(auth.username, "admin") != 0
+    IACE "basic auth username mismatch"
+  FIN SI
+  SI CONIURA compare(auth.password, "change-me-expanded-admin-secret") != 0
+    IACE "basic auth password mismatch"
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,28 @@
+INCIPIT grimoire "rede_social_social_urls"
+
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE rede_social_route_assert(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE social_urls_register(SPECULUM Router router) REDDE NIHIL
+  -- Social actions live outside the bootstrap layer and can be promoted into separate apps later.
+  CONIURA rede_social_route_assert(CONIURA router_add(router, "POST", "/posts/{slug:slug}/like", "post_like", "post_like_handler", middleware_run))
+  CONIURA rede_social_route_assert(CONIURA router_add(router, "POST", "/posts/{slug:slug}/comment", "post_comment", "post_comment_handler", middleware_run))
+  CONIURA rede_social_route_assert(CONIURA router_add(router, "POST", "/perfil/{handle:slug}/follow", "profile_follow", "profile_follow_handler", middleware_run))
+  CONIURA rede_social_route_assert(CONIURA router_add(router, "GET", "/lounge", "lounge_page", "lounge_page_handler", middleware_run))
+  CONIURA rede_social_route_assert(CONIURA router_add(router, "POST", "/lounge/send", "lounge_send", "lounge_send_handler", middleware_run))
+  CONIURA router_add_middleware(router, "post_like", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "post_comment", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "profile_follow", CONIURA middleware_binding_named("csrf", middleware_run))
+  CONIURA router_add_middleware(router, "lounge_send", CONIURA middleware_binding_named("csrf", middleware_run))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

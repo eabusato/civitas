@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase16_16b_closed_mailer_error"
+
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_settings.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_memory("no-reply@test.example", "Test App")
+  EVOCA SPECULUM NIHIL open_res AD CONIURA mailer_open(cfg)
+  EVOCA Mailer mailer AD CONIURA result_unwrap GENUS(Mailer, MailerError)(open_res)
+  CONIURA mailer_close(SPECULUM mailer)
+  EVOCA MailMessage msg AD CONIURA mailer_simple("ana@test.example", "Ana", "Closed", "Body", "")
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(SPECULUM mailer, msg)
+  SI NON CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA mailer_error_name(CONIURA result_unwrap_err GENUS(MailSendResult, MailerError)(send_res)), "MailerNaoAberto") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase2_router_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase2_router_ok_or_fail(SPECULUM NIHIL res, REX code) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  SI CONIURA result_unwrap GENUS(REX, VERBUM)(res) != 0
+    IACE CONIURA concat("router resultado inesperado: ", CONIURA stringify_int(code))
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase2_router_request(VERBUM method, VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase2_request(method, target)
+EXPLICIT RITUALE
+
+RITUALE phase2_router_request_with_headers(VERBUM method, VERBUM target, SPECULUM NIHIL headers) REDDE WebRequest
+  REDDE CONIURA phase2_request_with_headers(method, target, headers)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

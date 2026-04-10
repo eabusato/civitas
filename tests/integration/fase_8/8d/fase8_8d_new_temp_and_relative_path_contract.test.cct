@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase8_8d_new_temp_and_relative_path_contract_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor d AD CONIURA upload_descriptor_new(
+    "uploads/avatar/550e8400-e29b-41d4-a716-446655440000.jpg",
+    "abc123",
+    42,
+    "image/jpeg",
+    "foto.jpg"
+  )
+
+  SI d.state != UsTemp
+    REDDE 1
+  FIN SI
+  SI CONIURA starts_with(d.path, "http")
+    REDDE 2
+  FIN SI
+  SI CONIURA starts_with(d.path, "/")
+    REDDE 3
+  FIN SI
+  SI CONIURA starts_with(d.path, "/var")
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

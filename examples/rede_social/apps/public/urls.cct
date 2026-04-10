@@ -1,0 +1,24 @@
+INCIPIT grimoire "rede_social_public_urls"
+
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE rede_public_route_assert(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE public_urls_register(SPECULUM Router router) REDDE NIHIL
+  -- Public app routes: feed, profile, post detail and public assets.
+  CONIURA rede_public_route_assert(CONIURA router_add(router, "GET", "/", "home", "home_handler", middleware_run))
+  CONIURA rede_public_route_assert(CONIURA router_add(router, "GET", "/perfil/{handle:slug}", "profile_detail", "profile_detail_handler", middleware_run))
+  CONIURA rede_public_route_assert(CONIURA router_add(router, "GET", "/posts/{slug:slug}", "post_detail", "post_detail_handler", middleware_run))
+  CONIURA rede_public_route_assert(CONIURA router_add(router, "GET", "/static/{asset:*}", "static_asset", "static_asset_handler", middleware_run))
+  CONIURA rede_public_route_assert(CONIURA router_add(router, "GET", "/media/{asset:*}", "media_asset", "media_asset_handler", middleware_run))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

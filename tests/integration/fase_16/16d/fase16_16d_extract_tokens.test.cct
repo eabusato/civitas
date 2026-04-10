@@ -1,0 +1,57 @@
+INCIPIT grimoire "fase16_16d_extract_tokens"
+
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_extract.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL opt_generic AD CONIURA mail_test_extrair_token_de_url("https://app.test/reset?t=abc123&next=/", "t")
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_generic)
+    CONIURA option_free GENUS(VERBUM)(opt_generic)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM generic_token AD CONIURA option_unwrap GENUS(VERBUM)(opt_generic)
+  CONIURA option_free GENUS(VERBUM)(opt_generic)
+  SI CONIURA compare(generic_token, "abc123") != 0
+    REDDE 2
+  FIN SI
+
+  EVOCA Mailer m AD CONIURA mailer_test_open()
+  EVOCA MailMessage reset_msg AD CONIURA mailer_simple("ana@test.local", "Ana", "Reset", "Visit https://app.test/reset?t=resetTok\n", "")
+  EVOCA MailMessage verify_msg AD CONIURA mailer_simple("ana@test.local", "Ana", "Verify", "Visit https://app.test/verify?token=verifyTok\n", "")
+  CONIURA mailer_send(SPECULUM m, reset_msg)
+  CONIURA mailer_send(SPECULUM m, verify_msg)
+
+  EVOCA SPECULUM NIHIL opt_reset AD CONIURA mail_test_extrair_token_reset(m, 0)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_reset)
+    CONIURA option_free GENUS(VERBUM)(opt_reset)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 3
+  FIN SI
+  EVOCA VERBUM reset_token AD CONIURA option_unwrap GENUS(VERBUM)(opt_reset)
+  CONIURA option_free GENUS(VERBUM)(opt_reset)
+  SI CONIURA compare(reset_token, "resetTok") != 0
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 4
+  FIN SI
+
+  EVOCA SPECULUM NIHIL opt_verify AD CONIURA mail_test_extrair_token_verificacao(m, 1)
+  SI CONIURA option_is_none GENUS(VERBUM)(opt_verify)
+    CONIURA option_free GENUS(VERBUM)(opt_verify)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 5
+  FIN SI
+  EVOCA VERBUM verify_token AD CONIURA option_unwrap GENUS(VERBUM)(opt_verify)
+  CONIURA option_free GENUS(VERBUM)(opt_verify)
+  CONIURA mailer_test_close(SPECULUM m)
+  SI CONIURA compare(verify_token, "verifyTok") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

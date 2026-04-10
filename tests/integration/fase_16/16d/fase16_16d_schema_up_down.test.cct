@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase16_16d_schema_up_down"
+
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_flow.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE fase16_has_table(SPECULUM NIHIL db, VERBUM table_name) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, table_name)
+  SI NON CONIURA stmt_step(stmt)
+    CONIURA stmt_finalize(stmt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERUM ok AD CONIURA stmt_has_row(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE ok
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA mail_test_schema_up(tdb)
+  SI NON CONIURA fase16_has_table(tdb.db, "auth_flow_tokens")
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA fase16_has_table(tdb.db, "refresh_tokens")
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  CONIURA mail_test_schema_down(tdb)
+  SI CONIURA fase16_has_table(tdb.db, "auth_flow_tokens")
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

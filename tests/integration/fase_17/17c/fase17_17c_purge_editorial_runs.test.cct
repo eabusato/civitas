@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase17_17c_purge_editorial_runs"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/retention/retention.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17c_purge_editorial_runs")
+  EVOCA RetentionConfig cfg AD CONIURA retention_config_default()
+  CONIURA db_exec(stack.db, "INSERT INTO editorial_job_runs (id, job_kind, resource_name, started_at_unix, finished_at_unix, outcome, result_json) VALUES ('ed-1', 'feed', 'editorial.process', 1, 2, 'ok', '{}')")
+  EVOCA RetentionReport report AD CONIURA retention_purge_editorial_runs(stack.dbh, cfg, cfg.editorial_run_max_age_seconds + 100)
+  SI report.deleted_count != 1
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(stack.db, "SELECT COUNT(*) FROM editorial_job_runs") != 0
+    CONIURA phase17_stack_close(stack)
+    REDDE 2
+  FIN SI
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

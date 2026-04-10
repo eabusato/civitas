@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase3_3b_publish_without_subscribers_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA EventBus bus
+  EVOCA EventEnvelope env
+  EVOCA EventDispatchReport report
+  EVOCA SPECULUM NIHIL attrs AD CONIURA event_attributes_new()
+
+  CONIURA event_bus_init(SPECULUM bus, "empty-bus")
+  CONIURA event_envelope_init(SPECULUM env, "cache.invalidate_requested", "req-3b-empty", "actor-1", attrs, "{\"key\":\"home\"}")
+  VINCIRE report AD CONIURA event_publish(bus, env)
+
+  SI report.delivered_count != 0
+    REDDE 1
+  FIN SI
+  SI report.filtered_out_count != 0
+    REDDE 2
+  FIN SI
+  SI report.failed_count != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA len(env.event_id) == 0 VEL CONIURA len(env.occurred_at_iso) == 0
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

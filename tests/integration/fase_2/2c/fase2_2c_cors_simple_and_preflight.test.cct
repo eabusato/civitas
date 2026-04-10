@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase2_2c_cors_simple_and_preflight_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE terminal(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("cors-ok"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL simple_headers AD CONIURA phase2_empty_headers()
+  EVOCA SPECULUM NIHIL preflight_headers AD CONIURA phase2_empty_headers()
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(simple_headers, "origin", "https://example.com")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(preflight_headers, "origin", "https://example.com")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(preflight_headers, "access-control-request-method", "POST")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(preflight_headers, "access-control-request-headers", "Authorization")
+  CONIURA middleware_bindings_push(middlewares, "cors", middleware_cors_basic)
+
+  EVOCA WebResponse simple_out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request_with_headers("GET", "/cors", simple_headers), terminal)
+  SI CONIURA compare(CONIURA response_header_or(simple_out, "access-control-allow-origin", ""), "https://example.com") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(simple_out.body, "cors-ok") != 0
+    REDDE 2
+  FIN SI
+
+  EVOCA WebResponse preflight_out AD CONIURA middleware_chain(middlewares, CONIURA phase2_request_with_headers("OPTIONS", "/cors", preflight_headers), terminal)
+  SI preflight_out.status != 204
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(preflight_out, "access-control-allow-methods", ""), "POST") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(preflight_out, "access-control-allow-headers", ""), "Authorization") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

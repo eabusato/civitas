@@ -1,0 +1,43 @@
+INCIPIT grimoire "civitas_admin_inline_routes"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_inline.cct"
+
+RITUALE admin_inline_stub_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("admin inline stub"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_inline_generate_routes(AdminInlineConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL routes AD CONIURA fluxus_init(MENSURA(AdminRouteInfo))
+  EVOCA VERBUM base AD "/admin/"
+  VINCIRE base AD CONIURA concat(base, CONIURA to_lower(cfg.parent_model))
+  VINCIRE base AD CONIURA concat(base, "/{pk}/inline/")
+  VINCIRE base AD CONIURA concat(base, cfg.name)
+  VINCIRE base AD CONIURA concat(base, "/")
+  EVOCA AdminRouteInfo get_route AD CONIURA admin_route_info_new("GET", base, CONIURA concat(cfg.name, "_inline_list"), "admin_inline_stub_handler")
+  EVOCA AdminRouteInfo post_route AD CONIURA admin_route_info_new("POST", base, CONIURA concat(cfg.name, "_inline_submit"), "admin_inline_stub_handler")
+  CONIURA fluxus_push(routes, SPECULUM get_route)
+  CONIURA fluxus_push(routes, SPECULUM post_route)
+  REDDE routes
+EXPLICIT RITUALE
+
+RITUALE admin_inline_register_routes(SPECULUM Router router, AdminInlineConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL routes AD CONIURA admin_inline_generate_routes(cfg)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(routes)
+  DUM i < n
+    EVOCA SPECULUM AdminRouteInfo route_ptr AD CONIURA fluxus_get(routes, i)
+    CONIURA router_add(router, (*route_ptr).method, (*route_ptr).pattern, (*route_ptr).name, (*route_ptr).handler_symbol, admin_inline_stub_handler)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

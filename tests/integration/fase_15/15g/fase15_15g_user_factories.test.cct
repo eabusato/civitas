@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase15_15g_user_factories"
+
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_user.cct"
+ADVOCARE "../../../../lib/civitas/permissions/permissions_check.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  EVOCA SPECULUM NIHIL perms AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM perm1 AD "posts.edit"
+  EVOCA VERBUM perm2 AD "posts.delete"
+  CONIURA auth_test_schema_up(tdb)
+  CONIURA auth_test_criar_usuario_id(tdb, "alice@test.example", "abcd")
+  CONIURA auth_test_criar_usuario_unico_id(tdb)
+  SI CONIURA db_scalar_int(tdb.db, "SELECT COUNT(DISTINCT email) FROM usuarios") != 2
+    CONIURA fluxus_free(perms)
+    CONIURA test_db_close(tdb)
+    REDDE 1
+  FIN SI
+  EVOCA VERBUM admin_id AD CONIURA auth_test_criar_admin_id(tdb, "admin@test.example")
+  SI NON CONIURA usuario_tem_permissao(tdb.db, admin_id, "admin.*")
+    CONIURA fluxus_free(perms)
+    CONIURA test_db_close(tdb)
+    REDDE 2
+  FIN SI
+  CONIURA fluxus_push(perms, SPECULUM perm1)
+  CONIURA fluxus_push(perms, SPECULUM perm2)
+  EVOCA VERBUM editor_id AD CONIURA auth_test_criar_usuario_com_permissoes_id(tdb, "editor@test.example", perms)
+  CONIURA fluxus_free(perms)
+  SI NON CONIURA usuario_tem_permissao(tdb.db, editor_id, "posts.edit")
+    CONIURA test_db_close(tdb)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA usuario_tem_permissao(tdb.db, editor_id, "posts.delete")
+    CONIURA test_db_close(tdb)
+    REDDE 4
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

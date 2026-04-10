@@ -1,0 +1,257 @@
+INCIPIT grimoire "civitas_csrf"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cookie.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "core/keyring.cct"
+ADVOCARE "core/secrets.cct"
+ADVOCARE "core/settings.cct"
+ADVOCARE "core/settings_schema.cct"
+
+ORDO CsrfError
+  CsrfErrNoCookie,
+  CsrfErrNoToken,
+  CsrfErrInvalidToken,
+  CsrfErrSecretMissing
+FIN ORDO
+
+SIGILLUM CsrfConfig
+  cookie_name: VERBUM
+  field_name: VERBUM
+  header_name: VERBUM
+  exclude_bearer: VERUM
+  secret_domain: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CsrfToken
+  token: VERBUM
+  binding_cookie: VERBUM
+  is_new_binding: VERUM
+FIN SIGILLUM
+
+RITUALE app_service_csrf_config_key() REDDE VERBUM
+  REDDE "civitas.csrf.config"
+EXPLICIT RITUALE
+
+RITUALE app_service_csrf_logger_key() REDDE VERBUM
+  REDDE "civitas.csrf.logger"
+EXPLICIT RITUALE
+
+RITUALE csrf_config_default() REDDE CsrfConfig
+  EVOCA CsrfConfig cfg
+  VINCIRE cfg.cookie_name AD "civitas_csrf_binding"
+  VINCIRE cfg.field_name AD "civitas_csrf_token"
+  VINCIRE cfg.header_name AD "X-CSRF-Token"
+  VINCIRE cfg.exclude_bearer AD VERUM
+  VINCIRE cfg.secret_domain AD "csrf"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE csrf_logger_new() REDDE Logger
+  EVOCA Logger logger AD CONIURA log_new("civitas.csrf", WARN)
+  CONIURA log_set_sink_stderr(SPECULUM logger)
+  REDDE logger
+EXPLICIT RITUALE
+
+RITUALE csrf_config_fill(SPECULUM CsrfConfig dest, SPECULUM CsrfConfig src) REDDE NIHIL
+  VINCIRE (*dest).cookie_name AD (*src).cookie_name
+  VINCIRE (*dest).field_name AD (*src).field_name
+  VINCIRE (*dest).header_name AD (*src).header_name
+  VINCIRE (*dest).exclude_bearer AD (*src).exclude_bearer
+  VINCIRE (*dest).secret_domain AD (*src).secret_domain
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_logger_fill(SPECULUM Logger dest, SPECULUM Logger src) REDDE NIHIL
+  VINCIRE (*dest).module_name AD (*src).module_name
+  VINCIRE (*dest).level AD (*src).level
+  VINCIRE (*dest).sink_kind AD (*src).sink_kind
+  VINCIRE (*dest).sink_file_path AD (*src).sink_file_path
+  VINCIRE (*dest).rate_limiter_enabled AD (*src).rate_limiter_enabled
+  VINCIRE (*dest).rate_max_per_second AD (*src).rate_max_per_second
+  VINCIRE (*dest).rate_burst AD (*src).rate_burst
+  VINCIRE (*dest).rate_window_start_unix AD (*src).rate_window_start_unix
+  VINCIRE (*dest).rate_count AD (*src).rate_count
+  VINCIRE (*dest).rate_dropped AD (*src).rate_dropped
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_config_from_settings(SPECULUM Settings settings) REDDE CsrfConfig
+  EVOCA CsrfConfig cfg AD CONIURA csrf_config_default()
+  VINCIRE cfg.cookie_name AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "csrf.cookie_name"))
+  VINCIRE cfg.field_name AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "csrf.field_name"))
+  VINCIRE cfg.header_name AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "csrf.header_name"))
+  VINCIRE cfg.exclude_bearer AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "csrf.exclude_bearer"))
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE csrf_error_message(CsrfError err) REDDE VERBUM
+  ELIGE err
+    CASUS CsrfErrNoCookie:
+      REDDE "csrf binding ausente"
+    CASUS CsrfErrNoToken:
+      REDDE "csrf token ausente"
+    CASUS CsrfErrInvalidToken:
+      REDDE "csrf token invalido"
+    ALIOQUIN:
+      REDDE "csrf secret ausente"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE csrf_validation_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, CsrfError)(0)
+EXPLICIT RITUALE
+
+RITUALE csrf_validation_err(CsrfError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, CsrfError)(err)
+EXPLICIT RITUALE
+
+RITUALE csrf_validation_error_code(SPECULUM NIHIL res) REDDE REX
+  EVOCA SPECULUM REX ptr AD OBSECRO result_unwrap_err_ptr(res)
+  REDDE *ptr
+EXPLICIT RITUALE
+
+RITUALE csrf_validation_error_matches(SPECULUM NIHIL res, CsrfError expected) REDDE VERUM
+  EVOCA REX code AD CONIURA csrf_validation_error_code(res)
+  ELIGE expected
+    CASUS CsrfErrNoCookie:
+      REDDE code == 0
+    CASUS CsrfErrNoToken:
+      REDDE code == 1
+    CASUS CsrfErrInvalidToken:
+      REDDE code == 2
+    ALIOQUIN:
+      REDDE code == 3
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE csrf_validation_error_message(SPECULUM NIHIL res) REDDE VERBUM
+  SI CONIURA csrf_validation_error_matches(res, CsrfErrNoCookie)
+    REDDE CONIURA csrf_error_message(CsrfErrNoCookie)
+  FIN SI
+  SI CONIURA csrf_validation_error_matches(res, CsrfErrNoToken)
+    REDDE CONIURA csrf_error_message(CsrfErrNoToken)
+  FIN SI
+  SI CONIURA csrf_validation_error_matches(res, CsrfErrInvalidToken)
+    REDDE CONIURA csrf_error_message(CsrfErrInvalidToken)
+  FIN SI
+  REDDE CONIURA csrf_error_message(CsrfErrSecretMissing)
+EXPLICIT RITUALE
+
+RITUALE csrf_binding_generate() REDDE VERBUM
+  EVOCA SPECULUM NIHIL bytes AD CONIURA csprng_bytes(32)
+  REDDE CONIURA bytes_to_hex(bytes)
+EXPLICIT RITUALE
+
+RITUALE csrf_token_derive(VERBUM secret, VERBUM binding) REDDE VERBUM
+  REDDE CONIURA hmac_sha256(secret, binding)
+EXPLICIT RITUALE
+
+RITUALE csrf_token_for_request(SPECULUM CsrfConfig cfg, VERBUM secret, VERBUM existing_binding) REDDE CsrfToken
+  EVOCA CsrfToken out
+  EVOCA VERBUM binding AD existing_binding
+  SI CONIURA len(binding) == 0
+    VINCIRE binding AD CONIURA csrf_binding_generate()
+    VINCIRE out.is_new_binding AD VERUM
+  ALITER
+    VINCIRE out.is_new_binding AD FALSUM
+  FIN SI
+  VINCIRE out.binding_cookie AD binding
+  VINCIRE out.token AD CONIURA csrf_token_derive(secret, binding)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE csrf_token_validate(VERBUM secret, VERBUM binding, VERBUM received_token) REDDE VERUM
+  EVOCA VERBUM expected AD CONIURA csrf_token_derive(secret, binding)
+  REDDE CONIURA constant_time_compare(expected, received_token)
+EXPLICIT RITUALE
+
+RITUALE csrf_request_needs_check(VERBUM method, SPECULUM NIHIL headers) REDDE VERUM
+  EVOCA VERBUM normalized AD CONIURA to_upper(CONIURA trim(method))
+  SI CONIURA compare(normalized, "GET") == 0 VEL CONIURA compare(normalized, "HEAD") == 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA compare(normalized, "OPTIONS") == 0 VEL CONIURA compare(normalized, "TRACE") == 0
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE csrf_body_field(VERBUM body_encoded, VERBUM field_name) REDDE VERBUM
+  EVOCA VERBUM rest AD body_encoded
+
+  DUM CONIURA len(rest) != 0
+    EVOCA REX amp AD CONIURA find(rest, "&")
+    EVOCA VERBUM pair AD ""
+    SI amp == -1
+      VINCIRE pair AD rest
+      VINCIRE rest AD ""
+    ALITER
+      VINCIRE pair AD CONIURA substring(rest, 0, amp)
+      VINCIRE rest AD CONIURA substring(rest, amp + 1, CONIURA len(rest))
+    FIN SI
+    SI CONIURA len(pair) == 0
+      RECEDE
+    FIN SI
+    EVOCA FormPair decoded AD CONIURA form_decode_pair(pair)
+    SI CONIURA compare(decoded.chave, field_name) == 0
+      REDDE decoded.valor
+    FIN SI
+  FIN DUM
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE csrf_validate_request(SPECULUM CsrfConfig cfg, VERBUM secret, SPECULUM NIHIL headers, VERBUM body_encoded) REDDE SPECULUM NIHIL
+  EVOCA VERBUM raw_cookie AD CONIURA request_header_or(headers, "cookie", "")
+  EVOCA SPECULUM NIHIL cookies AD CONIURA cookie_parse_header(raw_cookie)
+  EVOCA SPECULUM NIHIL binding_opt AD CONIURA cookie_get(cookies, (*cfg).cookie_name)
+  EVOCA VERBUM binding AD ""
+  EVOCA VERBUM received AD CONIURA request_header_or(headers, (*cfg).header_name, "")
+
+  SI CONIURA option_is_none GENUS(VERBUM)(binding_opt)
+    CONIURA option_free GENUS(VERBUM)(binding_opt)
+    REDDE CONIURA csrf_validation_err(CsrfErrNoCookie)
+  FIN SI
+  VINCIRE binding AD CONIURA option_unwrap GENUS(VERBUM)(binding_opt)
+  CONIURA option_free GENUS(VERBUM)(binding_opt)
+
+  SI CONIURA len(received) == 0
+    VINCIRE received AD CONIURA csrf_body_field(body_encoded, (*cfg).field_name)
+  FIN SI
+  SI CONIURA len(received) == 0
+    REDDE CONIURA csrf_validation_err(CsrfErrNoToken)
+  FIN SI
+  SI NON CONIURA csrf_token_validate(secret, binding, received)
+    REDDE CONIURA csrf_validation_err(CsrfErrInvalidToken)
+  FIN SI
+  REDDE CONIURA csrf_validation_ok()
+EXPLICIT RITUALE
+
+RITUALE csrf_input_field(SPECULUM CsrfConfig cfg, VERBUM token) REDDE VERBUM
+  EVOCA VERBUM safe_name AD CONIURA html_encode((*cfg).field_name)
+  EVOCA VERBUM safe_token AD CONIURA html_encode(token)
+  EVOCA VERBUM out AD "<input type=\"hidden\" name=\""
+  VINCIRE out AD CONIURA concat(out, safe_name)
+  VINCIRE out AD CONIURA concat(out, "\" value=\"")
+  VINCIRE out AD CONIURA concat(out, safe_token)
+  VINCIRE out AD CONIURA concat(out, "\">")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE csrf_binding_cookie(SPECULUM CsrfConfig cfg, VERBUM binding, VERUM secure_cookie) REDDE SetCookie
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set((*cfg).cookie_name, binding)
+  VINCIRE cookie.path AD "/"
+  VINCIRE cookie.secure AD secure_cookie
+  VINCIRE cookie.http_only AD VERUM
+  VINCIRE cookie.same_site AD "Strict"
+  REDDE cookie
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

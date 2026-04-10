@@ -1,0 +1,44 @@
+INCIPIT grimoire "fase8_8c_invalidate_all_for_user_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_redis.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase8_8c_tmp_dir("invalidate")
+  CONIURA phase8_reset_dir(root)
+  SI CONIURA phase8_8c_start_fake_redis(root) != 0
+    REDDE 1
+  FIN SI
+  EVOCA SessionStore store AD CONIURA phase8_8c_store(root)
+  EVOCA SessionConfig cfg AD CONIURA phase8_session_config("redis-invalidate-secret")
+  EVOCA Session a AD CONIURA session_new()
+  EVOCA Session b AD CONIURA session_new()
+  CONIURA session_set(SPECULUM a, "user_id", "99")
+  CONIURA session_set(SPECULUM b, "user_id", "99")
+  CONIURA session_finalize(SPECULUM a, store, cfg, CONIURA response_ok())
+  CONIURA session_finalize(SPECULUM b, store, cfg, CONIURA response_ok())
+
+  EVOCA SPECULUM NIHIL inv_res AD CONIURA session_invalidate_all_for_user(store, "99")
+  EVOCA SPECULUM Redis redis AD CONIURA session_redis_handle(store)
+  EVOCA SPECULUM SessionRedisState rs AD store.state
+  EVOCA SPECULUM NIHIL a_exists_res AD CONIURA redis_exists(*redis, CONIURA session_redis_key((*rs).config.prefixo_sessao, a.id))
+  EVOCA SPECULUM NIHIL b_exists_res AD CONIURA redis_exists(*redis, CONIURA session_redis_key((*rs).config.prefixo_sessao, b.id))
+  CONIURA phase8_8c_stop_fake_redis(root)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(inv_res)
+    REDDE 2
+  FIN SI
+  SI CONIURA result_is_err GENUS(VERUM, VERBUM)(a_exists_res) VEL CONIURA result_is_err GENUS(VERUM, VERBUM)(b_exists_res)
+    REDDE 3
+  FIN SI
+  SI CONIURA result_unwrap GENUS(VERUM, VERBUM)(a_exists_res) VEL CONIURA result_unwrap GENUS(VERUM, VERBUM)(b_exists_res)
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase3_3c_failed_retry_then_publish_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "../../../../lib/civitas/outbox.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE flaky_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  SI CONIURA compare(CONIURA read_all("tests/tmp/fase_3/3c_failed_retry/flag.txt"), "fail") == 0
+    IACE "transient failure"
+  FIN SI
+  CONIURA write_all("tests/tmp/fase_3/3c_failed_retry/consumed.log", "ok")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase3_3c_tmp_dir("3c_failed_retry")
+  EVOCA OutboxStore store
+  EVOCA EventBus bus
+  EVOCA VERBUM entry_id
+  EVOCA OutboxPublishReport first_report
+  EVOCA OutboxPublishReport second_report
+  EVOCA OutboxEntry entry
+  EVOCA REX base_now AD 0
+
+  CONIURA phase3_3c_reset_dir(dir)
+  CONIURA write_all(CONIURA concat(dir, "/flag.txt"), "fail")
+  VINCIRE store AD CONIURA phase3_3c_ok_or_fail_store(CONIURA outbox_store_open(dir, 3))
+  CONIURA event_bus_init(SPECULUM bus, "retry-bus")
+  CONIURA phase3_3c_ok_or_fail_unit(CONIURA event_subscribe(SPECULUM bus, "mail.delivery_requested", "flaky_handler", flaky_handler))
+
+  VINCIRE entry_id AD CONIURA phase3_3c_ok_or_fail_entry_id(CONIURA outbox_enqueue(SPECULUM store, CONIURA phase3_3c_event("mail.delivery_requested", "req-retry", "actor-r", "{\"mail_id\":\"7\"}", "public"), "mail:7"))
+  VINCIRE base_now AD CONIURA now_ms()
+  VINCIRE first_report AD CONIURA phase3_3c_ok_or_fail_report(CONIURA outbox_after_commit_publish(SPECULUM store, bus, 10, 100, base_now))
+  VINCIRE entry AD CONIURA phase3_3c_ok_or_fail_entry(CONIURA outbox_get_entry(SPECULUM store, entry_id))
+  SI first_report.failed_count != 1
+    REDDE 1
+  FIN SI
+  SI entry.status != OUTBOX_FAILED VEL entry.attempts != 1
+    REDDE 2
+  FIN SI
+
+  CONIURA write_all(CONIURA concat(dir, "/flag.txt"), "ok")
+  VINCIRE second_report AD CONIURA phase3_3c_ok_or_fail_report(CONIURA outbox_after_commit_publish(SPECULUM store, bus, 10, 100, base_now + 200))
+  VINCIRE entry AD CONIURA phase3_3c_ok_or_fail_entry(CONIURA outbox_get_entry(SPECULUM store, entry_id))
+  SI second_report.published_count != 1
+    REDDE 3
+  FIN SI
+  SI entry.status != OUTBOX_PUBLISHED
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(CONIURA concat(dir, "/consumed.log")), "ok") != 0
+    REDDE 5
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

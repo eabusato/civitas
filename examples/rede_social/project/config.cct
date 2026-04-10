@@ -1,0 +1,116 @@
+INCIPIT grimoire "rede_social_config"
+
+ADVOCARE "../../../lib/civitas/csrf.cct"
+ADVOCARE "../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../lib/civitas/storage/storage.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM RedeConfig
+  app_name: VERBUM
+  root_dir: VERBUM
+  static_dir: VERBUM
+  reports_dir: VERBUM
+  docs_dir: VERBUM
+  releases_dir: VERBUM
+  trace_dir: VERBUM
+  trace_db_path: VERBUM
+  dep_db_path: VERBUM
+  topo: StorageTopology
+  sessions_dir: VERBUM
+  session_cfg: SessionConfig
+  csrf_cfg: CsrfConfig
+  admin_user: VERBUM
+  admin_password: VERBUM
+  host: VERBUM
+  port: REX
+  sigil_path: VERBUM
+FIN SIGILLUM
+
+RITUALE rede_env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    EVOCA VERBUM value AD CONIURA getenv(name)
+    SI CONIURA len(value) > 0
+      REDDE value
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE rede_env_or_int(VERBUM name, REX fallback) REDDE REX
+  SI CONIURA has_env(name)
+    EVOCA VERBUM value AD CONIURA trim(CONIURA getenv(name))
+    SI CONIURA len(value) > 0
+      REDDE CONIURA fmt_parse_int(value)
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE rede_guess_root() REDDE VERBUM
+  EVOCA VERBUM explicit_root AD CONIURA rede_env_or("REDE_SOCIAL_PROJECT_ROOT", "")
+  SI CONIURA len(explicit_root) > 0
+    REDDE explicit_root
+  FIN SI
+  SI CONIURA exists("civitas.toml") ET CONIURA exists("project/main.cct")
+    REDDE "."
+  FIN SI
+  SI CONIURA exists("examples/rede_social/civitas.toml")
+    REDDE "examples/rede_social"
+  FIN SI
+  REDDE "."
+EXPLICIT RITUALE
+
+RITUALE rede_config_load() REDDE RedeConfig
+  EVOCA RedeConfig cfg
+  EVOCA VERBUM root AD CONIURA normalize(CONIURA rede_guess_root())
+  EVOCA StorageTopology topo AD CONIURA storage_topology_new("rede_social", CONIURA path_join(root, "data"), CONIURA path_join(root, "data/logs"))
+  EVOCA SessionConfig sess_cfg AD CONIURA session_config_default()
+  EVOCA CsrfConfig csrf_cfg AD CONIURA csrf_config_default()
+
+  VINCIRE cfg.app_name AD "rede_social"
+  VINCIRE cfg.root_dir AD root
+  VINCIRE cfg.static_dir AD CONIURA path_join(root, "static")
+  VINCIRE cfg.reports_dir AD CONIURA path_join(root, ".civitas/reports")
+  VINCIRE cfg.docs_dir AD CONIURA path_join(root, ".civitas/generated-docs")
+  VINCIRE cfg.releases_dir AD CONIURA path_join(root, ".civitas/releases")
+  VINCIRE cfg.trace_dir AD CONIURA path_join(root, "data/traces")
+  VINCIRE cfg.trace_db_path AD CONIURA path_join(root, "data/trace_store.db")
+  VINCIRE cfg.dep_db_path AD CONIURA normalize(CONIURA path_join(root, "../../security/known_cves.json"))
+  VINCIRE cfg.topo AD topo
+  VINCIRE cfg.sessions_dir AD CONIURA path_join(root, "data/sessions")
+  VINCIRE cfg.admin_user AD "admin"
+  VINCIRE cfg.admin_password AD CONIURA rede_env_or("REDE_SOCIAL_ADMIN_PASSWORD", "change-me-rede-social-admin")
+  VINCIRE cfg.host AD CONIURA rede_env_or("CIVITAS_HTTP__HOST", "127.0.0.1")
+  VINCIRE cfg.port AD CONIURA rede_env_or_int("CIVITAS_HTTP__PORT", 18082)
+  VINCIRE cfg.sigil_path AD CONIURA path_join(root, "project/main.system.sigil")
+
+  VINCIRE sess_cfg.cookie_nome AD "rede_social_session"
+  VINCIRE sess_cfg.cookie_path AD "/"
+  VINCIRE sess_cfg.segredo AD CONIURA rede_env_or("REDE_SOCIAL_SESSION_SECRET", "change-me-rede-social-session-secret")
+  VINCIRE sess_cfg.idle_timeout_segundos AD 7200
+  VINCIRE sess_cfg.ttl_segundos AD 604800
+  VINCIRE cfg.session_cfg AD sess_cfg
+
+  VINCIRE csrf_cfg.cookie_name AD "rede_social_csrf"
+  VINCIRE csrf_cfg.field_name AD "csrf_token"
+  VINCIRE csrf_cfg.header_name AD "X-CSRF-Token"
+  VINCIRE cfg.csrf_cfg AD csrf_cfg
+
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE rede_config_prepare_dirs(RedeConfig cfg) REDDE NIHIL
+  CONIURA storage_topology_ensure_dirs(cfg.topo)
+  CONIURA mkdir_all(cfg.sessions_dir)
+  CONIURA mkdir_all(cfg.reports_dir)
+  CONIURA mkdir_all(cfg.docs_dir)
+  CONIURA mkdir_all(cfg.releases_dir)
+  CONIURA mkdir_all(cfg.trace_dir)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

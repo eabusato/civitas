@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase5_5c_spam_honeypot_fast_and_block_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA form_data_new()
+  EVOCA SpamCheckConfig cfg AD CONIURA spam_check_config_default()
+  EVOCA SpamCheckResult result
+
+  CONIURA form_data_put_text(SPECULUM fd, "website", "spam.example")
+  CONIURA form_data_put_text(SPECULUM fd, "message", "mensagem valida")
+  VINCIRE cfg.min_submit_seconds AD 3
+  VINCIRE cfg.auto_block_score AD 10
+  CONIURA spam_check_fill(SPECULUM result, cfg, SPECULUM fd, 1)
+
+  SI NON CONIURA phase5_5c_has_signal(result, SsHoneypotFilled)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA phase5_5c_has_signal(result, SsSubmissionTooFast)
+    REDDE 2
+  FIN SI
+  SI NON result.blocked
+    REDDE 3
+  FIN SI
+  CONIURA spam_check_result_free(SPECULUM result)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

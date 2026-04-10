@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase9_9e_validate_text_rejects_magic"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_types.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9e_root("validate_text")
+  EVOCA VERBUM path AD CONIURA concat(root, "/fake.mp4")
+  CONIURA phase9_reset_dir(root)
+  CONIURA mkdir_all(root)
+  CONIURA write_all(path, "not a video")
+  EVOCA SPECULUM NIHIL res AD CONIURA video_validate(path, CONIURA phase9_9e_config_default())
+  SI NON CONIURA result_is_err GENUS(VideoProbe, VERBUM)(res)
+    IACE "plain text should not validate as video"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase4_4c_mail_memory_test_env_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4c_tmp_dir("4c_mail_memory_test_env")
+  SI CONIURA compare(
+    CONIURA phase4_4c_mail_backend_name_from_content(
+      root,
+      "[app]\nname = \"desviados\"\nenvironment = \"test\"\nallowed_hosts = [\"127.0.0.1\"]\n\n[media]\nroot_dir = \"media\"\n\n[mail]\nbackend = \"memory\"\n"
+    ),
+    "memory"
+  ) != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,64 @@
+INCIPIT grimoire "fase15_15a_login_errors_and_active_lookup"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_login.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_db_open("15a_login_errors_and_active_lookup")
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  EVOCA SPECULUM NIHIL created_res AD CONIURA auth_criar_usuario(db, cfg, "errors@example.com", "S3nh@Forte!")
+  SI CONIURA result_is_err GENUS(User, AuthError)(created_res)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA User created AD CONIURA result_unwrap GENUS(User, AuthError)(created_res)
+
+  EVOCA SPECULUM NIHIL missing_res AD CONIURA auth_login(db, cfg, "missing@example.com", "S3nh@Forte!")
+  SI NON CONIURA result_is_err GENUS(User, AuthError)(missing_res)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA auth_error_name(CONIURA result_unwrap_err GENUS(User, AuthError)(missing_res)), "AuthEmailNaoEncontrado") != 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+
+  EVOCA SPECULUM NIHIL wrong_res AD CONIURA auth_login(db, cfg, "errors@example.com", "senha_errada")
+  SI NON CONIURA result_is_err GENUS(User, AuthError)(wrong_res)
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA auth_error_name(CONIURA result_unwrap_err GENUS(User, AuthError)(wrong_res)), "AuthSenhaIncorreta") != 0
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+
+  CONIURA auth_marcar_inativo(db, created.id)
+  EVOCA SPECULUM NIHIL inactive_res AD CONIURA auth_login(db, cfg, "errors@example.com", "S3nh@Forte!")
+  SI NON CONIURA result_is_err GENUS(User, AuthError)(inactive_res)
+    CONIURA db_close(db)
+    REDDE 6
+  FIN SI
+  SI CONIURA compare(CONIURA auth_error_name(CONIURA result_unwrap_err GENUS(User, AuthError)(inactive_res)), "AuthUsuarioInativo") != 0
+    CONIURA db_close(db)
+    REDDE 7
+  FIN SI
+
+  EVOCA SPECULUM NIHIL active_opt AD CONIURA auth_usuario_ativo(db, created.id)
+  SI CONIURA option_is_some GENUS(User)(active_opt)
+    CONIURA option_free GENUS(User)(active_opt)
+    CONIURA db_close(db)
+    REDDE 8
+  FIN SI
+  CONIURA option_free GENUS(User)(active_opt)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

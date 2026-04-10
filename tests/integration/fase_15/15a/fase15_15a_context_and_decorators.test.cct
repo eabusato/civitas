@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase15_15a_context_and_decorators"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_decorators.cct"
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocalContext anon AD CONIURA phase15_ctx_anonymous()
+  SI CONIURA auth_requires_login_check(anon)
+    REDDE 1
+  FIN SI
+
+  EVOCA LocalContext ctx AD CONIURA phase15_ctx_authenticated("user-1", "bearer", "posts.ler admin.*")
+  SI NON CONIURA auth_requires_login_check(ctx)
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA auth_ctx_user_id(ctx), "user-1") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA auth_ctx_via(ctx), "bearer") != 0
+    REDDE 4
+  FIN SI
+  SI NON CONIURA auth_requires_permission_check(NIHIL, ctx, "posts.ler")
+    REDDE 5
+  FIN SI
+  SI NON CONIURA auth_requires_permission_check(NIHIL, ctx, "admin.delete")
+    REDDE 6
+  FIN SI
+  SI CONIURA auth_requires_permission_check(NIHIL, ctx, "billing.read")
+    REDDE 7
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

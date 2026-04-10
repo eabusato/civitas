@@ -1,0 +1,57 @@
+INCIPIT grimoire "fase18_18e_schedule_and_refresh_task"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard_task.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_schedule_and_refresh_task() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_dashboard_stack_open("18e_schedule_refresh")
+  CONIURA phase18_dashboard_insert_page(stack.db, "published-1", 2, 100)
+  CONIURA admin_dashboard_schedule_refresh(stack.dbh)
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT task_name, schedule_expr FROM scheduled_jobs WHERE job_name = 'admin_dashboard.refresh'", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "scheduled refresh row missing"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), "admin_dashboard.refresh") != 0
+    IACE "scheduled refresh task_name mismatch"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 1), "@every 10m") != 0
+    IACE "scheduled refresh expression mismatch"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  EVOCA TaskRegistry registry AD CONIURA task_registry_new()
+  CONIURA admin_dashboard_register_callbacks(SPECULUM registry)
+  SI CONIURA task_registry_find(registry, "admin_dashboard.refresh") == NIHIL
+    IACE "dashboard callback missing from registry"
+  FIN SI
+  EVOCA TaskRecord task AD CONIURA task_record_empty()
+  EVOCA TaskCallbackResult result AD CONIURA admin_dashboard_refresh_task_callback(stack.dbh, task)
+  SI NON result.success
+    IACE "dashboard refresh callback should succeed"
+  FIN SI
+  SI CONIURA compare(result.result_json, "{\"status\":\"snapshot_saved\"}") != 0
+    IACE "dashboard refresh callback result mismatch"
+  FIN SI
+  EVOCA DbRows snap_rows AD CONIURA dbh_query(stack.dbh, "SELECT COUNT(*) FROM admin_dashboard_snapshots", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM snap_rows)
+    IACE "snapshot count row missing"
+  FIN SI
+  SI CONIURA dbrows_get_int(snap_rows, 0) != 1
+    IACE "dashboard refresh callback should persist one snapshot"
+  FIN SI
+  CONIURA dbrows_close(snap_rows)
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_schedule_and_refresh_task()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

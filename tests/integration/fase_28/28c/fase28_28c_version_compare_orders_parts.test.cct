@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase28_28c_version_compare_orders_parts"
+
+ADVOCARE "../../../../lib/civitas/dep_review.cct"
+ADVOCARE "../../../../lib/civitas/dep_review/dep_review.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA dep_review_version_compare("3.45.2", "3.45.1") <= 0
+    REDDE 1
+  FIN SI
+  SI CONIURA dep_review_version_compare("3.45.0", "3.45.0") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA dep_review_version_compare("3.44.9", "3.45.0") >= 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

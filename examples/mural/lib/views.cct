@@ -1,0 +1,117 @@
+INCIPIT grimoire "mural_views"
+
+ADVOCARE "../../../lib/civitas/csrf.cct"
+ADVOCARE "../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../lib/civitas/validate/validate.cct"
+ADVOCARE "../gen/admin_lite.cct"
+ADVOCARE "../gen/index.cct"
+ADVOCARE "config.cct"
+ADVOCARE "repository.cct"
+ADVOCARE "template_contexts.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE mural_form_schema() REDDE FormSchema
+  EVOCA FormSchema schema AD CONIURA form_schema_new()
+  EVOCA FieldSchema name_field AD CONIURA field_schema_new("name")
+  EVOCA FieldSchema email_field AD CONIURA field_schema_new("email")
+  EVOCA FieldSchema body_field AD CONIURA field_schema_new("body")
+  CONIURA field_schema_add_rule(SPECULUM name_field, CONIURA rule_required_msg("Name is required."))
+  CONIURA field_schema_add_rule(SPECULUM name_field, CONIURA rule_max_len(80))
+  CONIURA field_schema_add_rule(SPECULUM email_field, CONIURA rule_email())
+  CONIURA field_schema_add_rule(SPECULUM email_field, CONIURA rule_max_len(120))
+  CONIURA field_schema_add_rule(SPECULUM body_field, CONIURA rule_required_msg("Message is required."))
+  CONIURA field_schema_add_rule(SPECULUM body_field, CONIURA rule_min_len(3))
+  CONIURA field_schema_add_rule(SPECULUM body_field, CONIURA rule_max_len(2000))
+  CONIURA form_schema_add_field(SPECULUM schema, name_field)
+  CONIURA form_schema_add_field(SPECULUM schema, email_field)
+  CONIURA form_schema_add_field(SPECULUM schema, body_field)
+  REDDE schema
+EXPLICIT RITUALE
+
+RITUALE mural_blank_form() REDDE FormData
+  REDDE CONIURA form_data_new()
+EXPLICIT RITUALE
+
+RITUALE mural_blank_validation() REDDE ValidationResult
+  REDDE CONIURA validation_result_new()
+EXPLICIT RITUALE
+
+RITUALE mural_blank_csrf_token() REDDE CsrfToken
+  EVOCA CsrfToken token
+  VINCIRE token.token AD ""
+  VINCIRE token.binding_cookie AD ""
+  VINCIRE token.is_new_binding AD FALSUM
+  REDDE token
+EXPLICIT RITUALE
+
+RITUALE mural_message_form_html(FormData fd, ValidationResult vr) REDDE VERBUM
+  EVOCA FormDef def AD CONIURA form_def_new("/mensagens", CONIURA mural_blank_csrf_token())
+  EVOCA FieldDef name_field AD CONIURA field_def_new("name", "Name", IkText)
+  EVOCA FieldDef email_field AD CONIURA field_def_new("email", "Email", IkEmail)
+  EVOCA FieldDef body_field AD CONIURA field_def_new("body", "Message", IkTextarea)
+  VINCIRE name_field.placeholder AD "Your name"
+  VINCIRE name_field.required AD VERUM
+  VINCIRE email_field.placeholder AD "name@example.com"
+  VINCIRE body_field.placeholder AD "Write a message for the wall"
+  VINCIRE body_field.required AD VERUM
+  VINCIRE body_field.rows AD 5
+  CONIURA field_def_add_attr(SPECULUM body_field, "maxlength", "2000")
+  CONIURA form_def_add_field(SPECULUM def, name_field)
+  CONIURA form_def_add_field(SPECULUM def, email_field)
+  CONIURA form_def_add_field(SPECULUM def, body_field)
+  VINCIRE def.submit_label AD "Post message"
+  VINCIRE def.form_css_class AD "mural-form"
+  REDDE CONIURA render_form(def, vr, fd)
+EXPLICIT RITUALE
+
+RITUALE mural_messages_to_contexts(SPECULUM NIHIL records) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralMessageItemContext))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(records)
+  DUM i < n
+    EVOCA SPECULUM MuralMessageRecord rec_ptr AD CONIURA fluxus_get(records, i)
+    EVOCA MuralMessageItemContext item
+    VINCIRE item.id AD (*rec_ptr).id
+    VINCIRE item.name AD (*rec_ptr).name
+    VINCIRE item.email AD (*rec_ptr).email
+    VINCIRE item.has_email AD CONIURA len((*rec_ptr).email) != 0
+    VINCIRE item.body AD (*rec_ptr).body
+    VINCIRE item.created_at AD (*rec_ptr).created_at
+    CONIURA fluxus_push(out, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mural_render_index(MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL records, FormData fd, ValidationResult vr, VERBUM flash_message) REDDE WebResponse
+  EVOCA MuralIndexPageContext ctx
+  EVOCA SPECULUM NIHIL items AD CONIURA mural_messages_to_contexts(records)
+  VINCIRE ctx.page_title AD cfg.site_title
+  VINCIRE ctx.css_url AD CONIURA static_url(static_index, "app.css")
+  VINCIRE ctx.flash_message AD flash_message
+  VINCIRE ctx.has_flash AD CONIURA len(flash_message) > 0
+  VINCIRE ctx.form_html AD CONIURA mural_message_form_html(fd, vr)
+  VINCIRE ctx.empty_text AD "No messages yet. Be the first to post."
+  VINCIRE ctx.message_count AD CONIURA fluxus_len(items)
+  VINCIRE ctx.messages AD items
+  REDDE CONIURA response_html(CONIURA render_index(ctx))
+EXPLICIT RITUALE
+
+RITUALE mural_render_admin(MuralConfig cfg, StaticIndex static_index, SPECULUM NIHIL records, VERBUM flash_message) REDDE WebResponse
+  EVOCA MuralAdminPageContext ctx
+  EVOCA SPECULUM NIHIL items AD CONIURA mural_messages_to_contexts(records)
+  VINCIRE ctx.page_title AD CONIURA concat(cfg.site_title, " admin-lite")
+  VINCIRE ctx.css_url AD CONIURA static_url(static_index, "app.css")
+  VINCIRE ctx.flash_message AD flash_message
+  VINCIRE ctx.has_flash AD CONIURA len(flash_message) > 0
+  VINCIRE ctx.empty_text AD "No stored messages."
+  VINCIRE ctx.message_count AD CONIURA fluxus_len(items)
+  VINCIRE ctx.messages AD items
+  REDDE CONIURA response_html(CONIURA render_admin_lite(ctx))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

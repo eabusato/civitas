@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase8_8b_template_signa_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../fase_6/support/common.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase8_tmp_dir("8b_template_signa")
+  EVOCA VERBUM html AD ""
+  CONIURA phase8_8b_prepare_template_project(root)
+  CONIURA phase6_write_template(root, "flash.html", "{% EVOCA FlashTemplateContext %}\n<div>{% SIGNA %}</div>\n")
+  CONIURA phase6_compile_file_ok(root, "flash.html")
+  VINCIRE html AD CONIURA phase8_8b_render_template(root, "gen/flash.cct", "flash")
+  SI CONIURA find(html, "flash-message flash-success") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "Tudo certo") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

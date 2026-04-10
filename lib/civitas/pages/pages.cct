@@ -1,0 +1,155 @@
+INCIPIT grimoire "civitas_pages"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../authorship/authorship.cct"
+
+ORDO PublishState
+  PsDraft,
+  PsScheduled,
+  PsPublished,
+  PsArchived
+FIN ORDO
+
+SIGILLUM PageSeo
+  title: VERBUM
+  description: VERBUM
+  canonical_url: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MenuSlot
+  name: VERBUM
+  label: VERBUM
+FIN SIGILLUM
+
+SIGILLUM Page
+  id: REX
+  locale: VERBUM
+  slug: VERBUM
+  title: VERBUM
+  body_html: VERBUM
+  state: PublishState
+  seo_title: VERBUM
+  seo_description: VERBUM
+  canonical_url: VERBUM
+  menu_slot: VERBUM
+  menu_label: VERBUM
+  menu_order: REX
+  scheduled_for: REX
+  published_at: REX
+  created_by: VERBUM
+  updated_by: VERBUM
+  request_id: VERBUM
+  created_at: REX
+  updated_at: REX
+FIN SIGILLUM
+
+SIGILLUM PageMenuItem
+  title: VERBUM
+  slug: VERBUM
+  locale: VERBUM
+  menu_slot: VERBUM
+  menu_label: VERBUM
+  menu_order: REX
+FIN SIGILLUM
+
+RITUALE pages_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE pages_ensure_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_pages (id INTEGER PRIMARY KEY AUTOINCREMENT, locale TEXT NOT NULL, slug TEXT NOT NULL, title TEXT NOT NULL, body_html TEXT NOT NULL, state INTEGER NOT NULL, seo_title TEXT NOT NULL, seo_description TEXT NOT NULL, canonical_url TEXT NOT NULL, menu_slot TEXT NOT NULL, menu_label TEXT NOT NULL, menu_order INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, published_at INTEGER NOT NULL, created_by TEXT NOT NULL, updated_by TEXT NOT NULL, request_id TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS idx_civitas_pages_slug_locale ON civitas_pages(slug, locale)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_civitas_pages_state_locale ON civitas_pages(state, locale)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_publish_state_to_int(PublishState state) REDDE REX
+  ELIGE state
+    CASUS PsDraft: REDDE 0
+    CASUS PsScheduled: REDDE 1
+    CASUS PsPublished: REDDE 2
+    CASUS PsArchived: REDDE 3
+    ALIOQUIN: REDDE 0
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE page_publish_state_from_int(REX state) REDDE PublishState
+  SI state == 1
+    REDDE PsScheduled
+  FIN SI
+  SI state == 2
+    REDDE PsPublished
+  FIN SI
+  SI state == 3
+    REDDE PsArchived
+  FIN SI
+  REDDE PsDraft
+EXPLICIT RITUALE
+
+RITUALE page_seo_default() REDDE PageSeo
+  EVOCA PageSeo seo
+  VINCIRE seo.title AD ""
+  VINCIRE seo.description AD ""
+  VINCIRE seo.canonical_url AD ""
+  REDDE seo
+EXPLICIT RITUALE
+
+RITUALE page_menu_slot_empty() REDDE MenuSlot
+  EVOCA MenuSlot slot
+  VINCIRE slot.name AD ""
+  VINCIRE slot.label AD ""
+  REDDE slot
+EXPLICIT RITUALE
+
+RITUALE page_empty() REDDE Page
+  EVOCA Page page
+  VINCIRE page.id AD 0
+  VINCIRE page.locale AD ""
+  VINCIRE page.slug AD ""
+  VINCIRE page.title AD ""
+  VINCIRE page.body_html AD ""
+  VINCIRE page.state AD PsDraft
+  VINCIRE page.seo_title AD ""
+  VINCIRE page.seo_description AD ""
+  VINCIRE page.canonical_url AD ""
+  VINCIRE page.menu_slot AD ""
+  VINCIRE page.menu_label AD ""
+  VINCIRE page.menu_order AD 0
+  VINCIRE page.scheduled_for AD 0
+  VINCIRE page.published_at AD 0
+  VINCIRE page.created_by AD ""
+  VINCIRE page.updated_by AD ""
+  VINCIRE page.request_id AD ""
+  VINCIRE page.created_at AD 0
+  VINCIRE page.updated_at AD 0
+  REDDE page
+EXPLICIT RITUALE
+
+RITUALE page_from_stmt(SPECULUM NIHIL stmt) REDDE Page
+  EVOCA Page page
+  VINCIRE page.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE page.locale AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE page.slug AD CONIURA stmt_get_text(stmt, 2)
+  VINCIRE page.title AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE page.body_html AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE page.state AD CONIURA page_publish_state_from_int(CONIURA stmt_get_int(stmt, 5))
+  VINCIRE page.seo_title AD CONIURA stmt_get_text(stmt, 6)
+  VINCIRE page.seo_description AD CONIURA stmt_get_text(stmt, 7)
+  VINCIRE page.canonical_url AD CONIURA stmt_get_text(stmt, 8)
+  VINCIRE page.menu_slot AD CONIURA stmt_get_text(stmt, 9)
+  VINCIRE page.menu_label AD CONIURA stmt_get_text(stmt, 10)
+  VINCIRE page.menu_order AD CONIURA stmt_get_int(stmt, 11)
+  VINCIRE page.scheduled_for AD CONIURA stmt_get_int(stmt, 12)
+  VINCIRE page.published_at AD CONIURA stmt_get_int(stmt, 13)
+  VINCIRE page.created_by AD CONIURA stmt_get_text(stmt, 14)
+  VINCIRE page.updated_by AD CONIURA stmt_get_text(stmt, 15)
+  VINCIRE page.request_id AD CONIURA stmt_get_text(stmt, 16)
+  VINCIRE page.created_at AD CONIURA stmt_get_int(stmt, 17)
+  VINCIRE page.updated_at AD CONIURA stmt_get_int(stmt, 18)
+  REDDE page
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

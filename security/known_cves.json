@@ -1,0 +1,17 @@
+{
+  "deps": [
+    {
+      "name": "libsqlite3",
+      "cves": [
+        {
+          "id": "CVE-LOCAL-PLACEHOLDER-SQLITE",
+          "severity": "low",
+          "description": "Local placeholder entry used to keep the review database structure stable.",
+          "affected": "< 0.0.1",
+          "fixed": "0.0.1",
+          "source": "local"
+        }
+      ]
+    }
+  ]
+}

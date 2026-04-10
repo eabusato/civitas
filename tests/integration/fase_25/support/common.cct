@@ -1,0 +1,64 @@
+INCIPIT grimoire "fase25_support_common"
+
+ADVOCARE "../../fase_2/support/common.cct"
+ADVOCARE "../../fase_10/support/common.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Phase25SocketPair
+  listener: SPECULUM NIHIL
+  server: SPECULUM NIHIL
+  client: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE phase25_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_25/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase25_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  REDDE CONIURA phase10_db_open(CONIURA concat("fase25_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase25_request(VERBUM method, VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase2_request(method, target)
+EXPLICIT RITUALE
+
+RITUALE phase25_request_with_headers(VERBUM method, VERBUM target, SPECULUM NIHIL headers) REDDE WebRequest
+  REDDE CONIURA phase2_request_with_headers(method, target, headers)
+EXPLICIT RITUALE
+
+RITUALE phase25_http_ws_request(VERBUM path, VERBUM client_key) REDDE HttpRequest
+  EVOCA HttpRequest req AD CONIURA http_request_new("GET", path)
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "Upgrade", "websocket")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "Connection", "Upgrade")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "Sec-WebSocket-Version", "13")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(req), "Sec-WebSocket-Key", client_key)
+  REDDE req
+EXPLICIT RITUALE
+
+RITUALE phase25_open_socket_pair(REX port) REDDE Phase25SocketPair
+  EVOCA Phase25SocketPair pair
+  VINCIRE pair.listener AD CONIURA tcp_listen("127.0.0.1", port)
+  VINCIRE pair.client AD CONIURA tcp_connect("127.0.0.1", port)
+  VINCIRE pair.server AD CONIURA tcp_accept(pair.listener)
+  CONIURA sock_set_timeout_ms(pair.client, 1000)
+  CONIURA sock_set_timeout_ms(pair.server, 1000)
+  REDDE pair
+EXPLICIT RITUALE
+
+RITUALE phase25_close_socket_pair(Phase25SocketPair pair) REDDE NIHIL
+  CONIURA net_close(pair.server)
+  CONIURA net_close(pair.client)
+  CONIURA net_close(pair.listener)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase25_http_header_end() REDDE VERBUM
+  EVOCA VERBUM crlf AD CONIURA http_crlf()
+  REDDE CONIURA concat(crlf, crlf)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

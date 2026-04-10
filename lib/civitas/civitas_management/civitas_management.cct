@@ -1,0 +1,479 @@
+INCIPIT grimoire "civitas_management"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_hash.cct"
+ADVOCARE "../civitas_config/civitas_config.cct"
+
+SIGILLUM ManagementProject
+  name: VERBUM
+  dest_dir: VERBUM
+  config_path: VERBUM
+  db_driver: VERBUM
+  db_url: VERBUM
+  migrations_dir: VERBUM
+  tests_dir: VERBUM
+  static_src_dir: VERBUM
+  static_out_dir: VERBUM
+FIN SIGILLUM
+
+SIGILLUM MigrationEntry
+  filename: VERBUM
+  applied_at: VERBUM
+  applied: VERUM
+FIN SIGILLUM
+
+SIGILLUM StaticEntry
+  src_path: VERBUM
+  out_path: VERBUM
+  hash_prefix: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TestResult
+  total: REX
+  passed: REX
+  failed: REX
+  skipped: REX
+  duration_ms: REX
+FIN SIGILLUM
+
+RITUALE mgmt_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE mgmt_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE mgmt_shell_quote(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD "'"
+  VINCIRE out AD CONIURA concat(out, CONIURA replace_all(raw, "'", "'\"'\"'"))
+  VINCIRE out AD CONIURA concat(out, "'")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mgmt_sql_literal(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD "'"
+  VINCIRE out AD CONIURA concat(out, CONIURA replace_all(raw, "'", "''"))
+  VINCIRE out AD CONIURA concat(out, "'")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mgmt_compiler_bin() REDDE VERBUM
+  SI CONIURA has_env("CCT_BIN")
+    EVOCA VERBUM candidate AD CONIURA trim(CONIURA getenv("CCT_BIN"))
+    SI CONIURA len(candidate) > 0
+      REDDE candidate
+    FIN SI
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+RITUALE mgmt_expand_env(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM out AD value
+  DUM CONIURA contains(out, "${")
+    EVOCA REX start AD CONIURA find(out, "${")
+    EVOCA REX finish AD CONIURA find_from(out, "}", start)
+    SI finish == -1
+      RECEDE
+    FIN SI
+    EVOCA VERBUM name AD CONIURA substring(out, start + 2, finish)
+    EVOCA VERBUM replacement AD ""
+    SI CONIURA has_env(name)
+      VINCIRE replacement AD CONIURA getenv(name)
+    FIN SI
+    EVOCA VERBUM placeholder AD CONIURA concat("${", CONIURA concat(name, "}"))
+    VINCIRE out AD CONIURA replace(out, placeholder, replacement)
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mgmt_cfg_str(TomlDocument doc, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI NON CONIURA toml_is_valid(doc)
+    REDDE fallback
+  FIN SI
+  SI NON CONIURA toml_has(doc, key)
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA mgmt_expand_env(CONIURA toml_get_string(doc, key))
+EXPLICIT RITUALE
+
+RITUALE mgmt_from_project(CivitasProject src) REDDE ManagementProject
+  EVOCA ManagementProject proj
+  VINCIRE proj.name AD src.name
+  VINCIRE proj.dest_dir AD src.dest_dir
+  VINCIRE proj.config_path AD src.config_path
+  VINCIRE proj.db_driver AD src.db_driver
+  VINCIRE proj.db_url AD src.db_url
+  VINCIRE proj.migrations_dir AD src.migrations_dir
+  VINCIRE proj.tests_dir AD src.tests_dir
+  VINCIRE proj.static_src_dir AD src.static_src_dir
+  VINCIRE proj.static_out_dir AD src.static_out_dir
+  REDDE proj
+EXPLICIT RITUALE
+
+RITUALE mgmt_project_default(VERBUM config_path) REDDE ManagementProject
+  REDDE CONIURA mgmt_from_project(CONIURA civitas_project_default(config_path))
+EXPLICIT RITUALE
+
+RITUALE civitas_management_load_project(VERBUM config_path) REDDE ManagementProject
+  REDDE CONIURA mgmt_from_project(CONIURA civitas_project_load(config_path))
+EXPLICIT RITUALE
+
+RITUALE mgmt_is_postgres(ManagementProject proj) REDDE VERUM
+  REDDE CONIURA compare(CONIURA to_lower(proj.db_driver), "postgres") == 0
+EXPLICIT RITUALE
+
+RITUALE mgmt_sql_cmd(ManagementProject proj, VERBUM sql, VERUM capture) REDDE VERBUM
+  SI NON CONIURA mgmt_is_postgres(proj)
+    CONIURA mkdir_all(CONIURA path_dirname(proj.db_url))
+    EVOCA VERBUM cmd AD "sqlite3 "
+    SI capture
+      VINCIRE cmd AD CONIURA concat(cmd, "-batch -noheader ")
+    FIN SI
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA mgmt_shell_quote(proj.db_url))
+    VINCIRE cmd AD CONIURA concat(cmd, " ")
+    VINCIRE cmd AD CONIURA concat(cmd, CONIURA mgmt_shell_quote(sql))
+    REDDE cmd
+  FIN SI
+  EVOCA VERBUM pg_cmd AD "psql -v ON_ERROR_STOP=1 "
+  SI capture
+    VINCIRE pg_cmd AD CONIURA concat(pg_cmd, "-t -A ")
+  FIN SI
+  VINCIRE pg_cmd AD CONIURA concat(pg_cmd, CONIURA mgmt_shell_quote(proj.db_url))
+  VINCIRE pg_cmd AD CONIURA concat(pg_cmd, " -c ")
+  VINCIRE pg_cmd AD CONIURA concat(pg_cmd, CONIURA mgmt_shell_quote(sql))
+  REDDE pg_cmd
+EXPLICIT RITUALE
+
+RITUALE mgmt_exec_sql(ManagementProject proj, VERBUM sql) REDDE SPECULUM NIHIL
+  EVOCA VERBUM cmd AD CONIURA mgmt_sql_cmd(proj, sql, FALSUM)
+  EVOCA REX code AD CONIURA run(cmd)
+  SI code != 0
+    REDDE CONIURA mgmt_err(CONIURA run_capture_err(cmd))
+  FIN SI
+  REDDE CONIURA mgmt_ok()
+EXPLICIT RITUALE
+
+RITUALE mgmt_capture_sql(ManagementProject proj, VERBUM sql) REDDE VERBUM
+  REDDE CONIURA trim(CONIURA run_capture(CONIURA mgmt_sql_cmd(proj, sql, VERUM)))
+EXPLICIT RITUALE
+
+RITUALE mgmt_migration_table_sql() REDDE VERBUM
+  REDDE "CREATE TABLE IF NOT EXISTS _civitas_migrations (filename TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)"
+EXPLICIT RITUALE
+
+RITUALE mgmt_parse_section(VERBUM content, VERBUM section_name) REDDE VERBUM
+  EVOCA VERBUM marker AD CONIURA concat("-- ", section_name)
+  EVOCA REX start AD CONIURA find(content, marker)
+  SI start == -1
+    SI CONIURA compare(section_name, "UP") == 0
+      REDDE CONIURA trim(content)
+    FIN SI
+    REDDE ""
+  FIN SI
+  VINCIRE start AD start + CONIURA len(marker)
+  EVOCA REX finish AD -1
+  SI CONIURA compare(section_name, "UP") == 0
+    VINCIRE finish AD CONIURA find_from(content, "-- DOWN", start)
+  FIN SI
+  SI finish == -1
+    VINCIRE finish AD CONIURA len(content)
+  FIN SI
+  REDDE CONIURA trim(CONIURA substring(content, start, finish))
+EXPLICIT RITUALE
+
+RITUALE mgmt_parse_first_int_after(VERBUM haystack, VERBUM marker) REDDE REX
+  EVOCA REX start AD CONIURA find(haystack, marker)
+  SI start == -1
+    REDDE 0
+  FIN SI
+  VINCIRE start AD start + CONIURA len(marker)
+  DUM start < CONIURA len(haystack) ET (CONIURA char_at(haystack, start) < 48 VEL CONIURA char_at(haystack, start) > 57)
+    VINCIRE start AD start + 1
+  FIN DUM
+  EVOCA REX finish AD start
+  DUM finish < CONIURA len(haystack) ET CONIURA char_at(haystack, finish) >= 48 ET CONIURA char_at(haystack, finish) <= 57
+    VINCIRE finish AD finish + 1
+  FIN DUM
+  SI finish <= start
+    REDDE 0
+  FIN SI
+  REDDE OBSECRO fmt_parse_int(CONIURA substring(haystack, start, finish))
+EXPLICIT RITUALE
+
+RITUALE mgmt_count_sql(ManagementProject proj, VERBUM sql) REDDE REX
+  REDDE CONIURA mgmt_parse_first_int_after(CONIURA mgmt_capture_sql(proj, sql), "")
+EXPLICIT RITUALE
+
+RITUALE mgmt_migration_is_applied(ManagementProject proj, VERBUM filename) REDDE VERUM
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM _civitas_migrations WHERE filename = ", CONIURA mgmt_sql_literal(filename))
+  REDDE CONIURA mgmt_count_sql(proj, sql) > 0
+EXPLICIT RITUALE
+
+RITUALE mgmt_record_migration(ManagementProject proj, VERBUM filename, REX applied_at) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sql AD "INSERT INTO _civitas_migrations (filename, applied_at) VALUES ("
+  VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal(filename))
+  VINCIRE sql AD CONIURA concat(sql, ", ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(applied_at))
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  REDDE CONIURA mgmt_exec_sql(proj, sql)
+EXPLICIT RITUALE
+
+RITUALE mgmt_unregister_migration(ManagementProject proj, VERBUM filename) REDDE SPECULUM NIHIL
+  EVOCA VERBUM sql AD CONIURA concat("DELETE FROM _civitas_migrations WHERE filename = ", CONIURA mgmt_sql_literal(filename))
+  REDDE CONIURA mgmt_exec_sql(proj, sql)
+EXPLICIT RITUALE
+
+RITUALE mgmt_list_sql_files(VERBUM dir) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  SI NON CONIURA exists(dir)
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA ends_with(*name_ptr, ".sql")
+      CONIURA fluxus_push(out, SPECULUM *name_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA fluxus_sort_verbum(out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_migrate_run(ManagementProject proj) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL ensure_res AD CONIURA mgmt_exec_sql(proj, CONIURA mgmt_migration_table_sql())
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(ensure_res)
+    REDDE ensure_res
+  FIN SI
+  EVOCA SPECULUM NIHIL files AD CONIURA mgmt_list_sql_files(proj.migrations_dir)
+  EVOCA REX applied AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(files)
+  DUM i < n
+    EVOCA SPECULUM VERBUM file_ptr AD CONIURA fluxus_get(files, i)
+    SI NON CONIURA mgmt_migration_is_applied(proj, *file_ptr)
+      EVOCA VERBUM sql_path AD CONIURA path_join(proj.migrations_dir, *file_ptr)
+      EVOCA VERBUM up_sql AD CONIURA mgmt_parse_section(CONIURA read_all(sql_path), "UP")
+      SI CONIURA len(up_sql) > 0
+        EVOCA SPECULUM NIHIL exec_res AD CONIURA mgmt_exec_sql(proj, up_sql)
+        SI CONIURA result_is_err GENUS(REX, VERBUM)(exec_res)
+          CONIURA fluxus_free(files)
+          REDDE exec_res
+        FIN SI
+      FIN SI
+      EVOCA SPECULUM NIHIL rec_res AD CONIURA mgmt_record_migration(proj, *file_ptr, applied + 1)
+      SI CONIURA result_is_err GENUS(REX, VERBUM)(rec_res)
+        CONIURA fluxus_free(files)
+        REDDE rec_res
+      FIN SI
+      VINCIRE applied AD applied + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(files)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(applied)
+EXPLICIT RITUALE
+
+RITUALE mgmt_last_applied(ManagementProject proj, REX count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM sql AD "SELECT filename FROM _civitas_migrations ORDER BY applied_at DESC LIMIT "
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(count))
+  EVOCA VERBUM raw AD CONIURA mgmt_capture_sql(proj, sql)
+  SI CONIURA len(raw) == 0
+    REDDE out
+  FIN SI
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(raw, "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD CONIURA trim(*line_ptr)
+    SI CONIURA len(line) > 0
+      CONIURA fluxus_push(out, SPECULUM line)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(lines)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_rollback_run(ManagementProject proj, REX count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL ensure_res AD CONIURA mgmt_exec_sql(proj, CONIURA mgmt_migration_table_sql())
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(ensure_res)
+    REDDE ensure_res
+  FIN SI
+  EVOCA SPECULUM NIHIL applied_files AD CONIURA mgmt_last_applied(proj, count)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(applied_files)
+  DUM i < n
+    EVOCA SPECULUM VERBUM file_ptr AD CONIURA fluxus_get(applied_files, i)
+    EVOCA VERBUM sql_path AD CONIURA path_join(proj.migrations_dir, *file_ptr)
+    EVOCA VERBUM down_sql AD ""
+    SI CONIURA exists(sql_path)
+      VINCIRE down_sql AD CONIURA mgmt_parse_section(CONIURA read_all(sql_path), "DOWN")
+    FIN SI
+    SI CONIURA len(down_sql) > 0
+      EVOCA SPECULUM NIHIL down_res AD CONIURA mgmt_exec_sql(proj, down_sql)
+      SI CONIURA result_is_err GENUS(REX, VERBUM)(down_res)
+        CONIURA fluxus_free(applied_files)
+        REDDE down_res
+      FIN SI
+    FIN SI
+    EVOCA SPECULUM NIHIL del_res AD CONIURA mgmt_unregister_migration(proj, *file_ptr)
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(del_res)
+      CONIURA fluxus_free(applied_files)
+      REDDE del_res
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(applied_files)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(n)
+EXPLICIT RITUALE
+
+RITUALE mgmt_seed_path(ManagementProject proj) REDDE VERBUM
+  EVOCA VERBUM direct AD CONIURA path_join(proj.dest_dir, "seed.sql")
+  SI CONIURA exists(direct)
+    REDDE direct
+  FIN SI
+  REDDE CONIURA path_join(proj.dest_dir, "seeds/seed.sql")
+EXPLICIT RITUALE
+
+RITUALE civitas_seed_run(ManagementProject proj) REDDE SPECULUM NIHIL
+  EVOCA VERBUM seed_path AD CONIURA mgmt_seed_path(proj)
+  SI NON CONIURA exists(seed_path)
+    REDDE CONIURA mgmt_err("seed file missing")
+  FIN SI
+  REDDE CONIURA mgmt_exec_sql(proj, CONIURA read_all(seed_path))
+EXPLICIT RITUALE
+
+RITUALE mgmt_hash_prefix(VERBUM content) REDDE VERBUM
+  REDDE CONIURA substring(CONIURA sha256(content), 0, 8)
+EXPLICIT RITUALE
+
+RITUALE mgmt_collect_static_files(VERBUM src_dir, VERBUM out_dir, SPECULUM NIHIL out) REDDE NIHIL
+  SI NON CONIURA exists(src_dir)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(src_dir)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA VERBUM src_path AD CONIURA path_join(src_dir, *name_ptr)
+    EVOCA VERBUM dst_path AD CONIURA path_join(out_dir, *name_ptr)
+    SI CONIURA is_dir(src_path)
+      CONIURA mkdir_all(dst_path)
+      CONIURA mgmt_collect_static_files(src_path, dst_path, out)
+    ALITER
+      EVOCA VERBUM content AD CONIURA read_all(src_path)
+      CONIURA mkdir_all(CONIURA path_dirname(dst_path))
+      CONIURA write_all(dst_path, content)
+      EVOCA StaticEntry entry
+      VINCIRE entry.src_path AD src_path
+      VINCIRE entry.out_path AD dst_path
+      VINCIRE entry.hash_prefix AD CONIURA mgmt_hash_prefix(content)
+      CONIURA fluxus_push(out, SPECULUM entry)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE civitas_collect_static_run(ManagementProject proj) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(StaticEntry))
+  CONIURA mkdir_all(proj.static_out_dir)
+  CONIURA mgmt_collect_static_files(proj.static_src_dir, proj.static_out_dir, out)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_test_run(ManagementProject proj) REDDE TestResult
+  EVOCA TestResult out
+  VINCIRE out.total AD 0
+  VINCIRE out.passed AD 0
+  VINCIRE out.failed AD 0
+  VINCIRE out.skipped AD 0
+  VINCIRE out.duration_ms AD 0
+  EVOCA VERBUM script_path AD CONIURA path_join(proj.dest_dir, "tests/run_tests.sh")
+  EVOCA VERBUM output AD ""
+  SI CONIURA exists(script_path)
+    VINCIRE output AD CONIURA run_capture(CONIURA concat("bash ", CONIURA mgmt_shell_quote(script_path)))
+  ALITER
+    VINCIRE output AD CONIURA run_capture(CONIURA concat(CONIURA mgmt_compiler_bin(), CONIURA concat(" test ", CONIURA concat(CONIURA mgmt_shell_quote(proj.tests_dir), " --project ."))))
+  FIN SI
+  VINCIRE out.passed AD CONIURA mgmt_parse_first_int_after(output, "pass=")
+  VINCIRE out.failed AD CONIURA mgmt_parse_first_int_after(output, "fail=")
+  SI out.passed == 0 ET out.failed == 0
+    VINCIRE out.passed AD CONIURA mgmt_parse_first_int_after(output, "Passed:")
+    VINCIRE out.failed AD CONIURA mgmt_parse_first_int_after(output, "Failed:")
+  FIN SI
+  VINCIRE out.skipped AD CONIURA mgmt_parse_first_int_after(output, "skipped=")
+  VINCIRE out.total AD out.passed + out.failed + out.skipped
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE civitas_shell_command(ManagementProject proj) REDDE VERBUM
+  SI CONIURA mgmt_is_postgres(proj)
+    REDDE CONIURA concat("psql ", CONIURA mgmt_shell_quote(proj.db_url))
+  FIN SI
+  REDDE CONIURA concat("sqlite3 ", CONIURA mgmt_shell_quote(proj.db_url))
+EXPLICIT RITUALE
+
+RITUALE civitas_shell_run(ManagementProject proj) REDDE REX
+  REDDE CONIURA run(CONIURA civitas_shell_command(proj))
+EXPLICIT RITUALE
+
+RITUALE mgmt_ensure_users_table(ManagementProject proj) REDDE SPECULUM NIHIL
+  REDDE CONIURA mgmt_exec_sql(proj, "CREATE TABLE IF NOT EXISTS usuarios (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, senha_hash TEXT NOT NULL, ativo INTEGER NOT NULL DEFAULT 1, email_verificado INTEGER NOT NULL DEFAULT 0, email_verificacao_pendente TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL, ultimo_login TEXT NOT NULL DEFAULT '')")
+EXPLICIT RITUALE
+
+RITUALE civitas_create_superuser_run(ManagementProject proj, VERBUM email, VERBUM password) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL ensure_res AD CONIURA mgmt_ensure_users_table(proj)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(ensure_res)
+    REDDE ensure_res
+  FIN SI
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  EVOCA VERBUM password_hash AD CONIURA auth_hash_senha(cfg, password)
+  EVOCA VERBUM sql AD ""
+  SI CONIURA mgmt_is_postgres(proj)
+    VINCIRE sql AD "INSERT INTO usuarios (id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login) VALUES ("
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal("superuser"))
+    VINCIRE sql AD CONIURA concat(sql, ", ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal(email))
+    VINCIRE sql AD CONIURA concat(sql, ", ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal(password_hash))
+    VINCIRE sql AD CONIURA concat(sql, ", 1, 1, '', '1970-01-01T00:00:00Z', '') ON CONFLICT (email) DO UPDATE SET senha_hash = EXCLUDED.senha_hash, ativo = 1, email_verificado = 1")
+  ALITER
+    VINCIRE sql AD "INSERT OR REPLACE INTO usuarios (id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login) VALUES ("
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal("superuser"))
+    VINCIRE sql AD CONIURA concat(sql, ", ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal(email))
+    VINCIRE sql AD CONIURA concat(sql, ", ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA mgmt_sql_literal(password_hash))
+    VINCIRE sql AD CONIURA concat(sql, ", 1, 1, '', '1970-01-01T00:00:00Z', '')")
+  FIN SI
+  REDDE CONIURA mgmt_exec_sql(proj, sql)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

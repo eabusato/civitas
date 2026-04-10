@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase28_28b_load_compare_detects_regression"
+
+ADVOCARE "../../../../lib/civitas/load_test.cct"
+ADVOCARE "../../../../lib/civitas/load_test/load_test.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LoadResult before AD CONIURA load_result_empty()
+  VINCIRE before.requests_error AD 0
+  VINCIRE before.throughput AD 120.0
+  VINCIRE before.p99_ms AD 10
+  EVOCA LoadResult after AD CONIURA load_result_empty()
+  VINCIRE after.requests_error AD 2
+  VINCIRE after.throughput AD 80.0
+  VINCIRE after.p99_ms AD 30
+  EVOCA LoadComparison cmp AD CONIURA load_compare(before, after)
+  SI NON cmp.regressao
+    REDDE 1
+  FIN SI
+  SI cmp.delta_errors != 2
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

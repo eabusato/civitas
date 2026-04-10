@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase26_26b_persist_writes_request_profile_row"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/profiler.cct"
+ADVOCARE "../../../../lib/civitas/profiler/profiler.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_reset_root("26b_persist_writes_request_profile_row")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "profiles.db"))
+  EVOCA ProfilerState state AD CONIURA profiler_state_new(db, 2)
+  CONIURA profiler_enable(SPECULUM state)
+  CONIURA instrument_buffer_clear()
+  EVOCA REX root_span AD CONIURA instrument_http_span("GET", "/profiled")
+  EVOCA REX db_span AD CONIURA instrument_span_begin("db", "select:comments_by_post")
+  CONIURA instrument_span_attr(db_span, "db.target", "comments_by_post")
+  CONIURA instrument_span_end(db_span)
+  CONIURA instrument_span_end(root_span)
+  EVOCA SPECULUM NIHIL spans AD CONIURA instrument_buffer_drain()
+  EVOCA RequestProfile profile AD CONIURA profiler_analyze(SPECULUM state, spans, "trace-persist", "req-persist", "/profiled", "GET", 5)
+  CONIURA profiler_persist(SPECULUM state, profile)
+  SI CONIURA profiler_profile_count(SPECULUM state) != 1
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA db_scalar_text(db, "SELECT trace_id FROM request_profiles LIMIT 1"), "trace-persist") != 0
+    CONIURA profiler_request_profile_free(SPECULUM profile)
+    CONIURA instrument_spans_free(spans)
+    CONIURA profiler_disable(SPECULUM state)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  CONIURA profiler_request_profile_free(SPECULUM profile)
+  CONIURA instrument_spans_free(spans)
+  CONIURA profiler_disable(SPECULUM state)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

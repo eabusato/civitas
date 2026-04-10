@@ -1,0 +1,7 @@
+[project]
+name = "rede_social"
+
+[layout]
+# project/ owns bootstrap and URL composition
+# apps/ owns user code split by domain
+# settings/ holds environment notes for future extension

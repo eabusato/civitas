@@ -1,0 +1,74 @@
+INCIPIT grimoire "civitas_auth_middleware"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../session/session.cct"
+ADVOCARE "../session/session_cookie.cct"
+ADVOCARE "../session/session_store.cct"
+ADVOCARE "../auth_token/auth_token.cct"
+ADVOCARE "auth_context.cct"
+ADVOCARE "auth_guards.cct"
+ADVOCARE "auth_bearer.cct"
+ADVOCARE "auth_session_resolve.cct"
+
+SIGILLUM AuthMiddlewareConfig
+  token_cfg: TokenConfig
+  session_cfg: SessionConfig
+  preferir_bearer: VERUM
+FIN SIGILLUM
+
+RITUALE auth_middleware_config_new(TokenConfig tok, SessionConfig ses) REDDE AuthMiddlewareConfig
+  EVOCA AuthMiddlewareConfig cfg
+  VINCIRE cfg.token_cfg AD tok
+  VINCIRE cfg.session_cfg AD ses
+  VINCIRE cfg.preferir_bearer AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE auth_middleware_apply(SPECULUM NIHIL db, AuthMiddlewareConfig cfg, WebRequest req, SPECULUM LocalContext ctx) REDDE NIHIL
+  EVOCA VERBUM authorization AD CONIURA request_header_or(req.headers, "authorization", "")
+  EVOCA VERBUM cookie_header AD CONIURA request_header_or(req.headers, "cookie", "")
+
+  SI cfg.preferir_bearer ET CONIURA len(authorization) != 0
+    EVOCA SPECULUM NIHIL bearer_opt AD CONIURA auth_resolve_bearer(db, cfg.token_cfg, authorization)
+    SI CONIURA option_is_some GENUS(AuthContext)(bearer_opt)
+      CONIURA auth_context_escrever(ctx, CONIURA option_unwrap GENUS(AuthContext)(bearer_opt))
+      CONIURA option_free GENUS(AuthContext)(bearer_opt)
+      REDDE
+    FIN SI
+    CONIURA option_free GENUS(AuthContext)(bearer_opt)
+  FIN SI
+
+  SI CONIURA len(cookie_header) != 0
+    EVOCA SPECULUM NIHIL sess_opt AD CONIURA auth_resolve_session(db, cfg.session_cfg, cookie_header)
+    SI CONIURA option_is_some GENUS(AuthContext)(sess_opt)
+      EVOCA AuthContext ac_sess AD CONIURA option_unwrap GENUS(AuthContext)(sess_opt)
+      CONIURA option_free GENUS(AuthContext)(sess_opt)
+      EVOCA SPECULUM NIHIL sid_opt AD CONIURA session_id_from_cookie_header(cookie_header, cfg.session_cfg.cookie_nome)
+      SI CONIURA option_is_some GENUS(VERBUM)(sid_opt)
+        CONIURA session_touch(db, cfg.session_cfg, CONIURA option_unwrap GENUS(VERBUM)(sid_opt))
+      FIN SI
+      CONIURA option_free GENUS(VERBUM)(sid_opt)
+      CONIURA auth_context_escrever(ctx, ac_sess)
+      REDDE
+    FIN SI
+    CONIURA option_free GENUS(AuthContext)(sess_opt)
+  FIN SI
+
+  SI NON cfg.preferir_bearer ET CONIURA len(authorization) != 0
+    EVOCA SPECULUM NIHIL bearer2_opt AD CONIURA auth_resolve_bearer(db, cfg.token_cfg, authorization)
+    SI CONIURA option_is_some GENUS(AuthContext)(bearer2_opt)
+      CONIURA auth_context_escrever(ctx, CONIURA option_unwrap GENUS(AuthContext)(bearer2_opt))
+      CONIURA option_free GENUS(AuthContext)(bearer2_opt)
+      REDDE
+    FIN SI
+    CONIURA option_free GENUS(AuthContext)(bearer2_opt)
+  FIN SI
+
+  CONIURA auth_context_escrever(ctx, CONIURA auth_context_empty())
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase10_10b_query_first_and_count"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/query/query_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10b_query_first_and_count")
+  CONIURA db_exec(db, "CREATE TABLE users(id INTEGER PRIMARY KEY, email TEXT NOT NULL, active INTEGER NOT NULL)")
+  CONIURA db_exec(db, "INSERT INTO users(id, email, active) VALUES(1, 'a@example.com', 1)")
+  CONIURA db_exec(db, "INSERT INTO users(id, email, active) VALUES(2, 'b@example.com', 0)")
+  EVOCA Query q AD CONIURA query_from("users")
+  CONIURA query_filter_int(q, "active", Eq, 1)
+
+  SI CONIURA query_count(db, q) != 1
+    REDDE 1
+  FIN SI
+  SI NON CONIURA query_exists(db, q)
+    REDDE 2
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA query_first(db, q)
+  SI stmt == NIHIL
+    REDDE 3
+  FIN SI
+  SI CONIURA stmt_get_int(stmt, 0) != 1
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA stmt_get_text(stmt, 1), "a@example.com") != 0
+    REDDE 5
+  FIN SI
+  CONIURA query_rows_close(stmt)
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

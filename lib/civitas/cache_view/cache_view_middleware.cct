@@ -1,0 +1,57 @@
+INCIPIT grimoire "civitas_cache_view_middleware"
+
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cache_view.cct"
+ADVOCARE "cache_view_ops.cct"
+ADVOCARE "cache_view_serial.cct"
+
+RITUALE cache_view_context_set(SPECULUM RequestContext ctx, SPECULUM NIHIL cv_ptr, REX ttl) REDDE NIHIL
+  EVOCA SPECULUM CacheViewMiddlewareCtx state AD OBSECRO mem_alloc(MENSURA(CacheViewMiddlewareCtx))
+  VINCIRE (*state).cv_ptr AD cv_ptr
+  VINCIRE (*state).ttl AD ttl
+  CONIURA middleware_context_set(ctx, CONIURA cache_view_context_cv_key(), state)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_view_context_get(SPECULUM RequestContext ctx) REDDE SPECULUM NIHIL
+  SI NON CONIURA middleware_context_has(*ctx, CONIURA cache_view_context_cv_key())
+    REDDE NIHIL
+  FIN SI
+  REDDE CONIURA middleware_context_get(*ctx, CONIURA cache_view_context_cv_key())
+EXPLICIT RITUALE
+
+RITUALE cache_view_middleware(SPECULUM NIHIL req_ref, SPECULUM NIHIL ctx_ref, SPECULUM NIHIL next_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM RequestContext ctx AD ctx_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA SPECULUM NIHIL state_raw AD CONIURA cache_view_context_get(ctx)
+  SI state_raw == NIHIL
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  SI CONIURA compare((*req).method, "GET") != 0
+    CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+    REDDE
+  FIN SI
+
+  EVOCA SPECULUM CacheViewMiddlewareCtx state AD state_raw
+  EVOCA CacheMaybeViewEntry cached AD CONIURA cache_view_get((*state).cv_ptr, *req)
+  SI cached.found
+    CONIURA response_fill(out, CONIURA cache_view_response_from_entry(cached))
+    CONIURA response_set_header(out, "x-cache", "HIT")
+    REDDE
+  FIN SI
+
+  CONIURA middleware_run(req_ref, ctx_ref, next_ref, out_ref)
+  SI (*out).status == 200
+    CONIURA cache_view_set((*state).cv_ptr, *req, *out, (*state).ttl, "")
+    CONIURA response_set_header(out, "x-cache", "MISS")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,161 @@
+INCIPIT grimoire "mural_config"
+
+ADVOCARE "../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/toml.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MuralConfig
+  project_root: VERBUM
+  site_title: VERBUM
+  database_path: VERBUM
+  static_dir: VERBUM
+  admin_secret: VERBUM
+  recent_limit: REX
+FIN SIGILLUM
+
+RITUALE mural_config_fill(SPECULUM MuralConfig dest, MuralConfig src) REDDE NIHIL
+  VINCIRE (*dest).project_root AD src.project_root
+  VINCIRE (*dest).site_title AD src.site_title
+  VINCIRE (*dest).database_path AD src.database_path
+  VINCIRE (*dest).static_dir AD src.static_dir
+  VINCIRE (*dest).admin_secret AD src.admin_secret
+  VINCIRE (*dest).recent_limit AD src.recent_limit
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_config_ok(MuralConfig value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(MuralConfig, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE mural_config_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(MuralConfig, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE mural_env_or(VERBUM name, VERBUM fallback) REDDE VERBUM
+  SI CONIURA has_env(name)
+    REDDE CONIURA getenv(name)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE mural_project_root() REDDE VERBUM
+  SI CONIURA has_env("MURAL_PROJECT_ROOT")
+    REDDE CONIURA resolve(CONIURA getenv("MURAL_PROJECT_ROOT"))
+  FIN SI
+  REDDE CONIURA resolve(CONIURA cwd())
+EXPLICIT RITUALE
+
+RITUALE mural_resolve_path(VERBUM root, VERBUM value) REDDE VERBUM
+  SI CONIURA len(CONIURA trim(value)) == 0
+    REDDE root
+  FIN SI
+  SI CONIURA is_absolute(value)
+    REDDE CONIURA resolve(value)
+  FIN SI
+  REDDE CONIURA resolve(CONIURA path_join(root, value))
+EXPLICIT RITUALE
+
+RITUALE mural_toml_string_or(TomlDocument doc, VERBUM key, VERBUM fallback) REDDE VERBUM
+  SI CONIURA toml_has(doc, key)
+    EVOCA VERBUM value AD CONIURA toml_get_string(doc, key)
+    SI CONIURA len(value) > 0
+      REDDE value
+    FIN SI
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE mural_toml_int_or(TomlDocument doc, VERBUM key, REX fallback) REDDE REX
+  EVOCA SPECULUM NIHIL opt AD CONIURA toml_get_int(doc, key)
+  SI CONIURA option_is_some GENUS(REX)(opt)
+    EVOCA REX value AD CONIURA option_unwrap GENUS(REX)(opt)
+    CONIURA option_free GENUS(REX)(opt)
+    REDDE value
+  FIN SI
+  CONIURA option_free GENUS(REX)(opt)
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE mural_config_default(VERBUM root) REDDE MuralConfig
+  EVOCA MuralConfig cfg
+  VINCIRE cfg.project_root AD root
+  VINCIRE cfg.site_title AD "Mural"
+  VINCIRE cfg.database_path AD CONIURA mural_resolve_path(root, "var/mural.db")
+  VINCIRE cfg.static_dir AD "static"
+  VINCIRE cfg.admin_secret AD "change-me-admin-secret"
+  VINCIRE cfg.recent_limit AD 20
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE mural_config_load(VERBUM root) REDDE SPECULUM NIHIL
+  EVOCA MuralConfig cfg AD CONIURA mural_config_default(root)
+  EVOCA VERBUM config_path AD CONIURA path_join(root, "civitas.toml")
+  EVOCA TomlDocument doc AD CONIURA toml_parse_file(config_path)
+  EVOCA TomlDocument mural_doc
+
+  SI NON CONIURA toml_is_valid(doc)
+    REDDE CONIURA mural_config_err(CONIURA concat("invalid TOML: ", config_path))
+  FIN SI
+
+  VINCIRE mural_doc AD CONIURA toml_get_table(doc, "mural")
+  SI CONIURA toml_is_valid(mural_doc)
+    VINCIRE cfg.site_title AD CONIURA mural_toml_string_or(mural_doc, "site_title", cfg.site_title)
+    VINCIRE cfg.database_path AD CONIURA mural_resolve_path(root, CONIURA mural_toml_string_or(mural_doc, "database_path", "var/mural.db"))
+    VINCIRE cfg.static_dir AD CONIURA mural_toml_string_or(mural_doc, "static_dir", cfg.static_dir)
+    VINCIRE cfg.admin_secret AD CONIURA mural_toml_string_or(mural_doc, "admin_secret", cfg.admin_secret)
+    VINCIRE cfg.recent_limit AD CONIURA mural_toml_int_or(mural_doc, "recent_limit", cfg.recent_limit)
+  FIN SI
+
+  VINCIRE cfg.site_title AD CONIURA mural_env_or("MURAL_SITE_TITLE", cfg.site_title)
+  VINCIRE cfg.database_path AD CONIURA mural_resolve_path(root, CONIURA mural_env_or("MURAL_DATABASE_PATH", cfg.database_path))
+  VINCIRE cfg.static_dir AD CONIURA mural_env_or("MURAL_STATIC_DIR", cfg.static_dir)
+  VINCIRE cfg.admin_secret AD CONIURA mural_env_or("MURAL_ADMIN_SECRET", cfg.admin_secret)
+
+  SI cfg.recent_limit <= 0
+    VINCIRE cfg.recent_limit AD 20
+  FIN SI
+  SI CONIURA len(CONIURA trim(cfg.admin_secret)) == 0
+    REDDE CONIURA mural_config_err("Mural admin_secret cannot be empty")
+  FIN SI
+
+  CONIURA mkdir_all(CONIURA path_dirname(cfg.database_path))
+  REDDE CONIURA mural_config_ok(cfg)
+EXPLICIT RITUALE
+
+RITUALE mural_config_load_fill(SPECULUM MuralConfig out, VERBUM root) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL cfg_res AD CONIURA mural_config_load(root)
+  SI CONIURA result_is_err GENUS(MuralConfig, VERBUM)(cfg_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(MuralConfig, VERBUM)(cfg_res))
+  FIN SI
+  CONIURA mural_config_fill(out, CONIURA result_unwrap GENUS(MuralConfig, VERBUM)(cfg_res))
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE mural_settings_load_or_panic(VERBUM root) REDDE Settings
+  EVOCA SPECULUM NIHIL settings_res AD CONIURA settings_load(root)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(settings_res)
+    IACE CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(settings_res))
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Settings, SettingsError)(settings_res)
+EXPLICIT RITUALE
+
+RITUALE mural_static_index(VERBUM root, SPECULUM Settings settings, MuralConfig cfg) REDDE StaticIndex
+  EVOCA StaticConfig static_cfg AD CONIURA static_config_new(
+    CONIURA mural_resolve_path(root, cfg.static_dir),
+    "/static/",
+    SmDesenvolvimento
+  )
+  SI CONIURA compare(CONIURA settings_environment(settings), "production") == 0
+    VINCIRE static_cfg.modo AD SmProducao
+  FIN SI
+  REDDE CONIURA static_index_build(static_cfg)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

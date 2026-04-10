@@ -1,0 +1,135 @@
+INCIPIT grimoire "civitas_cache"
+
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO CacheBackendKind
+  CbMemoria,
+  CbArquivo,
+  CbRedis
+FIN ORDO
+
+SIGILLUM CacheMaybeText
+  found: VERUM
+  valor: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheEntradaMem
+  chave_ns: VERBUM
+  valor: VERBUM
+  expira_em: REX
+  ultimo_acesso: REX
+FIN SIGILLUM
+
+SIGILLUM CacheMemoria
+  entradas: SPECULUM NIHIL
+  max_entradas: REX
+  namespace: VERBUM
+  acertos: REX
+  falhas: REX
+  evicoes: REX
+FIN SIGILLUM
+
+SIGILLUM CacheArquivo
+  dir_base: VERBUM
+  namespace: VERBUM
+  acertos: REX
+  falhas: REX
+FIN SIGILLUM
+
+SIGILLUM CacheRedis
+  redis_ptr: SPECULUM NIHIL
+  namespace: VERBUM
+  acertos: REX
+  falhas: REX
+FIN SIGILLUM
+
+SIGILLUM CacheHandle
+  kind: CacheBackendKind
+  state: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM CacheMetrics
+  acertos: REX
+  falhas: REX
+  evicoes: REX
+  total_entradas: REX
+FIN SIGILLUM
+
+RITUALE cache_maybe_hit(VERBUM valor) REDDE CacheMaybeText
+  EVOCA CacheMaybeText out
+  VINCIRE out.found AD VERUM
+  VINCIRE out.valor AD valor
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_maybe_none() REDDE CacheMaybeText
+  EVOCA CacheMaybeText out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.valor AD ""
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_metrics_new() REDDE CacheMetrics
+  EVOCA CacheMetrics out
+  VINCIRE out.acertos AD 0
+  VINCIRE out.falhas AD 0
+  VINCIRE out.evicoes AD 0
+  VINCIRE out.total_entradas AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_set_logger(SPECULUM CacheHandle handle_ptr, SPECULUM NIHIL logger) REDDE NIHIL
+  VINCIRE (*handle_ptr).logger AD logger
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_log_debug(SPECULUM CacheHandle handle_ptr, VERBUM message, VERBUM fields_json) REDDE NIHIL
+  SI (*handle_ptr).logger == NIHIL
+    REDDE
+  FIN SI
+  CONIURA log_debug((*handle_ptr).logger, message, fields_json)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_namespace_key(VERBUM namespace, VERBUM chave) REDDE VERBUM
+  EVOCA VERBUM out AD namespace
+  VINCIRE out AD CONIURA concat(out, ":")
+  VINCIRE out AD CONIURA concat(out, chave)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_map_storage_key(SPECULUM NIHIL map_ref, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(map_ref)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE cache_handle_empty() REDDE CacheHandle
+  EVOCA CacheHandle out
+  VINCIRE out.kind AD CbMemoria
+  VINCIRE out.state AD NIHIL
+  VINCIRE out.logger AD NIHIL
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_write_text_out(SPECULUM NIHIL out_ref, VERBUM value) REDDE NIHIL
+  EVOCA SPECULUM VERBUM out_ptr AD out_ref
+  VINCIRE (*out_ptr) AD value
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

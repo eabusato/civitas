@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase23_23c_collect_static_copies_files"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_management/civitas_management.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23c_collect_static_copies_files")
+  CONIURA mkdir_all(CONIURA path_join(root, "static/nested"))
+  CONIURA write_all(CONIURA path_join(root, "static/app.css"), "body{color:#123456;}")
+  CONIURA write_all(CONIURA path_join(root, "static/nested/app.js"), "console.log('ok');")
+  EVOCA ManagementProject proj AD CONIURA mgmt_project_default(CONIURA path_join(root, "civitas.toml"))
+  VINCIRE proj.static_src_dir AD CONIURA path_join(root, "static")
+  VINCIRE proj.static_out_dir AD CONIURA path_join(root, "public/static")
+  EVOCA SPECULUM NIHIL copied AD CONIURA civitas_collect_static_run(proj)
+  SI CONIURA fluxus_len(copied) != 2
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "public/static/app.css"))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "public/static/nested/app.js"))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

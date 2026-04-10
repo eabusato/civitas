@@ -1,0 +1,536 @@
+INCIPIT grimoire "civitas_scheduled"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../tasks/tasks.cct"
+
+ORDO ScheduleKind
+  SCHEDULE_CRON
+  SCHEDULE_INTERVAL
+FIN ORDO
+
+ORDO SchedulePolicy
+  SCHEDULE_SKIP_IF_RUNNING
+  SCHEDULE_ENQUEUE_ALWAYS
+  SCHEDULE_REPLACE_PENDING
+FIN ORDO
+
+ORDO ScheduleLockScope
+  SCHEDULE_LOCK_NONE
+  SCHEDULE_LOCK_LOCAL
+  SCHEDULE_LOCK_POSTGRES
+FIN ORDO
+
+ORDO ScheduleError
+  ScheduleParseError(VERBUM message)
+  ScheduleJobNotFound
+  ScheduleDisabled
+  ScheduleAlreadyRunning
+  ScheduleLockUnavailable
+  ScheduleEnqueueError(VERBUM message)
+  ScheduleInternalError(VERBUM message)
+FIN ORDO
+
+SIGILLUM ScheduleSpec
+  kind: ScheduleKind
+  raw_expr: VERBUM
+  interval_seconds: REX
+FIN SIGILLUM
+
+SIGILLUM ScheduledJob
+  id: VERBUM
+  job_name: VERBUM
+  task_name: VERBUM
+  schedule_kind: ScheduleKind
+  schedule_expr: VERBUM
+  payload_json: VERBUM
+  enabled: VERUM
+  queue_name: VERBUM
+  policy: SchedulePolicy
+  lock_scope: ScheduleLockScope
+  timezone_name: VERBUM
+  last_run_at_unix: REX
+  next_run_at_unix: REX
+  last_result_json: VERBUM
+  created_at_unix: REX
+  updated_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM ScheduledRun
+  id: VERBUM
+  job_name: VERBUM
+  started_at_unix: REX
+  finished_at_unix: REX
+  outcome: VERBUM
+  message: VERBUM
+  task_id: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SchedulerConfig
+  poll_interval_ms: REX
+  max_catchup_runs: REX
+  default_timezone: VERBUM
+  lock_prefix: VERBUM
+FIN SIGILLUM
+
+RITUALE schedule_kind_to_string(ScheduleKind kind) REDDE VERBUM
+  SI kind == SCHEDULE_INTERVAL
+    REDDE "interval"
+  FIN SI
+  REDDE "cron"
+EXPLICIT RITUALE
+
+RITUALE schedule_kind_from_string(VERBUM kind) REDDE ScheduleKind
+  SI CONIURA compare(kind, "interval") == 0
+    REDDE SCHEDULE_INTERVAL
+  FIN SI
+  REDDE SCHEDULE_CRON
+EXPLICIT RITUALE
+
+RITUALE schedule_policy_to_string(SchedulePolicy policy) REDDE VERBUM
+  ELIGE policy
+    CASUS SCHEDULE_ENQUEUE_ALWAYS:
+      REDDE "enqueue_always"
+    CASUS SCHEDULE_REPLACE_PENDING:
+      REDDE "replace_pending"
+    ALIOQUIN:
+      REDDE "skip_if_running"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE schedule_policy_from_string(VERBUM policy) REDDE SchedulePolicy
+  SI CONIURA compare(policy, "enqueue_always") == 0
+    REDDE SCHEDULE_ENQUEUE_ALWAYS
+  FIN SI
+  SI CONIURA compare(policy, "replace_pending") == 0
+    REDDE SCHEDULE_REPLACE_PENDING
+  FIN SI
+  REDDE SCHEDULE_SKIP_IF_RUNNING
+EXPLICIT RITUALE
+
+RITUALE schedule_lock_scope_to_string(ScheduleLockScope scope) REDDE VERBUM
+  ELIGE scope
+    CASUS SCHEDULE_LOCK_NONE:
+      REDDE "none"
+    CASUS SCHEDULE_LOCK_POSTGRES:
+      REDDE "postgres"
+    ALIOQUIN:
+      REDDE "local"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE schedule_lock_scope_from_string(VERBUM scope) REDDE ScheduleLockScope
+  SI CONIURA compare(scope, "none") == 0
+    REDDE SCHEDULE_LOCK_NONE
+  FIN SI
+  SI CONIURA compare(scope, "postgres") == 0
+    REDDE SCHEDULE_LOCK_POSTGRES
+  FIN SI
+  REDDE SCHEDULE_LOCK_LOCAL
+EXPLICIT RITUALE
+
+RITUALE scheduler_config_default() REDDE SchedulerConfig
+  EVOCA SchedulerConfig cfg
+  VINCIRE cfg.poll_interval_ms AD 1000
+  VINCIRE cfg.max_catchup_runs AD 5
+  VINCIRE cfg.default_timezone AD "UTC"
+  VINCIRE cfg.lock_prefix AD "civitas:schedule:"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE scheduled_job_empty() REDDE ScheduledJob
+  EVOCA ScheduledJob job
+  VINCIRE job.id AD ""
+  VINCIRE job.job_name AD ""
+  VINCIRE job.task_name AD ""
+  VINCIRE job.schedule_kind AD SCHEDULE_CRON
+  VINCIRE job.schedule_expr AD ""
+  VINCIRE job.payload_json AD "{}"
+  VINCIRE job.enabled AD VERUM
+  VINCIRE job.queue_name AD "default"
+  VINCIRE job.policy AD SCHEDULE_SKIP_IF_RUNNING
+  VINCIRE job.lock_scope AD SCHEDULE_LOCK_LOCAL
+  VINCIRE job.timezone_name AD "UTC"
+  VINCIRE job.last_run_at_unix AD 0
+  VINCIRE job.next_run_at_unix AD 0
+  VINCIRE job.last_result_json AD ""
+  VINCIRE job.created_at_unix AD 0
+  VINCIRE job.updated_at_unix AD 0
+  REDDE job
+EXPLICIT RITUALE
+
+RITUALE scheduled_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS scheduled_jobs (id TEXT PRIMARY KEY, job_name TEXT NOT NULL UNIQUE, task_name TEXT NOT NULL, schedule_kind TEXT NOT NULL, schedule_expr TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}', enabled INTEGER NOT NULL DEFAULT 1, queue_name TEXT NOT NULL DEFAULT 'default', policy TEXT NOT NULL DEFAULT 'skip_if_running', lock_scope TEXT NOT NULL DEFAULT 'local', timezone_name TEXT NOT NULL DEFAULT 'UTC', last_run_at_unix INTEGER NOT NULL DEFAULT 0, next_run_at_unix INTEGER NOT NULL DEFAULT 0, last_result_json TEXT NOT NULL DEFAULT '', created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_due ON scheduled_jobs(enabled, next_run_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS scheduled_runs (id TEXT PRIMARY KEY, job_name TEXT NOT NULL, started_at_unix INTEGER NOT NULL, finished_at_unix INTEGER NOT NULL DEFAULT 0, outcome TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', task_id TEXT NOT NULL DEFAULT '')", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_scheduled_runs_job ON scheduled_runs(job_name, started_at_unix)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_schema_down(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS scheduled_runs", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS scheduled_jobs", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE schedule_spec_interval(VERBUM expr, REX seconds) REDDE ScheduleSpec
+  EVOCA ScheduleSpec spec
+  VINCIRE spec.kind AD SCHEDULE_INTERVAL
+  VINCIRE spec.raw_expr AD expr
+  VINCIRE spec.interval_seconds AD seconds
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE schedule_spec_cron(VERBUM expr) REDDE ScheduleSpec
+  EVOCA ScheduleSpec spec
+  VINCIRE spec.kind AD SCHEDULE_CRON
+  VINCIRE spec.raw_expr AD expr
+  VINCIRE spec.interval_seconds AD 0
+  REDDE spec
+EXPLICIT RITUALE
+
+RITUALE schedule_parse_interval_seconds(VERBUM expr) REDDE REX
+  SI NON CONIURA starts_with(expr, "@every ")
+    REDDE 0
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA substring(expr, 7, CONIURA len(expr))
+  SI CONIURA len(raw) < 2
+    REDDE 0
+  FIN SI
+  EVOCA MILES suffix AD CONIURA char_at(raw, CONIURA len(raw) - 1)
+  EVOCA VERBUM number AD CONIURA substring(raw, 0, CONIURA len(raw) - 1)
+  SI NON CONIURA is_int(number)
+    REDDE 0
+  FIN SI
+  EVOCA REX n AD CONIURA parse_int(number)
+  SI suffix == 115
+    REDDE n
+  FIN SI
+  SI suffix == 109
+    REDDE n * 60
+  FIN SI
+  SI suffix == 104
+    REDDE n * 3600
+  FIN SI
+  SI suffix == 100
+    REDDE n * 86400
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE schedule_parse(VERBUM expr) REDDE ScheduleSpec
+  EVOCA REX interval_seconds AD CONIURA schedule_parse_interval_seconds(expr)
+  SI interval_seconds > 0
+    REDDE CONIURA schedule_spec_interval(expr, interval_seconds)
+  FIN SI
+  REDDE CONIURA schedule_spec_cron(expr)
+EXPLICIT RITUALE
+
+RITUALE schedule_field_matches_token(VERBUM token, REX value, REX min_value, REX max_value) REDDE VERUM
+  SI CONIURA compare(token, "*") == 0
+    REDDE VERUM
+  FIN SI
+  EVOCA REX slash AD CONIURA find(token, "/")
+  SI slash != -1
+    EVOCA VERBUM left AD CONIURA substring(token, 0, slash)
+    EVOCA VERBUM step_text AD CONIURA substring(token, slash + 1, CONIURA len(token))
+    SI NON CONIURA is_int(step_text)
+      REDDE FALSUM
+    FIN SI
+    EVOCA REX step AD CONIURA parse_int(step_text)
+    SI step <= 0
+      REDDE FALSUM
+    FIN SI
+    SI CONIURA compare(left, "*") == 0
+      REDDE ((value - min_value) / step) * step == (value - min_value)
+    FIN SI
+    EVOCA REX dash AD CONIURA find(left, "-")
+    SI dash != -1
+      EVOCA VERBUM a_text AD CONIURA substring(left, 0, dash)
+      EVOCA VERBUM b_text AD CONIURA substring(left, dash + 1, CONIURA len(left))
+      SI NON CONIURA is_int(a_text) VEL NON CONIURA is_int(b_text)
+        REDDE FALSUM
+      FIN SI
+      EVOCA REX a AD CONIURA parse_int(a_text)
+      EVOCA REX b AD CONIURA parse_int(b_text)
+      SI value < a VEL value > b
+        REDDE FALSUM
+      FIN SI
+      REDDE ((value - a) / step) * step == (value - a)
+    FIN SI
+    SI NON CONIURA is_int(left)
+      REDDE FALSUM
+    FIN SI
+    EVOCA REX base AD CONIURA parse_int(left)
+    SI value < base
+      REDDE FALSUM
+    FIN SI
+    REDDE ((value - base) / step) * step == (value - base)
+  FIN SI
+  EVOCA REX dash AD CONIURA find(token, "-")
+  SI dash != -1
+    EVOCA VERBUM a_text AD CONIURA substring(token, 0, dash)
+    EVOCA VERBUM b_text AD CONIURA substring(token, dash + 1, CONIURA len(token))
+    SI NON CONIURA is_int(a_text) VEL NON CONIURA is_int(b_text)
+      REDDE FALSUM
+    FIN SI
+    EVOCA REX a AD CONIURA parse_int(a_text)
+    EVOCA REX b AD CONIURA parse_int(b_text)
+    REDDE value >= a ET value <= b
+  FIN SI
+  SI NON CONIURA is_int(token)
+    REDDE FALSUM
+  FIN SI
+  EVOCA REX exact AD CONIURA parse_int(token)
+  SI exact < min_value VEL exact > max_value
+    REDDE FALSUM
+  FIN SI
+  REDDE value == exact
+EXPLICIT RITUALE
+
+RITUALE schedule_field_matches(VERBUM expr, REX value, REX min_value, REX max_value) REDDE VERUM
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(expr, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  DUM i < n
+    EVOCA SPECULUM VERBUM token_ptr AD CONIURA fluxus_get(parts, i)
+    SI CONIURA schedule_field_matches_token(CONIURA trim(*token_ptr), value, min_value, max_value)
+      CONIURA fluxus_free(parts)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(parts)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE schedule_cron_matches(VERBUM expr, REX unix_ts) REDDE VERUM
+  EVOCA SPECULUM NIHIL fields AD CONIURA split(expr, " ")
+  SI CONIURA fluxus_len(fields) != 5
+    CONIURA fluxus_free(fields)
+    REDDE FALSUM
+  FIN SI
+  EVOCA DateTime dt AD CONIURA datetime_from_unix(unix_ts)
+  EVOCA REX dow AD ((unix_ts / 86400) + 4) - ((((unix_ts / 86400) + 4) / 7) * 7)
+  EVOCA SPECULUM VERBUM f0 AD CONIURA fluxus_get(fields, 0)
+  EVOCA SPECULUM VERBUM f1 AD CONIURA fluxus_get(fields, 1)
+  EVOCA SPECULUM VERBUM f2 AD CONIURA fluxus_get(fields, 2)
+  EVOCA SPECULUM VERBUM f3 AD CONIURA fluxus_get(fields, 3)
+  EVOCA SPECULUM VERBUM f4 AD CONIURA fluxus_get(fields, 4)
+  EVOCA VERUM ok AD CONIURA schedule_field_matches(CONIURA trim(*f0), dt.minuto, 0, 59) ET CONIURA schedule_field_matches(CONIURA trim(*f1), dt.hora, 0, 23) ET CONIURA schedule_field_matches(CONIURA trim(*f2), dt.dia, 1, 31) ET CONIURA schedule_field_matches(CONIURA trim(*f3), dt.mes, 1, 12) ET CONIURA schedule_field_matches(CONIURA trim(*f4), dow, 0, 6)
+  CONIURA fluxus_free(fields)
+  REDDE ok
+EXPLICIT RITUALE
+
+RITUALE schedule_next_run(ScheduleSpec spec, DateTime after, VERBUM timezone_name) REDDE REX
+  SI spec.kind == SCHEDULE_INTERVAL
+    REDDE CONIURA datetime_to_unix(after) + spec.interval_seconds
+  FIN SI
+  EVOCA REX cursor AD CONIURA datetime_to_unix(after)
+  VINCIRE cursor AD cursor - (cursor - ((cursor / 60) * 60))
+  VINCIRE cursor AD cursor + 60
+  EVOCA REX guard AD 0
+  DUM guard < 525600
+    SI CONIURA schedule_cron_matches(spec.raw_expr, cursor)
+      REDDE cursor
+    FIN SI
+    VINCIRE cursor AD cursor + 60
+    VINCIRE guard AD guard + 1
+  FIN DUM
+  REDDE CONIURA datetime_to_unix(after) + 60
+EXPLICIT RITUALE
+
+RITUALE scheduled_write_run(DbHandle dbh, VERBUM job_name, VERBUM outcome, VERBUM message, VERBUM task_id, REX started_at_unix) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_param_int(SPECULUM params, started_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, CONIURA task_now_unix())
+  CONIURA dbh_param_text(SPECULUM params, outcome)
+  CONIURA dbh_param_text(SPECULUM params, message)
+  CONIURA dbh_param_text(SPECULUM params, task_id)
+  CONIURA dbh_exec(dbh, "INSERT INTO scheduled_runs (id, job_name, started_at_unix, finished_at_unix, outcome, message, task_id) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_dedupe_key(VERBUM job_name) REDDE VERBUM
+  REDDE CONIURA concat("scheduled:", job_name)
+EXPLICIT RITUALE
+
+RITUALE scheduled_register_cron(DbHandle dbh, VERBUM job_name, VERBUM task_name, VERBUM cron_expr, VERBUM payload_json) REDDE NIHIL
+  EVOCA ScheduleSpec spec AD CONIURA schedule_parse(cron_expr)
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA REX next_run AD CONIURA schedule_next_run(spec, CONIURA datetime_from_unix(now_unix), "UTC")
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, "cron")
+  CONIURA dbh_param_text(SPECULUM params, cron_expr)
+  CONIURA dbh_param_text(SPECULUM params, payload_json)
+  CONIURA dbh_param_text(SPECULUM params, "default")
+  CONIURA dbh_param_text(SPECULUM params, "skip_if_running")
+  CONIURA dbh_param_text(SPECULUM params, "local")
+  CONIURA dbh_param_text(SPECULUM params, "UTC")
+  CONIURA dbh_param_int(SPECULUM params, next_run)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO scheduled_jobs (id, job_name, task_name, schedule_kind, schedule_expr, payload_json, enabled, queue_name, policy, lock_scope, timezone_name, last_run_at_unix, next_run_at_unix, last_result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 0, ?, '', ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_register_interval(DbHandle dbh, VERBUM job_name, VERBUM task_name, VERBUM interval_expr, VERBUM payload_json) REDDE NIHIL
+  EVOCA ScheduleSpec spec AD CONIURA schedule_parse(interval_expr)
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA REX next_run AD CONIURA schedule_next_run(spec, CONIURA datetime_from_unix(now_unix), "UTC")
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, "interval")
+  CONIURA dbh_param_text(SPECULUM params, interval_expr)
+  CONIURA dbh_param_text(SPECULUM params, payload_json)
+  CONIURA dbh_param_text(SPECULUM params, "default")
+  CONIURA dbh_param_text(SPECULUM params, "skip_if_running")
+  CONIURA dbh_param_text(SPECULUM params, "local")
+  CONIURA dbh_param_text(SPECULUM params, "UTC")
+  CONIURA dbh_param_int(SPECULUM params, next_run)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO scheduled_jobs (id, job_name, task_name, schedule_kind, schedule_expr, payload_json, enabled, queue_name, policy, lock_scope, timezone_name, last_run_at_unix, next_run_at_unix, last_result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 0, ?, '', ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_enable(DbHandle dbh, VERBUM job_name) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_exec(dbh, "UPDATE scheduled_jobs SET enabled = 1 WHERE job_name = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_disable(DbHandle dbh, VERBUM job_name) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_exec(dbh, "UPDATE scheduled_jobs SET enabled = 0 WHERE job_name = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_set_payload(DbHandle dbh, VERBUM job_name, VERBUM payload_json) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, payload_json)
+  CONIURA dbh_param_text(SPECULUM params, job_name)
+  CONIURA dbh_exec(dbh, "UPDATE scheduled_jobs SET payload_json = ? WHERE job_name = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_row_to_job(DbRows rows) REDDE ScheduledJob
+  EVOCA ScheduledJob job AD CONIURA scheduled_job_empty()
+  VINCIRE job.id AD CONIURA dbrows_get_text(rows, 0)
+  VINCIRE job.job_name AD CONIURA dbrows_get_text(rows, 1)
+  VINCIRE job.task_name AD CONIURA dbrows_get_text(rows, 2)
+  VINCIRE job.schedule_kind AD CONIURA schedule_kind_from_string(CONIURA dbrows_get_text(rows, 3))
+  VINCIRE job.schedule_expr AD CONIURA dbrows_get_text(rows, 4)
+  VINCIRE job.payload_json AD CONIURA dbrows_get_text(rows, 5)
+  VINCIRE job.enabled AD CONIURA dbrows_get_int(rows, 6) != 0
+  VINCIRE job.queue_name AD CONIURA dbrows_get_text(rows, 7)
+  VINCIRE job.policy AD CONIURA schedule_policy_from_string(CONIURA dbrows_get_text(rows, 8))
+  VINCIRE job.lock_scope AD CONIURA schedule_lock_scope_from_string(CONIURA dbrows_get_text(rows, 9))
+  VINCIRE job.timezone_name AD CONIURA dbrows_get_text(rows, 10)
+  VINCIRE job.last_run_at_unix AD CONIURA dbrows_get_int(rows, 11)
+  VINCIRE job.next_run_at_unix AD CONIURA dbrows_get_int(rows, 12)
+  VINCIRE job.last_result_json AD CONIURA dbrows_get_text(rows, 13)
+  VINCIRE job.created_at_unix AD CONIURA dbrows_get_int(rows, 14)
+  VINCIRE job.updated_at_unix AD CONIURA dbrows_get_int(rows, 15)
+  REDDE job
+EXPLICIT RITUALE
+
+RITUALE scheduled_job_has_active_task(DbHandle dbh, ScheduledJob job) REDDE VERUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA scheduled_dedupe_key(job.job_name))
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM task_queue WHERE dedupe_key = ? AND state IN ('queued', 'running', 'retry')", params)
+  EVOCA VERUM active AD FALSUM
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE active AD CONIURA dbrows_get_int(rows, 0) > 0
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE active
+EXPLICIT RITUALE
+
+RITUALE scheduled_delete_pending(DbHandle dbh, ScheduledJob job) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA scheduled_dedupe_key(job.job_name))
+  CONIURA dbh_exec(dbh, "DELETE FROM task_queue WHERE dedupe_key = ? AND state IN ('queued', 'retry')", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE scheduled_try_postgres_lock(DbHandle dbh, ScheduledJob job) REDDE VERUM
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE scheduler_tick(DbHandle dbh, TaskConfig task_cfg, SchedulerConfig cfg, DateTime now) REDDE REX
+  EVOCA REX now_unix AD CONIURA datetime_to_unix(now)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id, job_name, task_name, schedule_kind, schedule_expr, payload_json, enabled, queue_name, policy, lock_scope, timezone_name, last_run_at_unix, next_run_at_unix, last_result_json, created_at_unix, updated_at_unix FROM scheduled_jobs WHERE enabled = 1 AND next_run_at_unix <= ? ORDER BY next_run_at_unix ASC", params)
+  EVOCA REX enqueued_count AD 0
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA ScheduledJob job AD CONIURA scheduled_row_to_job(rows)
+    EVOCA REX started_at AD CONIURA task_now_unix()
+    SI job.lock_scope == SCHEDULE_LOCK_POSTGRES ET NON CONIURA scheduled_try_postgres_lock(dbh, job)
+      CONIURA scheduled_write_run(dbh, job.job_name, "skip_locked", "postgres_lock_unavailable", "", started_at)
+      RECEDE
+    FIN SI
+    SI job.policy == SCHEDULE_SKIP_IF_RUNNING ET CONIURA scheduled_job_has_active_task(dbh, job)
+      CONIURA scheduled_write_run(dbh, job.job_name, "skip_locked", "active_task_exists", "", started_at)
+      RECEDE
+    FIN SI
+    SI job.policy == SCHEDULE_REPLACE_PENDING
+      CONIURA scheduled_delete_pending(dbh, job)
+    FIN SI
+
+    EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+    SI job.policy != SCHEDULE_ENQUEUE_ALWAYS
+      VINCIRE options.dedupe_key AD CONIURA scheduled_dedupe_key(job.job_name)
+    FIN SI
+    VINCIRE options.priority AD 100
+    EVOCA VERBUM task_id AD CONIURA task_enqueue_json(dbh, job.queue_name, job.task_name, job.payload_json, options, task_cfg)
+    SI CONIURA len(task_id) == 0 ET job.policy != SCHEDULE_ENQUEUE_ALWAYS
+      CONIURA scheduled_write_run(dbh, job.job_name, "skip_locked", "dedupe_key_exists", "", started_at)
+    ALITER
+      EVOCA ScheduleSpec spec AD CONIURA schedule_parse(job.schedule_expr)
+      EVOCA REX next_run AD CONIURA schedule_next_run(spec, now, job.timezone_name)
+      EVOCA DbParams up AD CONIURA dbh_params_new()
+      CONIURA dbh_param_int(SPECULUM up, now_unix)
+      CONIURA dbh_param_int(SPECULUM up, next_run)
+      CONIURA dbh_param_text(SPECULUM up, "{\"status\":\"enqueued\"}")
+      CONIURA dbh_param_int(SPECULUM up, now_unix)
+      CONIURA dbh_param_text(SPECULUM up, job.job_name)
+      CONIURA dbh_exec(dbh, "UPDATE scheduled_jobs SET last_run_at_unix = ?, next_run_at_unix = ?, last_result_json = ?, updated_at_unix = ? WHERE job_name = ?", up)
+      CONIURA dbh_params_free(SPECULUM up)
+      CONIURA scheduled_write_run(dbh, job.job_name, "ok", "", task_id, started_at)
+      VINCIRE enqueued_count AD enqueued_count + 1
+    FIN SI
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE enqueued_count
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

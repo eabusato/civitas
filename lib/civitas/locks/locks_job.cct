@@ -1,0 +1,49 @@
+INCIPIT grimoire "civitas_locks_job"
+
+ADVOCARE "cct/db_postgres.cct"
+ADVOCARE "cct/db_postgres_lock.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "locks.cct"
+ADVOCARE "locks_keys.cct"
+ADVOCARE "locks_guard.cct"
+
+RITUALE lock_job_result_from_attempt(PgLockAttempt attempt, VERBUM job_name) REDDE JobLockResult
+  EVOCA LockGuard guard AD CONIURA lock_guard_new(attempt.handle)
+  EVOCA LockEvent event AD CONIURA lock_event_new(attempt.handle.key.raw_name, attempt.acquired, 0, job_name)
+  REDDE CONIURA job_lock_result_new(attempt.acquired, guard, event)
+EXPLICIT RITUALE
+
+RITUALE lock_job_media(Db db, VERBUM upload_id) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_try_lock_job(db, "media_process", upload_id)
+  SI CONIURA result_is_err GENUS(PgLockAttempt, VERBUM)(result)
+    REDDE CONIURA Err GENUS(JobLockResult, VERBUM)(CONIURA result_unwrap_err GENUS(PgLockAttempt, VERBUM)(result))
+  FIN SI
+  EVOCA VERBUM job_name AD CONIURA concat("media_process:", upload_id)
+  REDDE CONIURA Ok GENUS(JobLockResult, VERBUM)(CONIURA lock_job_result_from_attempt(CONIURA result_unwrap GENUS(PgLockAttempt, VERBUM)(result), job_name))
+EXPLICIT RITUALE
+
+RITUALE lock_job_translation(Db db, VERBUM object_type, VERBUM object_id, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA VERBUM resource AD CONIURA concat(object_type, ":")
+  VINCIRE resource AD CONIURA concat(resource, object_id)
+  VINCIRE resource AD CONIURA concat(resource, ":")
+  VINCIRE resource AD CONIURA concat(resource, locale)
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_try_lock_job(db, "translation", resource)
+  SI CONIURA result_is_err GENUS(PgLockAttempt, VERBUM)(result)
+    REDDE CONIURA Err GENUS(JobLockResult, VERBUM)(CONIURA result_unwrap_err GENUS(PgLockAttempt, VERBUM)(result))
+  FIN SI
+  EVOCA VERBUM job_name AD CONIURA concat("translation:", resource)
+  REDDE CONIURA Ok GENUS(JobLockResult, VERBUM)(CONIURA lock_job_result_from_attempt(CONIURA result_unwrap GENUS(PgLockAttempt, VERBUM)(result), job_name))
+EXPLICIT RITUALE
+
+RITUALE lock_job_cron(Db db, VERBUM task_name) REDDE SPECULUM NIHIL
+  EVOCA PgLockKey key AD CONIURA lock_key_cron(task_name)
+  EVOCA SPECULUM NIHIL result AD CONIURA pg_try_xact_lock(db, key)
+  SI CONIURA result_is_err GENUS(PgLockAttempt, VERBUM)(result)
+    REDDE CONIURA Err GENUS(JobLockResult, VERBUM)(CONIURA result_unwrap_err GENUS(PgLockAttempt, VERBUM)(result))
+  FIN SI
+  EVOCA VERBUM job_name AD CONIURA concat("cron:", task_name)
+  REDDE CONIURA Ok GENUS(JobLockResult, VERBUM)(CONIURA lock_job_result_from_attempt(CONIURA result_unwrap GENUS(PgLockAttempt, VERBUM)(result), job_name))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

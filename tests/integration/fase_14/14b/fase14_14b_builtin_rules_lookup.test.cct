@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase14_14b_builtin_rules_lookup"
+
+ADVOCARE "../../../../lib/civitas/l10n/l10n.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_rules.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA L10nRulesRegistry reg AD CONIURA l10n_rules_registry_default()
+  EVOCA LocaleRules pt AD CONIURA l10n_rules_registry_get(reg, "pt-BR")
+  EVOCA LocaleRules fallback AD CONIURA l10n_rules_registry_get(reg, "es-ES")
+  SI CONIURA compare(pt.locale, "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(fallback.locale, "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,99 @@
+INCIPIT grimoire "civitas_admin_computed"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+SIGILLUM AdminComputedField
+  model_name: VERBUM
+  name: VERBUM
+  label: VERBUM
+FIN SIGILLUM
+
+SIGILLUM AdminComputedRegistry
+  model_names: SPECULUM NIHIL
+  field_names: SPECULUM NIHIL
+  labels: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE admin_computed_registry_new() REDDE AdminComputedRegistry
+  EVOCA AdminComputedRegistry out
+  VINCIRE out.model_names AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE out.field_names AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE out.labels AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_computed_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS admin_computed_fields (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, field_name TEXT NOT NULL, field_label TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_computed_unique ON admin_computed_fields(model_name, field_name)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_computed_register(SPECULUM AdminComputedRegistry registry, DbHandle dbh, AdminComputedField field) REDDE NIHIL
+  CONIURA admin_computed_register_raw(registry, dbh, field.model_name, field.name, field.label)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_computed_register_raw(SPECULUM AdminComputedRegistry registry, DbHandle dbh, VERBUM model_name, VERBUM field_name, VERBUM field_label) REDDE NIHIL
+  CONIURA fluxus_push((*registry).model_names, SPECULUM model_name)
+  CONIURA fluxus_push((*registry).field_names, SPECULUM field_name)
+  CONIURA fluxus_push((*registry).labels, SPECULUM field_label)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, model_name)
+  CONIURA dbh_param_text(SPECULUM params, field_name)
+  CONIURA dbh_param_text(SPECULUM params, field_label)
+  CONIURA dbh_param_int(SPECULUM params, CONIURA datetime_to_unix(CONIURA datetime_now()))
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO admin_computed_fields (id, model_name, field_name, field_label, registered_at_unix) VALUES (?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_computed_builtin_value(VERBUM field_name, Json row_obj) REDDE VERBUM
+  SI CONIURA compare(field_name, "summary") == 0
+    SI CONIURA json_has_key(row_obj, "title") ET CONIURA json_has_key(row_obj, "state")
+      REDDE CONIURA concat(CONIURA json_expect_str(CONIURA json_get_key(row_obj, "title")), CONIURA concat(":", CONIURA json_expect_str(CONIURA json_get_key(row_obj, "state"))))
+    FIN SI
+  FIN SI
+  SI CONIURA json_has_key(row_obj, field_name)
+    EVOCA Json value AD CONIURA json_get_key(row_obj, field_name)
+    SI CONIURA json_is_str(value)
+      REDDE CONIURA json_expect_str(value)
+    FIN SI
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE admin_computed_apply_rows(AdminComputedRegistry registry, VERBUM model_name, VERBUM rows_json) REDDE VERBUM
+  EVOCA Json rows AD CONIURA json_parse(rows_json)
+  EVOCA Json out_arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(rows)
+  DUM i < n
+    EVOCA Json row_obj AD CONIURA json_arr_get(rows, i)
+    EVOCA VERBUM row_json AD CONIURA json_stringify(row_obj)
+    EVOCA REX j AD 0
+    EVOCA REX m AD CONIURA fluxus_len(registry.model_names)
+    DUM j < m
+      EVOCA SPECULUM VERBUM model_ptr AD CONIURA fluxus_get(registry.model_names, j)
+      SI CONIURA compare(*model_ptr, model_name) == 0
+        EVOCA SPECULUM VERBUM field_name_ptr AD CONIURA fluxus_get(registry.field_names, j)
+        EVOCA VERBUM value AD CONIURA admin_computed_builtin_value(*field_name_ptr, row_obj)
+        CONIURA json_set_key(row_obj, *field_name_ptr, CONIURA json_str(value))
+      FIN SI
+      VINCIRE j AD j + 1
+    FIN DUM
+    CONIURA json_arr_push(out_arr, row_obj)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(out_arr)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

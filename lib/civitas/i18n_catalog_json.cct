@@ -1,0 +1,8 @@
+INCIPIT grimoire "civitas_i18n_catalog_json"
+
+ADVOCARE "i18n_catalog_json/i18n_catalog_json.cct"
+ADVOCARE "i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "i18n_catalog_json/i18n_catalog_json_writer.cct"
+ADVOCARE "i18n_catalog_json/i18n_catalog_json_merge.cct"
+
+EXPLICIT grimoire

@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase12_12d_invalidation_locale_scope_only_view"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation_exec.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view_ops.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle view_h AD CONIURA phase12_12c_mem_cache("12d-view-locale")
+  EVOCA SPECULUM NIHIL cv AD CONIURA cache_view_new(SPECULUM view_h, CONIURA phase12_12d_view_cfg("cv12d", 60), NIHIL)
+  EVOCA WebRequest req AD CONIURA phase12_12d_request("GET", "/items")
+  CONIURA cache_view_set(cv, req, CONIURA response_html("items page"), 60, "locale:pt-BR")
+
+  EVOCA InvalidationCoord coord AD CONIURA invalidation_coord_new(NIHIL, cv, NIHIL, NIHIL)
+  EVOCA InvalidationResult result AD CONIURA invalidation_on_locale_publish(coord, "pt-BR")
+  SI result.chaves_removidas != 1
+    REDDE 1
+  FIN SI
+  EVOCA CacheMaybeViewEntry maybe AD CONIURA cache_view_get(cv, req)
+  SI maybe.found
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

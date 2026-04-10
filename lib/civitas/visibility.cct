@@ -1,0 +1,166 @@
+INCIPIT grimoire "civitas_visibility"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO VisibilityPolicy
+  VISIBILITY_PUBLIC,
+  VISIBILITY_PRIVATE,
+  VISIBILITY_FOLLOWERS,
+  VISIBILITY_RESTRICTED,
+  VISIBILITY_DELETED,
+  VISIBILITY_MODERATION
+FIN ORDO
+
+ORDO VisibilitySurface
+  VISIBILITY_SURFACE_HTML,
+  VISIBILITY_SURFACE_API,
+  VISIBILITY_SURFACE_ADMIN
+FIN ORDO
+
+ORDO VisibilityDecision
+  VISIBILITY_ALLOW,
+  VISIBILITY_DENY,
+  VISIBILITY_REQUIRE_LOGIN,
+  VISIBILITY_REQUIRE_RELATION,
+  VISIBILITY_REQUIRE_ELEVATED_ACCESS
+FIN ORDO
+
+SIGILLUM VisibilityContext
+  is_authenticated: VERUM
+  is_owner: VERUM
+  has_follow_relation: VERUM
+  is_moderator: VERUM
+  surface: VisibilitySurface
+FIN SIGILLUM
+
+SIGILLUM VisibilityFilterItem
+  label: VERBUM
+  policy: VisibilityPolicy
+FIN SIGILLUM
+
+RITUALE visibility_parse(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA VERBUM normalized AD CONIURA to_lower(CONIURA trim(raw))
+  SI CONIURA compare(normalized, "public") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_PUBLIC)
+  FIN SI
+  SI CONIURA compare(normalized, "private") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_PRIVATE)
+  FIN SI
+  SI CONIURA compare(normalized, "followers") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_FOLLOWERS)
+  FIN SI
+  SI CONIURA compare(normalized, "restricted") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_RESTRICTED)
+  FIN SI
+  SI CONIURA compare(normalized, "deleted") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_DELETED)
+  FIN SI
+  SI CONIURA compare(normalized, "moderation") == 0
+    REDDE CONIURA Ok GENUS(VisibilityPolicy, VERBUM)(VISIBILITY_MODERATION)
+  FIN SI
+  REDDE CONIURA Err GENUS(VisibilityPolicy, VERBUM)("politica de visibilidade invalida")
+EXPLICIT RITUALE
+
+RITUALE visibility_name(VisibilityPolicy policy) REDDE VERBUM
+  ELIGE policy
+    CASUS VISIBILITY_PUBLIC:
+      REDDE "public"
+    CASUS VISIBILITY_PRIVATE:
+      REDDE "private"
+    CASUS VISIBILITY_FOLLOWERS:
+      REDDE "followers"
+    CASUS VISIBILITY_RESTRICTED:
+      REDDE "restricted"
+    CASUS VISIBILITY_DELETED:
+      REDDE "deleted"
+    ALIOQUIN:
+      REDDE "moderation"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE visibility_decide(VisibilityPolicy policy, VisibilityContext ctx) REDDE VisibilityDecision
+  ELIGE policy
+    CASUS VISIBILITY_PUBLIC:
+      REDDE VISIBILITY_ALLOW
+    CASUS VISIBILITY_PRIVATE:
+      SI NON ctx.is_authenticated
+        REDDE VISIBILITY_REQUIRE_LOGIN
+      FIN SI
+      SI ctx.is_owner
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      SI ctx.is_moderator ET ctx.surface == VISIBILITY_SURFACE_ADMIN
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      REDDE VISIBILITY_DENY
+    CASUS VISIBILITY_FOLLOWERS:
+      SI NON ctx.is_authenticated
+        REDDE VISIBILITY_REQUIRE_LOGIN
+      FIN SI
+      SI ctx.is_owner VEL ctx.is_moderator
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      SI ctx.has_follow_relation
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      REDDE VISIBILITY_REQUIRE_RELATION
+    CASUS VISIBILITY_RESTRICTED:
+      SI ctx.is_moderator ET ctx.surface == VISIBILITY_SURFACE_ADMIN
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      REDDE VISIBILITY_REQUIRE_ELEVATED_ACCESS
+    CASUS VISIBILITY_DELETED:
+      SI ctx.is_moderator ET ctx.surface == VISIBILITY_SURFACE_ADMIN
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      REDDE VISIBILITY_DENY
+    ALIOQUIN:
+      SI ctx.is_owner VEL ctx.is_moderator
+        REDDE VISIBILITY_ALLOW
+      FIN SI
+      REDDE VISIBILITY_DENY
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE visibility_is_public(VisibilityPolicy policy) REDDE VERUM
+  REDDE policy == VISIBILITY_PUBLIC
+EXPLICIT RITUALE
+
+RITUALE visibility_is_hidden_from_public(VisibilityPolicy policy) REDDE VERUM
+  REDDE policy != VISIBILITY_PUBLIC
+EXPLICIT RITUALE
+
+RITUALE visibility_http_status(VisibilityDecision decision) REDDE REX
+  ELIGE decision
+    CASUS VISIBILITY_ALLOW:
+      REDDE 200
+    CASUS VISIBILITY_REQUIRE_LOGIN:
+      REDDE 401
+    CASUS VISIBILITY_REQUIRE_RELATION:
+      REDDE 403
+    CASUS VISIBILITY_REQUIRE_ELEVATED_ACCESS:
+      REDDE 403
+    ALIOQUIN:
+      REDDE 404
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE visibility_filter_public_only(SPECULUM NIHIL items) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VisibilityFilterItem))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  DUM i < n
+    EVOCA SPECULUM VisibilityFilterItem item_ptr AD CONIURA fluxus_get(items, i)
+    SI CONIURA visibility_is_public((*item_ptr).policy)
+      CONIURA fluxus_push(out, item_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

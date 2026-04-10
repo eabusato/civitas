@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase2_pagination_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/pagination.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase2_allowed_sorts_basic() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL allowed AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM created_at AD "created_at"
+  EVOCA VERBUM title AD "title"
+  CONIURA fluxus_push(allowed, SPECULUM created_at)
+  CONIURA fluxus_push(allowed, SPECULUM title)
+  REDDE allowed
+EXPLICIT RITUALE
+
+RITUALE phase2_pagination_request(VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase2_request("GET", target)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

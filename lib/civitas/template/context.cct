@@ -1,0 +1,21 @@
+INCIPIT grimoire "civitas_template_context"
+
+SIGILLUM LoopContext
+  index: REX
+  count: REX
+  length: REX
+  is_first: VERUM
+  is_last: VERUM
+FIN SIGILLUM
+
+RITUALE tpl_loop_context(REX index, REX length) REDDE LoopContext
+  EVOCA LoopContext ctx
+  VINCIRE ctx.index AD index
+  VINCIRE ctx.count AD index + 1
+  VINCIRE ctx.length AD length
+  VINCIRE ctx.is_first AD index == 0
+  VINCIRE ctx.is_last AD index == length - 1
+  REDDE ctx
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

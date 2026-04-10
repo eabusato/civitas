@@ -1,0 +1,40 @@
+INCIPIT grimoire "civitas_upload"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "upload_types.cct"
+ADVOCARE "upload_buffer.cct"
+ADVOCARE "upload_stream.cct"
+ADVOCARE "upload_save.cct"
+
+RITUALE upload_parse(WebRequest req, UploadConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL ct_opt AD CONIURA request_header(req, "content-type")
+  SI CONIURA option_is_none GENUS(VERBUM)(ct_opt)
+    REDDE CONIURA upload_result_err(UeContentTypeInvalido)
+  FIN SI
+  EVOCA VERBUM content_type AD CONIURA option_unwrap GENUS(VERBUM)(ct_opt)
+  CONIURA option_free GENUS(VERBUM)(ct_opt)
+
+  SI NON CONIURA contains(CONIURA to_lower(content_type), "multipart/form-data")
+    REDDE CONIURA upload_result_err(UeContentTypeInvalido)
+  FIN SI
+
+  EVOCA VERBUM boundary AD CONIURA upload_extract_boundary(content_type)
+  SI CONIURA len(boundary) == 0
+    REDDE CONIURA upload_result_err(UeBoundaryAusente)
+  FIN SI
+
+  SI NON CONIURA is_dir(cfg.destino) VEL NON CONIURA is_writable(cfg.destino)
+    REDDE CONIURA upload_result_err(UeDestinoNaoGravavel)
+  FIN SI
+
+  SI CONIURA request_has_raw_body(req)
+    REDDE CONIURA upload_parse_stream(req.corpo_bruto, boundary, cfg)
+  FIN SI
+  REDDE CONIURA upload_parse_buffer(req.body, boundary, cfg)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

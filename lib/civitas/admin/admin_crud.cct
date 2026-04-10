@@ -1,0 +1,147 @@
+INCIPIT grimoire "civitas_admin_crud"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_audit.cct"
+
+RITUALE admin_json_get_field(Json obj, AdminFieldConfig field) REDDE Json
+  SI CONIURA json_has_key(obj, field.name)
+    REDDE CONIURA json_get_key(obj, field.name)
+  FIN SI
+  REDDE CONIURA json_null()
+EXPLICIT RITUALE
+
+RITUALE admin_append_param_for_field(SPECULUM DbParams params, AdminFieldConfig field, Json value) REDDE NIHIL
+  ELIGE field.kind
+    CASUS ADMIN_FIELD_INT:
+      CONIURA dbh_param_int(params, cast GENUS(REX)(CONIURA json_expect_num(value)))
+    CASUS ADMIN_FIELD_REAL:
+      CONIURA dbh_param_real(params, CONIURA json_expect_num(value))
+    CASUS ADMIN_FIELD_BOOL:
+      CONIURA dbh_param_bool(params, CONIURA json_expect_bool(value))
+    ALIOQUIN:
+      CONIURA dbh_param_text(params, CONIURA json_expect_str(value))
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_value_missing_required(AdminFieldConfig field, Json value) REDDE VERUM
+  SI NON field.required
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA json_is_null(value)
+    REDDE VERUM
+  FIN SI
+  SI CONIURA json_is_str(value) ET CONIURA len(CONIURA json_expect_str(value)) == 0
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE admin_create(AdminModelConfig cfg, DbHandle dbh, VERBUM form_json, VERBUM actor_id) REDDE VERBUM
+  EVOCA Json form AD CONIURA json_parse(form_json)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM columns AD ""
+  EVOCA VERBUM values_sql AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    EVOCA Json value AD CONIURA admin_json_get_field(form, *field_ptr)
+    SI NON ((*field_ptr).pk ET (*field_ptr).auto_increment ET CONIURA json_is_null(value))
+      SI CONIURA admin_value_missing_required(*field_ptr, value)
+        IACE CONIURA concat("admin create missing required field: ", (*field_ptr).name)
+      FIN SI
+      SI NON CONIURA json_is_null(value)
+        SI CONIURA len(columns) != 0
+          VINCIRE columns AD CONIURA concat(columns, ", ")
+          VINCIRE values_sql AD CONIURA concat(values_sql, ", ")
+        FIN SI
+        VINCIRE columns AD CONIURA concat(columns, (*field_ptr).name)
+        VINCIRE values_sql AD CONIURA concat(values_sql, "?")
+        CONIURA admin_append_param_for_field(SPECULUM params, *field_ptr, value)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM sql AD "INSERT INTO "
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  VINCIRE sql AD CONIURA concat(sql, columns)
+  VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+  VINCIRE sql AD CONIURA concat(sql, values_sql)
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  EVOCA VERBUM created_pk AD ""
+  SI CONIURA json_has_key(form, cfg.pk_field)
+    EVOCA Json pk_json AD CONIURA json_get_key(form, cfg.pk_field)
+    SI CONIURA json_is_str(pk_json)
+      VINCIRE created_pk AD CONIURA json_expect_str(pk_json)
+    ALITER
+      VINCIRE created_pk AD CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(pk_json)))
+    FIN SI
+  ALITER
+    VINCIRE created_pk AD CONIURA stringify_int(CONIURA dbh_scalar_int(dbh, "SELECT last_insert_rowid()"))
+  FIN SI
+  CONIURA admin_audit_write(dbh, cfg.model_name, created_pk, ADMIN_AUDIT_CREATE, actor_id, form_json)
+  REDDE created_pk
+EXPLICIT RITUALE
+
+RITUALE admin_update(AdminModelConfig cfg, DbHandle dbh, VERBUM pk_value, VERBUM form_json, VERBUM actor_id) REDDE NIHIL
+  EVOCA Json form AD CONIURA json_parse(form_json)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM sets_sql AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI NON (*field_ptr).pk
+      SI CONIURA json_has_key(form, (*field_ptr).name)
+        EVOCA Json value AD CONIURA json_get_key(form, (*field_ptr).name)
+        SI CONIURA admin_value_missing_required(*field_ptr, value)
+          IACE CONIURA concat("admin update missing required field: ", (*field_ptr).name)
+        FIN SI
+        SI CONIURA len(sets_sql) != 0
+          VINCIRE sets_sql AD CONIURA concat(sets_sql, ", ")
+        FIN SI
+        VINCIRE sets_sql AD CONIURA concat(sets_sql, (*field_ptr).name)
+        VINCIRE sets_sql AD CONIURA concat(sets_sql, " = ?")
+        CONIURA admin_append_param_for_field(SPECULUM params, *field_ptr, value)
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA dbh_param_text(SPECULUM params, pk_value)
+  EVOCA VERBUM sql AD "UPDATE "
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " SET ")
+  VINCIRE sql AD CONIURA concat(sql, sets_sql)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA admin_audit_write(dbh, cfg.model_name, pk_value, ADMIN_AUDIT_UPDATE, actor_id, form_json)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_delete(AdminModelConfig cfg, DbHandle dbh, VERBUM pk_value, VERBUM actor_id) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, pk_value)
+  EVOCA VERBUM sql AD "DELETE FROM "
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  CONIURA dbh_exec(dbh, sql, params)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA admin_audit_write(dbh, cfg.model_name, pk_value, ADMIN_AUDIT_DELETE, actor_id, "{}")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

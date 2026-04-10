@@ -1,0 +1,23 @@
+INCIPIT grimoire "civitas_bootstrap"
+
+ADVOCARE "../lib/civitas/core/version.cct"
+ADVOCARE "../lib/civitas/web/app.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA civitas_bootstrap_ready()
+    REDDE 1
+  FIN SI
+
+  SI CONIURA len(CONIURA civitas_app_banner()) == 0
+    REDDE 2
+  FIN SI
+
+  SI CONIURA compare(CONIURA civitas_name(), "civitas") != 0
+    REDDE 3
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

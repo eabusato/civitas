@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase16_16b_file_backend_writes_eml"
+
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_settings.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM out_dir AD "tests/tmp/fase_16/16b_file_mail"
+  SI CONIURA exists(out_dir)
+    SI CONIURA is_dir(out_dir)
+      EVOCA SPECULUM NIHIL items_prev AD CONIURA list_dir(out_dir)
+      EVOCA REX i_prev AD 0
+      DUM i_prev < CONIURA fluxus_len(items_prev)
+        EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(items_prev, i_prev)
+        CONIURA delete_file(CONIURA path_join(out_dir, *name_ptr))
+        VINCIRE i_prev AD i_prev + 1
+      FIN DUM
+      CONIURA delete_dir(out_dir)
+    ALITER
+      CONIURA delete_file(out_dir)
+    FIN SI
+  FIN SI
+  CONIURA mkdir_all(out_dir)
+  EVOCA MailerConfig cfg AD CONIURA mailer_config_file(out_dir, "no-reply@test.example", "Test App")
+  EVOCA SPECULUM NIHIL open_res AD CONIURA mailer_open(cfg)
+  SI CONIURA result_is_err GENUS(Mailer, MailerError)(open_res)
+    REDDE 1
+  FIN SI
+  EVOCA Mailer mailer AD CONIURA result_unwrap GENUS(Mailer, MailerError)(open_res)
+  EVOCA MailMessage msg AD CONIURA mailer_simple("ana@test.example", "Ana", "File Mail", "Body", "")
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(SPECULUM mailer, msg)
+  SI CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM NIHIL items AD CONIURA list_dir(out_dir)
+  SI CONIURA fluxus_len(items) < 1
+    CONIURA mailer_close(SPECULUM mailer)
+    REDDE 3
+  FIN SI
+  CONIURA mailer_close(SPECULUM mailer)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

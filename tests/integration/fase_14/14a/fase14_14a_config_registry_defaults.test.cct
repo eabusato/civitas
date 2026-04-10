@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase14_14a_config_registry_defaults"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA I18nConfig cfg AD CONIURA i18n_config_new("pt-BR", "tests/tmp/fase_14/i18n")
+  SI CONIURA compare(cfg.locale_padrao, "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(cfg.formato, "po") != 0
+    REDDE 1
+  FIN SI
+  SI NON cfg.falha_silenciosa
+    REDDE 1
+  FIN SI
+
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(cfg)
+  SI CONIURA fluxus_len(reg.locales) != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

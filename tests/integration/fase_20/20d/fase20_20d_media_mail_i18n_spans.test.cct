@@ -1,0 +1,55 @@
+INCIPIT grimoire "fase20_20d_media_mail_i18n_spans"
+
+ADVOCARE "../../../../lib/civitas/trace/trace_i18n.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_mail.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_media.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+
+  EVOCA REX probe_span AD CONIURA trace_media_probe_span("/tmp/in.mov")
+  CONIURA trace_media_span_end(probe_span)
+  EVOCA REX transcode_span AD CONIURA trace_media_transcode_span_begin("/tmp/in.mov", "/tmp/out.mp4", "mp4")
+  CONIURA trace_media_span_end(transcode_span)
+  EVOCA REX mail_span AD CONIURA trace_mail_begin("welcome")
+  CONIURA trace_mail_attr_recipient(mail_span, "ana@example.test")
+  CONIURA trace_mail_attr_count(mail_span, 1)
+  CONIURA trace_mail_end(mail_span)
+  EVOCA REX i18n_span AD CONIURA trace_i18n_batch_begin("pt-BR")
+  CONIURA trace_i18n_batch_end(i18n_span, 3)
+
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace("trace-20d-media-mail-i18n")
+  SI CONIURA trace_span_count(trace) != 4
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 1
+  FIN SI
+  EVOCA Span probe AD CONIURA trace_get_span(trace, 0)
+  SI CONIURA compare(probe.name, "ffmpeg:probe") != 0
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 2
+  FIN SI
+  EVOCA Span mail AD CONIURA trace_get_span(trace, 2)
+  SI NON CONIURA contains(mail.attributes_json, "\"mail.to\":\"ana@example.test\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 3
+  FIN SI
+  EVOCA Span i18n AD CONIURA trace_get_span(trace, 3)
+  SI NON CONIURA contains(i18n.attributes_json, "\"i18n.count\":\"3\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 4
+  FIN SI
+
+  CONIURA trace_free(SPECULUM trace)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

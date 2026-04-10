@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase7_7c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/csrf.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+
+RITUALE phase7_render_form_data() REDDE FormData
+  REDDE CONIURA form_data_new()
+EXPLICIT RITUALE
+
+RITUALE phase7_render_csrf(VERBUM token) REDDE CsrfToken
+  EVOCA CsrfToken out
+  VINCIRE out.token AD token
+  VINCIRE out.binding_cookie AD "binding"
+  VINCIRE out.is_new_binding AD FALSUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase7_render_validation_ok() REDDE ValidationResult
+  REDDE CONIURA validation_result_new()
+EXPLICIT RITUALE
+
+RITUALE phase7_render_add_error(SPECULUM ValidationResult vr, VERBUM campo, VERBUM msg) REDDE NIHIL
+  CONIURA validation_result_add_error(vr, campo, msg)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

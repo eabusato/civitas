@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase27_27a_tmp_sweep_keeps_recent"
+
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/time.cct"
+
+RITUALE test_tmp_sweep_removes_only_old_files() REDDE NIHIL
+  EVOCA StorageTopology topo AD CONIURA phase27_topology("27a_tmp_sweep")
+  CONIURA storage_topology_ensure_dirs(topo)
+
+  EVOCA VERBUM old_path AD CONIURA storage_topology_media_path(topo, "tmp", "old.upload")
+  EVOCA VERBUM fresh_path AD CONIURA storage_topology_media_path(topo, "tmp", "fresh.upload")
+  CONIURA write_all(old_path, "old")
+  CONIURA sleep_ms(1200)
+  CONIURA write_all(fresh_path, "fresh")
+
+  EVOCA REX removed AD CONIURA storage_topology_tmp_sweep(topo, 1)
+  SI removed != 1
+    IACE "tmp sweep should remove exactly one stale file"
+  FIN SI
+  SI CONIURA exists(old_path)
+    IACE "stale tmp file should be removed"
+  FIN SI
+  SI NON CONIURA exists(fresh_path)
+    IACE "fresh tmp file should remain"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

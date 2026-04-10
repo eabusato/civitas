@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase24_24d_range_request"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_range_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA VERBUM range_value AD CONIURA request_header_or((*req).headers, "range", "")
+  SI CONIURA compare(range_value, "bytes=0-3") == 0
+    CONIURA response_fill(out, CONIURA response_with_body(206, "NEON", WEB_RESPONSE_TEXT))
+    CONIURA response_set_header(out, "content-range", "bytes 0-3/10")
+    REDDE
+  FIN SI
+  CONIURA response_fill(out, CONIURA response_text("NEONBRIDGE"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "GET", "/media/poster", "range", "phase24_range_handler", phase24_range_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_range_request(SPECULUM client, "/media/poster", "bytes=0-3")
+  CONIURA assert_status(res, 206)
+  CONIURA assert_header(res, "content-range", "bytes 0-3/10")
+  CONIURA assert_contains(res, "NEON")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

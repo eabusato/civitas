@@ -1,0 +1,58 @@
+INCIPIT grimoire "civitas_cache_query_exec"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../model/model.cct"
+ADVOCARE "../query/query.cct"
+ADVOCARE "../query/query_exec.cct"
+ADVOCARE "cache_query.cct"
+ADVOCARE "cache_query_serial.cct"
+
+RITUALE query_all_cache(DbHandle h, Query q, SPECULUM CacheQuery cq, ModelDef model_def) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA query_build_sql(q)
+  EVOCA VERBUM params_json AD CONIURA cache_query_params_json(q)
+  EVOCA VERBUM chave AD CONIURA cache_query_chave(*cq, q.tabela, sql, params_json)
+  EVOCA CacheMaybeText cached AD CONIURA cache_query_get(*cq, chave)
+  SI cached.found
+    REDDE cached.valor
+  FIN SI
+
+  EVOCA DbRows rows AD CONIURA query_all_dbh(h, q)
+  EVOCA VERBUM json AD CONIURA cache_query_rows_to_json(SPECULUM rows, model_def)
+  CONIURA cache_query_set(cq, chave, q.tabela, json, (*cq).ttl_padrao)
+  REDDE json
+EXPLICIT RITUALE
+
+RITUALE query_all_cache_raw(DbHandle h, Query q, SPECULUM CacheQuery cq, REX num_colunas) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA query_build_sql(q)
+  EVOCA VERBUM params_json AD CONIURA cache_query_params_json(q)
+  EVOCA VERBUM chave AD CONIURA cache_query_chave(*cq, q.tabela, sql, params_json)
+  EVOCA CacheMaybeText cached AD CONIURA cache_query_get(*cq, chave)
+  SI cached.found
+    REDDE cached.valor
+  FIN SI
+
+  EVOCA DbRows rows AD CONIURA query_all_dbh(h, q)
+  EVOCA VERBUM json AD CONIURA cache_query_rows_to_json_raw(SPECULUM rows, num_colunas)
+  CONIURA cache_query_set(cq, chave, q.tabela, json, (*cq).ttl_padrao)
+  REDDE json
+EXPLICIT RITUALE
+
+RITUALE query_count_cache(DbHandle h, Query q, SPECULUM CacheQuery cq) REDDE REX
+  EVOCA VERBUM sql AD CONIURA query_count_sql(q)
+  EVOCA VERBUM params_json AD CONIURA cache_query_params_json(q)
+  EVOCA VERBUM chave AD CONIURA cache_query_chave_contagem(*cq, q.tabela, sql, params_json)
+  EVOCA CacheMaybeText cached AD CONIURA cache_query_get(*cq, chave)
+  SI cached.found
+    REDDE CONIURA parse_int(cached.valor)
+  FIN SI
+
+  EVOCA REX count AD CONIURA query_count_dbh(h, q)
+  CONIURA cache_query_set(cq, chave, q.tabela, CONIURA stringify_int(count), (*cq).ttl_padrao)
+  REDDE count
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

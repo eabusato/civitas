@@ -1,0 +1,278 @@
+INCIPIT grimoire "civitas_sse"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../../civitas/router.cct"
+ADVOCARE "../../civitas/signals.cct"
+
+SIGILLUM SseEvent
+  id: VERBUM
+  evento: VERBUM
+  dados: VERBUM
+  retry: REX
+FIN SIGILLUM
+
+SIGILLUM SseWriter
+  sock: SPECULUM NIHIL
+  conectado: VERUM
+  ultima_id: VERBUM
+  keepalive_ms: REX
+  ultimo_envio: REX
+FIN SIGILLUM
+
+SIGILLUM SseBus
+  db: SPECULUM NIHIL
+  canal: VERBUM
+  ultimo_id: REX
+FIN SIGILLUM
+
+SIGILLUM SseSignalBridgeCtx
+  bus: SPECULUM SseBus
+  evento_sse: VERBUM
+FIN SIGILLUM
+
+RITUALE sse_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE sse_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS sse_bus_events (id INTEGER PRIMARY KEY AUTOINCREMENT, canal TEXT NOT NULL, evento TEXT NOT NULL DEFAULT '', dados TEXT NOT NULL, criado_em INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_sse_bus_canal_id ON sse_bus_events(canal, id)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_event_new(VERBUM evento, VERBUM dados) REDDE SseEvent
+  EVOCA SseEvent ev
+  VINCIRE ev.id AD ""
+  VINCIRE ev.evento AD evento
+  VINCIRE ev.dados AD dados
+  VINCIRE ev.retry AD 0
+  REDDE ev
+EXPLICIT RITUALE
+
+RITUALE sse_event_set_id(SPECULUM SseEvent ev, VERBUM id) REDDE NIHIL
+  VINCIRE (*ev).id AD CONIURA concat("", id)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_event_set_retry(SPECULUM SseEvent ev, REX ms) REDDE NIHIL
+  VINCIRE (*ev).retry AD ms
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_writer_new(SPECULUM NIHIL sock) REDDE SPECULUM SseWriter
+  EVOCA SPECULUM SseWriter w AD CONIURA http_alloc(MENSURA(SseWriter))
+  VINCIRE (*w).sock AD sock
+  VINCIRE (*w).conectado AD VERUM
+  VINCIRE (*w).ultima_id AD ""
+  VINCIRE (*w).keepalive_ms AD 15000
+  VINCIRE (*w).ultimo_envio AD CONIURA now_ms()
+  REDDE w
+EXPLICIT RITUALE
+
+RITUALE sse_writer_set_keepalive(SPECULUM SseWriter w, REX ms) REDDE NIHIL
+  VINCIRE (*w).keepalive_ms AD ms
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_is_connected(SPECULUM SseWriter w) REDDE VERUM
+  REDDE (*w).conectado
+EXPLICIT RITUALE
+
+RITUALE sse_needs_keepalive(SPECULUM SseWriter w) REDDE VERUM
+  REDDE (CONIURA now_ms() - (*w).ultimo_envio) >= (*w).keepalive_ms
+EXPLICIT RITUALE
+
+RITUALE sse_event_to_string(SseEvent ev) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA SPECULUM NIHIL linhas AD CONIURA split(ev.dados, "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(linhas)
+
+  SI ev.retry > 0
+    CONIURA builder_append(b, "retry: ")
+    CONIURA builder_append(b, CONIURA stringify_int(ev.retry))
+    CONIURA builder_append(b, "\n")
+  FIN SI
+  SI CONIURA len(ev.id) > 0
+    CONIURA builder_append(b, "id: ")
+    CONIURA builder_append(b, ev.id)
+    CONIURA builder_append(b, "\n")
+  FIN SI
+  SI CONIURA len(ev.evento) > 0
+    CONIURA builder_append(b, "event: ")
+    CONIURA builder_append(b, ev.evento)
+    CONIURA builder_append(b, "\n")
+  FIN SI
+
+  SI n == 0
+    CONIURA builder_append(b, "data: \n")
+  FIN SI
+  DUM i < n
+    EVOCA SPECULUM VERBUM linha_ptr AD CONIURA fluxus_get(linhas, i)
+    CONIURA builder_append(b, "data: ")
+    CONIURA builder_append(b, *linha_ptr)
+    CONIURA builder_append(b, "\n")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "\n")
+
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE sse_sock_send_all(SPECULUM NIHIL sock, VERBUM raw) REDDE VERUM
+  EVOCA REX sent_total AD 0
+  EVOCA REX raw_len AD CONIURA len(raw)
+  DUM sent_total < raw_len
+    EVOCA VERBUM chunk AD CONIURA substring(raw, sent_total, raw_len)
+    EVOCA REX sent_now AD CONIURA sock_send(sock, chunk)
+    SI sent_now <= 0
+      REDDE FALSUM
+    FIN SI
+    VINCIRE sent_total AD sent_total + sent_now
+  FIN DUM
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE sse_write(SPECULUM SseWriter w, SseEvent ev) REDDE NIHIL
+  SI NON (*w).conectado
+    REDDE
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA sse_event_to_string(ev)
+  SI NON CONIURA sse_sock_send_all((*w).sock, raw)
+    VINCIRE (*w).conectado AD FALSUM
+    REDDE
+  FIN SI
+  SI CONIURA len(ev.id) > 0
+    VINCIRE (*w).ultima_id AD CONIURA concat("", ev.id)
+  FIN SI
+  VINCIRE (*w).ultimo_envio AD CONIURA now_ms()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_write_data(SPECULUM SseWriter w, VERBUM dados) REDDE NIHIL
+  EVOCA SseEvent ev AD CONIURA sse_event_new("", dados)
+  CONIURA sse_write(w, ev)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_keepalive(SPECULUM SseWriter w) REDDE NIHIL
+  SI NON (*w).conectado
+    REDDE
+  FIN SI
+  SI NON CONIURA sse_sock_send_all((*w).sock, ": keepalive\n\n")
+    VINCIRE (*w).conectado AD FALSUM
+    REDDE
+  FIN SI
+  VINCIRE (*w).ultimo_envio AD CONIURA now_ms()
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_begin_response(SPECULUM NIHIL sock, VERBUM last_event_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  EVOCA VERBUM crlf AD CONIURA sse_crlf()
+  CONIURA builder_append(b, "HTTP/1.1 200 OK")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Content-Type: text/event-stream")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Cache-Control: no-cache")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "Connection: keep-alive")
+  CONIURA builder_append(b, crlf)
+  CONIURA builder_append(b, "X-Accel-Buffering: no")
+  CONIURA builder_append(b, crlf)
+  SI CONIURA len(last_event_id) > 0
+    CONIURA builder_append(b, "Last-Event-ID: ")
+    CONIURA builder_append(b, last_event_id)
+    CONIURA builder_append(b, crlf)
+  FIN SI
+  CONIURA builder_append(b, crlf)
+  CONIURA sse_sock_send_all(sock, CONIURA builder_to_verbum(b))
+  CONIURA builder_free(b)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_bus_new(SPECULUM NIHIL db, VERBUM canal) REDDE SPECULUM SseBus
+  EVOCA SPECULUM SseBus bus AD CONIURA http_alloc(MENSURA(SseBus))
+  CONIURA sse_schema_up(db)
+  VINCIRE (*bus).db AD db
+  VINCIRE (*bus).canal AD canal
+  VINCIRE (*bus).ultimo_id AD 0
+  REDDE bus
+EXPLICIT RITUALE
+
+RITUALE sse_bus_emit(SPECULUM SseBus bus, VERBUM evento, VERBUM dados) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*bus).db, "INSERT INTO sse_bus_events(canal, evento, dados, criado_em) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, (*bus).canal)
+  CONIURA stmt_bind_text(stmt, 2, evento)
+  CONIURA stmt_bind_text(stmt, 3, dados)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_bus_poll(SPECULUM SseBus bus) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*bus).db, "SELECT id, evento, dados FROM sse_bus_events WHERE canal = ? AND id > ? ORDER BY id LIMIT 50")
+  EVOCA SPECULUM NIHIL eventos AD CONIURA fluxus_init(MENSURA(SseEvent))
+  CONIURA stmt_bind_text(stmt, 1, (*bus).canal)
+  CONIURA stmt_bind_int(stmt, 2, (*bus).ultimo_id)
+
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX ev_id AD CONIURA stmt_get_int(stmt, 0)
+      EVOCA VERBUM ev_nome AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+      EVOCA VERBUM ev_dados AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+      EVOCA SseEvent ev AD CONIURA sse_event_new(ev_nome, ev_dados)
+      CONIURA sse_event_set_id(SPECULUM ev, CONIURA stringify_int(ev_id))
+      CONIURA fluxus_push(eventos, SPECULUM ev)
+      VINCIRE (*bus).ultimo_id AD ev_id
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE eventos
+EXPLICIT RITUALE
+
+RITUALE sse_bus_flush_old(SPECULUM SseBus bus, REX max_age_ms) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare((*bus).db, "DELETE FROM sse_bus_events WHERE canal = ? AND criado_em < ?")
+  CONIURA stmt_bind_text(stmt, 1, (*bus).canal)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - max_age_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_bridge_on_named_signal(SPECULUM NIHIL envelope_ref, SPECULUM NIHIL ctx_ref) REDDE NIHIL
+  EVOCA SPECULUM SignalEnvelope env AD envelope_ref
+  EVOCA SPECULUM SseSignalBridgeCtx ctx AD ctx_ref
+  EVOCA VERBUM payload AD ""
+  SI (*env).payload_ref != NIHIL
+    EVOCA SPECULUM NamedSignalTextPayload payload_ptr AD (*env).payload_ref
+    VINCIRE payload AD CONIURA concat("", (*payload_ptr).value)
+  FIN SI
+  CONIURA sse_bus_emit((*ctx).bus, (*ctx).evento_sse, payload)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_bus_on_signal(SPECULUM NamedSignalRegistry registry, SPECULUM SseBus bus, VERBUM signal_nome, VERBUM evento_sse) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SseSignalBridgeCtx ctx AD CONIURA http_alloc(MENSURA(SseSignalBridgeCtx))
+  VINCIRE (*ctx).bus AD bus
+  VINCIRE (*ctx).evento_sse AD evento_sse
+  REDDE CONIURA signal_connect_named_with_ctx(registry, signal_nome, CONIURA concat("sse:", evento_sse), sse_bridge_on_named_signal, ctx)
+EXPLICIT RITUALE
+
+RITUALE sse_handler_add(SPECULUM Router router, VERBUM path, SPECULUM NIHIL handler_fn, SPECULUM NIHIL ctx) REDDE SPECULUM NIHIL
+  REDDE CONIURA router_add_sse(router, "GET", path, "", "sse_handler", handler_fn, ctx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

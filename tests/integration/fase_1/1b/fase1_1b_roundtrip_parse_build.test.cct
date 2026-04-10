@@ -1,0 +1,19 @@
+INCIPIT grimoire "fase1_1b_roundtrip_parse_build_test"
+
+ADVOCARE "../../../../lib/civitas/url.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA url_parse("http://example.com/x/./y/../z?a=1#f")
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  EVOCA WebUrl url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(res)
+  SI CONIURA compare(CONIURA url_build(url), "http://example.com/x/z?a=1#f") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

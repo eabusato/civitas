@@ -1,0 +1,86 @@
+INCIPIT grimoire "civitas_admin_inline_query"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_inline.cct"
+
+RITUALE admin_inline_sql_columns(AdminInlineConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, ", ")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, (*field_ptr).name)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE admin_inline_row_json(AdminInlineConfig cfg, DbRows rows) REDDE VERBUM
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM AdminFieldConfig field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    ELIGE (*field_ptr).kind
+      CASUS ADMIN_FIELD_INT:
+        CONIURA json_obj_push(obj, (*field_ptr).name, CONIURA json_num(cast GENUS(UMBRA)(CONIURA dbrows_get_int(rows, i))))
+      CASUS ADMIN_FIELD_REAL:
+        CONIURA json_obj_push(obj, (*field_ptr).name, CONIURA json_num(CONIURA dbrows_get_real(rows, i)))
+      CASUS ADMIN_FIELD_BOOL:
+        CONIURA json_obj_push(obj, (*field_ptr).name, CONIURA json_bool(CONIURA dbrows_get_bool(rows, i)))
+      ALIOQUIN:
+        CONIURA json_obj_push(obj, (*field_ptr).name, CONIURA json_str(CONIURA dbrows_get_text(rows, i)))
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(obj)
+EXPLICIT RITUALE
+
+RITUALE admin_inline_count(AdminInlineConfig cfg, DbHandle dbh, VERBUM parent_pk) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, parent_pk)
+  EVOCA VERBUM sql AD "SELECT COUNT(*) FROM "
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_table)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.fk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ?")
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE admin_inline_list_for_parent(AdminInlineConfig cfg, DbHandle dbh, VERBUM parent_pk) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA VERBUM sql AD "SELECT "
+  VINCIRE sql AD CONIURA concat(sql, CONIURA admin_inline_sql_columns(cfg))
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_table)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.fk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ? ORDER BY ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.child_pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " ASC")
+  CONIURA dbh_param_text(SPECULUM params, parent_pk)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA Json arr AD CONIURA json_arr()
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    CONIURA json_arr_push(arr, CONIURA json_parse(CONIURA admin_inline_row_json(cfg, rows)))
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

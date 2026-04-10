@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase18_18c_export_csv"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_export.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_export_csv() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18c_export")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Alpha", "draft", "u1", 1000)
+  CONIURA phase18_insert_post(stack.db, "Beta", "published", "u2", 1001)
+  EVOCA AdminListQuery query AD CONIURA admin_list_query_default()
+  VINCIRE query.page_size AD 10
+  EVOCA VERBUM csv AD CONIURA admin_export_csv(*cfg_ptr, stack.dbh, query)
+  SI CONIURA starts_with(csv, "id,title,state,author_id,created_at\n") == FALSUM
+    IACE "csv header mismatch"
+  FIN SI
+  SI CONIURA find(csv, "Alpha,draft,u1,1000") == -1
+    IACE "csv missing first row"
+  FIN SI
+  SI CONIURA find(csv, "Beta,published,u2,1001") == -1
+    IACE "csv missing second row"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_export_csv()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,24 @@
+{
+  "locale": "en-US",
+  "version": 1,
+  "fallback": "pt-BR",
+  "entries": {
+    "site.tagline": "Creative social feed with public API, moderation and request traces.",
+    "nav.feed": "Feed",
+    "nav.logout": "Sign out",
+    "nav.login": "Sign in",
+    "nav.register": "Create account",
+    "hero.kicker": "Expanded canonical example",
+    "hero.title": "Publish images, videos and process notes in a social mural.",
+    "hero.lead": "Mural Expandido demonstrates auth, sessions, cache, i18n, public API, reactions, moderated comments, traces and lightweight operations without leaving the example.",
+    "hero.panel_title": "What is active in this example",
+    "composer.title": "Publish a new post",
+    "auth.prompt_title": "Join the network to publish and react.",
+    "auth.prompt_body": "Local accounts use password hashing, signed sessions and complete server-side validation feedback.",
+    "comments.title": "Comments",
+    "auth.register_title": "Create a Mural Expandido account",
+    "auth.register_subtitle": "Open your creator profile to publish images, videos and behind-the-scenes threads.",
+    "auth.login_title": "Sign in to Mural Expandido",
+    "auth.login_subtitle": "Resume your session to publish, react, follow creators and moderate."
+  }
+}

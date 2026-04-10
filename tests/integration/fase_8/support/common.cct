@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase8_support_common"
+
+ADVOCARE "../../fase_7/support/common.cct"
+ADVOCARE "../../fase_5/support/common.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase8_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_8/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase8_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase5_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase8_session_config(VERBUM secret) REDDE SessionConfig
+  EVOCA SessionConfig cfg AD CONIURA session_config_default()
+  VINCIRE cfg.segredo AD secret
+  VINCIRE cfg.idle_timeout_segundos AD 3600
+  VINCIRE cfg.max_age_segundos AD 3600
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase8_cookie_value_from_response(WebResponse res) REDDE VERBUM
+  SI CONIURA fluxus_len(res.set_cookies) == 0
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(res.set_cookies, 0)
+  REDDE (*cookie_ptr).value
+EXPLICIT RITUALE
+
+RITUALE phase8_request_with_cookie(VERBUM cookie_name, VERBUM cookie_value) REDDE WebRequest
+  EVOCA SPECULUM NIHIL headers AD CONIURA phase5_headers()
+  SI CONIURA len(cookie_value) > 0
+    CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "cookie", CONIURA concat(CONIURA concat(cookie_name, "="), cookie_value))
+  FIN SI
+  REDDE CONIURA phase5_request_with_body("GET", "/", headers, "", "http", "example.test", "127.0.0.1")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,47 @@
+INCIPIT grimoire "rede_social_build_templates"
+
+ADVOCARE "../../lib/civitas/template/compiler.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_patch_generated_imports(VERBUM path, VERBUM civitas_lib_path, VERBUM types_import) REDDE NIHIL
+  EVOCA VERBUM code AD CONIURA read_all(path)
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../lib/civitas/template/context.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/context.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../lib/civitas/template/filters.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/filters.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../lib/civitas/template/integration.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/integration.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../../lib/civitas/template/context.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/context.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../../lib/civitas/template/filters.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/filters.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../../lib/civitas/template/integration.cct\"", CONIURA concat(CONIURA concat("ADVOCARE \"", civitas_lib_path), "template/integration.cct\""))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../apps/shared/template_contexts.cct\"", CONIURA concat("ADVOCARE \"../apps/shared/template_contexts.cct\"\nADVOCARE \"", CONIURA concat(types_import, "\"")))
+  VINCIRE code AD CONIURA replace_all(code, "ADVOCARE \"../../apps/shared/template_contexts.cct\"", CONIURA concat("ADVOCARE \"../../apps/shared/template_contexts.cct\"\nADVOCARE \"", CONIURA concat(types_import, "\"")))
+  VINCIRE code AD CONIURA replace_all(code, "render_partials_post_card(item_post)", "render_partials_post_card(*item_post)")
+  CONIURA write_all(path, code)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  CONIURA mkdir_all("gen")
+  CONIURA mkdir_all("gen/partials")
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_directory_cli("templates", "gen", "templates")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    CONIURA eprintln(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res))
+    REDDE 1
+  FIN SI
+  CONIURA rede_patch_generated_imports("gen/base.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/shell.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/home.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/profile.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/login.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/post_detail.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/lounge.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/ops_dashboard.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/ops_login.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/ops_report.cct", "../../../lib/civitas/", "../apps/shared/types.cct")
+  CONIURA rede_patch_generated_imports("gen/partials/post_card.cct", "../../../../lib/civitas/", "../../apps/shared/types.cct")
+  CONIURA println("rede_social templates compiled")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

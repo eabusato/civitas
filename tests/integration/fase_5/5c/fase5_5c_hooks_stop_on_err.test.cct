@@ -1,0 +1,61 @@
+INCIPIT grimoire "fase5_5c_hooks_stop_on_err_test"
+
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "cct/result.cct"
+
+SIGILLUM HookCounter
+  ok_calls: REX
+  err_calls: REX
+  tail_calls: REX
+FIN SIGILLUM
+
+RITUALE phase5_5c_hook_ok(SPECULUM NIHIL payload, SPECULUM NIHIL decision_ref) REDDE NIHIL
+  EVOCA SPECULUM HookCounter counter AD payload
+  VINCIRE (*counter).ok_calls AD (*counter).ok_calls + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_hook_err(SPECULUM NIHIL payload, SPECULUM NIHIL decision_ref) REDDE NIHIL
+  EVOCA SPECULUM HookCounter counter AD payload
+  EVOCA SPECULUM AbuseHookDecision decision AD decision_ref
+  VINCIRE (*counter).err_calls AD (*counter).err_calls + 1
+  VINCIRE (*decision).rejected AD VERUM
+  VINCIRE (*decision).reason AD "blocked by moderation"
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase5_5c_hook_tail(SPECULUM NIHIL payload, SPECULUM NIHIL decision_ref) REDDE NIHIL
+  EVOCA SPECULUM HookCounter counter AD payload
+  VINCIRE (*counter).tail_calls AD (*counter).tail_calls + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL registry AD CONIURA abuse_hook_registry_new()
+  EVOCA SPECULUM HookCounter counter AD OBSECRO mem_alloc(MENSURA(HookCounter))
+  EVOCA SPECULUM NIHIL res
+  VINCIRE (*counter).ok_calls AD 0
+  VINCIRE (*counter).err_calls AD 0
+  VINCIRE (*counter).tail_calls AD 0
+
+  CONIURA abuse_hook_register(registry, "comment.created", phase5_5c_hook_ok)
+  CONIURA abuse_hook_register(registry, "comment.created", phase5_5c_hook_err)
+  CONIURA abuse_hook_register(registry, "comment.created", phase5_5c_hook_tail)
+
+  VINCIRE res AD CONIURA abuse_hook_run(registry, "comment.created", counter)
+  SI NON CONIURA abuse_result_is_err(res)
+    REDDE 1
+  FIN SI
+  SI (*counter).ok_calls != 1
+    REDDE 2
+  FIN SI
+  SI (*counter).err_calls != 1
+    REDDE 3
+  FIN SI
+  SI (*counter).tail_calls != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

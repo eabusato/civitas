@@ -1,0 +1,1404 @@
+INCIPIT grimoire "civitas_http_server"
+
+ADVOCARE "../core/version.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/signal.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM HttpServerOptions
+  host: VERBUM
+  port: REX
+  backlog: REX
+  keepalive_timeout_ms: REX
+  idle_timeout_ms: REX
+  read_header_timeout_ms: REX
+  read_body_timeout_ms: REX
+  max_request_bytes: REX
+  max_header_bytes: REX
+  max_header_count: REX
+  max_body_bytes: REX
+  upload_stream_threshold_bytes: REX
+  trusted_proxies: SPECULUM NIHIL
+  enable_request_id: VERUM
+  enable_access_log: VERUM
+  honor_x_forwarded_for: VERUM
+  honor_x_forwarded_proto: VERUM
+  honor_x_forwarded_host: VERUM
+  allow_proxy_request_id: VERUM
+FIN SIGILLUM
+
+SIGILLUM TrustedProxyPolicy
+  trusted_proxies: SPECULUM NIHIL
+  honor_x_forwarded_for: VERUM
+  honor_x_forwarded_proto: VERUM
+  honor_x_forwarded_host: VERUM
+  allow_proxy_request_id: VERUM
+FIN SIGILLUM
+
+SIGILLUM ForwardedRequestInfo
+  client_ip: VERBUM
+  proxy_ip: VERBUM
+  original_scheme: VERBUM
+  original_host: VERBUM
+  forwarded_trusted: VERUM
+FIN SIGILLUM
+
+SIGILLUM AccessLogEntry
+  request_id: VERBUM
+  method: VERBUM
+  path: VERBUM
+  status: REX
+  duration_ms: REX
+  client_ip: VERBUM
+  response_bytes: REX
+  scheme: VERBUM
+FIN SIGILLUM
+
+SIGILLUM HttpParserLimits
+  max_header_bytes: REX
+  max_header_count: REX
+  max_body_bytes: REX
+FIN SIGILLUM
+
+SIGILLUM HttpTimeouts
+  read_header_timeout_ms: REX
+  read_body_timeout_ms: REX
+  idle_timeout_ms: REX
+FIN SIGILLUM
+
+ORDO HttpParseError
+  ParseErrMalformedRequestLine,
+  ParseErrMalformedHeader,
+  ParseErrHeaderOverflow,
+  ParseErrBodyOverflow,
+  ParseErrTimeout,
+  ParseErrTruncatedBody,
+  ParseErrInvalidChunked
+FIN ORDO
+
+ORDO HttpConnectionPolicy
+  ConnPolicyRespondAndClose,
+  ConnPolicyCloseImmediate,
+  ConnPolicyKeepAlive
+FIN ORDO
+
+SIGILLUM HttpConnection
+  socket: SPECULUM NIHIL
+  peer_addr: VERBUM
+  local_addr: VERBUM
+  last_activity_ms: REX
+  handled_requests: REX
+  open: VERUM
+FIN SIGILLUM
+
+SIGILLUM HttpRawRequest
+  method: VERBUM
+  target: VERBUM
+  version: VERBUM
+  headers: SPECULUM NIHIL
+  body: VERBUM
+  body_socket: SPECULUM NIHIL
+  request_id: VERBUM
+  client_ip: VERBUM
+  scheme: VERBUM
+  original_host: VERBUM
+  proxy_addr: VERBUM
+  remote_addr: VERBUM
+  local_addr: VERBUM
+  keep_alive: VERUM
+  started_ms: REX
+FIN SIGILLUM
+
+SIGILLUM HttpRawResponse
+  status_code: REX
+  headers: SPECULUM NIHIL
+  body: VERBUM
+  close_connection: VERUM
+FIN SIGILLUM
+
+SIGILLUM HttpServerStats
+  accepted_connections: REX
+  handled_requests: REX
+  active_connections: REX
+  uptime_ms: REX
+FIN SIGILLUM
+
+SIGILLUM HttpServerError
+  message: VERBUM
+  status_code: REX
+  close_connection: VERUM
+  has_parse_error: VERUM
+  parse_error: HttpParseError
+  policy: HttpConnectionPolicy
+FIN SIGILLUM
+
+SIGILLUM HttpServer
+  handle: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM CivitasHttpServerState
+  listener: SPECULUM NIHIL
+  listener_open: VERUM
+  current_connection: HttpConnection
+  has_connection: VERUM
+  options: HttpServerOptions
+  stats: HttpServerStats
+  stop_requested: VERUM
+  signal_enabled: VERUM
+  current_keep_alive: VERUM
+  current_request_ready: VERUM
+  current_request_id: VERBUM
+  started_ms: REX
+FIN SIGILLUM
+
+RITUALE http_server_error(VERBUM message, REX status_code, VERUM close_connection) REDDE HttpServerError
+  EVOCA HttpServerError err
+  VINCIRE err.message AD message
+  VINCIRE err.status_code AD status_code
+  VINCIRE err.close_connection AD close_connection
+  VINCIRE err.has_parse_error AD FALSUM
+  VINCIRE err.parse_error AD ParseErrMalformedHeader
+  SI close_connection
+    VINCIRE err.policy AD ConnPolicyCloseImmediate
+  ALITER
+    VINCIRE err.policy AD ConnPolicyKeepAlive
+  FIN SI
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE http_parse_error_status(HttpParseError err) REDDE REX
+  ELIGE err
+    CASUS ParseErrHeaderOverflow:
+      REDDE 431
+    CASUS ParseErrBodyOverflow:
+      REDDE 413
+    CASUS ParseErrTimeout:
+      REDDE 408
+    ALIOQUIN:
+      REDDE 400
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE http_connection_policy_for(HttpParseError err) REDDE HttpConnectionPolicy
+  ELIGE err
+    CASUS ParseErrMalformedRequestLine:
+      REDDE ConnPolicyRespondAndClose
+    CASUS ParseErrMalformedHeader:
+      REDDE ConnPolicyRespondAndClose
+    CASUS ParseErrHeaderOverflow:
+      REDDE ConnPolicyRespondAndClose
+    CASUS ParseErrBodyOverflow:
+      REDDE ConnPolicyRespondAndClose
+    CASUS ParseErrTimeout:
+      REDDE ConnPolicyRespondAndClose
+    CASUS ParseErrTruncatedBody:
+      REDDE ConnPolicyRespondAndClose
+    ALIOQUIN:
+      REDDE ConnPolicyRespondAndClose
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE http_parse_error_name(HttpParseError err) REDDE VERBUM
+  ELIGE err
+    CASUS ParseErrMalformedRequestLine:
+      REDDE "ParseErrMalformedRequestLine"
+    CASUS ParseErrMalformedHeader:
+      REDDE "ParseErrMalformedHeader"
+    CASUS ParseErrHeaderOverflow:
+      REDDE "ParseErrHeaderOverflow"
+    CASUS ParseErrBodyOverflow:
+      REDDE "ParseErrBodyOverflow"
+    CASUS ParseErrTimeout:
+      REDDE "ParseErrTimeout"
+    CASUS ParseErrTruncatedBody:
+      REDDE "ParseErrTruncatedBody"
+    ALIOQUIN:
+      REDDE "ParseErrInvalidChunked"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE http_connection_policy_name(HttpConnectionPolicy policy) REDDE VERBUM
+  ELIGE policy
+    CASUS ConnPolicyRespondAndClose:
+      REDDE "ConnPolicyRespondAndClose"
+    CASUS ConnPolicyCloseImmediate:
+      REDDE "ConnPolicyCloseImmediate"
+    ALIOQUIN:
+      REDDE "ConnPolicyKeepAlive"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE http_server_trusted_proxies_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+EXPLICIT RITUALE
+
+RITUALE http_server_trusted_proxies_add(SPECULUM NIHIL proxies, VERBUM host) REDDE NIHIL
+  CONIURA fluxus_push(proxies, SPECULUM host)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE http_server_make_request_id() REDDE VERBUM
+  REDDE CONIURA uuid_to_string(CONIURA uuid_v7())
+EXPLICIT RITUALE
+
+RITUALE http_server_csv_first(VERBUM raw) REDDE VERBUM
+  EVOCA REX comma AD CONIURA find(raw, ",")
+  SI comma == -1
+    REDDE CONIURA trim(raw)
+  FIN SI
+  REDDE CONIURA trim(CONIURA substring(raw, 0, comma))
+EXPLICIT RITUALE
+
+RITUALE http_server_addr_host(VERBUM addr) REDDE VERBUM
+  EVOCA REX colon AD CONIURA last_find(addr, ":")
+  SI colon == -1
+    REDDE addr
+  FIN SI
+  REDDE CONIURA substring(addr, 0, colon)
+EXPLICIT RITUALE
+
+RITUALE http_server_is_trusted_proxy(HttpServerOptions options, VERBUM remote_addr) REDDE VERUM
+  EVOCA VERBUM peer_host AD CONIURA http_server_addr_host(remote_addr)
+  EVOCA SPECULUM NIHIL proxies AD options.trusted_proxies
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(proxies)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(proxies, i)
+    SI CONIURA compare(CONIURA trim(*item_ptr), peer_host) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE http_server_resolve_forwarded_info(SPECULUM NIHIL headers, VERBUM remote_addr, HttpServerOptions options) REDDE ForwardedRequestInfo
+  EVOCA ForwardedRequestInfo info
+  EVOCA VERUM trusted AD CONIURA http_server_is_trusted_proxy(options, remote_addr)
+  EVOCA VERBUM remote_host AD CONIURA http_server_addr_host(remote_addr)
+  EVOCA VERBUM forwarded_for AD CONIURA http_server_headers_get_or(headers, "x-forwarded-for", "")
+  EVOCA VERBUM forwarded_proto AD CONIURA http_server_headers_get_or(headers, "x-forwarded-proto", "")
+  EVOCA VERBUM forwarded_host AD CONIURA http_server_headers_get_or(headers, "x-forwarded-host", "")
+  EVOCA VERBUM host_header AD CONIURA http_server_headers_get_or(headers, "host", "")
+
+  VINCIRE info.client_ip AD remote_host
+  VINCIRE info.proxy_ip AD remote_host
+  VINCIRE info.original_scheme AD "http"
+  VINCIRE info.original_host AD host_header
+  VINCIRE info.forwarded_trusted AD trusted
+
+  SI trusted ET options.honor_x_forwarded_for ET CONIURA len(CONIURA trim(forwarded_for)) != 0
+    VINCIRE info.client_ip AD CONIURA http_server_csv_first(forwarded_for)
+  FIN SI
+  SI trusted ET options.honor_x_forwarded_proto ET CONIURA len(CONIURA trim(forwarded_proto)) != 0
+    VINCIRE info.original_scheme AD CONIURA to_lower(CONIURA http_server_csv_first(forwarded_proto))
+  FIN SI
+  SI trusted ET options.honor_x_forwarded_host ET CONIURA len(CONIURA trim(forwarded_host)) != 0
+    VINCIRE info.original_host AD CONIURA http_server_csv_first(forwarded_host)
+  FIN SI
+
+  REDDE info
+EXPLICIT RITUALE
+
+RITUALE http_server_resolve_request_id(SPECULUM NIHIL headers, VERBUM remote_addr, HttpServerOptions options) REDDE VERBUM
+  EVOCA VERUM trusted AD CONIURA http_server_is_trusted_proxy(options, remote_addr)
+  EVOCA VERBUM header_id AD CONIURA trim(CONIURA http_server_headers_get_or(headers, "x-request-id", ""))
+  SI options.enable_request_id
+    SI trusted ET options.allow_proxy_request_id ET CONIURA len(header_id) != 0 ET CONIURA len(header_id) <= 128
+      REDDE header_id
+    FIN SI
+    REDDE CONIURA http_server_make_request_id()
+  FIN SI
+  SI trusted ET options.allow_proxy_request_id ET CONIURA len(header_id) != 0 ET CONIURA len(header_id) <= 128
+    REDDE header_id
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE http_server_access_log_entry(HttpRawRequest req, REX status, REX duration_ms, REX response_bytes) REDDE AccessLogEntry
+  EVOCA AccessLogEntry entry
+  VINCIRE entry.request_id AD req.request_id
+  VINCIRE entry.method AD req.method
+  VINCIRE entry.path AD req.target
+  VINCIRE entry.status AD status
+  VINCIRE entry.duration_ms AD duration_ms
+  VINCIRE entry.client_ip AD req.client_ip
+  VINCIRE entry.response_bytes AD response_bytes
+  VINCIRE entry.scheme AD req.scheme
+  REDDE entry
+EXPLICIT RITUALE
+
+RITUALE http_server_access_log_line(AccessLogEntry entry) REDDE VERBUM
+  EVOCA VERBUM line AD "request_id="
+  VINCIRE line AD CONIURA concat(line, entry.request_id)
+  VINCIRE line AD CONIURA concat(line, " client_ip=")
+  VINCIRE line AD CONIURA concat(line, entry.client_ip)
+  VINCIRE line AD CONIURA concat(line, " scheme=")
+  VINCIRE line AD CONIURA concat(line, entry.scheme)
+  VINCIRE line AD CONIURA concat(line, " method=")
+  VINCIRE line AD CONIURA concat(line, entry.method)
+  VINCIRE line AD CONIURA concat(line, " path=")
+  VINCIRE line AD CONIURA concat(line, entry.path)
+  VINCIRE line AD CONIURA concat(line, " status=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(entry.status))
+  VINCIRE line AD CONIURA concat(line, " duration_ms=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(entry.duration_ms))
+  VINCIRE line AD CONIURA concat(line, " response_bytes=")
+  VINCIRE line AD CONIURA concat(line, CONIURA stringify_int(entry.response_bytes))
+  REDDE line
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_error(HttpParseError parse_error, VERBUM message) REDDE HttpServerError
+  EVOCA HttpServerError err
+  VINCIRE err.message AD message
+  VINCIRE err.status_code AD CONIURA http_parse_error_status(parse_error)
+  VINCIRE err.parse_error AD parse_error
+  VINCIRE err.has_parse_error AD VERUM
+  VINCIRE err.policy AD CONIURA http_connection_policy_for(parse_error)
+  VINCIRE err.close_connection AD CONIURA compare(CONIURA http_connection_policy_name(err.policy), "ConnPolicyKeepAlive") != 0
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_error_with_policy(HttpParseError parse_error, VERBUM message, HttpConnectionPolicy policy) REDDE HttpServerError
+  EVOCA HttpServerError err AD CONIURA http_server_parse_error(parse_error, message)
+  VINCIRE err.policy AD policy
+  VINCIRE err.close_connection AD CONIURA compare(CONIURA http_connection_policy_name(policy), "ConnPolicyKeepAlive") != 0
+  REDDE err
+EXPLICIT RITUALE
+
+RITUALE http_server_headers_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE http_server_headers_set(SPECULUM NIHIL headers, VERBUM name, VERBUM value) REDDE NIHIL
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(headers, name, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE http_server_headers_get_or(SPECULUM NIHIL headers, VERBUM name, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM target AD CONIURA to_lower(name)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM current AD *key_ptr
+    SI CONIURA compare(CONIURA to_lower(current), target) == 0
+      REDDE CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, current, fallback)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE http_server_headers_has(SPECULUM NIHIL headers, VERBUM name) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM target AD CONIURA to_lower(name)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(CONIURA to_lower(*key_ptr), target) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE http_server_request_header(HttpRawRequest req, VERBUM name, VERBUM fallback) REDDE VERBUM
+  REDDE CONIURA http_server_headers_get_or(req.headers, name, fallback)
+EXPLICIT RITUALE
+
+RITUALE http_server_default_limits() REDDE HttpServerOptions
+  EVOCA HttpServerOptions opts
+  VINCIRE opts.host AD "0.0.0.0"
+  VINCIRE opts.port AD 8080
+  VINCIRE opts.backlog AD 16
+  VINCIRE opts.keepalive_timeout_ms AD 5000
+  VINCIRE opts.idle_timeout_ms AD 5000
+  VINCIRE opts.read_header_timeout_ms AD 5000
+  VINCIRE opts.read_body_timeout_ms AD 5000
+  VINCIRE opts.max_request_bytes AD 1048576
+  VINCIRE opts.max_header_bytes AD 65536
+  VINCIRE opts.max_header_count AD 128
+  VINCIRE opts.max_body_bytes AD 1048576
+  VINCIRE opts.upload_stream_threshold_bytes AD 262144
+  VINCIRE opts.trusted_proxies AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE opts.enable_request_id AD VERUM
+  VINCIRE opts.enable_access_log AD VERUM
+  VINCIRE opts.honor_x_forwarded_for AD VERUM
+  VINCIRE opts.honor_x_forwarded_proto AD VERUM
+  VINCIRE opts.honor_x_forwarded_host AD VERUM
+  VINCIRE opts.allow_proxy_request_id AD FALSUM
+  REDDE opts
+EXPLICIT RITUALE
+
+RITUALE http_server_default_options() REDDE HttpServerOptions
+  REDDE CONIURA http_server_default_limits()
+EXPLICIT RITUALE
+
+RITUALE http_server_parser_limits(HttpServerOptions options) REDDE HttpParserLimits
+  EVOCA HttpParserLimits limits
+  VINCIRE limits.max_header_bytes AD options.max_header_bytes
+  VINCIRE limits.max_header_count AD options.max_header_count
+  VINCIRE limits.max_body_bytes AD options.max_body_bytes
+  REDDE limits
+EXPLICIT RITUALE
+
+RITUALE http_server_timeouts(HttpServerOptions options) REDDE HttpTimeouts
+  EVOCA HttpTimeouts timeouts
+  VINCIRE timeouts.read_header_timeout_ms AD options.read_header_timeout_ms
+  VINCIRE timeouts.read_body_timeout_ms AD options.read_body_timeout_ms
+  VINCIRE timeouts.idle_timeout_ms AD options.idle_timeout_ms
+  REDDE timeouts
+EXPLICIT RITUALE
+
+RITUALE http_server_proxy_policy(HttpServerOptions options) REDDE TrustedProxyPolicy
+  EVOCA TrustedProxyPolicy policy
+  VINCIRE policy.trusted_proxies AD options.trusted_proxies
+  VINCIRE policy.honor_x_forwarded_for AD options.honor_x_forwarded_for
+  VINCIRE policy.honor_x_forwarded_proto AD options.honor_x_forwarded_proto
+  VINCIRE policy.honor_x_forwarded_host AD options.honor_x_forwarded_host
+  VINCIRE policy.allow_proxy_request_id AD options.allow_proxy_request_id
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE http_server_default_host() REDDE VERBUM
+  REDDE "0.0.0.0"
+EXPLICIT RITUALE
+
+RITUALE http_server_default_port() REDDE REX
+  REDDE 8080
+EXPLICIT RITUALE
+
+RITUALE http_server_reason_phrase(REX status) REDDE VERBUM
+  SI status == 101
+    REDDE "Switching Protocols"
+  FIN SI
+  SI status == 200
+    REDDE "OK"
+  FIN SI
+  SI status == 201
+    REDDE "Created"
+  FIN SI
+  SI status == 202
+    REDDE "Accepted"
+  FIN SI
+  SI status == 204
+    REDDE "No Content"
+  FIN SI
+  SI status == 301
+    REDDE "Moved Permanently"
+  FIN SI
+  SI status == 302
+    REDDE "Found"
+  FIN SI
+  SI status == 303
+    REDDE "See Other"
+  FIN SI
+  SI status == 304
+    REDDE "Not Modified"
+  FIN SI
+  SI status == 400
+    REDDE "Bad Request"
+  FIN SI
+  SI status == 401
+    REDDE "Unauthorized"
+  FIN SI
+  SI status == 403
+    REDDE "Forbidden"
+  FIN SI
+  SI status == 404
+    REDDE "Not Found"
+  FIN SI
+  SI status == 405
+    REDDE "Method Not Allowed"
+  FIN SI
+  SI status == 409
+    REDDE "Conflict"
+  FIN SI
+  SI status == 408
+    REDDE "Request Timeout"
+  FIN SI
+  SI status == 413
+    REDDE "Payload Too Large"
+  FIN SI
+  SI status == 422
+    REDDE "Unprocessable Content"
+  FIN SI
+  SI status == 429
+    REDDE "Too Many Requests"
+  FIN SI
+  SI status == 431
+    REDDE "Request Header Fields Too Large"
+  FIN SI
+  SI status == 500
+    REDDE "Internal Server Error"
+  FIN SI
+  SI status == 501
+    REDDE "Not Implemented"
+  FIN SI
+  SI status == 503
+    REDDE "Service Unavailable"
+  FIN SI
+  REDDE "OK"
+EXPLICIT RITUALE
+
+RITUALE http_server_response_new(REX status_code, VERBUM body) REDDE HttpRawResponse
+  EVOCA HttpRawResponse resp
+  VINCIRE resp.status_code AD status_code
+  VINCIRE resp.headers AD CONIURA http_server_headers_new()
+  VINCIRE resp.body AD body
+  VINCIRE resp.close_connection AD FALSUM
+  REDDE resp
+EXPLICIT RITUALE
+
+RITUALE http_server_error_response(HttpServerError err) REDDE HttpRawResponse
+  EVOCA HttpRawResponse resp AD CONIURA http_server_response_new(err.status_code, err.message)
+  VINCIRE resp.close_connection AD err.close_connection
+  CONIURA http_server_headers_set(resp.headers, "content-type", "text/plain; charset=utf-8")
+  REDDE resp
+EXPLICIT RITUALE
+
+RITUALE http_server_stats_snapshot(SPECULUM CivitasHttpServerState state) REDDE HttpServerStats
+  EVOCA HttpServerStats stats AD (*state).stats
+  VINCIRE stats.uptime_ms AD CONIURA now_ms() - (*state).started_ms
+  REDDE stats
+EXPLICIT RITUALE
+
+RITUALE http_server_error_result(HttpServerError err) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(err)
+EXPLICIT RITUALE
+
+RITUALE http_server_ok_result(HttpRawRequest req) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(HttpRawRequest, HttpServerError)(req)
+EXPLICIT RITUALE
+
+RITUALE http_server_create_ok(HttpServer server) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(HttpServer, HttpServerError)(server)
+EXPLICIT RITUALE
+
+RITUALE http_server_create_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(HttpServer, HttpServerError)(CONIURA http_server_error(message, 503, VERUM))
+EXPLICIT RITUALE
+
+RITUALE http_server_hex_value(MILES c) REDDE REX
+  SI c >= 48 ET c <= 57
+    REDDE c - 48
+  FIN SI
+  SI c >= 65 ET c <= 70
+    REDDE c - 55
+  FIN SI
+  SI c >= 97 ET c <= 102
+    REDDE c - 87
+  FIN SI
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE http_server_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE http_server_double_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA http_server_crlf(), CONIURA http_server_crlf())
+EXPLICIT RITUALE
+
+RITUALE http_server_normalize_newlines(VERBUM raw) REDDE VERBUM
+  REDDE CONIURA replace_all(raw, CONIURA http_server_crlf(), "\n")
+EXPLICIT RITUALE
+
+RITUALE http_server_trim_cr(VERBUM line) REDDE VERBUM
+  EVOCA VERBUM cr AD CONIURA from_char(13)
+  SI CONIURA ends_with(line, cr)
+    REDDE CONIURA strip_suffix(line, cr)
+  FIN SI
+  REDDE line
+EXPLICIT RITUALE
+
+RITUALE http_server_find_header_end(VERBUM raw) REDDE REX
+  EVOCA REX idx AD CONIURA find(raw, CONIURA http_server_double_crlf())
+  SI idx != -1
+    REDDE idx + CONIURA len(CONIURA http_server_double_crlf())
+  FIN SI
+  VINCIRE idx AD CONIURA find(raw, "\n\n")
+  SI idx != -1
+    REDDE idx + 2
+  FIN SI
+  REDDE -1
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_request_line(VERBUM line) REDDE SPECULUM NIHIL
+  EVOCA REX sp1 AD CONIURA find(line, " ")
+  SI sp1 <= 0
+    REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "request line invalida"))
+  FIN SI
+
+  EVOCA REX sp2 AD CONIURA find_from(line, " ", sp1 + 1)
+  SI sp2 <= sp1 + 1
+    REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "request line invalida"))
+  FIN SI
+
+  EVOCA VERBUM method AD CONIURA substring(line, 0, sp1)
+  EVOCA VERBUM target AD CONIURA substring(line, sp1 + 1, sp2)
+  EVOCA VERBUM version AD CONIURA trim(CONIURA substring(line, sp2 + 1, CONIURA len(line)))
+
+  SI CONIURA len(method) == 0 VEL CONIURA len(target) == 0 VEL CONIURA len(version) == 0
+    REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "request line invalida"))
+  FIN SI
+
+  SI NON CONIURA starts_with(version, "HTTP/")
+    REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "versao HTTP invalida"))
+  FIN SI
+
+  EVOCA VERBUM out AD method
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, target)
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE out AD CONIURA concat(out, version)
+  REDDE CONIURA Ok GENUS(VERBUM, HttpServerError)(out)
+EXPLICIT RITUALE
+
+RITUALE http_server_split_triplet(VERBUM encoded) REDDE HttpRawRequest
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(encoded, "\n")
+  EVOCA SPECULUM VERBUM method_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA SPECULUM VERBUM target_ptr AD CONIURA fluxus_get(parts, 1)
+  EVOCA SPECULUM VERBUM version_ptr AD CONIURA fluxus_get(parts, 2)
+  EVOCA HttpRawRequest req
+  VINCIRE req.method AD *method_ptr
+  VINCIRE req.target AD *target_ptr
+  VINCIRE req.version AD *version_ptr
+  VINCIRE req.headers AD CONIURA http_server_headers_new()
+  VINCIRE req.body AD ""
+  VINCIRE req.body_socket AD NIHIL
+  VINCIRE req.request_id AD ""
+  VINCIRE req.client_ip AD ""
+  VINCIRE req.scheme AD "http"
+  VINCIRE req.original_host AD ""
+  VINCIRE req.proxy_addr AD ""
+  VINCIRE req.remote_addr AD ""
+  VINCIRE req.local_addr AD ""
+  VINCIRE req.keep_alive AD FALSUM
+  VINCIRE req.started_ms AD CONIURA now_ms()
+  REDDE req
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_headers_block_into(VERBUM raw_headers, HttpServerOptions options, SPECULUM NIHIL headers) REDDE SPECULUM NIHIL
+  EVOCA VERBUM normalized AD CONIURA http_server_normalize_newlines(raw_headers)
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(normalized, "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  EVOCA REX count AD 0
+  EVOCA REX bytes_total AD 0
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD *line_ptr
+    SI CONIURA len(line) == 0
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    VINCIRE count AD count + 1
+    VINCIRE bytes_total AD bytes_total + CONIURA len(line)
+
+    SI count > options.max_header_count
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrHeaderOverflow, "headers em excesso"))
+    FIN SI
+    SI bytes_total > options.max_header_bytes
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrHeaderOverflow, "headers excedem limite"))
+    FIN SI
+
+    EVOCA REX colon AD CONIURA find(line, ":")
+    SI colon <= 0
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "header malformado"))
+    FIN SI
+
+    EVOCA VERBUM name AD CONIURA to_lower(CONIURA trim(CONIURA substring(line, 0, colon)))
+    EVOCA VERBUM value AD CONIURA trim(CONIURA substring(line, colon + 1, CONIURA len(line)))
+    SI CONIURA len(name) == 0
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "header malformado"))
+    FIN SI
+    CONIURA http_server_headers_set(headers, name, value)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(REX, HttpServerError)(count)
+EXPLICIT RITUALE
+
+RITUALE http_server_header_keep_alive(VERBUM version, SPECULUM NIHIL headers) REDDE VERUM
+  EVOCA VERBUM conn AD CONIURA to_lower(CONIURA http_server_headers_get_or(headers, "connection", ""))
+  SI CONIURA compare(version, "HTTP/1.0") == 0
+    REDDE CONIURA compare(conn, "keep-alive") == 0
+  FIN SI
+  SI CONIURA compare(conn, "close") == 0
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_content_length(SPECULUM NIHIL headers) REDDE SPECULUM NIHIL
+  EVOCA VERBUM raw AD CONIURA http_server_headers_get_or(headers, "content-length", "")
+  SI CONIURA len(raw) == 0
+    REDDE CONIURA Ok GENUS(REX, HttpServerError)(-1)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA try_int(raw)
+  SI CONIURA option_is_none GENUS(REX)(value_opt)
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "content-length invalido"))
+  FIN SI
+
+  EVOCA REX value AD CONIURA option_unwrap GENUS(REX)(value_opt)
+  SI value < 0
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "content-length invalido"))
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, HttpServerError)(value)
+EXPLICIT RITUALE
+
+RITUALE http_server_parse_chunk_size(VERBUM line) REDDE SPECULUM NIHIL
+  EVOCA VERBUM trimmed AD CONIURA trim(line)
+  EVOCA REX semi AD CONIURA find(trimmed, ";")
+  EVOCA VERBUM core AD trimmed
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+  EVOCA REX value AD 0
+
+  SI semi != -1
+    VINCIRE core AD CONIURA substring(trimmed, 0, semi)
+  FIN SI
+
+  VINCIRE core AD CONIURA trim(core)
+  VINCIRE n AD CONIURA len(core)
+  SI n == 0
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, "chunked invalido"))
+  FIN SI
+
+  DUM i < n
+    EVOCA REX digit AD CONIURA http_server_hex_value(CONIURA char_at(core, i))
+    SI digit < 0
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, "chunked invalido"))
+    FIN SI
+    VINCIRE value AD value * 16 + digit
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(REX, HttpServerError)(value)
+EXPLICIT RITUALE
+
+RITUALE http_server_read_exact_timed(SPECULUM NIHIL sock, REX n, REX timeout_ms, HttpParseError eof_error, VERBUM eof_message) REDDE SPECULUM NIHIL
+  EVOCA VERBUM out AD ""
+  EVOCA REX last_progress_ms AD CONIURA now_ms()
+  CONIURA sock_set_timeout_ms(sock, timeout_ms)
+
+  SI n < 0
+    REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrBodyOverflow, "tamanho de leitura invalido"))
+  FIN SI
+
+  DUM CONIURA len(out) < n
+    EVOCA REX missing AD n - CONIURA len(out)
+    EVOCA VERBUM chunk AD CONIURA sock_recv(sock, missing)
+    EVOCA REX now AD CONIURA now_ms()
+    SI CONIURA len(chunk) == 0
+      SI now - last_progress_ms >= timeout_ms
+        REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrTimeout, "timeout na leitura do body"))
+      FIN SI
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(eof_error, eof_message))
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, chunk)
+    VINCIRE last_progress_ms AD now
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(VERBUM, HttpServerError)(out)
+EXPLICIT RITUALE
+
+RITUALE http_server_read_line_timed(SPECULUM NIHIL sock, REX timeout_ms, HttpParseError eof_error, VERBUM eof_message) REDDE SPECULUM NIHIL
+  EVOCA VERBUM out AD ""
+  EVOCA REX last_progress_ms AD CONIURA now_ms()
+  CONIURA sock_set_timeout_ms(sock, timeout_ms)
+
+  DUM VERUM
+    EVOCA VERBUM chunk AD CONIURA sock_recv(sock, 1)
+    EVOCA REX now AD CONIURA now_ms()
+    SI CONIURA len(chunk) == 0
+      SI now - last_progress_ms >= timeout_ms
+        REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrTimeout, "timeout na leitura do body"))
+      FIN SI
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(eof_error, eof_message))
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, chunk)
+    VINCIRE last_progress_ms AD now
+    SI CONIURA ends_with(out, "\n")
+      REDDE CONIURA Ok GENUS(VERBUM, HttpServerError)(CONIURA strip_suffix(out, "\n"))
+    FIN SI
+  FIN DUM
+
+  REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, eof_message))
+EXPLICIT RITUALE
+
+RITUALE http_server_read_headers(SPECULUM NIHIL sock, HttpServerOptions options, HttpConnectionPolicy zero_byte_timeout_policy) REDDE SPECULUM NIHIL
+  EVOCA VERBUM out AD ""
+  EVOCA REX end_idx AD -1
+  EVOCA REX last_progress_ms AD CONIURA now_ms()
+  CONIURA sock_set_timeout_ms(sock, options.read_header_timeout_ms)
+
+  DUM VERUM
+    EVOCA VERBUM chunk AD CONIURA sock_recv(sock, 1)
+    EVOCA REX now AD CONIURA now_ms()
+    SI CONIURA len(chunk) == 0
+      SI now - last_progress_ms >= options.read_header_timeout_ms
+        SI CONIURA len(out) == 0
+          REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error_with_policy(ParseErrTimeout, "timeout na leitura dos headers", zero_byte_timeout_policy))
+        FIN SI
+        REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrTimeout, "timeout na leitura dos headers"))
+      FIN SI
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "request truncada antes do fim dos headers"))
+    FIN SI
+
+    VINCIRE out AD CONIURA concat(out, chunk)
+    VINCIRE last_progress_ms AD now
+    SI CONIURA len(out) > options.max_request_bytes VEL CONIURA len(out) > options.max_header_bytes
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrHeaderOverflow, "headers excedem limite"))
+    FIN SI
+
+    VINCIRE end_idx AD CONIURA http_server_find_header_end(out)
+    SI end_idx != -1
+      REDDE CONIURA Ok GENUS(VERBUM, HttpServerError)(out)
+    FIN SI
+  FIN DUM
+
+  REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "headers invalidos"))
+EXPLICIT RITUALE
+
+RITUALE http_server_read_chunked_body(SPECULUM NIHIL sock, HttpServerOptions options) REDDE SPECULUM NIHIL
+  EVOCA VERBUM body AD ""
+
+  DUM VERUM
+    EVOCA SPECULUM NIHIL line_res AD CONIURA http_server_read_line_timed(sock, options.read_body_timeout_ms, ParseErrInvalidChunked, "chunked truncado")
+    SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(line_res)
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(line_res))
+    FIN SI
+
+    EVOCA VERBUM size_line AD CONIURA http_server_trim_cr(CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(line_res))
+    EVOCA SPECULUM NIHIL size_res AD CONIURA http_server_parse_chunk_size(size_line)
+    SI CONIURA result_is_err GENUS(REX, HttpServerError)(size_res)
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA result_unwrap_err GENUS(REX, HttpServerError)(size_res))
+    FIN SI
+
+    EVOCA REX chunk_size AD CONIURA result_unwrap GENUS(REX, HttpServerError)(size_res)
+    SI chunk_size == 0
+      DUM VERUM
+        EVOCA SPECULUM NIHIL trailer_res AD CONIURA http_server_read_line_timed(sock, options.read_body_timeout_ms, ParseErrInvalidChunked, "chunked truncado")
+        SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(trailer_res)
+          REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(trailer_res))
+        FIN SI
+        EVOCA VERBUM trailer AD CONIURA http_server_trim_cr(CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(trailer_res))
+        SI CONIURA len(trailer) == 0
+          REDDE CONIURA Ok GENUS(VERBUM, HttpServerError)(body)
+        FIN SI
+      FIN DUM
+    FIN SI
+
+    SI chunk_size < 0
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, "chunked invalido"))
+    FIN SI
+
+    EVOCA SPECULUM NIHIL chunk_body_res AD CONIURA http_server_read_exact_timed(sock, chunk_size, options.read_body_timeout_ms, ParseErrTruncatedBody, "body truncado antes do content-length prometido")
+    SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(chunk_body_res)
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(chunk_body_res))
+    FIN SI
+    VINCIRE body AD CONIURA concat(body, CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(chunk_body_res))
+    SI CONIURA len(body) > options.max_body_bytes VEL CONIURA len(body) > options.max_request_bytes
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrBodyOverflow, "body excede limite"))
+    FIN SI
+
+    EVOCA SPECULUM NIHIL crlf_res AD CONIURA http_server_read_exact_timed(sock, 2, options.read_body_timeout_ms, ParseErrInvalidChunked, "chunked truncado")
+    SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(crlf_res)
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(crlf_res))
+    FIN SI
+    SI CONIURA compare(CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(crlf_res), CONIURA http_server_crlf()) != 0
+      REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, "chunked invalido"))
+    FIN SI
+  FIN DUM
+
+  REDDE CONIURA Err GENUS(VERBUM, HttpServerError)(CONIURA http_server_parse_error(ParseErrInvalidChunked, "chunked invalido"))
+EXPLICIT RITUALE
+
+RITUALE http_server_read_request_from_socket(SPECULUM NIHIL sock, VERBUM peer_addr, VERBUM local_addr, HttpServerOptions options, HttpConnectionPolicy zero_byte_timeout_policy) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL headers_res AD CONIURA http_server_read_headers(sock, options, zero_byte_timeout_policy)
+  SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(headers_res)
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(headers_res))
+  FIN SI
+
+  EVOCA VERBUM head_raw AD CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(headers_res)
+  EVOCA VERBUM normalized AD CONIURA http_server_normalize_newlines(head_raw)
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(normalized, "\n")
+  SI CONIURA fluxus_len(lines) < 1
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "request line ausente"))
+  FIN SI
+
+  EVOCA SPECULUM VERBUM line0_ptr AD CONIURA fluxus_get(lines, 0)
+  EVOCA SPECULUM NIHIL line_res AD CONIURA http_server_parse_request_line(*line0_ptr)
+  SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(line_res)
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(line_res))
+  FIN SI
+
+  EVOCA HttpRawRequest req AD CONIURA http_server_split_triplet(CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(line_res))
+  EVOCA REX header_end AD CONIURA http_server_find_header_end(head_raw)
+  EVOCA VERBUM header_block AD ""
+  EVOCA VERBUM transfer_encoding AD ""
+  EVOCA REX content_length AD -1
+  EVOCA ForwardedRequestInfo forwarded
+
+  SI header_end == -1
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedHeader, "headers invalidos"))
+  FIN SI
+
+  EVOCA REX line_end AD CONIURA find(normalized, "\n")
+  SI line_end == -1
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA http_server_parse_error(ParseErrMalformedRequestLine, "request line invalida"))
+  FIN SI
+  SI line_end + 1 > CONIURA len(normalized)
+    VINCIRE header_block AD ""
+  ALITER
+    VINCIRE header_block AD CONIURA substring(normalized, line_end + 1, CONIURA len(normalized) - 2)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL parsed_headers_res AD CONIURA http_server_parse_headers_block_into(header_block, options, req.headers)
+  SI CONIURA result_is_err GENUS(REX, HttpServerError)(parsed_headers_res)
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(REX, HttpServerError)(parsed_headers_res))
+  FIN SI
+
+  VINCIRE req.remote_addr AD peer_addr
+  VINCIRE req.local_addr AD local_addr
+  VINCIRE req.keep_alive AD CONIURA http_server_header_keep_alive(req.version, req.headers)
+  VINCIRE req.request_id AD CONIURA http_server_resolve_request_id(req.headers, peer_addr, options)
+  VINCIRE forwarded AD CONIURA http_server_resolve_forwarded_info(req.headers, peer_addr, options)
+  VINCIRE req.client_ip AD forwarded.client_ip
+  VINCIRE req.scheme AD forwarded.original_scheme
+  VINCIRE req.original_host AD forwarded.original_host
+  VINCIRE req.proxy_addr AD forwarded.proxy_ip
+
+  VINCIRE transfer_encoding AD CONIURA to_lower(CONIURA http_server_headers_get_or(req.headers, "transfer-encoding", ""))
+  SI CONIURA contains(transfer_encoding, "chunked")
+    EVOCA SPECULUM NIHIL chunked_res AD CONIURA http_server_read_chunked_body(sock, options)
+    SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(chunked_res)
+      REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(chunked_res))
+    FIN SI
+    VINCIRE req.body AD CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(chunked_res)
+    REDDE CONIURA http_server_ok_result(req)
+  FIN SI
+
+  EVOCA SPECULUM NIHIL content_length_res AD CONIURA http_server_parse_content_length(req.headers)
+  SI CONIURA result_is_err GENUS(REX, HttpServerError)(content_length_res)
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(REX, HttpServerError)(content_length_res))
+  FIN SI
+  VINCIRE content_length AD CONIURA result_unwrap GENUS(REX, HttpServerError)(content_length_res)
+
+  SI content_length > options.max_body_bytes VEL content_length > options.max_request_bytes
+    REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA http_server_parse_error(ParseErrBodyOverflow, "body excede limite"))
+  FIN SI
+
+  SI content_length > 0
+    EVOCA VERBUM multipart_ct AD CONIURA to_lower(CONIURA http_server_headers_get_or(req.headers, "content-type", ""))
+    SI CONIURA contains(multipart_ct, "multipart/form-data") ET content_length >= options.upload_stream_threshold_bytes
+      VINCIRE req.body AD ""
+      VINCIRE req.body_socket AD sock
+      VINCIRE req.keep_alive AD FALSUM
+      REDDE CONIURA http_server_ok_result(req)
+    FIN SI
+  FIN SI
+
+  SI content_length > 0
+    EVOCA SPECULUM NIHIL body_res AD CONIURA http_server_read_exact_timed(sock, content_length, options.read_body_timeout_ms, ParseErrTruncatedBody, "body truncado antes do content-length prometido")
+    SI CONIURA result_is_err GENUS(VERBUM, HttpServerError)(body_res)
+      REDDE CONIURA Err GENUS(HttpRawRequest, HttpServerError)(CONIURA result_unwrap_err GENUS(VERBUM, HttpServerError)(body_res))
+    FIN SI
+    VINCIRE req.body AD CONIURA result_unwrap GENUS(VERBUM, HttpServerError)(body_res)
+  FIN SI
+
+  REDDE CONIURA http_server_ok_result(req)
+EXPLICIT RITUALE
+
+RITUALE http_server_connection_new(SPECULUM NIHIL sock) REDDE HttpConnection
+  EVOCA HttpConnection conn
+  VINCIRE conn.socket AD sock
+  VINCIRE conn.peer_addr AD CONIURA sock_peer_addr(sock)
+  VINCIRE conn.local_addr AD CONIURA sock_local_addr(sock)
+  VINCIRE conn.last_activity_ms AD CONIURA now_ms()
+  VINCIRE conn.handled_requests AD 0
+  VINCIRE conn.open AD VERUM
+  REDDE conn
+EXPLICIT RITUALE
+
+RITUALE http_server_close_current_connection(SPECULUM CivitasHttpServerState state) REDDE NIHIL
+  SI (*state).has_connection ET (*state).current_connection.open
+    CONIURA net_close((*state).current_connection.socket)
+    VINCIRE (*state).current_connection.open AD FALSUM
+    VINCIRE (*state).stats.active_connections AD 0
+  FIN SI
+  VINCIRE (*state).has_connection AD FALSUM
+  VINCIRE (*state).current_keep_alive AD FALSUM
+  VINCIRE (*state).current_request_ready AD FALSUM
+  VINCIRE (*state).current_request_id AD ""
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE http_server_listener_should_stop(SPECULUM CivitasHttpServerState state) REDDE VERUM
+  SI (*state).stop_requested
+    REDDE VERUM
+  FIN SI
+  SI (*state).signal_enabled ET CONIURA signal_check_shutdown()
+    VINCIRE (*state).stop_requested AD VERUM
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE http_server_create(HttpServerOptions options) REDDE SPECULUM NIHIL
+  TEMPTA
+    EVOCA SPECULUM NIHIL listener AD CONIURA socket_tcp()
+    CONIURA sock_bind(listener, options.host, options.port)
+    CONIURA sock_listen(listener, options.backlog)
+    CONIURA sock_set_timeout_ms(listener, 200)
+
+    EVOCA SPECULUM CivitasHttpServerState heap_state AD OBSECRO mem_alloc(MENSURA(CivitasHttpServerState))
+    VINCIRE (*heap_state).listener AD listener
+    VINCIRE (*heap_state).listener_open AD VERUM
+    VINCIRE (*heap_state).current_connection.socket AD listener
+    VINCIRE (*heap_state).current_connection.peer_addr AD ""
+    VINCIRE (*heap_state).current_connection.local_addr AD ""
+    VINCIRE (*heap_state).current_connection.last_activity_ms AD 0
+    VINCIRE (*heap_state).current_connection.handled_requests AD 0
+    VINCIRE (*heap_state).current_connection.open AD FALSUM
+    VINCIRE (*heap_state).has_connection AD FALSUM
+    VINCIRE (*heap_state).options.host AD options.host
+    VINCIRE (*heap_state).options.port AD options.port
+    VINCIRE (*heap_state).options.backlog AD options.backlog
+    VINCIRE (*heap_state).options.keepalive_timeout_ms AD options.keepalive_timeout_ms
+    VINCIRE (*heap_state).options.idle_timeout_ms AD options.idle_timeout_ms
+    VINCIRE (*heap_state).options.read_header_timeout_ms AD options.read_header_timeout_ms
+    VINCIRE (*heap_state).options.read_body_timeout_ms AD options.read_body_timeout_ms
+    VINCIRE (*heap_state).options.max_request_bytes AD options.max_request_bytes
+    VINCIRE (*heap_state).options.max_header_bytes AD options.max_header_bytes
+    VINCIRE (*heap_state).options.max_header_count AD options.max_header_count
+    VINCIRE (*heap_state).options.max_body_bytes AD options.max_body_bytes
+    VINCIRE (*heap_state).options.upload_stream_threshold_bytes AD options.upload_stream_threshold_bytes
+    VINCIRE (*heap_state).options.trusted_proxies AD options.trusted_proxies
+    VINCIRE (*heap_state).options.enable_request_id AD options.enable_request_id
+    VINCIRE (*heap_state).options.enable_access_log AD options.enable_access_log
+    VINCIRE (*heap_state).options.honor_x_forwarded_for AD options.honor_x_forwarded_for
+    VINCIRE (*heap_state).options.honor_x_forwarded_proto AD options.honor_x_forwarded_proto
+    VINCIRE (*heap_state).options.honor_x_forwarded_host AD options.honor_x_forwarded_host
+    VINCIRE (*heap_state).options.allow_proxy_request_id AD options.allow_proxy_request_id
+    VINCIRE (*heap_state).stats.accepted_connections AD 0
+    VINCIRE (*heap_state).stats.handled_requests AD 0
+    VINCIRE (*heap_state).stats.active_connections AD 0
+    VINCIRE (*heap_state).stats.uptime_ms AD 0
+    VINCIRE (*heap_state).stop_requested AD FALSUM
+    VINCIRE (*heap_state).signal_enabled AD CONIURA signal_is_supported()
+    VINCIRE (*heap_state).current_keep_alive AD FALSUM
+    VINCIRE (*heap_state).current_request_ready AD FALSUM
+    VINCIRE (*heap_state).current_request_id AD ""
+    VINCIRE (*heap_state).started_ms AD CONIURA now_ms()
+
+    SI (*heap_state).signal_enabled
+      EVOCA SPECULUM NIHIL signal_res AD CONIURA signal_install_default_handlers()
+      SI CONIURA result_is_err GENUS(REX, SignalError)(signal_res)
+        VINCIRE (*heap_state).signal_enabled AD FALSUM
+      FIN SI
+    FIN SI
+
+    EVOCA HttpServer server
+    VINCIRE server.handle AD heap_state
+    REDDE CONIURA http_server_create_ok(server)
+  CAPE FRACTUM erro
+    EVOCA VERBUM msg AD OBSECRO fractum_to_verbum(erro)
+    REDDE CONIURA http_server_create_err(msg)
+  FIN TEMPTA
+  REDDE CONIURA http_server_create_err("falha ao criar servidor")
+EXPLICIT RITUALE
+
+RITUALE http_server_should_shutdown(HttpServer server) REDDE VERUM
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  REDDE CONIURA http_server_listener_should_stop(state)
+EXPLICIT RITUALE
+
+RITUALE http_server_signal_enabled(HttpServer server) REDDE VERUM
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  REDDE (*state).signal_enabled
+EXPLICIT RITUALE
+
+RITUALE http_server_stop(HttpServer server) REDDE NIHIL
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  VINCIRE (*state).stop_requested AD VERUM
+  SI (*state).listener_open
+    CONIURA net_close((*state).listener)
+    VINCIRE (*state).listener_open AD FALSUM
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE http_server_stats(HttpServer server) REDDE HttpServerStats
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  REDDE CONIURA http_server_stats_snapshot(state)
+EXPLICIT RITUALE
+
+RITUALE http_server_current_request_id(HttpServer server) REDDE VERBUM
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  REDDE (*state).current_request_id
+EXPLICIT RITUALE
+
+RITUALE http_server_access_log_error_entry(HttpServer server, HttpServerError err, REX duration_ms) REDDE AccessLogEntry
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  EVOCA AccessLogEntry entry
+  VINCIRE entry.request_id AD (*state).current_request_id
+  SI CONIURA len(entry.request_id) == 0
+    VINCIRE entry.request_id AD CONIURA http_server_make_request_id()
+  FIN SI
+  VINCIRE entry.method AD "-"
+  VINCIRE entry.path AD "-"
+  VINCIRE entry.status AD err.status_code
+  VINCIRE entry.duration_ms AD duration_ms
+  VINCIRE entry.client_ip AD CONIURA http_server_addr_host((*state).current_connection.peer_addr)
+  VINCIRE entry.response_bytes AD 0
+  VINCIRE entry.scheme AD "http"
+  REDDE entry
+EXPLICIT RITUALE
+
+RITUALE http_server_error_should_respond(HttpServerError err) REDDE VERUM
+  REDDE CONIURA compare(CONIURA http_connection_policy_name(err.policy), "ConnPolicyCloseImmediate") != 0
+EXPLICIT RITUALE
+
+RITUALE civitas_http_server_accept(HttpServer server) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  EVOCA SPECULUM NIHIL req_res
+
+  SI CONIURA http_server_listener_should_stop(state)
+    REDDE CONIURA http_server_error_result(CONIURA http_server_error("server stopping", 503, VERUM))
+  FIN SI
+
+  SI (*state).has_connection ET (*state).current_connection.open ET (*state).current_keep_alive
+    TEMPTA
+      CONIURA sock_set_timeout_ms((*state).current_connection.socket, (*state).options.idle_timeout_ms)
+      VINCIRE req_res AD CONIURA http_server_read_request_from_socket(
+        (*state).current_connection.socket,
+        (*state).current_connection.peer_addr,
+        (*state).current_connection.local_addr,
+        (*state).options,
+        ConnPolicyCloseImmediate
+      )
+      SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        EVOCA HttpServerError keep_err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        SI CONIURA compare(CONIURA http_connection_policy_name(keep_err.policy), "ConnPolicyCloseImmediate") == 0
+          CONIURA http_server_close_current_connection(state)
+        FIN SI
+        REDDE req_res
+      FIN SI
+      EVOCA HttpRawRequest keep_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+      VINCIRE (*state).current_request_ready AD VERUM
+      VINCIRE (*state).current_keep_alive AD keep_req.keep_alive
+      VINCIRE (*state).current_request_id AD keep_req.request_id
+      VINCIRE (*state).current_connection.last_activity_ms AD CONIURA now_ms()
+      REDDE req_res
+    CAPE FRACTUM erro
+      CONIURA http_server_close_current_connection(state)
+    FIN TEMPTA
+  FIN SI
+
+  DUM VERUM
+    TEMPTA
+      EVOCA SPECULUM NIHIL client AD CONIURA sock_accept((*state).listener)
+      EVOCA HttpConnection conn AD CONIURA http_server_connection_new(client)
+      VINCIRE (*state).current_connection.socket AD conn.socket
+      VINCIRE (*state).current_connection.peer_addr AD conn.peer_addr
+      VINCIRE (*state).current_connection.local_addr AD conn.local_addr
+      VINCIRE (*state).current_connection.last_activity_ms AD conn.last_activity_ms
+      VINCIRE (*state).current_connection.handled_requests AD conn.handled_requests
+      VINCIRE (*state).current_connection.open AD conn.open
+      VINCIRE (*state).has_connection AD VERUM
+      VINCIRE (*state).stats.accepted_connections AD (*state).stats.accepted_connections + 1
+      VINCIRE (*state).stats.active_connections AD 1
+      VINCIRE req_res AD CONIURA http_server_read_request_from_socket(
+        client,
+        (*state).current_connection.peer_addr,
+        (*state).current_connection.local_addr,
+        (*state).options,
+        ConnPolicyRespondAndClose
+      )
+      SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        EVOCA HttpServerError accept_err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        SI CONIURA compare(CONIURA http_connection_policy_name(accept_err.policy), "ConnPolicyCloseImmediate") == 0
+          CONIURA http_server_close_current_connection(state)
+        FIN SI
+        REDDE req_res
+      FIN SI
+      EVOCA HttpRawRequest accepted_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+      VINCIRE (*state).current_request_ready AD VERUM
+      VINCIRE (*state).current_keep_alive AD accepted_req.keep_alive
+      VINCIRE (*state).current_request_id AD accepted_req.request_id
+      VINCIRE (*state).current_connection.last_activity_ms AD CONIURA now_ms()
+      REDDE req_res
+    CAPE FRACTUM erro
+      SI CONIURA http_server_listener_should_stop(state)
+        REDDE CONIURA http_server_error_result(CONIURA http_server_error("server stopping", 503, VERUM))
+      FIN SI
+    FIN TEMPTA
+  FIN DUM
+
+  REDDE CONIURA http_server_error_result(CONIURA http_server_error("falha ao aceitar conexao", 503, VERUM))
+EXPLICIT RITUALE
+
+RITUALE http_server_response_bytes(HttpRawResponse response) REDDE VERBUM
+  EVOCA VERBUM out AD "HTTP/1.1 "
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(response.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERUM has_content_type AD CONIURA http_server_headers_has(response.headers, "content-type")
+  EVOCA VERUM has_content_length AD CONIURA http_server_headers_has(response.headers, "content-length")
+  EVOCA VERUM has_connection AD CONIURA http_server_headers_has(response.headers, "connection")
+
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(response.status_code))
+  VINCIRE out AD CONIURA concat(out, " ")
+  VINCIRE out AD CONIURA concat(out, CONIURA http_server_reason_phrase(response.status_code))
+  VINCIRE out AD CONIURA concat(out, CONIURA http_server_crlf())
+
+  SI NON has_content_type
+    CONIURA http_server_headers_set(response.headers, "content-type", "text/plain; charset=utf-8")
+  FIN SI
+  SI NON has_content_length
+    CONIURA http_server_headers_set(response.headers, "content-length", CONIURA stringify_int(CONIURA len(response.body)))
+  FIN SI
+  SI NON has_connection
+    SI response.close_connection
+      CONIURA http_server_headers_set(response.headers, "connection", "close")
+    ALITER
+      CONIURA http_server_headers_set(response.headers, "connection", "keep-alive")
+    FIN SI
+  FIN SI
+
+  VINCIRE keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(response.headers)
+  VINCIRE n AD CONIURA fluxus_len(keys)
+  VINCIRE i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(response.headers, key, "")
+    VINCIRE out AD CONIURA concat(out, key)
+    VINCIRE out AD CONIURA concat(out, ": ")
+    VINCIRE out AD CONIURA concat(out, value)
+    VINCIRE out AD CONIURA concat(out, CONIURA http_server_crlf())
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE out AD CONIURA concat(out, CONIURA http_server_crlf())
+  VINCIRE out AD CONIURA concat(out, response.body)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE http_server_respond(HttpServer server, HttpRawResponse response) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  EVOCA VERBUM payload AD ""
+  EVOCA REX sent AD 0
+
+  SI NON (*state).has_connection VEL NON (*state).current_connection.open
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("nenhuma conexao ativa", 500, VERUM))
+  FIN SI
+
+  VINCIRE payload AD CONIURA http_server_response_bytes(response)
+  SI response.close_connection
+    VINCIRE (*state).current_keep_alive AD FALSUM
+  FIN SI
+
+  TEMPTA
+    VINCIRE sent AD CONIURA sock_send((*state).current_connection.socket, payload)
+    SI sent != CONIURA len(payload)
+      CONIURA http_server_close_current_connection(state)
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("envio de response incompleto", 500, VERUM))
+    FIN SI
+
+    VINCIRE (*state).stats.handled_requests AD (*state).stats.handled_requests + 1
+    VINCIRE (*state).current_connection.handled_requests AD (*state).current_connection.handled_requests + 1
+    VINCIRE (*state).current_connection.last_activity_ms AD CONIURA now_ms()
+    VINCIRE (*state).current_request_ready AD FALSUM
+
+    SI response.close_connection VEL NON (*state).current_keep_alive VEL CONIURA http_server_listener_should_stop(state)
+      CONIURA http_server_close_current_connection(state)
+    FIN SI
+
+    REDDE CONIURA Ok GENUS(REX, HttpServerError)(sent)
+  CAPE FRACTUM erro
+    CONIURA http_server_close_current_connection(state)
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error(OBSECRO fractum_to_verbum(erro), 500, VERUM))
+  FIN TEMPTA
+
+  REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("falha ao responder", 500, VERUM))
+EXPLICIT RITUALE
+
+RITUALE http_server_respond_http(HttpServer server, HttpResponse response, VERUM close_connection) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CivitasHttpServerState state AD server.handle
+  EVOCA VERBUM payload AD ""
+  EVOCA REX sent AD 0
+  EVOCA REX headers_handle AD CONIURA http_response_headers_handle(response)
+
+  SI NON (*state).has_connection VEL NON (*state).current_connection.open
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("nenhuma conexao ativa", 500, VERUM))
+  FIN SI
+
+  SI NON CONIURA http_headers_has(headers_handle, "Content-Length")
+    CONIURA http_headers_set_or_push(headers_handle, "Content-Length", CONIURA stringify_int(CONIURA len(CONIURA http_response_body(response))))
+  FIN SI
+  SI NON CONIURA http_headers_has(headers_handle, "Connection")
+    SI close_connection
+      CONIURA http_headers_set_or_push(headers_handle, "Connection", "close")
+    ALITER
+      CONIURA http_headers_set_or_push(headers_handle, "Connection", "keep-alive")
+    FIN SI
+  FIN SI
+
+  VINCIRE payload AD CONIURA http_stringify_response(response)
+  SI close_connection
+    VINCIRE (*state).current_keep_alive AD FALSUM
+  FIN SI
+
+  TEMPTA
+    VINCIRE sent AD CONIURA sock_send((*state).current_connection.socket, payload)
+    SI sent != CONIURA len(payload)
+      CONIURA http_server_close_current_connection(state)
+      REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("envio de response incompleto", 500, VERUM))
+    FIN SI
+
+    VINCIRE (*state).stats.handled_requests AD (*state).stats.handled_requests + 1
+    VINCIRE (*state).current_connection.handled_requests AD (*state).current_connection.handled_requests + 1
+    VINCIRE (*state).current_connection.last_activity_ms AD CONIURA now_ms()
+    VINCIRE (*state).current_request_ready AD FALSUM
+
+    SI close_connection VEL NON (*state).current_keep_alive VEL CONIURA http_server_listener_should_stop(state)
+      CONIURA http_server_close_current_connection(state)
+    FIN SI
+
+    REDDE CONIURA Ok GENUS(REX, HttpServerError)(sent)
+  CAPE FRACTUM erro
+    CONIURA http_server_close_current_connection(state)
+    REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error(OBSECRO fractum_to_verbum(erro), 500, VERUM))
+  FIN TEMPTA
+
+  REDDE CONIURA Err GENUS(REX, HttpServerError)(CONIURA http_server_error("falha ao responder", 500, VERUM))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

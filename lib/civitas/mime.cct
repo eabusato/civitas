@@ -1,0 +1,377 @@
+INCIPIT grimoire "civitas_mime"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM MimeType
+  major: VERBUM
+  minor: VERBUM
+  canonical: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ContentType
+  raw: VERBUM
+  mime: MimeType
+  params: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM AcceptItem
+  raw: VERBUM
+  mime: VERBUM
+  q: REX
+  order: REX
+  specificity: REX
+FIN SIGILLUM
+
+RITUALE mime_empty_type() REDDE MimeType
+  EVOCA MimeType mime
+  VINCIRE mime.major AD ""
+  VINCIRE mime.minor AD ""
+  VINCIRE mime.canonical AD ""
+  REDDE mime
+EXPLICIT RITUALE
+
+RITUALE mime_empty_content_type() REDDE ContentType
+  EVOCA ContentType content_type
+  VINCIRE content_type.raw AD ""
+  VINCIRE content_type.mime AD CONIURA mime_empty_type()
+  VINCIRE content_type.params AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  REDDE content_type
+EXPLICIT RITUALE
+
+RITUALE mime_content_type_ok(ContentType content_type) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(ContentType, VERBUM)(content_type)
+EXPLICIT RITUALE
+
+RITUALE mime_content_type_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(ContentType, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE mime_registry_source() REDDE VERBUM
+  REDDE "txt=text/plain\ntext=text/plain\nlog=text/plain\nmd=text/markdown\nmarkdown=text/markdown\nadoc=text/asciidoc\nrst=text/x-rst\nhtml=text/html\nhtm=text/html\nshtml=text/html\nxhtml=application/xhtml+xml\ncss=text/css\nscss=text/x-scss\nsass=text/x-sass\nless=text/less\nstyl=text/stylus\ncsv=text/csv\ntsv=text/tab-separated-values\nics=text/calendar\nvcf=text/vcard\nvtt=text/vtt\nsrt=application/x-subrip\nass=text/x-ssa\nssa=text/x-ssa\nyaml=application/yaml\nyml=application/yaml\nxml=application/xml\nxsl=application/xml\nxsd=application/xml\natom=application/atom+xml\nrss=application/rss+xml\nsgml=text/sgml\nsgm=text/sgml\njs=text/javascript\nmjs=text/javascript\ncjs=text/javascript\njsx=text/jsx\nts=text/typescript\ntsx=text/tsx\njson=application/json\nmap=application/json\nndjson=application/x-ndjson\ngeojson=application/geo+json\nwebmanifest=application/manifest+json\nwasm=application/wasm\npdf=application/pdf\nzip=application/zip\ngz=application/gzip\ngzip=application/gzip\nbz2=application/x-bzip2\nxz=application/x-xz\n7z=application/x-7z-compressed\ntar=application/x-tar\ntgz=application/gzip\nrar=application/vnd.rar\njar=application/java-archive\nwar=application/java-archive\near=application/java-archive\napk=application/vnd.android.package-archive\ndmg=application/x-apple-diskimage\niso=application/x-iso9660-image\nexe=application/vnd.microsoft.portable-executable\ndll=application/vnd.microsoft.portable-executable\nmsi=application/x-msdownload\ndeb=application/vnd.debian.binary-package\nrpm=application/x-rpm\nbin=application/octet-stream\ndat=application/octet-stream\nimg=application/octet-stream\nsqlite=application/vnd.sqlite3\ndb=application/octet-stream\nparquet=application/vnd.apache.parquet\navro=application/avro\norc=application/orc\nproto=text/plain\npb=application/octet-stream\npem=application/x-pem-file\ncrt=application/x-x509-ca-cert\ncer=application/pkix-cert\nder=application/x-x509-ca-cert\np12=application/x-pkcs12\npfx=application/x-pkcs12\njsonld=application/ld+json\nform=application/x-www-form-urlencoded\nmultipart=multipart/form-data\npng=image/png\napng=image/apng\njpg=image/jpeg\njpeg=image/jpeg\njpe=image/jpeg\ngif=image/gif\nbmp=image/bmp\nwebp=image/webp\nsvg=image/svg+xml\nsvgz=image/svg+xml\nico=image/x-icon\ntif=image/tiff\ntiff=image/tiff\navif=image/avif\nheic=image/heic\nheif=image/heif\njp2=image/jp2\nj2k=image/jp2\njpf=image/jpx\njpx=image/jpx\njpm=image/jpm\nmj2=image/mj2\npsd=image/vnd.adobe.photoshop\nai=application/postscript\neps=application/postscript\nps=application/postscript\nxcf=image/x-xcf\nicns=image/icns\nmp3=audio/mpeg\naac=audio/aac\nm4a=audio/mp4\nflac=audio/flac\nwav=audio/wav\noga=audio/ogg\nogg=audio/ogg\nopus=audio/ogg\nweba=audio/webm\nmid=audio/midi\nmidi=audio/midi\namr=audio/amr\naif=audio/aiff\naiff=audio/aiff\nwma=audio/x-ms-wma\nmka=audio/x-matroska\nmp4=video/mp4\nm4v=video/mp4\nmpeg=video/mpeg\nmpg=video/mpeg\nwebm=video/webm\nogv=video/ogg\nmov=video/quicktime\navi=video/x-msvideo\nwmv=video/x-ms-wmv\nflv=video/x-flv\nmkv=video/x-matroska\n3gp=video/3gpp\n3g2=video/3gpp2\nts=video/mp2t\nmts=video/mp2t\nm2ts=video/mp2t\nf4v=video/mp4\nmpd=application/dash+xml\nm3u8=application/vnd.apple.mpegurl\nttf=font/ttf\notf=font/otf\nwoff=font/woff\nwoff2=font/woff2\neot=application/vnd.ms-fontobject\nsfnt=font/sfnt\ndoc=application/msword\ndot=application/msword\ndocx=application/vnd.openxmlformats-officedocument.wordprocessingml.document\ndotx=application/vnd.openxmlformats-officedocument.wordprocessingml.template\nxls=application/vnd.ms-excel\nxlt=application/vnd.ms-excel\nxlsx=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nxltx=application/vnd.openxmlformats-officedocument.spreadsheetml.template\nppt=application/vnd.ms-powerpoint\npot=application/vnd.ms-powerpoint\npps=application/vnd.ms-powerpoint\npptx=application/vnd.openxmlformats-officedocument.presentationml.presentation\npotx=application/vnd.openxmlformats-officedocument.presentationml.template\nppsx=application/vnd.openxmlformats-officedocument.presentationml.slideshow\nodt=application/vnd.oasis.opendocument.text\nods=application/vnd.oasis.opendocument.spreadsheet\nodp=application/vnd.oasis.opendocument.presentation\nodg=application/vnd.oasis.opendocument.graphics\nodf=application/vnd.oasis.opendocument.formula\nepub=application/epub+zip\nrtf=application/rtf\ntex=application/x-tex\nlatex=application/x-latex\npages=application/vnd.apple.pages\nnumbers=application/vnd.apple.numbers\nkey=application/vnd.apple.keynote\nc=text/plain\nh=text/plain\ncpp=text/plain\nhpp=text/plain\ncc=text/plain\ncxx=text/plain\nhh=text/plain\njava=text/plain\nclass=application/java-vm\nkt=text/plain\nkts=text/plain\ngo=text/plain\nrs=text/plain\npy=text/x-python\nrb=text/x-ruby\nphp=application/x-httpd-php\nphar=application/x-phar\nswift=text/plain\nscala=text/plain\nsc=text/plain\npl=text/x-perl\npm=text/x-perl\nlua=text/x-lua\nsh=application/x-sh\nbash=application/x-sh\nzsh=application/x-sh\nfish=application/x-sh\nps1=text/plain\nbat=application/x-msdos-program\ncmd=application/x-msdos-program\nsql=application/sql\ntoml=application/toml\nini=text/plain\nconf=text/plain\nconfig=text/plain\nenv=text/plain\nlock=text/plain\nvue=text/plain\nsvelte=text/plain\ncct=text/plain\nsigil=text/plain\nsvgz=image/svg+xml\nsqlite3=application/vnd.sqlite3\nceres=application/octet-stream\nmsg=application/vnd.ms-outlook\neml=message/rfc822\nicsx=text/calendar\npkpass=application/vnd.apple.pkpass\nheics=image/heic-sequence\nheifs=image/heif-sequence\nwebcal=text/calendar\ndocm=application/vnd.ms-word.document.macroenabled.12\nxlsm=application/vnd.ms-excel.sheet.macroenabled.12\npptm=application/vnd.ms-powerpoint.presentation.macroenabled.12\nodsx=application/vnd.oasis.opendocument.spreadsheet\nodtx=application/vnd.oasis.opendocument.text\nodpz=application/vnd.oasis.opendocument.presentation\npatch=text/x-diff\ndiff=text/x-diff\npemtxt=text/plain\nasc=text/plain\ncertxt=text/plain\nkml=application/vnd.google-earth.kml+xml\nkmz=application/vnd.google-earth.kmz\ncrx=application/x-chrome-extension\nxpi=application/x-xpinstall\nmjsmap=application/json\nhjson=application/json\njson5=application/json\nyamlld=application/yaml\ncue=text/plain\nrego=text/plain\nnix=text/plain\ndockerfile=text/plain\ngradle=text/plain\nproperties=text/plain\npsql=application/sql\npsqlrc=text/plain\ngraphql=application/graphql\ngql=application/graphql\nhar=application/json\npemkey=application/x-pem-file\ncsr=application/pkcs10\nkeypem=application/x-pem-file\ncerpem=application/x-x509-ca-cert"
+EXPLICIT RITUALE
+
+RITUALE mime_registry_count() REDDE REX
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(CONIURA mime_registry_source(), "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  EVOCA REX count AD 0
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    SI CONIURA find(*line_ptr, "=") > 0
+      VINCIRE count AD count + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE mime_normalize_extension(VERBUM ext) REDDE VERBUM
+  EVOCA VERBUM lowered AD CONIURA to_lower(CONIURA trim(ext))
+  SI CONIURA starts_with(lowered, ".")
+    REDDE CONIURA substring(lowered, 1, CONIURA len(lowered))
+  FIN SI
+  REDDE lowered
+EXPLICIT RITUALE
+
+RITUALE mime_registry_lookup(VERBUM ext) REDDE VERBUM
+  EVOCA SPECULUM NIHIL lines AD CONIURA split(CONIURA mime_registry_source(), "\n")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(lines)
+  EVOCA VERBUM target AD CONIURA mime_normalize_extension(ext)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM line_ptr AD CONIURA fluxus_get(lines, i)
+    EVOCA VERBUM line AD *line_ptr
+    EVOCA REX eq AD CONIURA find(line, "=")
+    SI eq > 0
+      EVOCA VERBUM name AD CONIURA substring(line, 0, eq)
+      SI CONIURA compare(name, target) == 0
+        REDDE CONIURA substring(line, eq + 1, CONIURA len(line))
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE "application/octet-stream"
+EXPLICIT RITUALE
+
+RITUALE mime_from_extension(VERBUM ext) REDDE VERBUM
+  REDDE CONIURA mime_registry_lookup(ext)
+EXPLICIT RITUALE
+
+RITUALE mime_strip_path_suffixes(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM clean AD path
+  EVOCA REX hash_idx AD CONIURA find(clean, "#")
+  EVOCA REX query_idx AD -1
+
+  SI hash_idx != -1
+    VINCIRE clean AD CONIURA substring(clean, 0, hash_idx)
+  FIN SI
+
+  VINCIRE query_idx AD CONIURA find(clean, "?")
+  SI query_idx != -1
+    VINCIRE clean AD CONIURA substring(clean, 0, query_idx)
+  FIN SI
+
+  REDDE clean
+EXPLICIT RITUALE
+
+RITUALE mime_guess_from_path(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM clean AD CONIURA mime_strip_path_suffixes(path)
+  EVOCA REX slash AD CONIURA last_find(clean, "/")
+  EVOCA REX dot AD CONIURA last_find(clean, ".")
+  SI dot == -1 VEL (slash != -1 ET dot < slash)
+    REDDE "application/octet-stream"
+  FIN SI
+  REDDE CONIURA mime_from_extension(CONIURA substring(clean, dot + 1, CONIURA len(clean)))
+EXPLICIT RITUALE
+
+RITUALE mime_param_get(ContentType content_type, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(content_type.params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM current AD *key_ptr
+    SI CONIURA compare(current, key) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(content_type.params, current)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE mime_parse_type(VERBUM raw_mime) REDDE MimeType
+  EVOCA MimeType mime AD CONIURA mime_empty_type()
+  EVOCA VERBUM canonical AD CONIURA to_lower(CONIURA trim(raw_mime))
+  EVOCA REX slash AD CONIURA find(canonical, "/")
+
+  SI slash <= 0 VEL slash == CONIURA len(canonical) - 1
+    IACE "mime invalido"
+  FIN SI
+
+  VINCIRE mime.major AD CONIURA substring(canonical, 0, slash)
+  VINCIRE mime.minor AD CONIURA substring(canonical, slash + 1, CONIURA len(canonical))
+  VINCIRE mime.canonical AD canonical
+  REDDE mime
+EXPLICIT RITUALE
+
+RITUALE mime_is_valid_type(VERBUM raw_mime) REDDE VERUM
+  EVOCA VERBUM canonical AD CONIURA to_lower(CONIURA trim(raw_mime))
+  EVOCA REX slash AD CONIURA find(canonical, "/")
+  SI slash <= 0 VEL slash == CONIURA len(canonical) - 1
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE mime_parse_content_type(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(raw, ";")
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA REX i AD 0
+  EVOCA ContentType content_type AD CONIURA mime_empty_content_type()
+
+  SI n == 0
+    REDDE CONIURA mime_content_type_err("content-type vazio")
+  FIN SI
+
+  EVOCA SPECULUM VERBUM first_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA VERBUM first AD CONIURA trim(*first_ptr)
+  SI CONIURA len(first) == 0
+    REDDE CONIURA mime_content_type_err("content-type vazio")
+  FIN SI
+
+  VINCIRE content_type.raw AD raw
+  SI NON CONIURA mime_is_valid_type(first)
+    REDDE CONIURA mime_content_type_err("content-type invalido")
+  FIN SI
+  VINCIRE content_type.mime AD CONIURA mime_parse_type(first)
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(content_type.params, "type", content_type.mime.canonical)
+  VINCIRE i AD 1
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM part AD CONIURA trim(*part_ptr)
+    EVOCA REX eq AD CONIURA find(part, "=")
+    EVOCA VERBUM key AD ""
+    EVOCA VERBUM value AD ""
+
+    SI eq <= 0
+      REDDE CONIURA mime_content_type_err("parametro content-type invalido")
+    FIN SI
+
+    VINCIRE key AD CONIURA to_lower(CONIURA trim(CONIURA substring(part, 0, eq)))
+    VINCIRE value AD CONIURA trim(CONIURA substring(part, eq + 1, CONIURA len(part)))
+    SI CONIURA len(key) == 0
+      REDDE CONIURA mime_content_type_err("parametro content-type invalido")
+    FIN SI
+    SI CONIURA starts_with(value, "\"") ET CONIURA ends_with(value, "\"") ET CONIURA len(value) >= 2
+      VINCIRE value AD CONIURA substring(value, 1, CONIURA len(value) - 1)
+    FIN SI
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(content_type.params, key, value)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA mime_content_type_ok(content_type)
+EXPLICIT RITUALE
+
+RITUALE mime_base_type(VERBUM content_type) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA mime_parse_content_type(content_type)
+  SI CONIURA result_is_err GENUS(ContentType, VERBUM)(parsed)
+    REDDE CONIURA to_lower(CONIURA trim(content_type))
+  FIN SI
+  EVOCA ContentType resolved AD CONIURA result_unwrap GENUS(ContentType, VERBUM)(parsed)
+  REDDE resolved.mime.canonical
+EXPLICIT RITUALE
+
+RITUALE mime_charset(VERBUM content_type) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA mime_parse_content_type(content_type)
+  SI CONIURA result_is_err GENUS(ContentType, VERBUM)(parsed)
+    REDDE ""
+  FIN SI
+  EVOCA ContentType resolved AD CONIURA result_unwrap GENUS(ContentType, VERBUM)(parsed)
+  EVOCA SPECULUM NIHIL charset_opt AD CONIURA mime_param_get(resolved, "charset")
+  SI CONIURA option_is_none GENUS(VERBUM)(charset_opt)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA option_unwrap GENUS(VERBUM)(charset_opt)
+EXPLICIT RITUALE
+
+RITUALE mime_is_json(VERBUM mime) REDDE VERUM
+  EVOCA VERBUM base AD CONIURA mime_base_type(mime)
+  SI CONIURA compare(base, "application/json") == 0
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA ends_with(base, "+json")
+EXPLICIT RITUALE
+
+RITUALE mime_is_text(VERBUM mime) REDDE VERUM
+  EVOCA VERBUM base AD CONIURA mime_base_type(mime)
+  SI CONIURA starts_with(base, "text/")
+    REDDE VERUM
+  FIN SI
+  SI CONIURA mime_is_json(base) VEL CONIURA ends_with(base, "+xml") VEL CONIURA compare(base, "application/xml") == 0 VEL CONIURA compare(base, "application/javascript") == 0 VEL CONIURA compare(base, "text/javascript") == 0
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE mime_is_binary(VERBUM mime) REDDE VERUM
+  REDDE NON CONIURA mime_is_text(mime)
+EXPLICIT RITUALE
+
+RITUALE mime_accept_matches(VERBUM offered, VERBUM accepted) REDDE REX
+  SI CONIURA compare(accepted, "*/*") == 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(offered, accepted) == 0
+    REDDE 3
+  FIN SI
+
+  EVOCA REX slash AD CONIURA find(accepted, "/")
+  SI slash == -1
+    REDDE 0
+  FIN SI
+
+  EVOCA VERBUM type_prefix AD CONIURA substring(accepted, 0, slash)
+  EVOCA VERBUM subtype AD CONIURA substring(accepted, slash + 1, CONIURA len(accepted))
+  SI CONIURA compare(subtype, "*") == 0 ET CONIURA starts_with(offered, CONIURA concat(type_prefix, "/"))
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE mime_accept_item_q(VERBUM raw) REDDE REX
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(raw, ";")
+  EVOCA REX i AD 1
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    EVOCA VERBUM part AD CONIURA trim(*part_ptr)
+    SI CONIURA starts_with(CONIURA to_lower(part), "q=")
+      EVOCA UMBRA q AD CONIURA fmt_parse_real(CONIURA substring(part, 2, CONIURA len(part)))
+      REDDE cast GENUS(REX)(q * 1000.0)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE 1000
+EXPLICIT RITUALE
+
+RITUALE mime_accept_item_type(VERBUM raw) REDDE VERBUM
+  EVOCA REX semi AD CONIURA find(raw, ";")
+  SI semi == -1
+    REDDE CONIURA to_lower(CONIURA trim(raw))
+  FIN SI
+  REDDE CONIURA to_lower(CONIURA trim(CONIURA substring(raw, 0, semi)))
+EXPLICIT RITUALE
+
+RITUALE mime_parse_accept_item(VERBUM raw, REX order) REDDE AcceptItem
+  EVOCA AcceptItem item
+  VINCIRE item.raw AD raw
+  VINCIRE item.mime AD CONIURA mime_accept_item_type(raw)
+  VINCIRE item.q AD CONIURA mime_accept_item_q(raw)
+  VINCIRE item.order AD order
+  VINCIRE item.specificity AD 0
+  REDDE item
+EXPLICIT RITUALE
+
+RITUALE mime_accept_best(VERBUM accept_header, SPECULUM NIHIL supported) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL items AD CONIURA split(accept_header, ",")
+  EVOCA REX si AD 0
+  EVOCA REX sn AD CONIURA fluxus_len(supported)
+  EVOCA VERBUM best AD ""
+  EVOCA REX best_q AD -1
+  EVOCA REX best_specificity AD -1
+  EVOCA REX best_order AD 2147483647
+
+  DUM si < sn
+    EVOCA SPECULUM VERBUM supported_ptr AD CONIURA fluxus_get(supported, si)
+    EVOCA VERBUM offered AD CONIURA to_lower(*supported_ptr)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(items)
+    EVOCA REX local_q AD -1
+    EVOCA REX local_specificity AD -1
+    EVOCA REX local_order AD 2147483647
+
+    DUM i < n
+      EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+      EVOCA AcceptItem accepted AD CONIURA mime_parse_accept_item(*item_ptr, i)
+      EVOCA REX specificity AD CONIURA mime_accept_matches(offered, accepted.mime)
+      SI specificity > 0 ET accepted.q > 0
+        SI accepted.q > local_q VEL (accepted.q == local_q ET specificity > local_specificity) VEL (accepted.q == local_q ET specificity == local_specificity ET accepted.order < local_order)
+          VINCIRE local_q AD accepted.q
+          VINCIRE local_specificity AD specificity
+          VINCIRE local_order AD accepted.order
+        FIN SI
+      FIN SI
+      VINCIRE i AD i + 1
+    FIN DUM
+
+    SI local_q > best_q VEL (local_q == best_q ET local_specificity > best_specificity) VEL (local_q == best_q ET local_specificity == best_specificity ET local_order < best_order)
+      VINCIRE best_q AD local_q
+      VINCIRE best_specificity AD local_specificity
+      VINCIRE best_order AD local_order
+      VINCIRE best AD offered
+    FIN SI
+    VINCIRE si AD si + 1
+  FIN DUM
+
+  SI best_q < 0
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(best)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

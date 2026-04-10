@@ -1,0 +1,42 @@
+INCIPIT grimoire "civitas_mail_test"
+
+ADVOCARE "cct/result.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "../mailer/mailer_settings.cct"
+
+RITUALE mailer_test_config() REDDE MailerConfig
+  REDDE CONIURA mailer_config_memory("noreply@test.local", "Civitas Test")
+EXPLICIT RITUALE
+
+RITUALE mailer_test_open() REDDE Mailer
+  EVOCA SPECULUM NIHIL res AD CONIURA mailer_open(CONIURA mailer_test_config())
+  REDDE CONIURA result_unwrap GENUS(Mailer, MailerError)(res)
+EXPLICIT RITUALE
+
+RITUALE mailer_test_close(SPECULUM Mailer m) REDDE NIHIL
+  CONIURA mailer_close(m)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mailer_test_clear(SPECULUM Mailer m) REDDE NIHIL
+  CONIURA mailer_memory_clear(m)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mailer_test_count(Mailer m) REDDE REX
+  REDDE CONIURA mailer_memory_count(m)
+EXPLICIT RITUALE
+
+RITUALE mailer_test_get(Mailer m, REX index) REDDE SPECULUM NIHIL
+  REDDE CONIURA mailer_memory_get(m, index)
+EXPLICIT RITUALE
+
+RITUALE mailer_test_ultimo(Mailer m) REDDE SPECULUM NIHIL
+  EVOCA REX total AD CONIURA mailer_memory_count(m)
+  SI total == 0
+    REDDE CONIURA mailer_err_message(CONIURA mailer_error_caixa_vazia())
+  FIN SI
+  REDDE CONIURA mailer_memory_get(m, total - 1)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase26_26d_sigilo_render_writes_animated_svg"
+
+ADVOCARE "support_26d.cct"
+ADVOCARE "../../../../lib/civitas/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/perf_report/perf_report.cct"
+ADVOCARE "../../../../lib/civitas/trace_render.cct"
+ADVOCARE "../../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase26_26d_reset_root("sigilo_render_writes_animated_svg")
+  EVOCA PerfReport report AD CONIURA phase26_26d_report(VERUM, 1)
+  EVOCA TraceRenderConfig cfg AD CONIURA phase26_26d_render_config("sigilo_render_writes_animated_svg")
+  EVOCA VERBUM out_path AD CONIURA path_join(root, "hotspots.svg")
+  EVOCA SPECULUM NIHIL render_res AD CONIURA perf_report_sigilo_render(report, out_path, cfg)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(render_res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(out_path)
+    REDDE 2
+  FIN SI
+  EVOCA VERBUM svg AD CONIURA read_all(out_path)
+  SI CONIURA find(svg, "trace-packet") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(svg, "animateMotion") == -1
+    REDDE 4
+  FIN SI
+  CONIURA fluxus_free(report.mem_report.deltas)
+  CONIURA fluxus_free(report.profiles)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase6_6d_support"
+
+ADVOCARE "../../../../lib/civitas/core/storage_settings.cct"
+
+RITUALE phase6_6d_storage_settings(VERBUM public_base_url) REDDE StorageSettings
+  EVOCA StorageSettings cfg
+  VINCIRE cfg.root_dir AD ""
+  VINCIRE cfg.public_base_url AD public_base_url
+  VINCIRE cfg.create_missing_dirs AD FALSUM
+  VINCIRE cfg.tmp_dir AD ""
+  VINCIRE cfg.quarantine_dir AD ""
+  VINCIRE cfg.processed_dir AD ""
+  VINCIRE cfg.public_dir AD ""
+  VINCIRE cfg.private_dir AD ""
+  VINCIRE cfg.object_storage_enabled AD FALSUM
+  VINCIRE cfg.object_storage.enabled AD FALSUM
+  VINCIRE cfg.object_storage.configured AD FALSUM
+  VINCIRE cfg.object_storage.endpoint AD ""
+  VINCIRE cfg.object_storage.bucket AD ""
+  VINCIRE cfg.object_storage.access_key AD ""
+  VINCIRE cfg.object_storage.secret_key AD ""
+  VINCIRE cfg.object_storage.region AD ""
+  VINCIRE cfg.object_storage.use_tls AD FALSUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

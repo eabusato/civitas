@@ -1,0 +1,54 @@
+INCIPIT grimoire "fase27_27a_media_snapshot_prunes"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_media_snapshot_copies_only_allowed_dir() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27a_media_snapshot", 2, 2)
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  CONIURA write_all(CONIURA storage_topology_media_path(cfg.topology, "processed", "cover.jpg"), "binary")
+
+  EVOCA BackupResult result AD CONIURA backup_media_snapshot(cfg, "processed")
+  SI NON result.success
+    IACE result.message
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(result.backup_path, "cover.jpg"))
+    IACE "processed snapshot should copy source file"
+  FIN SI
+EXPLICIT RITUALE
+
+RITUALE test_media_snapshot_rejects_tmp_and_prunes_old_dirs() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27a_media_snapshot_prune", 2, 2)
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  CONIURA write_all(CONIURA storage_topology_media_path(cfg.topology, "private", "secret.txt"), "v1")
+
+  EVOCA BackupResult bad AD CONIURA backup_media_snapshot(cfg, "tmp")
+  SI bad.success
+    IACE "tmp should not be accepted for media backup"
+  FIN SI
+
+  CONIURA backup_media_snapshot(cfg, "private")
+  CONIURA sleep_ms(2)
+  CONIURA backup_media_snapshot(cfg, "private")
+  CONIURA sleep_ms(2)
+  EVOCA BackupResult latest AD CONIURA backup_media_snapshot(cfg, "private")
+
+  EVOCA SPECULUM NIHIL snapshots AD CONIURA backup_list_media_snapshot_dirs(cfg, "private")
+  SI CONIURA fluxus_len(snapshots) != 2
+    CONIURA fluxus_free(snapshots)
+    IACE "media snapshots should be pruned to keep_media_snapshots"
+  FIN SI
+  CONIURA fluxus_free(snapshots)
+
+  SI CONIURA compare(CONIURA backup_latest_media_snapshot(cfg, "private"), latest.backup_path) != 0
+    IACE "latest media snapshot should point to newest directory"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

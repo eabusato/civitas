@@ -1,0 +1,133 @@
+INCIPIT grimoire "fase4_4d_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase4_4d_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase4_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA phase4_write(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_prepare_project(VERBUM root, VERBUM content) REDDE NIHIL
+  CONIURA phase4_4d_reset_dir(root)
+  CONIURA phase4_4d_write(CONIURA path_join(root, "civitas.toml"), content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_probe_empty_marker() REDDE VERBUM
+  REDDE "__civitas_empty__"
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_probe_arg(VERBUM value) REDDE VERBUM
+  SI CONIURA len(value) == 0
+    REDDE CONIURA phase4_4d_probe_empty_marker()
+  FIN SI
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_copy_fixture_to_tmp(VERBUM fixture_name, VERBUM dest_dir) REDDE VERBUM
+  EVOCA VERBUM src AD CONIURA path_join("tests/integration/fase_4/4d/fixtures", fixture_name)
+  EVOCA VERBUM dst AD CONIURA path_join(dest_dir, fixture_name)
+  CONIURA write_all(dst, CONIURA read_all(src))
+  REDDE dst
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_compile_probe(VERBUM work_dir) REDDE VERBUM
+  EVOCA VERBUM probe_src AD CONIURA phase4_4d_copy_fixture_to_tmp("secrets_probe.cct", work_dir)
+  EVOCA VERBUM compiler AD CONIURA phase4_compiler_bin()
+  EVOCA VERBUM cmd AD CONIURA concat(compiler, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, probe_src)
+  SI CONIURA run(cmd) != 0
+    IACE "falha ao compilar secrets_probe"
+  FIN SI
+  REDDE CONIURA substring(probe_src, 0, CONIURA len(probe_src) - 4)
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_env_pairs() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_env_add(SPECULUM NIHIL env_pairs, VERBUM name, VERBUM value) REDDE NIHIL
+  EVOCA VERBUM pair AD CONIURA concat(CONIURA concat(name, "="), value)
+  CONIURA fluxus_push(env_pairs, SPECULUM pair)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_run_probe(
+  VERBUM work_dir,
+  VERBUM project_root,
+  VERBUM action,
+  VERBUM domain,
+  VERBUM value,
+  SPECULUM NIHIL env_pairs
+) REDDE VERBUM
+  EVOCA VERBUM bin AD CONIURA phase4_4d_compile_probe(work_dir)
+  EVOCA VERBUM out_path AD CONIURA path_join(work_dir, CONIURA concat(action, ".out"))
+  EVOCA VERBUM cmd AD bin
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, project_root)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, action)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase4_4d_probe_arg(domain))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase4_4d_probe_arg(value))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, out_path)
+  SI CONIURA run_env(cmd, env_pairs) != 0
+    IACE "falha ao executar secrets_probe"
+  FIN SI
+  REDDE CONIURA read_all(out_path)
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_output_is_err(VERBUM output) REDDE VERUM
+  REDDE CONIURA starts_with(output, "ERR:")
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_output_unwrap(VERBUM output) REDDE VERBUM
+  SI CONIURA phase4_4d_output_is_err(output)
+    IACE output
+  FIN SI
+  REDDE output
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_active_key_id(VERBUM work_dir, VERBUM root, VERBUM domain, SPECULUM NIHIL env_pairs) REDDE VERBUM
+  REDDE CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "active_key_id", domain, "", env_pairs))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_active_material(VERBUM work_dir, VERBUM root, VERBUM domain, SPECULUM NIHIL env_pairs) REDDE VERBUM
+  REDDE CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "active_material", domain, "", env_pairs))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_candidate_ids(VERBUM work_dir, VERBUM root, VERBUM domain, SPECULUM NIHIL env_pairs) REDDE VERBUM
+  REDDE CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "verify_candidate_ids", domain, "", env_pairs))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_policy_grace_seconds(VERBUM work_dir, VERBUM root, VERBUM domain, SPECULUM NIHIL env_pairs) REDDE REX
+  REDDE CONIURA parse_int(CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "policy_grace", domain, "", env_pairs)))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_safe_dump(VERBUM work_dir, VERBUM root, SPECULUM NIHIL env_pairs) REDDE VERBUM
+  REDDE CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "safe_dump", "", "", env_pairs))
+EXPLICIT RITUALE
+
+RITUALE phase4_4d_lookup_material(VERBUM work_dir, VERBUM root, VERBUM domain, VERBUM key_id, SPECULUM NIHIL env_pairs) REDDE VERBUM
+  REDDE CONIURA phase4_4d_output_unwrap(CONIURA phase4_4d_run_probe(work_dir, root, "lookup_material", domain, key_id, env_pairs))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

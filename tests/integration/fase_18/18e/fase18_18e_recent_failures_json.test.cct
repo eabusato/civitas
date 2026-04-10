@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase18_18e_recent_failures_json"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_recent_failures_json() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_dashboard_stack_open("18e_recent_failures")
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-old", "default", "mail.send", "retry", "E_OLD", 10, 100)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-new", "critical", "media.process", "dead", "E_NEW", 20, 300)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-mid", "critical", "editorial.feed", "retry", "E_MID", 15, 200)
+  CONIURA phase18_dashboard_insert_task(stack.dbh, "task-ok", "default", "mail.send", "queued", "", 25, 400)
+  EVOCA VERBUM json AD CONIURA dashboard_recent_failures_json(stack.dbh, 2)
+  SI CONIURA find(json, "\"task_name\":\"media.process\"") == -1
+    IACE "recent failures missing newest task"
+  FIN SI
+  SI CONIURA find(json, "\"error_code\":\"E_NEW\"") == -1
+    IACE "recent failures missing newest error"
+  FIN SI
+  SI CONIURA find(json, "\"error_code\":\"E_MID\"") == -1
+    IACE "recent failures missing second error"
+  FIN SI
+  SI CONIURA find(json, "\"error_code\":\"E_OLD\"") != -1
+    IACE "recent failures should honor limit and ordering"
+  FIN SI
+  SI CONIURA find(json, "\"task_name\":\"mail.send\"") != -1
+    IACE "recent failures should ignore queued tasks"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_recent_failures_json()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase7_7e_html_child_contract_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL parent AD CONIURA html_tag("div")
+  EVOCA REX i AD 0
+  EVOCA VERBUM html
+
+  DUM i < 5
+    EVOCA SPECULUM NIHIL child AD CONIURA html_tag("span")
+    CONIURA html_text(child, CONIURA stringify_int(i))
+    CONIURA html_child(parent, child)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE html AD CONIURA html_render_free(parent)
+  SI CONIURA find(html, "<span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>") == -1
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

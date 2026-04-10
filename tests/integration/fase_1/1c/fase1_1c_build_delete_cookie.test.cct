@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase1_1c_build_delete_cookie_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM header AD CONIURA cookie_build_delete("sid")
+  SI NON CONIURA contains(header, "sid=")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA contains(header, "Max-Age=0")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA contains(header, "Expires=Thu, 01 Jan 1970 00:00:00 GMT")
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

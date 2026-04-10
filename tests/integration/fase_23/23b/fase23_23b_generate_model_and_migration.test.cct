@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase23_23b_generate_model_and_migration"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23b_generate_model_and_migration")
+  EVOCA CivitasNewConfig new_cfg AD CONIURA civitas_new_cfg("orion", TemplateApi, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(new_cfg))
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(ModelField))
+  EVOCA ModelField title_field AD CONIURA civitas_gen_parse_field("titulo:VERBUM")
+  EVOCA ModelField body_field AD CONIURA civitas_gen_parse_field("conteudo:VERBUM")
+  CONIURA fluxus_push(fields, SPECULUM title_field)
+  CONIURA fluxus_push(fields, SPECULUM body_field)
+  EVOCA GenerateModelConfig cfg
+  VINCIRE cfg.model_name AD "Post"
+  VINCIRE cfg.table_name AD "post"
+  VINCIRE cfg.module_name AD "post"
+  VINCIRE cfg.fields AD fields
+  VINCIRE cfg.dest_dir AD CONIURA path_join(root, "orion")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_model_run(cfg))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "orion/apps/core/models/post.cct"), "SIGILLUM Post")
+    REDDE 3
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "orion/migrations/0001_create_post.sql"), "CREATE TABLE IF NOT EXISTS post")
+    REDDE 4
+  FIN SI
+  SI CONIURA phase23_compile_file(CONIURA path_join(root, "orion/apps/core/models/post.cct")) != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

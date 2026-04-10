@@ -1,0 +1,64 @@
+-- Generated from home.html. Rebuild via template compiler.
+
+INCIPIT grimoire "templates_gen_home"
+
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../../../lib/civitas/template/context.cct"
+ADVOCARE "../../../lib/civitas/template/filters.cct"
+ADVOCARE "../../../lib/civitas/template/integration.cct"
+ADVOCARE "../apps/shared/template_contexts.cct"
+ADVOCARE "../apps/shared/types.cct"
+ADVOCARE "partials/post_card.cct"
+
+RITUALE render_home(RedeHomePageContext ctx) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>")
+  CONIURA builder_append(b, CONIURA html_encode(ctx.page_title))
+  CONIURA builder_append(b, "</title>\n  <link rel=\"stylesheet\" href=\"/static/app.css\">\n</head>\n<body>\n  <header class=\"topbar\">\n    <div class=\"brand\"><a href=\"/\">rede_social</a></div>\n    <nav>\n      <a href=\"/\">Feed</a>\n      <a href=\"/lounge\">Lounge</a>\n      <a href=\"/api/feed\">API</a>\n      <a href=\"/sigilos-vivos\">Sigilos</a>\n      <a href=\"/ops\">Ops</a>\n      ")
+  SI ctx.has_user
+    CONIURA builder_append(b, "\n        <span class=\"chip\">@")
+    CONIURA builder_append(b, CONIURA html_encode(ctx.current_user))
+    CONIURA builder_append(b, "</span>\n        <form method=\"POST\" action=\"/sair\" class=\"inline-form\">\n          <button type=\"submit\">Logout</button>\n        </form>\n      ")
+  ALITER
+    CONIURA builder_append(b, "\n        <a href=\"/entrar\">Login</a>\n      ")
+  FIN SI
+  CONIURA builder_append(b, "\n    </nav>\n  </header>\n  <main class=\"shell\">\n    ")
+  CONIURA builder_append(b, "\n<section class=\"hero\">\n  <div>\n    <p class=\"eyebrow\">Fresh project scaffold</p>\n    <h1>Small network, full Civitas surface</h1>\n    <p>This example starts from the current project layout and mixes feed, profiles, traces, storage, auditing and performance tooling in one place.</p>\n  </div>\n  <aside class=\"hero-card\">\n    <strong>")
+  CONIURA builder_append(b, CONIURA html_encode(CONIURA stringify_int(ctx.online_count)))
+  CONIURA builder_append(b, "</strong>\n    <span>people recently seen in the feed</span>\n    <a href=\"/api/activity\">poll activity</a>\n  </aside>\n</section>\n\n<section class=\"grid-main\">\n  <div class=\"feed-stack\">\n    ")
+  EVOCA REX i_post AD 0
+  EVOCA REX n_post AD CONIURA fluxus_len(ctx.posts)
+  DUM i_post < n_post
+    EVOCA SPECULUM RedePostCardContext item_post AD CONIURA fluxus_get(ctx.posts, i_post)
+    EVOCA LoopContext loop_post AD CONIURA tpl_loop_context(i_post, n_post)
+    CONIURA builder_append(b, "\n      ")
+    CONIURA builder_append(b, CONIURA render_partials_post_card(*item_post))
+    CONIURA builder_append(b, "\n    ")
+    VINCIRE i_post AD i_post + 1
+  FIN DUM
+  CONIURA builder_append(b, "\n  </div>\n  <aside class=\"side-panel\">\n    <div class=\"card\">\n      <h3>Activity lane</h3>\n      ")
+  EVOCA REX i_item AD 0
+  EVOCA REX n_item AD CONIURA fluxus_len(ctx.activity)
+  DUM i_item < n_item
+    EVOCA SPECULUM RedeActivity item_item AD CONIURA fluxus_get(ctx.activity, i_item)
+    EVOCA LoopContext loop_item AD CONIURA tpl_loop_context(i_item, n_item)
+    CONIURA builder_append(b, "\n        <div class=\"activity-item\">\n          <strong>")
+    CONIURA builder_append(b, CONIURA html_encode((*item_item).title))
+    CONIURA builder_append(b, "</strong>\n          <p>")
+    CONIURA builder_append(b, CONIURA html_encode((*item_item).body))
+    CONIURA builder_append(b, "</p>\n          <span class=\"muted\">")
+    CONIURA builder_append(b, CONIURA html_encode((*item_item).created_at))
+    CONIURA builder_append(b, "</span>\n        </div>\n      ")
+    VINCIRE i_item AD i_item + 1
+  FIN DUM
+  CONIURA builder_append(b, "\n      <div class=\"card-note\">Phase 25 is represented here by persisted activity and room logs exposed through regular HTTP surfaces.</div>\n    </div>\n  </aside>\n</section>\n")
+  CONIURA builder_append(b, "\n  </main>\n</body>\n</html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

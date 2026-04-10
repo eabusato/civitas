@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase27_27b_restore_latest_path"
+
+ADVOCARE "../../../../lib/civitas/backup/backup.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/restore/restore.cct"
+ADVOCARE "../support.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_restore_latest_sqlite_path_returns_most_recent_backup() REDDE NIHIL
+  EVOCA BackupConfig cfg AD CONIURA phase27_backup_cfg("27b_latest_sqlite", 5, 2)
+  CONIURA storage_topology_ensure_dirs(cfg.topology)
+  EVOCA VERBUM live_db AD CONIURA storage_topology_main_db_path(cfg.topology)
+  CONIURA phase27_seed_sqlite(live_db)
+
+  CONIURA backup_sqlite(live_db, cfg, "main")
+  CONIURA sleep_ms(2)
+  EVOCA BackupResult latest AD CONIURA backup_sqlite(live_db, cfg, "main")
+
+  SI CONIURA compare(CONIURA restore_latest_sqlite_path(cfg, "main"), latest.backup_path) != 0
+    IACE "restore latest sqlite path should return the newest backup"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

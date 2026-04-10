@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase18_18c_dashboard_widgets"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_dashboard.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_dashboard_widgets() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18c_widgets")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Alpha", "draft", "u1", 1000)
+  CONIURA phase18_insert_post(stack.db, "Beta", "published", "u2", 1001)
+  CONIURA admin_widgets_schema_up(stack.dbh)
+  EVOCA AdminWidget count_widget
+  VINCIRE count_widget.id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  VINCIRE count_widget.kind AD WIDGET_COUNT
+  VINCIRE count_widget.title AD "Posts"
+  VINCIRE count_widget.model_name AD "Post"
+  VINCIRE count_widget.query_json AD "{}"
+  VINCIRE count_widget.display_order AD 1
+  CONIURA admin_widget_register(stack.dbh, count_widget)
+  SI CONIURA admin_widget_count(*cfg_ptr, stack.dbh) != 2
+    IACE "dashboard count widget mismatch"
+  FIN SI
+  EVOCA VERBUM recent_json AD CONIURA admin_widget_recent(*cfg_ptr, stack.dbh, 1)
+  SI CONIURA find(recent_json, "\"title\":\"Alpha\"") == -1
+    IACE "dashboard recent widget missing row"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_dashboard_widgets()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,56 @@
+INCIPIT grimoire "civitas_model_registry"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "model.cct"
+
+SIGILLUM ModelRegistry
+  defs: SPECULUM NIHIL
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE model_def_copy_into(SPECULUM ModelDef dest, ModelDef src) REDDE NIHIL
+  VINCIRE (*dest).tabela AD src.tabela
+  VINCIRE (*dest).campos AD src.campos
+  VINCIRE (*dest).indices AD src.indices
+  VINCIRE (*dest).hook_before_save AD src.hook_before_save
+  VINCIRE (*dest).hook_after_save AD src.hook_after_save
+  VINCIRE (*dest).hook_before_delete AD src.hook_before_delete
+  VINCIRE (*dest).hook_after_delete AD src.hook_after_delete
+  VINCIRE (*dest).storage_policy AD src.storage_policy
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_registry_new() REDDE ModelRegistry
+  EVOCA ModelRegistry reg
+  VINCIRE reg.defs AD CONIURA map_init GENUS(VERBUM, REX)()
+  VINCIRE reg.items AD CONIURA fluxus_init(MENSURA(ModelDef))
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE model_registry_register(SPECULUM ModelRegistry registry, ModelDef def) REDDE NIHIL
+  EVOCA REX idx AD CONIURA fluxus_len((*registry).items)
+  CONIURA fluxus_push((*registry).items, SPECULUM def)
+  CONIURA map_update_or_insert GENUS(VERBUM, REX)((*registry).defs, def.tabela, idx)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE model_registry_has(ModelRegistry registry, VERBUM tabela) REDDE VERUM
+  REDDE CONIURA map_contains GENUS(VERBUM, REX)(registry.defs, tabela)
+EXPLICIT RITUALE
+
+RITUALE model_registry_get(ModelRegistry registry, VERBUM tabela) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL idx_opt AD CONIURA map_get GENUS(VERBUM, REX)(registry.defs, tabela)
+  SI CONIURA option_is_none GENUS(REX)(idx_opt)
+    REDDE NIHIL
+  FIN SI
+  EVOCA REX idx AD CONIURA option_unwrap GENUS(REX)(idx_opt)
+  REDDE CONIURA fluxus_get(registry.items, idx)
+EXPLICIT RITUALE
+
+RITUALE model_registry_table_names(ModelRegistry registry) REDDE SPECULUM NIHIL
+  REDDE CONIURA map_keys GENUS(VERBUM, REX)(registry.defs)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

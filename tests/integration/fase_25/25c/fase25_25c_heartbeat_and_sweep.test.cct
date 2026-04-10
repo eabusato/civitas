@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase25_25c_heartbeat_and_sweep"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse_presence/sse_presence.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25c_heartbeat_and_sweep")
+  CONIURA sse_presence_join(db, 20, "room:1", "conn-a")
+  CONIURA sse_presence_join(db, 21, "room:1", "conn-b")
+  CONIURA db_exec(db, "UPDATE sse_presence SET last_seen = 0")
+  CONIURA sse_presence_heartbeat(db, 21, "room:1", "conn-b")
+
+  SI CONIURA sse_presence_sweep(db, 1000) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA sse_presence_count(db, "room:1", 60000) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

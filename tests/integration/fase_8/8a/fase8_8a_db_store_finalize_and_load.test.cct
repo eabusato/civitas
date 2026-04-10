@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase8_8a_db_store_finalize_and_load_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD CONIURA phase8_tmp_dir("8a_db_store")
+  EVOCA VERBUM db_path AD CONIURA path_join(dir, "sessions.sqlite")
+  EVOCA SessionConfig cfg AD CONIURA phase8_session_config("db-secret-8a")
+  EVOCA Session sess AD CONIURA session_new()
+  EVOCA SPECULUM NIHIL uid_opt
+
+  CONIURA phase8_reset_dir(dir)
+  EVOCA SessionStore store AD CONIURA session_store_db_init(db_path)
+  CONIURA session_set(SPECULUM sess, "user_id", "77")
+  EVOCA WebResponse res AD CONIURA session_finalize(SPECULUM sess, store, cfg, CONIURA response_ok())
+  EVOCA WebRequest req AD CONIURA phase8_request_with_cookie(cfg.cookie_nome, CONIURA phase8_cookie_value_from_response(res))
+  EVOCA Session loaded AD CONIURA session_load(req, store, cfg)
+  VINCIRE uid_opt AD CONIURA session_get(SPECULUM loaded, "user_id")
+
+  SI CONIURA option_is_none GENUS(VERBUM)(uid_opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(uid_opt), "77") != 0
+    REDDE 2
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(uid_opt)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase6_6a_framework_tags_render_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase6_tmp_dir("6a_framework_tags_render")
+  EVOCA VERBUM html AD ""
+  EVOCA VERBUM env_prefix AD "CIVITAS_TEMPLATE_CSRF_TOKEN=csrf-123 CIVITAS_TEMPLATE_NONCE=nonce-xyz"
+
+  CONIURA phase6_init_project(root)
+  CONIURA phase6_write_template(
+    root,
+    "tags.html",
+    "{% EVOCA BlogPageContext %}\n<form>{% CSRF %}</form><script nonce=\"{% NONCE %}\"></script><link href=\"{% NEXUS \"app.css\" %}\">\n"
+  )
+  CONIURA phase6_compile_file_ok(root, "tags.html")
+  VINCIRE html AD CONIURA phase6_render_blog_template(root, "gen/tags.cct", "tags", env_prefix)
+
+  SI CONIURA find(html, "name=\"civitas_csrf_token\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "value=\"csrf-123\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "nonce=\"nonce-xyz\"") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "href=\"/static/app.css\"") == -1
+    REDDE 4
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

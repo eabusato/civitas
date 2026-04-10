@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase22_22b_apply_skips_non_html"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/debug_toolbar/debug_toolbar.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Trace trace AD CONIURA phase22_toolbar_trace("toolbar-json")
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/api/feed", "HTTP/1.1", headers, "", "127.0.0.1", "http", "dev.local", "rid-22b-json", "", "", "")
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA WebResponse res AD CONIURA response_json_text("{\"ok\":true}")
+  EVOCA DebugToolbarConfig cfg AD CONIURA debug_toolbar_config_default()
+  VINCIRE cfg.render_cfg AD CONIURA phase22_render_config("22b_apply_skips_non_html")
+  EVOCA WebResponse out AD CONIURA debug_toolbar_apply(req, res, trace, 90, cfg)
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA compare(out.body, "{\"ok\":true}") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(out.body, "civitas-debug-toolbar") != -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

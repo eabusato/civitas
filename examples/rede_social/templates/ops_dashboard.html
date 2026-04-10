@@ -1,0 +1,30 @@
+{% EVOCA RedeOpsDashboardPageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Operations</p>
+    <h1>Civitas 20-28 surface map</h1>
+    <p>Trace sigils, audit, dependency review, load/memory watch, backups and generated project documents live here.</p>
+  </div>
+</section>
+<section class="card">
+  <div class="post-actions">
+    <span class="muted">Ops session active.</span>
+    <form method="POST" action="/ops/logout" class="inline-form">
+      {{ csrf_html|safe }}
+      <button type="submit" class="secondary">Leave ops</button>
+    </form>
+  </div>
+</section>
+<section class="ops-grid">
+  <a class="card link-card" href="/sigilos-vivos">Sigilos vivos</a>
+  <a class="card link-card" href="/ops/traces">Trace panel</a>
+  <a class="card link-card" href="/ops/security">Security audit</a>
+  <a class="card link-card" href="/ops/deps">Dependency review</a>
+  <a class="card link-card" href="/ops/perf">Perf watch</a>
+  <a class="card link-card" href="/ops/backup">Backup</a>
+  <a class="card link-card" href="/ops/docs">Doc bundle</a>
+  <a class="card link-card" href="/ops/release">Release notes</a>
+</section>
+{% FIN SECTIO %}

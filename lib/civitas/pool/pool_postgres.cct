@@ -1,0 +1,33 @@
+INCIPIT grimoire "civitas_pool_postgres"
+
+ADVOCARE "../db_handle/db_handle_postgres.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "pool.cct"
+ADVOCARE "cct/db_postgres.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE pool_postgres_open_handle(VERBUM dsn) REDDE PoolOpenResult
+  EVOCA SPECULUM NIHIL opened AD CONIURA db_open(dsn)
+  SI CONIURA result_is_err GENUS(Db, VERBUM)(opened)
+    REDDE CONIURA pool_open_result_new(NIHIL)
+  FIN SI
+  EVOCA Db db AD CONIURA result_unwrap GENUS(Db, VERBUM)(opened)
+  EVOCA DbHandle h AD CONIURA dbh_from_postgres(db)
+  EVOCA SPECULUM DbHandle h_ptr AD OBSECRO mem_alloc(MENSURA(DbHandle))
+  CONIURA dbh_fill(h_ptr, h)
+  REDDE CONIURA pool_open_result_new(h_ptr)
+EXPLICIT RITUALE
+
+RITUALE pool_config_postgres(VERBUM dsn, REX workers) REDDE PoolConfig
+  EVOCA PoolConfig c AD CONIURA pool_config_new(PbkPostgres, dsn)
+  VINCIRE c.min AD workers
+  VINCIRE c.max AD workers
+  REDDE c
+EXPLICIT RITUALE
+
+RITUALE pool_new_postgres(VERBUM dsn, REX workers, SPECULUM NIHIL logger) REDDE SPECULUM NIHIL
+  EVOCA PoolConfig c AD CONIURA pool_config_postgres(dsn, workers)
+  REDDE CONIURA pool_new(c, logger, pool_postgres_open_handle)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

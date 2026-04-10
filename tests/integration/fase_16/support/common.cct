@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase16_common"
+
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_schema.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows.cct"
+ADVOCARE "../../../../lib/civitas/auth_flows/auth_flows_schema.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE fase16_test_db_open() REDDE TestDb
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA auth_schema_up(tdb.db)
+  CONIURA auth_flows_schema_up(tdb.db)
+  REDDE tdb
+EXPLICIT RITUALE
+
+RITUALE fase16_flow_cfg() REDDE FlowConfig
+  REDDE CONIURA flow_config_default("fase16-secret")
+EXPLICIT RITUALE
+
+RITUALE fase16_auth_cfg() REDDE AuthConfig
+  EVOCA AuthConfig cfg AD CONIURA auth_config_default()
+  VINCIRE cfg.iteracoes AD 100000
+  VINCIRE cfg.salt_bytes AD 16
+  VINCIRE cfg.key_bytes AD 16
+  VINCIRE cfg.min_senha AD 4
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE fase16_create_user(TestDb tdb, VERBUM email, VERBUM senha) REDDE User
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_criar_usuario(tdb.db, CONIURA fase16_auth_cfg(), email, senha)
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    IACE "fase16_create_user failed"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(User, AuthError)(res)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

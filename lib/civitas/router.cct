@@ -1,0 +1,855 @@
+INCIPIT grimoire "civitas_router"
+
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/slug.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "abuse/abuse.cct"
+ADVOCARE "middleware.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "response.cct"
+
+ORDO RouteMatchStatus
+  ROUTE_MATCH,
+  ROUTE_NOT_FOUND,
+  ROUTE_METHOD_NOT_ALLOWED
+FIN ORDO
+
+ORDO RouteSegmentKind
+  ROUTE_SEGMENT_STATIC,
+  ROUTE_SEGMENT_PARAM,
+  ROUTE_SEGMENT_INT,
+  ROUTE_SEGMENT_SLUG,
+  ROUTE_SEGMENT_REST
+FIN ORDO
+
+ORDO RouteTransportKind
+  ROUTE_TRANSPORT_HTTP,
+  ROUTE_TRANSPORT_SSE,
+  ROUTE_TRANSPORT_WS
+FIN ORDO
+
+SIGILLUM RouteSegment
+  kind: RouteSegmentKind
+  name: VERBUM
+  literal: VERBUM
+FIN SIGILLUM
+
+SIGILLUM RouteCompiledPattern
+  normalized: VERBUM
+  segments: SPECULUM NIHIL
+  trailing_slash: VERUM
+  precedence_score: REX
+  has_rest: VERUM
+FIN SIGILLUM
+
+SIGILLUM RoutePathParts
+  segments: SPECULUM NIHIL
+  trailing_slash: VERUM
+FIN SIGILLUM
+
+SIGILLUM Route
+  method: VERBUM
+  pattern: VERBUM
+  name: VERBUM
+  handler_symbol: VERBUM
+  handler_ref: SPECULUM NIHIL
+  handler_ctx_ref: SPECULUM NIHIL
+  transport_kind: RouteTransportKind
+  middlewares: SPECULUM NIHIL
+  group_middlewares: SPECULUM NIHIL
+  group_prefix: VERBUM
+  sigilo_id: VERBUM
+  rate_limit_class: RateLimitClass
+  compiled: RouteCompiledPattern
+  registration_index: REX
+FIN SIGILLUM
+
+SIGILLUM RouteSigiloEntry
+  method: VERBUM
+  pattern: VERBUM
+  name: VERBUM
+  handler_symbol: VERBUM
+  group_prefix: VERBUM
+  sigilo_id: VERBUM
+  rate_limit_class: RateLimitClass
+  middlewares: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM RouteMatch
+  status: RouteMatchStatus
+  route_index: REX
+  params: SPECULUM NIHIL
+  allow_methods: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM Router
+  routes: SPECULUM NIHIL
+  named_routes: SPECULUM NIHIL
+  global_middlewares: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM RoutePathEvaluation
+  matched: VERUM
+  params: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE router_ok() REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE router_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(REX, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE router_empty_params() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE router_empty_allow_methods() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(VERBUM))
+EXPLICIT RITUALE
+
+RITUALE router_match_not_found() REDDE RouteMatch
+  EVOCA RouteMatch out
+  VINCIRE out.status AD ROUTE_NOT_FOUND
+  VINCIRE out.route_index AD -1
+  VINCIRE out.params AD CONIURA router_empty_params()
+  VINCIRE out.allow_methods AD CONIURA router_empty_allow_methods()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE router_match_method_not_allowed(SPECULUM NIHIL allow_methods) REDDE RouteMatch
+  EVOCA RouteMatch out
+  VINCIRE out.status AD ROUTE_METHOD_NOT_ALLOWED
+  VINCIRE out.route_index AD -1
+  VINCIRE out.params AD CONIURA router_empty_params()
+  VINCIRE out.allow_methods AD allow_methods
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE router_match_found(REX route_index, SPECULUM NIHIL params) REDDE RouteMatch
+  EVOCA RouteMatch out
+  VINCIRE out.status AD ROUTE_MATCH
+  VINCIRE out.route_index AD route_index
+  VINCIRE out.params AD params
+  VINCIRE out.allow_methods AD CONIURA router_empty_allow_methods()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE router_join_paths(VERBUM left, VERBUM right) REDDE VERBUM
+  EVOCA VERBUM a AD CONIURA trim(left)
+  EVOCA VERBUM b AD CONIURA trim(right)
+  SI CONIURA len(a) == 0
+    SI CONIURA len(b) == 0
+      REDDE "/"
+    FIN SI
+    SI NON CONIURA starts_with(b, "/")
+      REDDE CONIURA concat("/", b)
+    FIN SI
+    REDDE b
+  FIN SI
+
+  SI CONIURA compare(a, "/") == 0
+    SI CONIURA len(b) == 0
+      REDDE "/"
+    FIN SI
+    SI CONIURA starts_with(b, "/")
+      REDDE b
+    FIN SI
+    REDDE CONIURA concat("/", b)
+  FIN SI
+
+  SI NON CONIURA starts_with(a, "/")
+    VINCIRE a AD CONIURA concat("/", a)
+  FIN SI
+
+  SI CONIURA len(b) == 0 VEL CONIURA compare(b, "/") == 0
+    REDDE a
+  FIN SI
+
+  SI CONIURA ends_with(a, "/")
+    VINCIRE a AD CONIURA substring(a, 0, CONIURA len(a) - 1)
+  FIN SI
+  SI CONIURA starts_with(b, "/")
+    VINCIRE b AD CONIURA substring(b, 1, CONIURA len(b))
+  FIN SI
+
+  REDDE CONIURA concat(CONIURA concat(a, "/"), b)
+EXPLICIT RITUALE
+
+RITUALE router_split_path_fill(SPECULUM RoutePathParts parts, VERBUM path) REDDE NIHIL
+  EVOCA VERBUM clean AD path
+  EVOCA REX i AD 1
+  EVOCA REX start AD 1
+  EVOCA REX n AD 0
+
+  SI CONIURA len(clean) == 0
+    VINCIRE clean AD "/"
+  FIN SI
+  SI NON CONIURA starts_with(clean, "/")
+    VINCIRE clean AD CONIURA concat("/", clean)
+  FIN SI
+
+  VINCIRE (*parts).segments AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE (*parts).trailing_slash AD CONIURA len(clean) > 1 ET CONIURA ends_with(clean, "/")
+  VINCIRE n AD CONIURA len(clean)
+
+  DUM i < n
+    SI CONIURA char_at(clean, i) == 47
+      SI i > start
+        EVOCA VERBUM segment AD CONIURA substring(clean, start, i)
+        CONIURA fluxus_push((*parts).segments, SPECULUM segment)
+      FIN SI
+      VINCIRE start AD i + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI start < n
+    EVOCA VERBUM segment AD CONIURA substring(clean, start, n)
+    SI CONIURA len(segment) != 0
+      CONIURA fluxus_push((*parts).segments, SPECULUM segment)
+    FIN SI
+  FIN SI
+
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE router_split_path(VERBUM path) REDDE RoutePathParts
+  EVOCA RoutePathParts parts
+  CONIURA router_split_path_fill(SPECULUM parts, path)
+  REDDE parts
+EXPLICIT RITUALE
+
+RITUALE router_digits_only(VERBUM value) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(value)
+  SI n == 0
+    REDDE FALSUM
+  FIN SI
+
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(value, i)
+    SI c < 48 VEL c > 57
+      REDDE FALSUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE router_segment_score(RouteSegmentKind kind) REDDE REX
+  ELIGE kind
+    CASUS ROUTE_SEGMENT_STATIC:
+      REDDE 400
+    CASUS ROUTE_SEGMENT_INT:
+      REDDE 300
+    CASUS ROUTE_SEGMENT_SLUG:
+      REDDE 300
+    CASUS ROUTE_SEGMENT_PARAM:
+      REDDE 200
+    ALIOQUIN:
+      REDDE 100
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE router_compile_segment(VERBUM raw) REDDE SPECULUM NIHIL
+  EVOCA RouteSegment seg
+  VINCIRE seg.name AD ""
+  VINCIRE seg.literal AD ""
+
+  SI CONIURA starts_with(raw, "{") ET CONIURA ends_with(raw, "}")
+    EVOCA VERBUM inner AD CONIURA substring(raw, 1, CONIURA len(raw) - 1)
+    EVOCA REX colon AD CONIURA find(inner, ":")
+    SI colon == -1
+      SI CONIURA len(inner) == 0
+        REDDE CONIURA Err GENUS(RouteSegment, VERBUM)("param de rota vazio")
+      FIN SI
+      VINCIRE seg.kind AD ROUTE_SEGMENT_PARAM
+      VINCIRE seg.name AD inner
+      REDDE CONIURA Ok GENUS(RouteSegment, VERBUM)(seg)
+    FIN SI
+
+    EVOCA VERBUM param_name AD CONIURA substring(inner, 0, colon)
+    EVOCA VERBUM param_type AD CONIURA substring(inner, colon + 1, CONIURA len(inner))
+    SI CONIURA len(param_name) == 0
+      REDDE CONIURA Err GENUS(RouteSegment, VERBUM)("param de rota vazio")
+    FIN SI
+    SI CONIURA compare(param_type, "int") == 0
+      VINCIRE seg.kind AD ROUTE_SEGMENT_INT
+      VINCIRE seg.name AD param_name
+      REDDE CONIURA Ok GENUS(RouteSegment, VERBUM)(seg)
+    FIN SI
+    SI CONIURA compare(param_type, "slug") == 0
+      VINCIRE seg.kind AD ROUTE_SEGMENT_SLUG
+      VINCIRE seg.name AD param_name
+      REDDE CONIURA Ok GENUS(RouteSegment, VERBUM)(seg)
+    FIN SI
+    SI CONIURA compare(param_type, "*") == 0
+      VINCIRE seg.kind AD ROUTE_SEGMENT_REST
+      VINCIRE seg.name AD param_name
+      REDDE CONIURA Ok GENUS(RouteSegment, VERBUM)(seg)
+    FIN SI
+    REDDE CONIURA Err GENUS(RouteSegment, VERBUM)(CONIURA concat("tipo de param de rota invalido: ", param_type))
+  FIN SI
+
+  VINCIRE seg.kind AD ROUTE_SEGMENT_STATIC
+  VINCIRE seg.literal AD raw
+  REDDE CONIURA Ok GENUS(RouteSegment, VERBUM)(seg)
+EXPLICIT RITUALE
+
+RITUALE router_compile_pattern(VERBUM pattern) REDDE SPECULUM NIHIL
+  EVOCA VERBUM full AD CONIURA trim(pattern)
+  EVOCA RouteCompiledPattern compiled
+  EVOCA RoutePathParts parts
+  EVOCA REX i AD 0
+  EVOCA REX n AD 0
+
+  SI CONIURA len(full) == 0
+    VINCIRE full AD "/"
+  FIN SI
+  SI NON CONIURA starts_with(full, "/")
+    VINCIRE full AD CONIURA concat("/", full)
+  FIN SI
+  SI CONIURA find(full, "//") != -1
+    REDDE CONIURA Err GENUS(RouteCompiledPattern, VERBUM)("pattern de rota invalido: // nao e permitido")
+  FIN SI
+
+  VINCIRE compiled.normalized AD full
+  VINCIRE compiled.segments AD CONIURA fluxus_init(MENSURA(RouteSegment))
+  VINCIRE compiled.trailing_slash AD FALSUM
+  VINCIRE compiled.precedence_score AD 0
+  VINCIRE compiled.has_rest AD FALSUM
+
+  CONIURA router_split_path_fill(SPECULUM parts, full)
+  VINCIRE compiled.trailing_slash AD parts.trailing_slash
+  VINCIRE n AD CONIURA fluxus_len(parts.segments)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM raw_ptr AD CONIURA fluxus_get(parts.segments, i)
+    EVOCA SPECULUM NIHIL seg_res AD CONIURA router_compile_segment(*raw_ptr)
+    SI CONIURA result_is_err GENUS(RouteSegment, VERBUM)(seg_res)
+      REDDE CONIURA Err GENUS(RouteCompiledPattern, VERBUM)(CONIURA result_unwrap_err GENUS(RouteSegment, VERBUM)(seg_res))
+    FIN SI
+    EVOCA RouteSegment seg AD CONIURA result_unwrap GENUS(RouteSegment, VERBUM)(seg_res)
+    SI seg.kind == ROUTE_SEGMENT_REST
+      SI i != n - 1
+        REDDE CONIURA Err GENUS(RouteCompiledPattern, VERBUM)("wildcard {rest:*} precisa ser terminal")
+      FIN SI
+      VINCIRE compiled.has_rest AD VERUM
+    FIN SI
+    VINCIRE compiled.precedence_score AD compiled.precedence_score + CONIURA router_segment_score(seg.kind)
+    CONIURA fluxus_push(compiled.segments, SPECULUM seg)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(RouteCompiledPattern, VERBUM)(compiled)
+EXPLICIT RITUALE
+
+RITUALE router_compiled_pattern_fill(SPECULUM RouteCompiledPattern dest, RouteCompiledPattern src) REDDE NIHIL
+  VINCIRE (*dest).normalized AD src.normalized
+  VINCIRE (*dest).segments AD CONIURA fluxus_copy GENUS(RouteSegment)(src.segments)
+  VINCIRE (*dest).trailing_slash AD src.trailing_slash
+  VINCIRE (*dest).precedence_score AD src.precedence_score
+  VINCIRE (*dest).has_rest AD src.has_rest
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE router_new() REDDE Router
+  EVOCA Router router
+  VINCIRE router.routes AD CONIURA fluxus_init(MENSURA(Route))
+  VINCIRE router.named_routes AD CONIURA map_init GENUS(VERBUM, REX)()
+  VINCIRE router.global_middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  REDDE router
+EXPLICIT RITUALE
+
+RITUALE router_add_global_middleware(SPECULUM Router router, MiddlewareBinding middleware) REDDE NIHIL
+  CONIURA fluxus_push((*router).global_middlewares, SPECULUM middleware)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE router_has_named_route(Router router, VERBUM route_name) REDDE VERUM
+  SI CONIURA len(route_name) == 0
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA option_is_some GENUS(REX)(CONIURA router_named_route_index(router, route_name))
+EXPLICIT RITUALE
+
+RITUALE router_named_route_index(Router router, VERBUM route_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, REX)(router.named_routes)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, route_name) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, REX)(router.named_routes, *key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(REX)()
+EXPLICIT RITUALE
+
+RITUALE router_has_duplicate_pattern(Router router, VERBUM method, VERBUM normalized_pattern) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(router.routes)
+  DUM i < n
+    EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, i)
+    SI CONIURA compare((*route_ptr).method, method) == 0 ET CONIURA compare((*route_ptr).compiled.normalized, normalized_pattern) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE router_sigilo_id(VERBUM method, VERBUM pattern) REDDE VERBUM
+  REDDE CONIURA concat(CONIURA concat(CONIURA to_lower(method), ":"), pattern)
+EXPLICIT RITUALE
+
+RITUALE router_register_route(
+  SPECULUM Router router,
+  VERBUM group_prefix,
+  SPECULUM NIHIL group_middlewares,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref,
+  SPECULUM NIHIL handler_ctx_ref,
+  RouteTransportKind transport_kind,
+  RateLimitClass rate_limit_class
+) REDDE SPECULUM NIHIL
+  EVOCA VERBUM normalized_method AD CONIURA to_upper(CONIURA trim(method))
+  EVOCA VERBUM full_pattern AD CONIURA router_join_paths(group_prefix, pattern)
+  EVOCA SPECULUM NIHIL compiled_res AD CONIURA router_compile_pattern(full_pattern)
+  SI CONIURA result_is_err GENUS(RouteCompiledPattern, VERBUM)(compiled_res)
+    REDDE CONIURA router_err(CONIURA result_unwrap_err GENUS(RouteCompiledPattern, VERBUM)(compiled_res))
+  FIN SI
+
+  EVOCA RouteCompiledPattern compiled AD CONIURA result_unwrap GENUS(RouteCompiledPattern, VERBUM)(compiled_res)
+  SI CONIURA router_has_duplicate_pattern(*router, normalized_method, compiled.normalized)
+    REDDE CONIURA router_err("rota duplicada para metodo e pattern")
+  FIN SI
+  SI CONIURA router_has_named_route(*router, route_name)
+    REDDE CONIURA router_err("route name duplicado")
+  FIN SI
+
+  EVOCA Route route
+  VINCIRE route.method AD normalized_method
+  VINCIRE route.pattern AD compiled.normalized
+  VINCIRE route.name AD route_name
+  VINCIRE route.handler_symbol AD handler_symbol
+  VINCIRE route.handler_ref AD handler_ref
+  VINCIRE route.handler_ctx_ref AD handler_ctx_ref
+  VINCIRE route.transport_kind AD transport_kind
+  VINCIRE route.middlewares AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  VINCIRE route.group_middlewares AD CONIURA middleware_bindings_copy(group_middlewares)
+  VINCIRE route.group_prefix AD group_prefix
+  VINCIRE route.sigilo_id AD CONIURA router_sigilo_id(normalized_method, compiled.normalized)
+  VINCIRE route.rate_limit_class AD rate_limit_class
+  CONIURA router_compiled_pattern_fill(SPECULUM route.compiled, compiled)
+  VINCIRE route.registration_index AD CONIURA fluxus_len((*router).routes)
+  CONIURA fluxus_push((*router).routes, SPECULUM route)
+
+  SI CONIURA len(route_name) != 0
+    CONIURA map_insert GENUS(VERBUM, REX)((*router).named_routes, route_name, route.registration_index)
+  FIN SI
+
+  REDDE CONIURA router_ok()
+EXPLICIT RITUALE
+
+RITUALE router_add(
+  SPECULUM Router router,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL none_mw AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  REDDE CONIURA router_register_route(router, "", none_mw, method, pattern, route_name, handler_symbol, handler_ref, NIHIL, ROUTE_TRANSPORT_HTTP, RlcDefault)
+EXPLICIT RITUALE
+
+RITUALE router_add_with_rate_limit_class(
+  SPECULUM Router router,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref,
+  RateLimitClass rate_limit_class
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL none_mw AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  REDDE CONIURA router_register_route(router, "", none_mw, method, pattern, route_name, handler_symbol, handler_ref, NIHIL, ROUTE_TRANSPORT_HTTP, rate_limit_class)
+EXPLICIT RITUALE
+
+RITUALE router_add_group_route(
+  SPECULUM Router router,
+  VERBUM group_prefix,
+  SPECULUM NIHIL group_middlewares,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA router_register_route(router, group_prefix, group_middlewares, method, pattern, route_name, handler_symbol, handler_ref, NIHIL, ROUTE_TRANSPORT_HTTP, RlcDefault)
+EXPLICIT RITUALE
+
+RITUALE router_add_group_route_with_rate_limit_class(
+  SPECULUM Router router,
+  VERBUM group_prefix,
+  SPECULUM NIHIL group_middlewares,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref,
+  RateLimitClass rate_limit_class
+) REDDE SPECULUM NIHIL
+  REDDE CONIURA router_register_route(router, group_prefix, group_middlewares, method, pattern, route_name, handler_symbol, handler_ref, NIHIL, ROUTE_TRANSPORT_HTTP, rate_limit_class)
+EXPLICIT RITUALE
+
+RITUALE router_add_sse(
+  SPECULUM Router router,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref,
+  SPECULUM NIHIL handler_ctx_ref
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL none_mw AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  REDDE CONIURA router_register_route(router, "", none_mw, method, pattern, route_name, handler_symbol, handler_ref, handler_ctx_ref, ROUTE_TRANSPORT_SSE, RlcDefault)
+EXPLICIT RITUALE
+
+RITUALE router_add_ws(
+  SPECULUM Router router,
+  VERBUM method,
+  VERBUM pattern,
+  VERBUM route_name,
+  VERBUM handler_symbol,
+  SPECULUM NIHIL handler_ref,
+  SPECULUM NIHIL handler_ctx_ref
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL none_mw AD CONIURA fluxus_init(MENSURA(MiddlewareBinding))
+  REDDE CONIURA router_register_route(router, "", none_mw, method, pattern, route_name, handler_symbol, handler_ref, handler_ctx_ref, ROUTE_TRANSPORT_WS, RlcDefault)
+EXPLICIT RITUALE
+
+RITUALE router_route_transport(Route route) REDDE RouteTransportKind
+  REDDE route.transport_kind
+EXPLICIT RITUALE
+
+RITUALE router_route_handler_ctx(Route route) REDDE SPECULUM NIHIL
+  REDDE route.handler_ctx_ref
+EXPLICIT RITUALE
+
+RITUALE router_match_route(Router router, WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA RouteMatch match AD CONIURA router_match(router, req)
+  SI match.status != ROUTE_MATCH
+    REDDE CONIURA None GENUS(Route)()
+  FIN SI
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, match.route_index)
+  REDDE CONIURA Some GENUS(Route)(*route_ptr)
+EXPLICIT RITUALE
+
+RITUALE router_add_middleware(
+  SPECULUM Router router,
+  VERBUM route_name,
+  MiddlewareBinding middleware
+) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL index_opt AD CONIURA router_named_route_index(*router, route_name)
+  SI CONIURA option_is_none GENUS(REX)(index_opt)
+    CONIURA option_free GENUS(REX)(index_opt)
+    REDDE CONIURA router_err("route name nao encontrada")
+  FIN SI
+
+  EVOCA REX route_index AD CONIURA option_unwrap GENUS(REX)(index_opt)
+  CONIURA option_free GENUS(REX)(index_opt)
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get((*router).routes, route_index)
+  CONIURA fluxus_push((*route_ptr).middlewares, SPECULUM middleware)
+  REDDE CONIURA router_ok()
+EXPLICIT RITUALE
+
+RITUALE router_string_map_get(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, VERBUM)(params, *key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE router_path_match_fill(SPECULUM RoutePathEvaluation out, RouteCompiledPattern compiled, VERBUM path) REDDE NIHIL
+  EVOCA RoutePathParts parts
+  EVOCA REX route_count AD CONIURA fluxus_len(compiled.segments)
+  EVOCA REX path_count AD 0
+  EVOCA REX i AD 0
+
+  CONIURA router_split_path_fill(SPECULUM parts, path)
+  VINCIRE path_count AD CONIURA fluxus_len(parts.segments)
+  VINCIRE (*out).matched AD FALSUM
+  VINCIRE (*out).params AD CONIURA router_empty_params()
+
+  SI compiled.trailing_slash != parts.trailing_slash
+    REDDE
+  FIN SI
+  SI NON compiled.has_rest ET route_count != path_count
+    REDDE
+  FIN SI
+  SI compiled.has_rest ET path_count < route_count - 1
+    REDDE
+  FIN SI
+
+  DUM i < route_count
+    EVOCA SPECULUM RouteSegment seg_ptr AD CONIURA fluxus_get(compiled.segments, i)
+    SI (*seg_ptr).kind == ROUTE_SEGMENT_REST
+      EVOCA VERBUM captured AD ""
+      EVOCA REX j AD i
+      DUM j < path_count
+        EVOCA SPECULUM VERBUM path_part_ptr AD CONIURA fluxus_get(parts.segments, j)
+        SI CONIURA len(captured) != 0
+          VINCIRE captured AD CONIURA concat(captured, "/")
+        FIN SI
+        VINCIRE captured AD CONIURA concat(captured, *path_part_ptr)
+        VINCIRE j AD j + 1
+      FIN DUM
+      CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).params, (*seg_ptr).name, captured)
+      VINCIRE (*out).matched AD VERUM
+      REDDE
+    FIN SI
+
+    SI i >= path_count
+      REDDE
+    FIN SI
+
+    EVOCA SPECULUM VERBUM path_part_ptr AD CONIURA fluxus_get(parts.segments, i)
+    ELIGE (*seg_ptr).kind
+      CASUS ROUTE_SEGMENT_STATIC:
+        SI CONIURA compare((*seg_ptr).literal, *path_part_ptr) != 0
+          REDDE
+        FIN SI
+      CASUS ROUTE_SEGMENT_PARAM:
+        CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).params, (*seg_ptr).name, *path_part_ptr)
+      CASUS ROUTE_SEGMENT_INT:
+        SI NON CONIURA router_digits_only(*path_part_ptr)
+          REDDE
+        FIN SI
+        CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).params, (*seg_ptr).name, *path_part_ptr)
+      CASUS ROUTE_SEGMENT_SLUG:
+        SI NON CONIURA slug_is_valid(*path_part_ptr)
+          REDDE
+        FIN SI
+        CONIURA map_insert GENUS(VERBUM, VERBUM)((*out).params, (*seg_ptr).name, *path_part_ptr)
+      ALIOQUIN:
+        REDDE
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI path_count != route_count
+    REDDE
+  FIN SI
+
+  VINCIRE (*out).matched AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE router_path_match(RouteCompiledPattern compiled, VERBUM path) REDDE RoutePathEvaluation
+  EVOCA RoutePathEvaluation out
+  CONIURA router_path_match_fill(SPECULUM out, compiled, path)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE router_allow_methods_push_unique(SPECULUM NIHIL allow_methods, VERBUM method) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(allow_methods)
+  DUM i < n
+    EVOCA SPECULUM VERBUM current_ptr AD CONIURA fluxus_get(allow_methods, i)
+    SI CONIURA compare(*current_ptr, method) == 0
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_push(allow_methods, SPECULUM method)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE router_match(Router router, WebRequest req) REDDE RouteMatch
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(router.routes)
+  EVOCA REX best_index AD -1
+  EVOCA REX best_score AD -1
+  EVOCA SPECULUM NIHIL best_params AD CONIURA router_empty_params()
+  EVOCA SPECULUM NIHIL allow_methods AD CONIURA router_empty_allow_methods()
+
+  DUM i < n
+    EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, i)
+    EVOCA RoutePathEvaluation eval
+    CONIURA router_path_match_fill(SPECULUM eval, (*route_ptr).compiled, req.path)
+    SI eval.matched
+      CONIURA router_allow_methods_push_unique(allow_methods, (*route_ptr).method)
+      SI CONIURA compare((*route_ptr).method, CONIURA to_upper(req.method)) == 0
+        SI (*route_ptr).compiled.precedence_score > best_score
+          VINCIRE best_score AD (*route_ptr).compiled.precedence_score
+          VINCIRE best_index AD i
+          VINCIRE best_params AD eval.params
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI best_index >= 0
+    REDDE CONIURA router_match_found(best_index, best_params)
+  FIN SI
+  SI CONIURA fluxus_len(allow_methods) != 0
+    CONIURA fluxus_sort_verbum(allow_methods)
+    REDDE CONIURA router_match_method_not_allowed(allow_methods)
+  FIN SI
+  REDDE CONIURA router_match_not_found()
+EXPLICIT RITUALE
+
+RITUALE router_effective_middlewares(Router router, Route route) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL merged AD CONIURA middleware_bindings_copy(router.global_middlewares)
+  EVOCA SPECULUM NIHIL with_group AD CONIURA fluxus_concat GENUS(MiddlewareBinding)(merged, route.group_middlewares)
+  REDDE CONIURA fluxus_concat GENUS(MiddlewareBinding)(with_group, route.middlewares)
+EXPLICIT RITUALE
+
+RITUALE router_dispatch_with_context(Router router, WebRequest req, SPECULUM RequestContext ctx) REDDE WebResponse
+  EVOCA RouteMatch match AD CONIURA router_match(router, req)
+  SI match.status == ROUTE_NOT_FOUND
+    REDDE CONIURA response_not_found()
+  FIN SI
+  SI match.status == ROUTE_METHOD_NOT_ALLOWED
+    REDDE CONIURA response_method_not_allowed(match.allow_methods)
+  FIN SI
+
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, match.route_index)
+  EVOCA WebRequest routed_req
+  EVOCA SPECULUM NIHIL middlewares AD CONIURA router_effective_middlewares(router, *route_ptr)
+
+  CONIURA request_fill(SPECULUM routed_req, req)
+  CONIURA request_set_path_params(SPECULUM routed_req, match.params)
+  SI CONIURA len((*route_ptr).name) != 0
+    CONIURA middleware_context_set_route_name(ctx, (*route_ptr).name)
+  FIN SI
+  CONIURA middleware_context_set_route_pattern(ctx, (*route_ptr).pattern)
+  CONIURA middleware_context_set_route_sigilo_id(ctx, (*route_ptr).sigilo_id)
+  CONIURA middleware_context_set_route_handler_symbol(ctx, (*route_ptr).handler_symbol)
+  CONIURA middleware_context_set_route_rate_limit_class(ctx, (*route_ptr).rate_limit_class)
+  SI (*route_ptr).transport_kind != ROUTE_TRANSPORT_HTTP
+    REDDE CONIURA response_internal_error("special route requires raw transport")
+  FIN SI
+  REDDE CONIURA middleware_chain_with_context(middlewares, routed_req, ctx, (*route_ptr).handler_ref)
+EXPLICIT RITUALE
+
+RITUALE router_dispatch(Router router, WebRequest req) REDDE WebResponse
+  EVOCA RequestContext ctx AD CONIURA middleware_context_new()
+  REDDE CONIURA router_dispatch_with_context(router, req, SPECULUM ctx)
+EXPLICIT RITUALE
+
+RITUALE router_url_for_encode_rest(VERBUM value) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(value, "/")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(parts)
+  EVOCA VERBUM out AD ""
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(parts, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, "/")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA url_encode(*part_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE router_url_for(Router router, VERBUM route_name, SPECULUM NIHIL params) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL index_opt AD CONIURA router_named_route_index(router, route_name)
+  EVOCA REX i AD 0
+  EVOCA VERBUM out AD ""
+
+  SI CONIURA option_is_none GENUS(REX)(index_opt)
+    CONIURA option_free GENUS(REX)(index_opt)
+    REDDE CONIURA Err GENUS(VERBUM, VERBUM)("route name nao encontrada")
+  FIN SI
+
+  EVOCA REX route_index AD CONIURA option_unwrap GENUS(REX)(index_opt)
+  EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, route_index)
+  EVOCA REX n AD CONIURA fluxus_len((*route_ptr).compiled.segments)
+  CONIURA option_free GENUS(REX)(index_opt)
+
+  SI n == 0
+    REDDE CONIURA Ok GENUS(VERBUM, VERBUM)("/")
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM RouteSegment seg_ptr AD CONIURA fluxus_get((*route_ptr).compiled.segments, i)
+    VINCIRE out AD CONIURA concat(out, "/")
+    SI (*seg_ptr).kind == ROUTE_SEGMENT_STATIC
+      VINCIRE out AD CONIURA concat(out, (*seg_ptr).literal)
+    ALITER
+      EVOCA SPECULUM NIHIL raw_opt AD CONIURA router_string_map_get(params, (*seg_ptr).name)
+      SI CONIURA option_is_none GENUS(VERBUM)(raw_opt)
+        CONIURA option_free GENUS(VERBUM)(raw_opt)
+        REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA concat("param faltante para route url: ", (*seg_ptr).name))
+      FIN SI
+      EVOCA VERBUM raw AD CONIURA option_unwrap GENUS(VERBUM)(raw_opt)
+      CONIURA option_free GENUS(VERBUM)(raw_opt)
+      SI (*seg_ptr).kind == ROUTE_SEGMENT_INT ET NON CONIURA router_digits_only(raw)
+        REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA concat("param int invalido: ", (*seg_ptr).name))
+      FIN SI
+      SI (*seg_ptr).kind == ROUTE_SEGMENT_SLUG ET NON CONIURA slug_is_valid(raw)
+        REDDE CONIURA Err GENUS(VERBUM, VERBUM)(CONIURA concat("param slug invalido: ", (*seg_ptr).name))
+      FIN SI
+      SI (*seg_ptr).kind == ROUTE_SEGMENT_REST
+        VINCIRE out AD CONIURA concat(out, CONIURA router_url_for_encode_rest(raw))
+      ALITER
+        VINCIRE out AD CONIURA concat(out, CONIURA url_encode(raw))
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI (*route_ptr).compiled.trailing_slash
+    VINCIRE out AD CONIURA concat(out, "/")
+  FIN SI
+  REDDE CONIURA Ok GENUS(VERBUM, VERBUM)(out)
+EXPLICIT RITUALE
+
+RITUALE router_sigilo_manifest(Router router) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RouteSigiloEntry))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(router.routes)
+  DUM i < n
+    EVOCA SPECULUM Route route_ptr AD CONIURA fluxus_get(router.routes, i)
+    EVOCA RouteSigiloEntry entry
+    VINCIRE entry.method AD (*route_ptr).method
+    VINCIRE entry.pattern AD (*route_ptr).pattern
+    VINCIRE entry.name AD (*route_ptr).name
+    VINCIRE entry.handler_symbol AD (*route_ptr).handler_symbol
+    VINCIRE entry.group_prefix AD (*route_ptr).group_prefix
+    VINCIRE entry.sigilo_id AD (*route_ptr).sigilo_id
+    VINCIRE entry.rate_limit_class AD (*route_ptr).rate_limit_class
+    VINCIRE entry.middlewares AD CONIURA router_effective_middlewares(router, *route_ptr)
+    CONIURA fluxus_push(out, SPECULUM entry)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

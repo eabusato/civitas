@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase15_15f_check_permit_and_block"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit_check.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_rate_limit_db_open("15f_check_permit_and_block")
+  EVOCA RateLimitConfig cfg AD CONIURA rate_limit_config_default()
+  EVOCA VERBUM chave AD CONIURA rate_limit_chave_ip("127.0.0.1")
+  EVOCA RateLimitResult before AD CONIURA rate_limit_check(db, cfg, chave)
+  SI NON CONIURA rate_limit_result_ok(before)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  EVOCA REX agora AD CONIURA rate_limit_now_unix()
+  EVOCA REX i AD 0
+  DUM i < cfg.max_tentativas
+    CONIURA phase15_15f_insert_attempt(db, chave, agora - 10 - i, FALSUM)
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA RateLimitResult after AD CONIURA rate_limit_check(db, cfg, chave)
+  CONIURA db_close(db)
+  QUANDO after
+    CASO RlPermitido:
+      REDDE 2
+    CASO RlBloqueado(restante):
+      SI restante <= 0 VEL restante > cfg.lockout_segundos
+        REDDE 3
+      FIN SI
+  FIN QUANDO
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

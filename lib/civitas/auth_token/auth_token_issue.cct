@@ -1,0 +1,66 @@
+INCIPIT grimoire "civitas_auth_token_issue"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "auth_token.cct"
+
+RITUALE token_header_padrao() REDDE VERBUM
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "alg", CONIURA json_str("HS256"))
+  CONIURA json_obj_push(obj, "typ", CONIURA json_str("CIV"))
+  REDDE CONIURA base64url_encode(CONIURA json_stringify(obj))
+EXPLICIT RITUALE
+
+RITUALE token_issue(TokenConfig cfg, VERBUM user_id, VERBUM escopos) REDDE VERBUM
+  EVOCA REX iat AD CONIURA token_now_unix()
+  EVOCA REX exp AD iat + cfg.ttl_acesso
+
+  EVOCA TokenPayload p AD CONIURA token_payload_empty()
+  VINCIRE p.user_id AD user_id
+  VINCIRE p.emitido_em AD iat
+  VINCIRE p.expira_em AD exp
+  VINCIRE p.escopos AD escopos
+  VINCIRE p.jti AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  VINCIRE p.issuer AD cfg.issuer
+
+  EVOCA VERBUM header AD CONIURA token_header_padrao()
+  EVOCA VERBUM payload AD CONIURA base64url_encode(CONIURA token_payload_para_json(p))
+  EVOCA VERBUM message AD CONIURA concat(CONIURA concat(header, "."), payload)
+  EVOCA VERBUM sig_hex AD CONIURA hmac_sha256(cfg.segredo, message)
+  EVOCA VERBUM sig_b64 AD CONIURA base64url_encode(sig_hex)
+  REDDE CONIURA concat(CONIURA concat(message, "."), sig_b64)
+EXPLICIT RITUALE
+
+RITUALE refresh_token_issue(SPECULUM NIHIL db, TokenConfig cfg, VERBUM user_id, VERBUM familia) REDDE RefreshToken
+  EVOCA REX iat AD CONIURA token_now_unix()
+  EVOCA REX exp AD iat + cfg.ttl_refresh
+  EVOCA VERBUM id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA VERBUM fam AD familia
+  SI CONIURA len(fam) == 0
+    VINCIRE fam AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO refresh_tokens (id, user_id, emitido_em, expira_em, familia, revogado) VALUES (?, ?, ?, ?, ?, 0)")
+  CONIURA stmt_bind_text(stmt, 1, id)
+  CONIURA stmt_bind_text(stmt, 2, user_id)
+  CONIURA stmt_bind_int(stmt, 3, iat)
+  CONIURA stmt_bind_int(stmt, 4, exp)
+  CONIURA stmt_bind_text(stmt, 5, fam)
+  CONIURA token_exec_stmt_no_rows(stmt)
+
+  EVOCA RefreshToken rt AD CONIURA refresh_token_empty()
+  VINCIRE rt.id AD id
+  VINCIRE rt.user_id AD user_id
+  VINCIRE rt.emitido_em AD iat
+  VINCIRE rt.expira_em AD exp
+  VINCIRE rt.familia AD fam
+  VINCIRE rt.revogado AD FALSUM
+  REDDE rt
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,67 @@
+INCIPIT grimoire "civitas_cache_query_serial"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../model/model.cct"
+
+RITUALE cache_query_rows_to_json(SPECULUM DbRows rows, ModelDef model_def) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX num_campos AD CONIURA fluxus_len(model_def.campos)
+
+  DUM CONIURA dbrows_next(rows)
+    EVOCA Json obj AD CONIURA json_obj()
+    EVOCA REX col AD 0
+    DUM col < num_campos
+      EVOCA SPECULUM FieldDef campo_ptr AD CONIURA fluxus_get(model_def.campos, col)
+      SI CONIURA dbrows_is_null(*rows, col)
+        CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_null())
+        VINCIRE col AD col + 1
+        RECEDE
+      FIN SI
+      ELIGE (*campo_ptr).kind
+        CASUS FkInt:
+          CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_num(CONIURA dbrows_get_int(*rows, col)))
+        CASUS FkBool:
+          CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_bool(CONIURA dbrows_get_bool(*rows, col)))
+        CASUS FkReal:
+          CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_num(CONIURA dbrows_get_real(*rows, col)))
+        CASUS FkDateTime:
+          CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_num(CONIURA dbrows_get_int(*rows, col)))
+        ALIOQUIN:
+          CONIURA json_set_key(obj, (*campo_ptr).nome, CONIURA json_str(CONIURA dbrows_get_text(*rows, col)))
+      FIN ELIGE
+      VINCIRE col AD col + 1
+    FIN DUM
+    CONIURA json_arr_push(arr, obj)
+  FIN DUM
+
+  CONIURA dbrows_close(*rows)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE cache_query_rows_to_json_raw(SPECULUM DbRows rows, REX num_colunas) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+
+  DUM CONIURA dbrows_next(rows)
+    EVOCA Json obj AD CONIURA json_obj()
+    EVOCA REX col AD 0
+    DUM col < num_colunas
+      EVOCA VERBUM chave_col AD CONIURA concat("c", CONIURA stringify_int(col))
+      SI CONIURA dbrows_is_null(*rows, col)
+        CONIURA json_set_key(obj, chave_col, CONIURA json_null())
+      ALITER
+        CONIURA json_set_key(obj, chave_col, CONIURA json_str(CONIURA dbrows_get_text(*rows, col)))
+      FIN SI
+      VINCIRE col AD col + 1
+    FIN DUM
+    CONIURA json_arr_push(arr, obj)
+  FIN DUM
+
+  CONIURA dbrows_close(*rows)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

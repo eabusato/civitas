@@ -1,0 +1,135 @@
+INCIPIT grimoire "civitas_cache_arq"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cache.cct"
+
+RITUALE cache_arq_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE cache_arq_new(VERBUM dir_base, VERBUM namespace) REDDE CacheHandle
+  EVOCA SPECULUM CacheArquivo arq_ptr AD OBSECRO mem_alloc(MENSURA(CacheArquivo))
+  VINCIRE (*arq_ptr).dir_base AD dir_base
+  VINCIRE (*arq_ptr).namespace AD namespace
+  VINCIRE (*arq_ptr).acertos AD 0
+  VINCIRE (*arq_ptr).falhas AD 0
+  CONIURA mkdir_all(CONIURA path_join(dir_base, namespace))
+  EVOCA CacheHandle out AD CONIURA cache_handle_empty()
+  VINCIRE out.kind AD CbArquivo
+  VINCIRE out.state AD arq_ptr
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_arq_sanitizar_chave(VERBUM chave_ns) REDDE VERBUM
+  REDDE CONIURA sha256(chave_ns)
+EXPLICIT RITUALE
+
+RITUALE cache_arq_caminho(SPECULUM NIHIL state, VERBUM chave) REDDE VERBUM
+  EVOCA SPECULUM CacheArquivo arq_ptr AD state
+  EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*arq_ptr).namespace, chave)
+  EVOCA VERBUM nome AD CONIURA cache_arq_sanitizar_chave(chave_ns)
+  VINCIRE nome AD CONIURA concat(nome, ".cache")
+  REDDE CONIURA path_join(CONIURA path_join((*arq_ptr).dir_base, (*arq_ptr).namespace), nome)
+EXPLICIT RITUALE
+
+RITUALE cache_arq_get(SPECULUM NIHIL state, VERBUM chave) REDDE CacheMaybeText
+  EVOCA SPECULUM CacheArquivo arq_ptr AD state
+  EVOCA VERBUM path AD CONIURA cache_arq_caminho(state, chave)
+  SI NON CONIURA is_file(path)
+    VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+    REDDE CONIURA cache_maybe_none()
+  FIN SI
+  EVOCA VERBUM raw AD CONIURA read_all(path)
+  EVOCA REX nl AD CONIURA find(raw, "\n")
+  SI nl < 0
+    CONIURA delete_file(path)
+    VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+    REDDE CONIURA cache_maybe_none()
+  FIN SI
+  EVOCA REX expires AD CONIURA parse_int(CONIURA substring(raw, 0, nl))
+  SI expires > 0 ET CONIURA cache_arq_now() >= expires
+    CONIURA delete_file(path)
+    VINCIRE (*arq_ptr).falhas AD (*arq_ptr).falhas + 1
+    REDDE CONIURA cache_maybe_none()
+  FIN SI
+  VINCIRE (*arq_ptr).acertos AD (*arq_ptr).acertos + 1
+  REDDE CONIURA cache_maybe_hit(CONIURA substring(raw, nl + 1, CONIURA len(raw)))
+EXPLICIT RITUALE
+
+RITUALE cache_arq_set(SPECULUM NIHIL state, VERBUM chave, VERBUM valor, REX ttl) REDDE NIHIL
+  EVOCA VERBUM path AD CONIURA cache_arq_caminho(state, chave)
+  EVOCA REX expires AD 0
+  SI ttl > 0
+    VINCIRE expires AD CONIURA cache_arq_now() + ttl
+  FIN SI
+  CONIURA write_all(path, CONIURA concat(CONIURA stringify_int(expires), CONIURA concat("\n", valor)))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_arq_delete(SPECULUM NIHIL state, VERBUM chave) REDDE NIHIL
+  EVOCA VERBUM path AD CONIURA cache_arq_caminho(state, chave)
+  SI CONIURA exists(path)
+    CONIURA delete_file(path)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_arq_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_dir(path)
+    EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(entries)
+    DUM i < n
+      EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+      CONIURA cache_arq_delete_tree(CONIURA path_join(path, *name_ptr))
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA delete_dir(path)
+    REDDE
+  FIN SI
+  CONIURA delete_file(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_arq_exists(SPECULUM NIHIL state, VERBUM chave) REDDE VERUM
+  EVOCA CacheMaybeText maybe AD CONIURA cache_arq_get(state, chave)
+  REDDE maybe.found
+EXPLICIT RITUALE
+
+RITUALE cache_arq_flush(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheArquivo arq_ptr AD state
+  EVOCA VERBUM ns_dir AD CONIURA path_join((*arq_ptr).dir_base, (*arq_ptr).namespace)
+  SI CONIURA exists(ns_dir)
+    CONIURA cache_arq_delete_tree(ns_dir)
+  FIN SI
+  CONIURA mkdir_all(ns_dir)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_arq_metrics(SPECULUM NIHIL state) REDDE CacheMetrics
+  EVOCA SPECULUM CacheArquivo arq_ptr AD state
+  EVOCA CacheMetrics out AD CONIURA cache_metrics_new()
+  VINCIRE out.acertos AD (*arq_ptr).acertos
+  VINCIRE out.falhas AD (*arq_ptr).falhas
+  EVOCA VERBUM ns_dir AD CONIURA path_join((*arq_ptr).dir_base, (*arq_ptr).namespace)
+  SI CONIURA is_dir(ns_dir)
+    VINCIRE out.total_entradas AD CONIURA fluxus_len(CONIURA list_dir(ns_dir))
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_arq_close(SPECULUM NIHIL state) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

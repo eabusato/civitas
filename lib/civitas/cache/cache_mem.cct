@@ -1,0 +1,173 @@
+INCIPIT grimoire "civitas_cache_mem"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cache.cct"
+
+RITUALE cache_mem_now() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE cache_mem_new(VERBUM namespace, REX max_entradas) REDDE CacheHandle
+  EVOCA SPECULUM CacheMemoria mem_ptr AD OBSECRO mem_alloc(MENSURA(CacheMemoria))
+  VINCIRE (*mem_ptr).entradas AD CONIURA fluxus_init(MENSURA(CacheEntradaMem))
+  VINCIRE (*mem_ptr).max_entradas AD max_entradas
+  VINCIRE (*mem_ptr).namespace AD namespace
+  VINCIRE (*mem_ptr).acertos AD 0
+  VINCIRE (*mem_ptr).falhas AD 0
+  VINCIRE (*mem_ptr).evicoes AD 0
+  EVOCA CacheHandle out AD CONIURA cache_handle_empty()
+  VINCIRE out.kind AD CbMemoria
+  VINCIRE out.state AD mem_ptr
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_mem_evict(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA REX now AD CONIURA cache_mem_now()
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI (*entry_ptr).expira_em > 0 ET now >= (*entry_ptr).expira_em
+      CONIURA fluxus_remove((*mem_ptr).entradas, i)
+      VINCIRE (*mem_ptr).evicoes AD (*mem_ptr).evicoes + 1
+      RECEDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI (*mem_ptr).max_entradas <= 0
+    REDDE
+  FIN SI
+  SI CONIURA fluxus_len((*mem_ptr).entradas) < (*mem_ptr).max_entradas
+    REDDE
+  FIN SI
+
+  EVOCA REX oldest_idx AD 0
+  EVOCA REX oldest_access AD 0
+  VINCIRE i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI i == 0 VEL (*entry_ptr).ultimo_acesso < oldest_access
+      VINCIRE oldest_idx AD i
+      VINCIRE oldest_access AD (*entry_ptr).ultimo_acesso
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_remove((*mem_ptr).entradas, oldest_idx)
+  VINCIRE (*mem_ptr).evicoes AD (*mem_ptr).evicoes + 1
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_mem_get(SPECULUM NIHIL state, VERBUM chave) REDDE CacheMaybeText
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+  EVOCA REX now AD CONIURA cache_mem_now()
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+      SI (*entry_ptr).expira_em > 0 ET now >= (*entry_ptr).expira_em
+        CONIURA fluxus_remove((*mem_ptr).entradas, i)
+        VINCIRE (*mem_ptr).falhas AD (*mem_ptr).falhas + 1
+        REDDE CONIURA cache_maybe_none()
+      FIN SI
+      VINCIRE (*entry_ptr).ultimo_acesso AD now
+      VINCIRE (*mem_ptr).acertos AD (*mem_ptr).acertos + 1
+      REDDE CONIURA cache_maybe_hit((*entry_ptr).valor)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE (*mem_ptr).falhas AD (*mem_ptr).falhas + 1
+  REDDE CONIURA cache_maybe_none()
+EXPLICIT RITUALE
+
+RITUALE cache_mem_set(SPECULUM NIHIL state, VERBUM chave, VERBUM valor, REX ttl) REDDE NIHIL
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+  EVOCA REX now AD CONIURA cache_mem_now()
+  EVOCA REX expires AD 0
+  SI ttl > 0
+    VINCIRE expires AD now + ttl
+  FIN SI
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+      VINCIRE (*entry_ptr).valor AD valor
+      VINCIRE (*entry_ptr).ultimo_acesso AD now
+      VINCIRE (*entry_ptr).expira_em AD expires
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI (*mem_ptr).max_entradas > 0 ET CONIURA fluxus_len((*mem_ptr).entradas) >= (*mem_ptr).max_entradas
+    CONIURA cache_mem_evict(state)
+  FIN SI
+  EVOCA CacheEntradaMem entry
+  VINCIRE entry.chave_ns AD chave_ns
+  VINCIRE entry.valor AD valor
+  VINCIRE entry.expira_em AD expires
+  VINCIRE entry.ultimo_acesso AD now
+  CONIURA fluxus_push((*mem_ptr).entradas, SPECULUM entry)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_mem_delete(SPECULUM NIHIL state, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+      CONIURA fluxus_remove((*mem_ptr).entradas, i)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_mem_exists(SPECULUM NIHIL state, VERBUM chave) REDDE VERUM
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA VERBUM chave_ns AD CONIURA cache_namespace_key((*mem_ptr).namespace, chave)
+  EVOCA REX now AD CONIURA cache_mem_now()
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len((*mem_ptr).entradas)
+    EVOCA SPECULUM CacheEntradaMem entry_ptr AD CONIURA fluxus_get((*mem_ptr).entradas, i)
+    SI CONIURA compare((*entry_ptr).chave_ns, chave_ns) == 0
+      SI (*entry_ptr).expira_em > 0 ET now >= (*entry_ptr).expira_em
+        CONIURA fluxus_remove((*mem_ptr).entradas, i)
+        REDDE FALSUM
+      FIN SI
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE cache_mem_flush(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  CONIURA fluxus_clear((*mem_ptr).entradas)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_mem_metrics(SPECULUM NIHIL state) REDDE CacheMetrics
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  EVOCA CacheMetrics out AD CONIURA cache_metrics_new()
+  VINCIRE out.acertos AD (*mem_ptr).acertos
+  VINCIRE out.falhas AD (*mem_ptr).falhas
+  VINCIRE out.evicoes AD (*mem_ptr).evicoes
+  VINCIRE out.total_entradas AD CONIURA fluxus_len((*mem_ptr).entradas)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_mem_close(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheMemoria mem_ptr AD state
+  CONIURA fluxus_free((*mem_ptr).entradas)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

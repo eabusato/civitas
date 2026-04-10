@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase24_24b_recipient_and_subject"
+
+ADVOCARE "../../../../lib/civitas/test_mail/test_mail.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL outbox AD CONIURA test_mail_outbox_new()
+  EVOCA MailMessage msg AD CONIURA mail_message_new()
+  CONIURA mail_message_set_from(SPECULUM msg, CONIURA mail_address("noreply@test.local", "Test"))
+  CONIURA mail_message_add_to(SPECULUM msg, CONIURA mail_address("bob@example.com", "Bob"))
+  CONIURA mail_message_set_subject(SPECULUM msg, "Password reset")
+  CONIURA mail_message_set_text(SPECULUM msg, "use token 123")
+  SI CONIURA result_is_err GENUS(MailSendResult, VERBUM)(CONIURA mail_send(CONIURA test_mail_client(outbox), msg))
+    REDDE 1
+  FIN SI
+  EVOCA MailMessage saved AD CONIURA test_mail_get(outbox, 0)
+  CONIURA assert_email_to(saved, "bob@example.com")
+  CONIURA assert_email_subject(saved, "Password reset")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

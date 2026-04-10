@@ -1,0 +1,20 @@
+[app]
+name = "Mural"
+version = "0.1.0"
+environment = "development"
+allowed_hosts = ["127.0.0.1", "localhost"]
+
+[http]
+host = "0.0.0.0"
+port = 8080
+
+[security]
+rate_limit_enabled = false
+enforce_https = false
+
+[mural]
+site_title = "Mural"
+database_path = "var/mural.db"
+static_dir = "static"
+recent_limit = 20
+admin_secret = "change-me-admin-secret"

@@ -1,0 +1,236 @@
+INCIPIT grimoire "fase19_common"
+
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_user.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Phase19Stack
+  root: VERBUM
+  db: SPECULUM NIHIL
+  dbh: DbHandle
+  serializers: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE phase19_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_19", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase19_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase19_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_reset_root(VERBUM test_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase19_root(test_name)
+  SI CONIURA exists(root)
+    CONIURA phase19_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase19_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase19_root(test_name), "phase19.db")
+EXPLICIT RITUALE
+
+RITUALE phase19_user_serializer_fill(SPECULUM SerializerConfig user_ser) REDDE NIHIL
+  CONIURA serializer_config_init(user_ser, "UserSerializer", "User", "users", "id")
+  CONIURA serializer_config_add_field(user_ser, CONIURA serializer_field_read_only("id", "id", API_FIELD_INT))
+  CONIURA serializer_config_add_field(user_ser, CONIURA serializer_field_default("name", "name", API_FIELD_TEXT))
+  CONIURA serializer_config_add_field(user_ser, CONIURA serializer_field_optional("email", "email", API_FIELD_TEXT))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_post_serializer_fill(SPECULUM SerializerConfig post_ser) REDDE NIHIL
+  CONIURA serializer_config_init(post_ser, "PostSerializer", "Post", "posts", "id")
+  EVOCA SerializerField body_field AD CONIURA serializer_field_write_only("body", "body", API_FIELD_TEXT)
+  EVOCA SerializerField author_field AD CONIURA serializer_field_optional("author", "author", API_FIELD_NESTED)
+  VINCIRE author_field.nested_serializer AD "UserSerializer"
+  CONIURA serializer_config_add_field(post_ser, CONIURA serializer_field_read_only("id", "id", API_FIELD_INT))
+  CONIURA serializer_config_add_field(post_ser, CONIURA serializer_field_default("title", "title", API_FIELD_TEXT))
+  CONIURA serializer_config_add_field(post_ser, body_field)
+  CONIURA serializer_config_add_field(post_ser, CONIURA serializer_field_optional("published_at", "published_at", API_FIELD_INT))
+  CONIURA serializer_config_add_field(post_ser, author_field)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_registry_default_fill(SPECULUM ApiSerializerRegistry reg) REDDE NIHIL
+  EVOCA SerializerConfig user_ser
+  EVOCA SerializerConfig post_ser
+  CONIURA api_serializer_registry_init(reg)
+  CONIURA phase19_user_serializer_fill(SPECULUM user_ser)
+  CONIURA phase19_post_serializer_fill(SPECULUM post_ser)
+  CONIURA api_serializer_registry_put(reg, user_ser)
+  CONIURA api_serializer_registry_put(reg, post_ser)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_stack_open(VERBUM test_name) REDDE Phase19Stack
+  EVOCA Phase19Stack out
+  VINCIRE out.root AD CONIURA phase19_reset_root(test_name)
+  VINCIRE out.db AD CONIURA db_open(CONIURA phase19_db_path(test_name))
+  EVOCA DbHandle sqlite_dbh AD CONIURA dbh_from_sqlite(out.db)
+  CONIURA dbh_fill(SPECULUM out.dbh, sqlite_dbh)
+  EVOCA SPECULUM ApiSerializerRegistry reg_ptr AD OBSECRO mem_alloc(MENSURA(ApiSerializerRegistry))
+  CONIURA phase19_registry_default_fill(reg_ptr)
+  VINCIRE out.serializers AD reg_ptr
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase19_stack_close(Phase19Stack stack) REDDE NIHIL
+  EVOCA SPECULUM DbHandle dbh_ptr AD SPECULUM stack.dbh
+  CONIURA dbh_close(dbh_ptr)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_test_db(SPECULUM NIHIL db) REDDE TestDb
+  EVOCA TestDb tdb
+  VINCIRE tdb.db AD db
+  VINCIRE tdb.config AD CONIURA test_db_config_memoria()
+  VINCIRE tdb.sp_contador AD 0
+  VINCIRE tdb.sp_ativo AD ""
+  REDDE tdb
+EXPLICIT RITUALE
+
+RITUALE phase19_create_posts_table(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, published_at INTEGER NOT NULL, author TEXT NOT NULL)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_insert_post(DbHandle dbh, VERBUM title, VERBUM body, REX published_at, VERBUM author_json) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, title)
+  CONIURA dbh_param_text(SPECULUM params, body)
+  CONIURA dbh_param_int(SPECULUM params, published_at)
+  CONIURA dbh_param_text(SPECULUM params, author_json)
+  CONIURA dbh_exec(dbh, "INSERT INTO posts (title, body, published_at, author) VALUES (?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_create_pages_table(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA pages_ensure_schema(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_insert_page(SPECULUM NIHIL db, VERBUM locale, VERBUM slug, VERBUM title, VERBUM canonical_url, REX published_at) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_pages (locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, title)
+  CONIURA stmt_bind_text(stmt, 4, "<p>body</p>")
+  CONIURA stmt_bind_int(stmt, 5, 2)
+  CONIURA stmt_bind_text(stmt, 6, title)
+  CONIURA stmt_bind_text(stmt, 7, "")
+  CONIURA stmt_bind_text(stmt, 8, canonical_url)
+  CONIURA stmt_bind_text(stmt, 9, "")
+  CONIURA stmt_bind_text(stmt, 10, "")
+  CONIURA stmt_bind_int(stmt, 11, 0)
+  CONIURA stmt_bind_int(stmt, 12, 0)
+  CONIURA stmt_bind_int(stmt, 13, published_at)
+  CONIURA stmt_bind_text(stmt, 14, "author")
+  CONIURA stmt_bind_text(stmt, 15, "author")
+  CONIURA stmt_bind_text(stmt, 16, "rid")
+  CONIURA stmt_bind_int(stmt, 17, published_at)
+  CONIURA stmt_bind_int(stmt, 18, published_at)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_auth_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  EVOCA TestDb tdb AD CONIURA phase19_test_db(db)
+  CONIURA auth_test_schema_up(tdb)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_auth_token_for_new_user(SPECULUM NIHIL db, VERBUM scopes) REDDE VERBUM
+  EVOCA TestDb tdb AD CONIURA phase19_test_db(db)
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  REDDE CONIURA auth_test_gerar_token(tu.user.id, scopes)
+EXPLICIT RITUALE
+
+RITUALE phase19_request(VERBUM method, VERBUM path, VERBUM body) REDDE WebRequest
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "accept", "application/json")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(method, path, "HTTP/1.1", headers, body, "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "phase19_request invalid"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase19_request_with_accept(VERBUM method, VERBUM path, VERBUM body, VERBUM accept) REDDE WebRequest
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "accept", accept)
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(method, path, "HTTP/1.1", headers, body, "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "phase19_request_with_accept invalid"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase19_request_with_bearer(VERBUM method, VERBUM path, VERBUM body, VERBUM token) REDDE WebRequest
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "accept", "application/json")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "authorization", CONIURA concat("Bearer ", token))
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(method, path, "HTTP/1.1", headers, body, "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "phase19_request_with_bearer invalid"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase19_request_set_param(SPECULUM WebRequest req, VERBUM name, VERBUM value) REDDE NIHIL
+  CONIURA map_insert GENUS(VERBUM, VERBUM)((*req).path_params, name, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase19_get_post_serializer(SPECULUM NIHIL reg_ptr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SerializerConfig cfg_ptr AD CONIURA api_serializer_registry_get(reg_ptr, "PostSerializer")
+  SI cfg_ptr == NIHIL
+    IACE "PostSerializer not registered"
+  FIN SI
+  REDDE cfg_ptr
+EXPLICIT RITUALE
+
+RITUALE phase19_get_user_serializer(SPECULUM NIHIL reg_ptr) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM SerializerConfig cfg_ptr AD CONIURA api_serializer_registry_get(reg_ptr, "UserSerializer")
+  SI cfg_ptr == NIHIL
+    IACE "UserSerializer not registered"
+  FIN SI
+  REDDE cfg_ptr
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

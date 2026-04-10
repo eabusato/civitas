@@ -1,0 +1,25 @@
+INCIPIT grimoire "civitas_i18n_catalog_json_types"
+
+ADVOCARE "cct/fluxus.cct"
+
+ORDO JsonCatalogEntryKind
+  JcekSimple,
+  JcekPlural
+FIN ORDO
+
+SIGILLUM JsonCatalogEntry
+  chave: VERBUM
+  kind: JsonCatalogEntryKind
+  traducao: VERBUM
+  singular: VERBUM
+  plural: VERBUM
+FIN SIGILLUM
+
+SIGILLUM JsonCatalog
+  locale: VERBUM
+  version: REX
+  fallback: VERBUM
+  entradas: SPECULUM NIHIL
+FIN SIGILLUM
+
+EXPLICIT grimoire

@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase6_6c_void_and_safe_link_test"
+
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL wrap AD CONIURA html_div("")
+  EVOCA VERBUM html AD ""
+
+  CONIURA html_child(wrap, CONIURA html_input("text", "email", "ada@example.test"))
+  CONIURA html_child(wrap, CONIURA html_a_safe("javascript:alert(1)", "bad"))
+  VINCIRE html AD CONIURA html_render_free(wrap)
+
+  SI CONIURA find(html, "<input type=\"text\" name=\"email\" value=\"ada@example.test\">") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "<a href=\"#\">bad</a>") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

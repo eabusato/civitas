@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase15_15f_defaults_keys_and_429"
+
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA RateLimitConfig cfg AD CONIURA rate_limit_config_default()
+  SI cfg.max_tentativas != 5 VEL cfg.janela_segundos != 300 VEL cfg.lockout_segundos != 900
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA rate_limit_chave_email("alice@example.com"), "email:alice@example.com") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA rate_limit_chave_ip("127.0.0.1"), "ip:127.0.0.1") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA rate_limit_chave_ip_email("127.0.0.1", "alice@example.com"), "ip_email:127.0.0.1:alice@example.com") != 0
+    REDDE 4
+  FIN SI
+  EVOCA HttpResponse resp AD CONIURA rate_limit_resposta_429(42)
+  SI CONIURA http_response_status(resp) != 429
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA http_headers_get_or(CONIURA http_response_headers_handle(resp), "Retry-After", ""), "42") != 0
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+title = "Repository gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Common generated files, editor files and obvious mock values"
+paths = [
+  '''(^|/)md_out/''',
+  '''(^|/)build/''',
+  '''(^|/)dist/''',
+  '''(^|/)out/''',
+  '''(^|/)tmp/''',
+  '''(^|/)temp/''',
+  '''(^|/)coverage/''',
+  '''(^|/)artifacts/''',
+  '''(^|/)\.idea/''',
+  '''(^|/)\.vscode/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)venv/''',
+  '''(^|/)third_party/''',
+]
+
+regexTarget = "line"
+regexes = [
+  '''abc123''',
+  '''mock''',
+  '''dummy''',
+  '''example''',
+  '''placeholder''',
+  '''test[-_ ]?key''',
+]

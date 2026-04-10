@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase3_3b_module_b_subscriber"
+
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase3_3b_module_b_handler(SPECULUM NIHIL env_ref) REDDE NIHIL
+  EVOCA SPECULUM EventEnvelope env
+  VINCIRE env AD env_ref
+  CONIURA write_all("tests/tmp/fase_3/3b_module_isolation/consumed.log", CONIURA concat((*env).event_type, CONIURA concat("|", (*env).request_id)))
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

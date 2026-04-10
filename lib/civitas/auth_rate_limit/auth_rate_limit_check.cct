@@ -1,0 +1,142 @@
+INCIPIT grimoire "civitas_auth_rate_limit_check"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_login.cct"
+ADVOCARE "auth_rate_limit.cct"
+
+RITUALE rate_limit_exec_stmt_no_rows(SPECULUM NIHIL stmt) REDDE NIHIL
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rate_limit_count_desde(SPECULUM NIHIL db, VERBUM chave, REX inicio_janela) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM auth_attempts WHERE chave = ? AND timestamp >= ? AND sucesso = 0")
+  CONIURA stmt_bind_text(stmt, 1, chave)
+  CONIURA stmt_bind_int(stmt, 2, inicio_janela)
+  CONIURA stmt_step(stmt)
+  EVOCA REX count AD 0
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE rate_limit_min_timestamp_desde(SPECULUM NIHIL db, VERBUM chave, REX inicio_janela, REX fallback_ts) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT MIN(timestamp) FROM auth_attempts WHERE chave = ? AND timestamp >= ? AND sucesso = 0")
+  CONIURA stmt_bind_text(stmt, 1, chave)
+  CONIURA stmt_bind_int(stmt, 2, inicio_janela)
+  CONIURA stmt_step(stmt)
+  EVOCA REX min_ts AD fallback_ts
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE min_ts AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE min_ts
+EXPLICIT RITUALE
+
+RITUALE rate_limit_check(SPECULUM NIHIL db, RateLimitConfig cfg, VERBUM chave) REDDE RateLimitResult
+  EVOCA REX agora_unix AD CONIURA rate_limit_now_unix()
+  EVOCA REX inicio_janela AD agora_unix - cfg.janela_segundos
+  EVOCA REX count AD CONIURA rate_limit_count_desde(db, chave, inicio_janela)
+  SI count < cfg.max_tentativas
+    REDDE RlPermitido
+  FIN SI
+
+  EVOCA REX mais_antiga AD CONIURA rate_limit_min_timestamp_desde(db, chave, inicio_janela, agora_unix)
+  EVOCA REX expira_lockout AD mais_antiga + cfg.lockout_segundos
+  EVOCA REX restante AD expira_lockout - agora_unix
+  SI restante < 0
+    VINCIRE restante AD 0
+  FIN SI
+  REDDE RlBloqueado(restante)
+EXPLICIT RITUALE
+
+RITUALE rate_limit_check_ok(SPECULUM NIHIL db, RateLimitConfig cfg, VERBUM chave) REDDE VERUM
+  REDDE CONIURA rate_limit_result_ok(CONIURA rate_limit_check(db, cfg, chave))
+EXPLICIT RITUALE
+
+RITUALE rate_limit_record(SPECULUM NIHIL db, VERBUM chave, VERUM sucesso) REDDE NIHIL
+  EVOCA REX agora_unix AD CONIURA rate_limit_now_unix()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO auth_attempts (chave, timestamp, sucesso) VALUES (?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, chave)
+  CONIURA stmt_bind_int(stmt, 2, agora_unix)
+  SI sucesso
+    CONIURA stmt_bind_int(stmt, 3, 1)
+  ALITER
+    CONIURA stmt_bind_int(stmt, 3, 0)
+  FIN SI
+  CONIURA rate_limit_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rate_limit_clear(SPECULUM NIHIL db, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM auth_attempts WHERE chave = ?")
+  CONIURA stmt_bind_text(stmt, 1, chave)
+  CONIURA rate_limit_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rate_limit_purge_antigas(SPECULUM NIHIL db, RateLimitConfig cfg) REDDE REX
+  EVOCA REX agora_unix AD CONIURA rate_limit_now_unix()
+  EVOCA REX limite AD agora_unix - cfg.janela_segundos - cfg.lockout_segundos
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM auth_attempts WHERE timestamp < ?")
+  CONIURA stmt_bind_int(stmt, 1, limite)
+  CONIURA rate_limit_exec_stmt_no_rows(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT changes()")
+EXPLICIT RITUALE
+
+RITUALE rate_limit_contagem_por_chave(SPECULUM NIHIL db, RateLimitConfig cfg, VERBUM chave) REDDE REX
+  EVOCA REX agora_unix AD CONIURA rate_limit_now_unix()
+  EVOCA REX inicio_janela AD agora_unix - cfg.janela_segundos
+  REDDE CONIURA rate_limit_count_desde(db, chave, inicio_janela)
+EXPLICIT RITUALE
+
+RITUALE rate_limit_chaves_bloqueadas(SPECULUM NIHIL db, RateLimitConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA REX agora_unix AD CONIURA rate_limit_now_unix()
+  EVOCA REX inicio_janela AD agora_unix - cfg.janela_segundos
+  EVOCA SPECULUM NIHIL lista AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT chave FROM auth_attempts WHERE timestamp >= ? AND sucesso = 0 GROUP BY chave HAVING COUNT(*) >= ?")
+  CONIURA stmt_bind_int(stmt, 1, inicio_janela)
+  CONIURA stmt_bind_int(stmt, 2, cfg.max_tentativas)
+  CONIURA stmt_step(stmt)
+  DUM CONIURA stmt_has_row(stmt)
+    EVOCA VERBUM chave AD CONIURA stmt_get_text(stmt, 0)
+    CONIURA fluxus_push(lista, SPECULUM chave)
+    CONIURA stmt_step(stmt)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE lista
+EXPLICIT RITUALE
+
+RITUALE auth_login_com_rate_limit(SPECULUM NIHIL db, AuthConfig auth_cfg, RateLimitConfig rl_cfg, VERBUM email, VERBUM senha, VERBUM ip) REDDE SPECULUM NIHIL
+  EVOCA VERBUM chave_ip AD CONIURA rate_limit_chave_ip(ip)
+  EVOCA VERBUM chave_email AD CONIURA rate_limit_chave_email(email)
+
+  SI NON CONIURA rate_limit_check_ok(db, rl_cfg, chave_ip)
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthErroInterno("rate limit: ip bloqueado"))
+  FIN SI
+  SI NON CONIURA rate_limit_check_ok(db, rl_cfg, chave_email)
+    REDDE CONIURA Err GENUS(User, AuthError)(AuthErroInterno("rate limit: email bloqueado"))
+  FIN SI
+
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_login(db, auth_cfg, email, senha)
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    CONIURA rate_limit_record(db, chave_ip, FALSUM)
+    CONIURA rate_limit_record(db, chave_email, FALSUM)
+    REDDE res
+  FIN SI
+
+  CONIURA rate_limit_record(db, chave_ip, VERUM)
+  CONIURA rate_limit_record(db, chave_email, VERUM)
+  CONIURA rate_limit_clear(db, chave_ip)
+  CONIURA rate_limit_clear(db, chave_email)
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

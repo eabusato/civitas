@@ -1,0 +1,24 @@
+INCIPIT grimoire "civitas_l10n_date"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "l10n.cct"
+
+RITUALE l10n_format_date(Date d, DateRules rules) REDDE VERBUM
+  REDDE CONIURA date_format(d, rules.formato_data)
+EXPLICIT RITUALE
+
+RITUALE l10n_format_datetime(DateTime dt, DateRules rules) REDDE VERBUM
+  REDDE CONIURA datetime_format(dt, rules.formato_datetime)
+EXPLICIT RITUALE
+
+RITUALE l10n_format_date_str(VERBUM iso, DateRules rules) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA date_parse(iso)
+  SI CONIURA result_is_err GENUS(Date, DateError)(parsed)
+    REDDE iso
+  FIN SI
+  EVOCA Date d AD CONIURA result_unwrap GENUS(Date, DateError)(parsed)
+  REDDE CONIURA l10n_format_date(d, rules)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

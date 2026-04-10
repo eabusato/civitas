@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase25_25c_join_count_list"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/sse_presence/sse_presence.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25c_join_count_list")
+  CONIURA sse_presence_join(db, 10, "global", "conn-a")
+  CONIURA sse_presence_join(db, 11, "global", "conn-b")
+
+  SI CONIURA sse_presence_count(db, "global", 60000) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL lista AD CONIURA sse_presence_list(db, "global", 60000)
+  SI CONIURA fluxus_len(lista) != 2
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

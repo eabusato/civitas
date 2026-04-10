@@ -1,0 +1,342 @@
+INCIPIT grimoire "civitas_template_lexer"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/char.cct"
+ADVOCARE "cct/lexer_util.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "ast.cct"
+
+RITUALE template_lex(VERBUM source) REDDE SPECULUM NIHIL
+  EVOCA Scanner s AD CONIURA scanner_new(source)
+  EVOCA SPECULUM NIHIL tokens AD CONIURA fluxus_init(MENSURA(TemplateToken))
+
+  DUM NON CONIURA scanner_is_eof(SPECULUM s)
+    EVOCA VERBUM ahead AD CONIURA scanner_peek_n(SPECULUM s, 2)
+    SI CONIURA compare(ahead, "{{") == 0
+      EVOCA SPECULUM NIHIL res AD CONIURA template_lex_expr(SPECULUM s, tokens)
+      SI CONIURA result_is_err GENUS(REX, TemplateLexError)(res)
+        REDDE res
+      FIN SI
+    ALITER
+      SI CONIURA compare(ahead, "{%") == 0
+        EVOCA SPECULUM NIHIL res AD CONIURA template_lex_tag(SPECULUM s, tokens)
+        SI CONIURA result_is_err GENUS(REX, TemplateLexError)(res)
+          REDDE res
+        FIN SI
+      ALITER
+        SI CONIURA compare(ahead, "{#") == 0
+          EVOCA SPECULUM NIHIL res AD CONIURA template_lex_skip_comment(SPECULUM s)
+          SI CONIURA result_is_err GENUS(REX, TemplateLexError)(res)
+            REDDE res
+          FIN SI
+        ALITER
+          CONIURA template_lex_text(SPECULUM s, tokens)
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN DUM
+
+  CONIURA template_push_token(tokens, Finis, "", s.line, s.column)
+  REDDE CONIURA Ok GENUS(SPECULUM NIHIL, TemplateLexError)(tokens)
+EXPLICIT RITUALE
+
+RITUALE template_push_token(SPECULUM NIHIL tokens, TemplateTokenKind kind, VERBUM value, REX line, REX column) REDDE NIHIL
+  EVOCA TemplateToken tok
+  VINCIRE tok.kind AD kind
+  VINCIRE tok.value AD value
+  VINCIRE tok.line AD line
+  VINCIRE tok.column AD column
+  CONIURA fluxus_push(tokens, SPECULUM tok)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_lex_text(SPECULUM Scanner s, SPECULUM NIHIL tokens) REDDE NIHIL
+  EVOCA REX line AD (*s).line
+  EVOCA REX column AD (*s).column
+  EVOCA VERBUM out AD ""
+  DUM NON CONIURA scanner_is_eof(s)
+    EVOCA VERBUM ahead AD CONIURA scanner_peek_n(s, 2)
+    SI CONIURA compare(ahead, "{{") == 0 VEL CONIURA compare(ahead, "{%") == 0 VEL CONIURA compare(ahead, "{#") == 0
+      FRANGE
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA scanner_consume_n(s, 1))
+  FIN DUM
+  SI CONIURA len(out) != 0
+    CONIURA template_push_token(tokens, Textum, out, line, column)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE template_lex_expr(SPECULUM Scanner s, SPECULUM NIHIL tokens) REDDE SPECULUM NIHIL
+  EVOCA REX line AD (*s).line
+  EVOCA REX column AD (*s).column
+  CONIURA scanner_consume_n(s, 2)
+  CONIURA template_push_token(tokens, AperturaExpr, "{{", line, column)
+  EVOCA SPECULUM NIHIL inner AD CONIURA template_lex_inner(s, tokens, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, TemplateLexError)(inner)
+    REDDE inner
+  FIN SI
+  SI CONIURA compare(CONIURA scanner_peek_n(s, 2), "}}") != 0
+    REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("expressao sem fechamento", (*s).line, (*s).column))
+  FIN SI
+  VINCIRE line AD (*s).line
+  VINCIRE column AD (*s).column
+  CONIURA scanner_consume_n(s, 2)
+  CONIURA template_push_token(tokens, ClausuraExpr, "}}", line, column)
+  REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_lex_tag(SPECULUM Scanner s, SPECULUM NIHIL tokens) REDDE SPECULUM NIHIL
+  EVOCA REX line AD (*s).line
+  EVOCA REX column AD (*s).column
+  CONIURA scanner_consume_n(s, 2)
+  CONIURA template_push_token(tokens, AperturaTag, "{%", line, column)
+  EVOCA SPECULUM NIHIL inner AD CONIURA template_lex_inner(s, tokens, VERUM)
+  SI CONIURA result_is_err GENUS(REX, TemplateLexError)(inner)
+    REDDE inner
+  FIN SI
+  SI CONIURA compare(CONIURA scanner_peek_n(s, 2), "%}") != 0
+    REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("tag sem fechamento", (*s).line, (*s).column))
+  FIN SI
+  VINCIRE line AD (*s).line
+  VINCIRE column AD (*s).column
+  CONIURA scanner_consume_n(s, 2)
+  CONIURA template_push_token(tokens, ClausuraTag, "%}", line, column)
+  REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_lex_skip_comment(SPECULUM Scanner s) REDDE SPECULUM NIHIL
+  CONIURA scanner_consume_n(s, 2)
+  DUM NON CONIURA scanner_is_eof(s)
+    SI CONIURA compare(CONIURA scanner_peek_n(s, 2), "#}") == 0
+      CONIURA scanner_consume_n(s, 2)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+    CONIURA scanner_consume(s)
+  FIN DUM
+  REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("comentario sem fechamento", (*s).line, (*s).column))
+EXPLICIT RITUALE
+
+RITUALE template_lex_inner(SPECULUM Scanner s, SPECULUM NIHIL tokens, VERUM allow_keywords) REDDE SPECULUM NIHIL
+  DUM NON CONIURA scanner_is_eof(s)
+    SI CONIURA compare(CONIURA scanner_peek_n(s, 2), "}}") == 0 VEL CONIURA compare(CONIURA scanner_peek_n(s, 2), "%}") == 0
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+
+    CONIURA scanner_skip_whitespace(s)
+    SI CONIURA compare(CONIURA scanner_peek_n(s, 2), "}}") == 0 VEL CONIURA compare(CONIURA scanner_peek_n(s, 2), "%}") == 0
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+
+    EVOCA SPECULUM NIHIL current AD CONIURA scanner_peek(s)
+    SI CONIURA option_is_none GENUS(MILES)(current)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+
+    EVOCA MILES c AD CONIURA option_unwrap GENUS(MILES)(current)
+    EVOCA REX line AD (*s).line
+    EVOCA REX column AD (*s).column
+
+    SI CONIURA char_is_alpha(c) VEL c == 95
+      EVOCA SPECULUM NIHIL res AD CONIURA template_lex_name(s, tokens, allow_keywords)
+      SI CONIURA result_is_err GENUS(REX, TemplateLexError)(res)
+        REDDE res
+      FIN SI
+      RECEDE
+    FIN SI
+
+    SI CONIURA char_is_digit(c)
+      EVOCA VERBUM number AD CONIURA scanner_consume_while_class(s, Digit)
+      CONIURA template_push_token(tokens, LitRex, number, line, column)
+      RECEDE
+    FIN SI
+
+    SI c == 34
+      EVOCA SPECULUM NIHIL res AD CONIURA template_lex_string(s, tokens)
+      SI CONIURA result_is_err GENUS(REX, TemplateLexError)(res)
+        REDDE res
+      FIN SI
+      RECEDE
+    FIN SI
+
+    SI c == 46
+      CONIURA scanner_consume(s)
+      CONIURA template_push_token(tokens, Punctum, ".", line, column)
+      RECEDE
+    FIN SI
+    SI c == 124
+      CONIURA scanner_consume(s)
+      CONIURA template_push_token(tokens, Fistula, "|", line, column)
+      RECEDE
+    FIN SI
+    SI c == 58
+      CONIURA scanner_consume(s)
+      CONIURA template_push_token(tokens, Colon, ":", line, column)
+      RECEDE
+    FIN SI
+    SI c == 62
+      CONIURA scanner_consume(s)
+      SI CONIURA compare(CONIURA scanner_peek_n(s, 1), "=") == 0
+        CONIURA scanner_consume(s)
+        CONIURA template_push_token(tokens, MaiorAequalis, ">=", line, column)
+      ALITER
+        CONIURA template_push_token(tokens, Maior, ">", line, column)
+      FIN SI
+      RECEDE
+    FIN SI
+    SI c == 60
+      CONIURA scanner_consume(s)
+      SI CONIURA compare(CONIURA scanner_peek_n(s, 1), "=") == 0
+        CONIURA scanner_consume(s)
+        CONIURA template_push_token(tokens, MinorAequalis, "<=", line, column)
+      ALITER
+        CONIURA template_push_token(tokens, Minor, "<", line, column)
+      FIN SI
+      RECEDE
+    FIN SI
+    SI c == 61
+      CONIURA scanner_consume(s)
+      SI CONIURA compare(CONIURA scanner_peek_n(s, 1), "=") != 0
+        REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("operador '=' invalido", line, column))
+      FIN SI
+      CONIURA scanner_consume(s)
+      CONIURA template_push_token(tokens, Aequalis, "==", line, column)
+      RECEDE
+    FIN SI
+    SI c == 33
+      CONIURA scanner_consume(s)
+      SI CONIURA compare(CONIURA scanner_peek_n(s, 1), "=") != 0
+        REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("operador '!' invalido", line, column))
+      FIN SI
+      CONIURA scanner_consume(s)
+      CONIURA template_push_token(tokens, Diversus, "!=", line, column)
+      RECEDE
+    FIN SI
+
+    REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("token invalido em template", line, column))
+  FIN DUM
+
+  REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_lex_name(SPECULUM Scanner s, SPECULUM NIHIL tokens, VERUM allow_keywords) REDDE SPECULUM NIHIL
+  EVOCA REX line AD (*s).line
+  EVOCA REX column AD (*s).column
+  EVOCA VERBUM ident AD CONIURA scanner_consume_while_class(s, Identifier)
+  EVOCA VERBUM upper AD CONIURA to_upper(ident)
+
+  SI allow_keywords ET CONIURA compare(upper, "FIN") == 0
+    CONIURA scanner_skip_whitespace(s)
+    EVOCA VERBUM next_ident AD CONIURA scanner_consume_while_class(s, Identifier)
+    EVOCA VERBUM next_upper AD CONIURA to_upper(next_ident)
+    SI CONIURA compare(next_upper, "SI") == 0
+      CONIURA template_push_token(tokens, FinSi, "FIN SI", line, column)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+    SI CONIURA compare(next_upper, "DUM") == 0
+      CONIURA template_push_token(tokens, FinDum, "FIN DUM", line, column)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+    SI CONIURA compare(next_upper, "SECTIO") == 0
+      CONIURA template_push_token(tokens, FinSectio, "FIN SECTIO", line, column)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+    REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("sequencia FIN invalida", line, column))
+  FIN SI
+
+  SI allow_keywords
+    EVOCA TemplateTokenKind kind AD CONIURA template_keyword_kind(upper)
+    SI kind != Nomen
+      CONIURA template_push_token(tokens, kind, ident, line, column)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+  FIN SI
+
+  CONIURA template_push_token(tokens, Nomen, ident, line, column)
+  REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+EXPLICIT RITUALE
+
+RITUALE template_keyword_kind(VERBUM upper) REDDE TemplateTokenKind
+  SI CONIURA compare(upper, "EVOCA") == 0
+    REDDE Evoca
+  FIN SI
+  SI CONIURA compare(upper, "EXTENDE") == 0
+    REDDE Extende
+  FIN SI
+  SI CONIURA compare(upper, "SECTIO") == 0
+    REDDE Sectio
+  FIN SI
+  SI CONIURA compare(upper, "SI") == 0
+    REDDE Si
+  FIN SI
+  SI CONIURA compare(upper, "ALITER") == 0
+    REDDE Aliter
+  FIN SI
+  SI CONIURA compare(upper, "DUM") == 0
+    REDDE Dum
+  FIN SI
+  SI CONIURA compare(upper, "IN") == 0
+    REDDE In
+  FIN SI
+  SI CONIURA compare(upper, "ADVOCARE") == 0
+    REDDE Advocare
+  FIN SI
+  SI CONIURA compare(upper, "AD") == 0
+    REDDE Ad
+  FIN SI
+  SI CONIURA compare(upper, "NON") == 0
+    REDDE Non
+  FIN SI
+  SI CONIURA compare(upper, "CSRF") == 0
+    REDDE Csrf
+  FIN SI
+  SI CONIURA compare(upper, "SIGNA") == 0
+    REDDE Signa
+  FIN SI
+  SI CONIURA compare(upper, "NEXUS") == 0
+    REDDE Nexus
+  FIN SI
+  SI CONIURA compare(upper, "NONCE") == 0
+    REDDE Nonce
+  FIN SI
+  SI CONIURA compare(upper, "LITERAL") == 0
+    REDDE Literal
+  FIN SI
+  REDDE Nomen
+EXPLICIT RITUALE
+
+RITUALE template_lex_string(SPECULUM Scanner s, SPECULUM NIHIL tokens) REDDE SPECULUM NIHIL
+  EVOCA REX line AD (*s).line
+  EVOCA REX column AD (*s).column
+  EVOCA VERBUM out AD ""
+  CONIURA scanner_consume(s)
+  DUM NON CONIURA scanner_is_eof(s)
+    EVOCA MILES c AD CONIURA option_unwrap GENUS(MILES)(CONIURA scanner_consume(s))
+    SI c == 34
+      CONIURA template_push_token(tokens, LitVerbum, out, line, column)
+      REDDE CONIURA Ok GENUS(REX, TemplateLexError)(1)
+    FIN SI
+    SI c == 92
+      SI CONIURA scanner_is_eof(s)
+        REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("escape invalido em string", (*s).line, (*s).column))
+      FIN SI
+      EVOCA MILES escaped AD CONIURA option_unwrap GENUS(MILES)(CONIURA scanner_consume(s))
+      SI escaped == 34
+        VINCIRE out AD CONIURA concat(out, CONIURA from_char(34))
+      ALITER
+        SI escaped == 110
+          VINCIRE out AD CONIURA concat(out, CONIURA from_char(10))
+        ALITER
+          VINCIRE out AD CONIURA concat(out, CONIURA from_char(escaped))
+        FIN SI
+      FIN SI
+    ALITER
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(c))
+    FIN SI
+  FIN DUM
+  REDDE CONIURA Err GENUS(REX, TemplateLexError)(CONIURA template_lex_error("string sem fechamento", line, column))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

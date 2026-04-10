@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase10_10a_model_registry_lookup"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_registry.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA ModelRegistry registry AD CONIURA model_registry_new()
+  EVOCA ModelDef user_def AD CONIURA model_def_new("users")
+  CONIURA model_def_add_int(user_def, "id", VERUM, VERUM, VERUM)
+  CONIURA model_registry_register(SPECULUM registry, user_def)
+
+  SI NON CONIURA model_registry_has(registry, "users")
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL names AD CONIURA model_registry_table_names(registry)
+  SI CONIURA fluxus_len(names) != 1
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM VERBUM first_name AD CONIURA fluxus_get(names, 0)
+  SI CONIURA compare(*first_name, "users") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,70 @@
+INCIPIT grimoire "civitas_admin_export"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "admin.cct"
+ADVOCARE "admin_list.cct"
+
+RITUALE admin_csv_escape(VERBUM value) REDDE VERBUM
+  EVOCA VERBUM escaped AD CONIURA replace(value, "\"", "\"\"")
+  SI CONIURA find(escaped, ",") != -1 VEL CONIURA find(escaped, "\"") != -1 VEL CONIURA find(escaped, "\n") != -1
+    REDDE CONIURA concat(CONIURA concat("\"", escaped), "\"")
+  FIN SI
+  REDDE escaped
+EXPLICIT RITUALE
+
+RITUALE admin_json_cell_to_text(Json value) REDDE VERBUM
+  SI CONIURA json_is_str(value)
+    REDDE CONIURA json_expect_str(value)
+  FIN SI
+  SI CONIURA json_is_num(value)
+    REDDE CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(value)))
+  FIN SI
+  SI CONIURA json_is_bool(value)
+    SI CONIURA json_expect_bool(value)
+      REDDE "true"
+    FIN SI
+    REDDE "false"
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE admin_export_csv(AdminModelConfig cfg, DbHandle dbh, AdminListQuery query) REDDE VERBUM
+  EVOCA AdminListResult result AD CONIURA admin_list(cfg, dbh, query)
+  EVOCA Json rows AD CONIURA json_parse(result.rows_json)
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.list_display)
+  DUM i < n
+    EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.list_display, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, ",")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA admin_csv_escape(*field_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA json_arr_len(rows)
+  DUM i < n
+    EVOCA Json row AD CONIURA json_arr_get(rows, i)
+    EVOCA REX j AD 0
+    EVOCA REX m AD CONIURA fluxus_len(cfg.list_display)
+    DUM j < m
+      EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.list_display, j)
+      SI j != 0
+        VINCIRE out AD CONIURA concat(out, ",")
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, CONIURA admin_csv_escape(CONIURA admin_json_cell_to_text(CONIURA json_get_key(row, *field_ptr))))
+      VINCIRE j AD j + 1
+    FIN DUM
+    VINCIRE out AD CONIURA concat(out, "\n")
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

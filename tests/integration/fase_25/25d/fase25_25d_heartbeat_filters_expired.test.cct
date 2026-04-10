@@ -1,0 +1,30 @@
+INCIPIT grimoire "fase25_25d_heartbeat_filters_expired"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/ws_room/ws_room.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase25_db_open("25d_heartbeat_filters_expired")
+  CONIURA ws_room_join(db, "room:9", "conn-old", 200, "member")
+  CONIURA ws_room_join(db, "room:9", "conn-live", 201, "member")
+  CONIURA db_exec(db, "UPDATE ws_room_members SET last_seen = 0")
+  CONIURA ws_room_heartbeat(db, "room:9", "conn-live")
+
+  SI CONIURA ws_room_member_count(db, "room:9", 60000) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL members AD CONIURA ws_room_members(db, "room:9", 60000)
+  SI CONIURA fluxus_len(members) != 1
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

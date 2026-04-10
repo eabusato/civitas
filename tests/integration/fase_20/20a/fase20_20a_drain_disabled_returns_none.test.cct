@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase20_20a_drain_disabled_returns_none"
+
+ADVOCARE "../../../../lib/civitas/trace/trace_request.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/trace.cct"
+
+RITUALE main() REDDE REX
+  CONIURA instrument_disable()
+  CONIURA instrument_buffer_clear()
+  EVOCA SPECULUM NIHIL opt AD CONIURA trace_request_drain("disabled-trace")
+  SI NON CONIURA option_is_none GENUS(Trace)(opt)
+    CONIURA option_free GENUS(Trace)(opt)
+    REDDE 1
+  FIN SI
+  CONIURA option_free GENUS(Trace)(opt)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

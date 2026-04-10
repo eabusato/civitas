@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase14_14d_write_roundtrip"
+
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_loader.cct"
+ADVOCARE "../../../../lib/civitas/i18n_catalog_json/i18n_catalog_json_writer.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM raw AD "{\"locale\":\"en-US\",\"entries\":{\"nav.home\":\"Home\"}}"
+  EVOCA JsonCatalog cat AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(CONIURA i18n_json_parse(raw))
+  EVOCA VERBUM out AD CONIURA i18n_json_write(cat)
+  EVOCA JsonCatalog reparsed AD CONIURA result_unwrap GENUS(JsonCatalog, VERBUM)(CONIURA i18n_json_parse(out))
+  SI CONIURA compare(reparsed.locale, "en-US") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(reparsed.entradas) != 1
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

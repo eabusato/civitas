@@ -1,0 +1,34 @@
+INCIPIT grimoire "fase9_9b_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase9_9b_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase9_tmp_dir(CONIURA concat("9b_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase9_9b_prepare_files(VERBUM root) REDDE VERBUM
+  EVOCA VERBUM static_root AD CONIURA path_join(root, "static")
+  EVOCA VERBUM css_dir AD CONIURA path_join(static_root, "css")
+  EVOCA VERBUM img_dir AD CONIURA path_join(static_root, "img")
+  CONIURA phase9_reset_dir(root)
+  CONIURA mkdir_all(css_dir)
+  CONIURA mkdir_all(img_dir)
+  CONIURA write_all(CONIURA path_join(css_dir, "app.css"), "body { color: red; }\n")
+  CONIURA write_all(CONIURA path_join(img_dir, "logo.svg"), "<svg></svg>\n")
+  REDDE static_root
+EXPLICIT RITUALE
+
+RITUALE phase9_9b_index_prod(VERBUM static_root) REDDE StaticIndex
+  REDDE CONIURA static_index_build(CONIURA static_config_new(static_root, "/static/", SmProducao))
+EXPLICIT RITUALE
+
+RITUALE phase9_9b_index_dev(VERBUM static_root) REDDE StaticIndex
+  REDDE CONIURA static_index_build(CONIURA static_config_new(static_root, "/static/", SmDesenvolvimento))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

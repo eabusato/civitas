@@ -1,0 +1,88 @@
+INCIPIT grimoire "civitas_authorship_review"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "authorship.cct"
+
+RITUALE authorship_review_ensure_schema(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS civitas_reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, object_type TEXT NOT NULL, object_id INTEGER NOT NULL, reviewer_id TEXT NOT NULL, reviewer_name TEXT NOT NULL, state INTEGER NOT NULL, notes TEXT NOT NULL, reviewed_at INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_civitas_reviews_pending ON civitas_reviews(object_type, state)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_from_stmt(SPECULUM NIHIL stmt) REDDE ReviewRecord
+  EVOCA ReviewRecord review
+  VINCIRE review.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE review.object_type AD CONIURA stmt_get_text(stmt, 1)
+  VINCIRE review.object_id AD CONIURA stmt_get_int(stmt, 2)
+  VINCIRE review.reviewer_id AD CONIURA stmt_get_text(stmt, 3)
+  VINCIRE review.reviewer_name AD CONIURA stmt_get_text(stmt, 4)
+  VINCIRE review.state AD CONIURA review_state_from_int(CONIURA stmt_get_int(stmt, 5))
+  VINCIRE review.notes AD CONIURA stmt_get_text(stmt, 6)
+  VINCIRE review.reviewed_at AD CONIURA stmt_get_int(stmt, 7)
+  REDDE review
+EXPLICIT RITUALE
+
+RITUALE review_save_state(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM reviewer_id, VERBUM reviewer_name, ReviewState state, VERBUM notes) REDDE NIHIL
+  CONIURA authorship_review_ensure_schema(db)
+  EVOCA SPECULUM NIHIL del_stmt AD CONIURA db_prepare(db, "DELETE FROM civitas_reviews WHERE object_type = ? AND object_id = ?")
+  CONIURA stmt_bind_text(del_stmt, 1, object_type)
+  CONIURA stmt_bind_int(del_stmt, 2, object_id)
+  CONIURA stmt_step(del_stmt)
+  CONIURA stmt_finalize(del_stmt)
+  EVOCA SPECULUM NIHIL ins_stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_reviews (object_type, object_id, reviewer_id, reviewer_name, state, notes, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(ins_stmt, 1, object_type)
+  CONIURA stmt_bind_int(ins_stmt, 2, object_id)
+  CONIURA stmt_bind_text(ins_stmt, 3, reviewer_id)
+  CONIURA stmt_bind_text(ins_stmt, 4, reviewer_name)
+  CONIURA stmt_bind_int(ins_stmt, 5, CONIURA review_state_to_int(state))
+  CONIURA stmt_bind_text(ins_stmt, 6, notes)
+  CONIURA stmt_bind_int(ins_stmt, 7, CONIURA authorship_now())
+  CONIURA stmt_step(ins_stmt)
+  CONIURA stmt_finalize(ins_stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_approve(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM reviewer_id, VERBUM reviewer_name, VERBUM notes) REDDE NIHIL
+  CONIURA review_save_state(db, object_type, object_id, reviewer_id, reviewer_name, RsApproved, notes)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_reject(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM reviewer_id, VERBUM reviewer_name, VERBUM notes) REDDE NIHIL
+  CONIURA review_save_state(db, object_type, object_id, reviewer_id, reviewer_name, RsRejected, notes)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_needs_revision(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM reviewer_id, VERBUM reviewer_name, VERBUM notes) REDDE NIHIL
+  CONIURA review_save_state(db, object_type, object_id, reviewer_id, reviewer_name, RsNeedsRevision, notes)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE review_get(SPECULUM NIHIL db, VERBUM object_type, REX object_id) REDDE ReviewRecord
+  EVOCA ReviewRecord review AD CONIURA review_record_default()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, object_type, object_id, reviewer_id, reviewer_name, state, notes, reviewed_at FROM civitas_reviews WHERE object_type = ? AND object_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE review AD CONIURA review_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE review
+EXPLICIT RITUALE
+
+RITUALE review_list_pending(SPECULUM NIHIL db, VERBUM object_type) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(ReviewRecord))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, object_type, object_id, reviewer_id, reviewer_name, state, notes, reviewed_at FROM civitas_reviews WHERE object_type = ? AND state IN (0, 1) ORDER BY reviewed_at")
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA ReviewRecord review AD CONIURA review_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM review)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

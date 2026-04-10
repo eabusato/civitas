@@ -1,0 +1,74 @@
+INCIPIT grimoire "fase20_20d_mixed_flow"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_cache.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_sql.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_storage.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_task.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase20_reset_root("20d_mixed_flow")
+  EVOCA VERBUM db_path AD CONIURA path_join(root, "flow.db")
+  EVOCA VERBUM out_dir AD CONIURA path_join(root, "out")
+  EVOCA VERBUM out_file AD CONIURA path_join(out_dir, "artifact.txt")
+  CONIURA mkdir_all(out_dir)
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(db_path)
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+
+  EVOCA REX root_span AD CONIURA instrument_http_span("POST", "/editorial/publish")
+  CONIURA trace_sql_exec(db, "create", "jobs", "CREATE TABLE jobs(id INTEGER PRIMARY KEY, status TEXT);")
+  CONIURA trace_sql_exec(db, "insert", "jobs", "INSERT INTO jobs(id, status) VALUES (1, 'queued');")
+  EVOCA REX cache_span AD CONIURA trace_cache_begin("get", "editorial:home")
+  CONIURA trace_cache_mark_hit(cache_span, FALSUM)
+  CONIURA trace_cache_end(cache_span)
+  CONIURA trace_storage_write(out_file, "artifact", "local")
+  EVOCA REX task_span AD CONIURA trace_task_enqueue_begin("editorial.publish", "critical")
+  CONIURA trace_task_enqueue_end(task_span, "task-20")
+  CONIURA instrument_span_end(root_span)
+
+  SI NON CONIURA exists(out_file)
+    CONIURA db_close(db)
+    CONIURA instrument_disable()
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM jobs;") != 1
+    CONIURA db_close(db)
+    CONIURA instrument_disable()
+    REDDE 2
+  FIN SI
+
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace("trace-20d-mixed")
+  SI CONIURA trace_root_span_count(trace) != 1
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA db_close(db)
+    CONIURA instrument_disable()
+    REDDE 3
+  FIN SI
+  EVOCA Span root_trace_span AD CONIURA trace_get_span(trace, 0)
+  SI CONIURA compare(root_trace_span.name, "POST /editorial/publish") != 0
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA db_close(db)
+    CONIURA instrument_disable()
+    REDDE 4
+  FIN SI
+  SI CONIURA trace_child_span_count(trace, root_trace_span.span_id) != 5
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA db_close(db)
+    CONIURA instrument_disable()
+    REDDE 5
+  FIN SI
+
+  CONIURA trace_free(SPECULUM trace)
+  CONIURA db_close(db)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

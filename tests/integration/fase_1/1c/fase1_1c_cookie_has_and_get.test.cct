@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase1_1c_cookie_has_and_get_test"
+
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/option.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL jar AD CONIURA cookie_parse_header("sid=42")
+  SI NON CONIURA cookie_has(jar, "sid")
+    REDDE 1
+  FIN SI
+  SI CONIURA cookie_has(jar, "missing")
+    REDDE 2
+  FIN SI
+  SI CONIURA option_is_none GENUS(VERBUM)(CONIURA cookie_get(jar, "sid"))
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

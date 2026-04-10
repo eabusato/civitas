@@ -1,0 +1,42 @@
+INCIPIT grimoire "civitas_search_registry"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/db_postgres_search.cct"
+ADVOCARE "search.cct"
+
+RITUALE search_registry_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, SearchIndex)()
+EXPLICIT RITUALE
+
+RITUALE search_registry_add(SPECULUM NIHIL registry, SearchIndex idx) REDDE SPECULUM NIHIL
+  SI CONIURA fluxus_len(idx.fields) == 0
+    REDDE CONIURA Err GENUS(VERUM, VERBUM)("search_registry_add: fields cannot be empty")
+  FIN SI
+  SI CONIURA map_contains GENUS(VERBUM, SearchIndex)(registry, idx.object_type)
+    REDDE CONIURA Err GENUS(VERUM, VERBUM)("search_registry_add: duplicate object_type")
+  FIN SI
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(idx.fields)
+  DUM i < n
+    EVOCA SPECULUM SearchField field AD CONIURA fluxus_get(idx.fields, i)
+    SI NON CONIURA pg_search_weight_valid((*field).weight)
+      REDDE CONIURA Err GENUS(VERUM, VERBUM)("search_registry_add: invalid weight")
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA map_insert GENUS(VERBUM, SearchIndex)(registry, idx.object_type, idx)
+  REDDE CONIURA Ok GENUS(VERUM, VERBUM)(VERUM)
+EXPLICIT RITUALE
+
+RITUALE search_registry_get(SPECULUM NIHIL registry, VERBUM object_type) REDDE SPECULUM NIHIL
+  REDDE CONIURA map_get GENUS(VERBUM, SearchIndex)(registry, object_type)
+EXPLICIT RITUALE
+
+RITUALE search_registry_list_types(SPECULUM NIHIL registry) REDDE SPECULUM NIHIL
+  REDDE CONIURA map_keys GENUS(VERBUM, SearchIndex)(registry)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

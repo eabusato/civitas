@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase19_19c_serializer_schema"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "../../../../lib/civitas/openapi/openapi.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_serializer_schema() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19c_serializer_schema")
+  EVOCA SPECULUM SerializerConfig post_ptr AD CONIURA phase19_get_post_serializer(stack.serializers)
+  EVOCA Json read_schema AD CONIURA openapi_serializer_to_schema(stack.serializers, *post_ptr, FALSUM)
+  EVOCA Json write_schema AD CONIURA openapi_serializer_to_schema(stack.serializers, *post_ptr, VERUM)
+  EVOCA VERBUM read_json AD CONIURA json_stringify(read_schema)
+  EVOCA VERBUM write_json AD CONIURA json_stringify(write_schema)
+  SI CONIURA find(read_json, "\"author\":{\"$ref\":\"#/components/schemas/UserSerializer\"}") == -1
+    IACE "nested read ref missing"
+  FIN SI
+  SI CONIURA find(write_json, "\"author\":{\"$ref\":\"#/components/schemas/UserSerializerInput\"}") == -1
+    IACE "nested write ref missing"
+  FIN SI
+  SI CONIURA find(read_json, "\"body\"") != -1
+    IACE "write-only field should not appear in read schema"
+  FIN SI
+  SI CONIURA find(write_json, "\"id\"") != -1
+    IACE "read-only field should not appear in write schema"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_serializer_schema()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

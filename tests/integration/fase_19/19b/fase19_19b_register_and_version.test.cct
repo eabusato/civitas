@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase19_19b_register_and_version"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_register_and_version_extract() REDDE NIHIL
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA ApiViewSetRegistry reg
+  EVOCA ApiViewConfig cfg
+  EVOCA ViewSetConfig viewset
+  CONIURA api_viewset_registry_init(SPECULUM reg)
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  CONIURA api_view_config_add_filter_field(SPECULUM cfg, "title")
+  CONIURA api_view_config_add_order_field(SPECULUM cfg, "published_at")
+  CONIURA api_viewset_config_init(SPECULUM viewset, "posts", "/api/v1/posts", "v1", SPECULUM cfg)
+  CONIURA api_viewset_register(SPECULUM router, SPECULUM reg, viewset)
+  SI CONIURA api_viewset_registry_len(SPECULUM reg) != 1
+    IACE "viewset registry len mismatch"
+  FIN SI
+  SI NON CONIURA router_has_named_route(router, "posts.list")
+    IACE "missing posts.list route"
+  FIN SI
+  SI NON CONIURA router_has_named_route(router, "posts.delete")
+    IACE "missing posts.delete route"
+  FIN SI
+  EVOCA WebRequest req AD CONIURA phase19_request("GET", "/api/v1/posts", "")
+  SI CONIURA compare(CONIURA api_version_extract(req), "v1") != 0
+    IACE "path version extract mismatch"
+  FIN SI
+  EVOCA WebRequest accept_req AD CONIURA phase19_request_with_accept("GET", "/posts", "", "application/vnd.civitas.v2+json")
+  SI CONIURA compare(CONIURA api_version_extract(accept_req), "v2") != 0
+    IACE "accept version extract mismatch"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_register_and_version_extract()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

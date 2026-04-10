@@ -1,0 +1,120 @@
+INCIPIT grimoire "civitas_template_extras_assets"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../core/storage_settings.cct"
+
+RITUALE asset_registry_new() REDDE SPECULUM NIHIL
+  REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE asset_registry_find_key(SPECULUM NIHIL asset_registry, VERBUM path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(asset_registry)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, path) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE asset_registry_set(SPECULUM NIHIL asset_registry, VERBUM path, VERBUM public_url) REDDE NIHIL
+  EVOCA VERBUM cleaned AD CONIURA trim(path)
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA asset_registry_find_key(asset_registry, cleaned)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(asset_registry, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt), public_url)
+    REDDE
+  FIN SI
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(asset_registry, cleaned, public_url)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assets_normalize_public_path(VERBUM path) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(path)
+  SI CONIURA len(cleaned) == 0
+    REDDE ""
+  FIN SI
+  SI CONIURA starts_with(cleaned, "http://") VEL CONIURA starts_with(cleaned, "https://") VEL CONIURA starts_with(cleaned, "/")
+    REDDE cleaned
+  FIN SI
+  REDDE CONIURA concat("/", cleaned)
+EXPLICIT RITUALE
+
+RITUALE static_url(SPECULUM NIHIL asset_registry, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(path)
+  EVOCA SPECULUM NIHIL mapped_opt AD CONIURA None GENUS(VERBUM)()
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA None GENUS(VERBUM)()
+
+  SI CONIURA len(cleaned) == 0
+    REDDE "/static/"
+  FIN SI
+  SI CONIURA starts_with(cleaned, "http://") VEL CONIURA starts_with(cleaned, "https://") VEL CONIURA starts_with(cleaned, "/")
+    REDDE cleaned
+  FIN SI
+
+  VINCIRE stored_key_opt AD CONIURA asset_registry_find_key(asset_registry, cleaned)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    VINCIRE mapped_opt AD CONIURA map_get GENUS(VERBUM, VERBUM)(asset_registry, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt))
+    SI CONIURA option_is_some GENUS(VERBUM)(mapped_opt)
+      REDDE CONIURA option_unwrap GENUS(VERBUM)(mapped_opt)
+    FIN SI
+  FIN SI
+
+  REDDE CONIURA concat("/static/", cleaned)
+EXPLICIT RITUALE
+
+RITUALE static_url_or_passthrough(SPECULUM NIHIL asset_registry, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM cleaned AD CONIURA trim(path)
+  EVOCA SPECULUM NIHIL mapped_opt AD CONIURA None GENUS(VERBUM)()
+  EVOCA SPECULUM NIHIL stored_key_opt AD CONIURA None GENUS(VERBUM)()
+
+  SI CONIURA len(cleaned) == 0
+    REDDE ""
+  FIN SI
+  SI CONIURA starts_with(cleaned, "http://") VEL CONIURA starts_with(cleaned, "https://") VEL CONIURA starts_with(cleaned, "/")
+    REDDE cleaned
+  FIN SI
+
+  VINCIRE stored_key_opt AD CONIURA asset_registry_find_key(asset_registry, cleaned)
+  SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+    VINCIRE mapped_opt AD CONIURA map_get GENUS(VERBUM, VERBUM)(asset_registry, CONIURA option_unwrap GENUS(VERBUM)(stored_key_opt))
+    SI CONIURA option_is_some GENUS(VERBUM)(mapped_opt)
+      REDDE CONIURA option_unwrap GENUS(VERBUM)(mapped_opt)
+    FIN SI
+  FIN SI
+
+  REDDE cleaned
+EXPLICIT RITUALE
+
+RITUALE media_url(SPECULUM NIHIL media_config, VERBUM path) REDDE VERBUM
+  EVOCA SPECULUM StorageSettings cfg AD media_config
+  EVOCA VERBUM cleaned AD CONIURA trim(path)
+  EVOCA VERBUM base AD CONIURA trim((*cfg).public_base_url)
+
+  SI CONIURA len(cleaned) == 0
+    REDDE base
+  FIN SI
+  SI CONIURA starts_with(cleaned, "http://") VEL CONIURA starts_with(cleaned, "https://")
+    REDDE cleaned
+  FIN SI
+  SI CONIURA len(base) == 0
+    REDDE CONIURA assets_normalize_public_path(cleaned)
+  FIN SI
+  SI CONIURA ends_with(base, "/") ET CONIURA starts_with(cleaned, "/")
+    REDDE CONIURA concat(CONIURA substring(base, 0, CONIURA len(base) - 1), cleaned)
+  FIN SI
+  SI NON CONIURA ends_with(base, "/") ET NON CONIURA starts_with(cleaned, "/")
+    REDDE CONIURA concat(CONIURA concat(base, "/"), cleaned)
+  FIN SI
+  REDDE CONIURA concat(base, cleaned)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

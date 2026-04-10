@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase7_7c_textarea_select_checkbox_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA FormDef def AD CONIURA form_def_new("/perfil", CONIURA phase7_render_csrf("token"))
+  EVOCA FieldDef bio AD CONIURA field_def_new("bio", "Bio", IkTextarea)
+  EVOCA FieldDef pais AD CONIURA field_def_new("pais", "Pais", IkSelect)
+  EVOCA FieldDef aceito AD CONIURA field_def_new("aceito", "Aceito os termos", IkCheckbox)
+  EVOCA VERBUM html
+
+  CONIURA form_data_put_text(SPECULUM fd, "bio", "Linha 1")
+  CONIURA form_data_put_text(SPECULUM fd, "pais", "PT")
+  CONIURA form_data_put_text(SPECULUM fd, "aceito", "on")
+  CONIURA field_def_add_option(SPECULUM pais, "BR", "Brasil")
+  CONIURA field_def_add_option(SPECULUM pais, "PT", "Portugal")
+  CONIURA form_def_add_field(SPECULUM def, bio)
+  CONIURA form_def_add_field(SPECULUM def, pais)
+  CONIURA form_def_add_field(SPECULUM def, aceito)
+  VINCIRE html AD CONIURA render_form(def, vr, fd)
+
+  SI CONIURA find(html, "<textarea") == -1 VEL CONIURA find(html, ">Linha 1</textarea>") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "option value=\"PT\" selected=\"selected\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA count_occurrences(html, "name=\"aceito\"") < 2
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "type=\"checkbox\"") == -1 VEL CONIURA find(html, "checked=\"checked\"") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

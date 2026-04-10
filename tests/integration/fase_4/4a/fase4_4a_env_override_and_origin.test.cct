@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase4_4a_env_override_and_origin_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4a_tmp_dir("4a_env_override")
+  EVOCA SPECULUM NIHIL envs AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM value_out AD ""
+  EVOCA VERBUM origin_out AD ""
+  EVOCA VERBUM pair
+
+  CONIURA phase4_4a_reset_dir(root)
+  CONIURA phase4_4a_write(
+    CONIURA path_join(root, "civitas.toml"),
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"localhost\"]\n\n[http]\nport = 8080\n"
+  )
+
+  VINCIRE pair AD "CIVITAS_HTTP__PORT=9099"
+  CONIURA fluxus_push(envs, SPECULUM pair)
+  VINCIRE value_out AD CONIURA phase4_4a_run_probe(root, root, "development", "get_rex", "http.port", envs)
+  VINCIRE origin_out AD CONIURA phase4_4a_run_probe(root, root, "development", "origin", "http.port", envs)
+
+  SI CONIURA compare(CONIURA trim(value_out), "9099") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA trim(origin_out), "env") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase18_18c_computed_fields"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_computed.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_list.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_computed_fields_apply() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18c_computed")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Alpha", "draft", "u1", 1000)
+  CONIURA phase18_insert_post(stack.db, "Beta", "published", "u2", 1001)
+  EVOCA AdminComputedRegistry registry AD CONIURA admin_computed_registry_new()
+  CONIURA admin_computed_schema_up(stack.dbh)
+  CONIURA admin_computed_register_raw(SPECULUM registry, stack.dbh, "Post", "summary", "Summary")
+  EVOCA AdminListQuery query AD CONIURA admin_list_query_default()
+  VINCIRE query.page_size AD 10
+  EVOCA AdminListResult result AD CONIURA admin_list(*cfg_ptr, stack.dbh, query)
+  EVOCA VERBUM applied_json AD CONIURA admin_computed_apply_rows(registry, "Post", result.rows_json)
+  SI CONIURA find(applied_json, "\"summary\":\"Alpha:draft\"") == -1
+    IACE "computed field missing on first row"
+  FIN SI
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT COUNT(*) FROM admin_computed_fields", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "computed field registry missing"
+  FIN SI
+  SI CONIURA dbrows_get_int(rows, 0) != 1
+    IACE "computed field table count mismatch"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_computed_fields_apply()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,282 @@
+INCIPIT grimoire "civitas_cache_query"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../cache/cache.cct"
+ADVOCARE "../cache/cache_api.cct"
+ADVOCARE "../cache/cache_redis.cct"
+ADVOCARE "../model/model.cct"
+ADVOCARE "../query/query.cct"
+
+SIGILLUM CacheQueryTableMem
+  tabela: VERBUM
+  keys: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheQueryRegisteredTable
+  tabela: VERBUM
+FIN SIGILLUM
+
+SIGILLUM CacheQuery
+  handle: SPECULUM NIHIL
+  ttl_padrao: REX
+  namespace: VERBUM
+  tabelas_index: SPECULUM NIHIL
+  registered_tables: SPECULUM NIHIL
+  logger: SPECULUM NIHIL
+FIN SIGILLUM
+
+RITUALE cache_query_new(SPECULUM NIHIL ch, REX ttl_padrao, VERBUM namespace, SPECULUM NIHIL logger) REDDE CacheQuery
+  EVOCA CacheQuery cq
+  VINCIRE cq.handle AD ch
+  VINCIRE cq.ttl_padrao AD ttl_padrao
+  VINCIRE cq.namespace AD namespace
+  VINCIRE cq.tabelas_index AD CONIURA fluxus_init(MENSURA(CacheQueryTableMem))
+  VINCIRE cq.registered_tables AD CONIURA fluxus_init(MENSURA(CacheQueryRegisteredTable))
+  VINCIRE cq.logger AD logger
+  REDDE cq
+EXPLICIT RITUALE
+
+RITUALE cache_query_field_kind_name(FieldKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS FkInt:
+      REDDE "int"
+    CASUS FkText:
+      REDDE "text"
+    CASUS FkReal:
+      REDDE "real"
+    CASUS FkBool:
+      REDDE "bool"
+    CASUS FkDate:
+      REDDE "date"
+    CASUS FkDateTime:
+      REDDE "datetime"
+    CASUS FkUUID:
+      REDDE "uuid"
+    CASUS FkBlob:
+      REDDE "blob"
+    ALIOQUIN:
+      REDDE "text"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE cache_query_params_json(Query q) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(q.filtros)
+  DUM i < n
+    EVOCA SPECULUM QueryFilter f_ptr AD CONIURA fluxus_get(q.filtros, i)
+    SI i > 0
+      VINCIRE out AD CONIURA concat(out, "|")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, (*f_ptr).campo)
+    VINCIRE out AD CONIURA concat(out, ":")
+    VINCIRE out AD CONIURA concat(out, CONIURA query_filter_sql(*f_ptr))
+    VINCIRE out AD CONIURA concat(out, ":")
+    VINCIRE out AD CONIURA concat(out, CONIURA cache_query_field_kind_name((*f_ptr).kind))
+    VINCIRE out AD CONIURA concat(out, ":")
+    ELIGE (*f_ptr).kind
+      CASUS FkInt:
+        VINCIRE out AD CONIURA concat(out, CONIURA stringify_int((*f_ptr).valor_int))
+      CASUS FkBool:
+        VINCIRE out AD CONIURA concat(out, CONIURA stringify_int((*f_ptr).valor_int))
+      CASUS FkDateTime:
+        VINCIRE out AD CONIURA concat(out, CONIURA stringify_int((*f_ptr).valor_int))
+      CASUS FkReal:
+        VINCIRE out AD CONIURA concat(out, CONIURA stringify_real((*f_ptr).valor_real))
+      ALIOQUIN:
+        VINCIRE out AD CONIURA concat(out, (*f_ptr).valor_texto)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_query_chave(CacheQuery cq, VERBUM tabela, VERBUM sql, VERBUM params_json) REDDE VERBUM
+  EVOCA VERBUM chave AD CONIURA concat(cq.namespace, ":q:")
+  VINCIRE chave AD CONIURA concat(chave, tabela)
+  VINCIRE chave AD CONIURA concat(chave, ":")
+  VINCIRE chave AD CONIURA concat(chave, sql)
+  SI CONIURA len(params_json) > 0
+    VINCIRE chave AD CONIURA concat(chave, ":")
+    VINCIRE chave AD CONIURA concat(chave, params_json)
+  FIN SI
+  REDDE chave
+EXPLICIT RITUALE
+
+RITUALE cache_query_chave_contagem(CacheQuery cq, VERBUM tabela, VERBUM sql, VERBUM params_json) REDDE VERBUM
+  EVOCA VERBUM chave AD CONIURA concat(cq.namespace, ":cnt:")
+  VINCIRE chave AD CONIURA concat(chave, tabela)
+  VINCIRE chave AD CONIURA concat(chave, ":")
+  VINCIRE chave AD CONIURA concat(chave, sql)
+  SI CONIURA len(params_json) > 0
+    VINCIRE chave AD CONIURA concat(chave, ":")
+    VINCIRE chave AD CONIURA concat(chave, params_json)
+  FIN SI
+  REDDE chave
+EXPLICIT RITUALE
+
+RITUALE cache_query_get(CacheQuery cq, VERBUM chave) REDDE CacheMaybeText
+  EVOCA SPECULUM CacheHandle ch AD cq.handle
+  REDDE CONIURA cache_get(ch, chave)
+EXPLICIT RITUALE
+
+RITUALE cache_query_table_index_key(SPECULUM CacheQuery cq, VERBUM tabela) REDDE VERBUM
+  REDDE CONIURA concat((*cq).namespace, CONIURA concat(":tbl:", tabela))
+EXPLICIT RITUALE
+
+RITUALE cache_query_table_mem_add(SPECULUM CacheQuery cq, VERBUM tabela, VERBUM chave) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cq).tabelas_index)
+  DUM i < n
+    EVOCA SPECULUM CacheQueryTableMem bucket_ptr AD CONIURA fluxus_get((*cq).tabelas_index, i)
+    SI CONIURA compare((*bucket_ptr).tabela, tabela) == 0
+      SI CONIURA len((*bucket_ptr).keys) == 0
+        VINCIRE (*bucket_ptr).keys AD chave
+        REDDE
+      FIN SI
+      SI CONIURA find(CONIURA concat(CONIURA concat("\n", (*bucket_ptr).keys), "\n"), CONIURA concat(CONIURA concat("\n", chave), "\n")) != -1
+        REDDE
+      FIN SI
+      VINCIRE (*bucket_ptr).keys AD CONIURA concat(CONIURA concat((*bucket_ptr).keys, "\n"), chave)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA CacheQueryTableMem bucket
+  VINCIRE bucket.tabela AD tabela
+  VINCIRE bucket.keys AD chave
+  CONIURA fluxus_push((*cq).tabelas_index, SPECULUM bucket)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_query_set(SPECULUM CacheQuery cq, VERBUM chave, VERBUM tabela, VERBUM json_resultado, REX ttl) REDDE NIHIL
+  EVOCA SPECULUM CacheHandle ch AD (*cq).handle
+  CONIURA cache_set(ch, chave, json_resultado, ttl)
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    CONIURA redis_sadd(*redis_ptr, CONIURA cache_query_table_index_key(cq, tabela), chave)
+    REDDE
+  FIN SI
+  CONIURA cache_query_table_mem_add(cq, tabela, chave)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_query_invalidar_tabela(SPECULUM CacheQuery cq, VERBUM tabela) REDDE NIHIL
+  EVOCA SPECULUM CacheHandle ch AD (*cq).handle
+
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, CONIURA cache_query_table_index_key(cq, tabela))
+    SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+      EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+      EVOCA REX i AD 0
+      DUM i < CONIURA redis_text_list_len(list)
+        CONIURA cache_delete(ch, CONIURA redis_text_list_get(list, i))
+        VINCIRE i AD i + 1
+      FIN DUM
+    FIN SI
+    CONIURA redis_del(*redis_ptr, CONIURA cache_query_table_index_key(cq, tabela))
+    REDDE
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cq).tabelas_index)
+  DUM i < n
+    EVOCA SPECULUM CacheQueryTableMem bucket_ptr AD CONIURA fluxus_get((*cq).tabelas_index, i)
+    SI CONIURA compare((*bucket_ptr).tabela, tabela) == 0
+      EVOCA SPECULUM NIHIL keys AD CONIURA split((*bucket_ptr).keys, "\n")
+      EVOCA REX j AD 0
+      EVOCA REX m AD CONIURA fluxus_len(keys)
+      DUM j < m
+        EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, j)
+        SI CONIURA len(CONIURA trim(*key_ptr)) > 0
+          CONIURA cache_delete(ch, *key_ptr)
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+      CONIURA fluxus_remove((*cq).tabelas_index, i)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_query_table_count(SPECULUM CacheQuery cq, VERBUM tabela) REDDE REX
+  EVOCA SPECULUM CacheHandle ch AD (*cq).handle
+
+  SI (*ch).kind == CbRedis
+    EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+    EVOCA SPECULUM Redis redis_ptr AD (*red_ptr).redis_ptr
+    EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_ptr, CONIURA cache_query_table_index_key(cq, tabela))
+    SI CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+      REDDE 0
+    FIN SI
+    EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+    REDDE CONIURA redis_text_list_len(list)
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cq).tabelas_index)
+  DUM i < n
+    EVOCA SPECULUM CacheQueryTableMem bucket_ptr AD CONIURA fluxus_get((*cq).tabelas_index, i)
+    SI CONIURA compare((*bucket_ptr).tabela, tabela) == 0
+      SI CONIURA len((*bucket_ptr).keys) == 0
+        REDDE 0
+      FIN SI
+      EVOCA SPECULUM NIHIL keys AD CONIURA split((*bucket_ptr).keys, "\n")
+      EVOCA REX j AD 0
+      EVOCA REX count AD 0
+      EVOCA REX m AD CONIURA fluxus_len(keys)
+      DUM j < m
+        EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, j)
+        SI CONIURA len(CONIURA trim(*key_ptr)) > 0
+          VINCIRE count AD count + 1
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+      REDDE count
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE cache_query_registrar_invalidacao(SPECULUM CacheQuery cq, VERBUM tabela) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*cq).registered_tables)
+  DUM i < n
+    EVOCA SPECULUM CacheQueryRegisteredTable reg_ptr AD CONIURA fluxus_get((*cq).registered_tables, i)
+    SI CONIURA compare((*reg_ptr).tabela, tabela) == 0
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA CacheQueryRegisteredTable reg
+  VINCIRE reg.tabela AD tabela
+  CONIURA fluxus_push((*cq).registered_tables, SPECULUM reg)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_query_is_registered(CacheQuery cq, VERBUM tabela) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cq.registered_tables)
+  DUM i < n
+    EVOCA SPECULUM CacheQueryRegisteredTable reg_ptr AD CONIURA fluxus_get(cq.registered_tables, i)
+    SI CONIURA compare((*reg_ptr).tabela, tabela) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

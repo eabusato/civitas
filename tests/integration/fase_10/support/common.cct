@@ -1,0 +1,27 @@
+INCIPIT grimoire "fase10_support_common"
+
+ADVOCARE "../../fase_3/support/common.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase10_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_10/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase10_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase3_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase10_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase10_tmp_dir(test_name), "test.db")
+EXPLICIT RITUALE
+
+RITUALE phase10_db_open(VERBUM test_name) REDDE SPECULUM NIHIL
+  EVOCA VERBUM root AD CONIURA phase10_tmp_dir(test_name)
+  CONIURA phase10_reset_dir(root)
+  REDDE CONIURA db_open(CONIURA phase10_db_path(test_name))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

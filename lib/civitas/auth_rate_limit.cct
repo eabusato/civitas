@@ -1,0 +1,7 @@
+INCIPIT grimoire "civitas_auth_rate_limit_root"
+
+ADVOCARE "auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "auth_rate_limit/auth_rate_limit_schema.cct"
+ADVOCARE "auth_rate_limit/auth_rate_limit_check.cct"
+
+EXPLICIT grimoire

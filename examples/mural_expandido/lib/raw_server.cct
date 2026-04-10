@@ -1,0 +1,1204 @@
+INCIPIT grimoire "mural_expandido_raw_server"
+
+ADVOCARE "../../../lib/civitas/http/server.cct"
+ADVOCARE "../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/security.cct"
+ADVOCARE "../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../lib/civitas/validate/validate.cct"
+ADVOCARE "../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../lib/civitas/cookie.cct"
+ADVOCARE "../../../lib/civitas/trace/trace_request.cct"
+ADVOCARE "../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "../../../lib/civitas/trace_panel/trace_panel.cct"
+ADVOCARE "../../../lib/civitas/trace_render/trace_render.cct"
+ADVOCARE "../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "config.cct"
+ADVOCARE "repository.cct"
+ADVOCARE "state.cct"
+ADVOCARE "views.cct"
+ADVOCARE "web_runtime.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE muralx_http_request_from_web(WebRequest req, VERBUM target) REDDE HttpRequest
+  EVOCA HttpRequest out AD CONIURA http_request_with_body(req.method, target, req.body)
+  EVOCA REX headers_handle AD CONIURA http_request_headers_handle(out)
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(req.headers)
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(keys)
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA http_headers_set_or_push(headers_handle, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(req.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_http_body_kind(HttpResponse res) REDDE WebResponseBodyKind
+  EVOCA VERBUM ct AD CONIURA to_lower(CONIURA http_response_header(res, "content-type", ""))
+  SI CONIURA len(CONIURA http_response_body(res)) == 0
+    REDDE WEB_RESPONSE_EMPTY
+  FIN SI
+  SI CONIURA find(ct, "text/html") != -1
+    REDDE WEB_RESPONSE_HTML
+  FIN SI
+  SI CONIURA find(ct, "application/json") != -1
+    REDDE WEB_RESPONSE_JSON
+  FIN SI
+  REDDE WEB_RESPONSE_TEXT
+EXPLICIT RITUALE
+
+RITUALE muralx_web_response_from_http(HttpResponse res) REDDE WebResponse
+  EVOCA WebResponse out AD CONIURA response_new(CONIURA http_response_status(res))
+  VINCIRE out.body AD CONIURA http_response_body(res)
+  VINCIRE out.body_kind AD CONIURA muralx_http_body_kind(res)
+  EVOCA REX headers_handle AD CONIURA http_response_headers_handle(res)
+  EVOCA REX i AD 0
+  DUM i < CONIURA http_headers_len(headers_handle)
+    EVOCA SPECULUM HttpHeader hdr_ptr AD CONIURA http_headers_get_ptr(headers_handle, i)
+    CONIURA response_set_header(SPECULUM out, (*hdr_ptr).nome, (*hdr_ptr).valor)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_panel_target(VERBUM target) REDDE VERBUM
+  SI CONIURA starts_with(target, "/ops/traces")
+    REDDE CONIURA concat("/civitas/traces", CONIURA substring(target, CONIURA len("/ops/traces"), CONIURA len(target)))
+  FIN SI
+  REDDE target
+EXPLICIT RITUALE
+
+RITUALE muralx_shell_quote(VERBUM value) REDDE VERBUM
+  REDDE CONIURA concat("\"", CONIURA concat(CONIURA replace_all(value, "\"", "\\\""), "\""))
+EXPLICIT RITUALE
+
+RITUALE muralx_sigil_cache_dir(SPECULUM MuralExpandidoState state) REDDE VERBUM
+  SI CONIURA has_env("MURAL_EXPANDIDO_SIGIL_CACHE_DIR")
+    REDDE CONIURA muralx_resolve_path(CONIURA muralx_project_root(), CONIURA getenv("MURAL_EXPANDIDO_SIGIL_CACHE_DIR"))
+  FIN SI
+  REDDE CONIURA path_join(CONIURA path_dirname((*state).cfg.trace_dir), "live_sigils")
+EXPLICIT RITUALE
+
+RITUALE muralx_cct_bin_path() REDDE VERBUM
+  SI CONIURA has_env("MURAL_EXPANDIDO_CCT_BIN")
+    REDDE CONIURA getenv("MURAL_EXPANDIDO_CCT_BIN")
+  FIN SI
+  SI CONIURA has_env("CCT_BIN")
+    REDDE CONIURA getenv("CCT_BIN")
+  FIN SI
+  SI CONIURA run("command -v cct-host >/dev/null 2>&1") == 0
+    REDDE "cct-host"
+  FIN SI
+  SI CONIURA run("command -v cct >/dev/null 2>&1") == 0
+    REDDE "cct"
+  FIN SI
+  REDDE "cct-host"
+EXPLICIT RITUALE
+
+RITUALE muralx_app_sigil_path() REDDE VERBUM
+  SI CONIURA has_env("MURAL_EXPANDIDO_SIGIL_PATH")
+    REDDE CONIURA muralx_resolve_path(CONIURA muralx_project_root(), CONIURA getenv("MURAL_EXPANDIDO_SIGIL_PATH"))
+  FIN SI
+  REDDE CONIURA path_join(CONIURA muralx_project_root(), "main.sigil")
+EXPLICIT RITUALE
+
+RITUALE muralx_sigil_svg_cache_path(SPECULUM MuralExpandidoState state, VERBUM trace_id) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA muralx_sigil_cache_dir(state), CONIURA concat(trace_id, ".svg"))
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_render_config(SPECULUM MuralExpandidoState state) REDDE TraceRenderConfig
+  EVOCA TraceRenderConfig cfg AD CONIURA trace_render_default_config()
+  VINCIRE cfg.animate AD VERUM
+  VINCIRE cfg.animation_loop AD VERUM
+  VINCIRE cfg.hide_timeline AD VERUM
+  VINCIRE cfg.dark_mode AD FALSUM
+  VINCIRE cfg.strict AD FALSUM
+  VINCIRE cfg.sigil_view AD "routes"
+  VINCIRE cfg.cct_bin AD CONIURA muralx_cct_bin_path()
+  VINCIRE cfg.sigil_path AD CONIURA muralx_app_sigil_path()
+  VINCIRE cfg.work_dir AD CONIURA muralx_sigil_cache_dir(state)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE muralx_generate_real_sigil_svg(SPECULUM MuralExpandidoState state, VERBUM trace_id, VERBUM trace_path) REDDE VERUM
+  SI CONIURA len(trace_path) == 0 VEL NON CONIURA exists(trace_path)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM svg_path AD CONIURA muralx_sigil_svg_cache_path(state, trace_id)
+  EVOCA TraceRenderConfig cfg AD CONIURA muralx_trace_render_config(state)
+  SI NON CONIURA exists(cfg.cct_bin) VEL NON CONIURA exists(cfg.sigil_path)
+    REDDE FALSUM
+  FIN SI
+  CONIURA mkdir_all(CONIURA muralx_sigil_cache_dir(state))
+  EVOCA SPECULUM NIHIL rendered_res AD CONIURA trace_render_file(trace_path, cfg)
+  SI CONIURA result_is_err GENUS(TraceRenderResult, VERBUM)(rendered_res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA TraceRenderResult rendered AD CONIURA result_unwrap GENUS(TraceRenderResult, VERBUM)(rendered_res)
+  CONIURA write_all(svg_path, rendered.svg)
+  REDDE CONIURA exists(svg_path)
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_svg_body(SPECULUM MuralExpandidoState state, VERBUM trace_id, VERBUM file_path) REDDE VERBUM
+  EVOCA VERBUM svg_path AD CONIURA muralx_sigil_svg_cache_path(state, trace_id)
+  SI CONIURA len(file_path) == 0 VEL NON CONIURA exists(file_path)
+    REDDE ""
+  FIN SI
+  SI NON CONIURA exists(svg_path)
+    SI NON CONIURA muralx_generate_real_sigil_svg(state, trace_id, file_path)
+      REDDE ""
+    FIN SI
+  FIN SI
+  SI NON CONIURA exists(svg_path)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA read_all(svg_path)
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_svg_markup(SPECULUM MuralExpandidoState state, VERBUM trace_id, VERBUM file_path, VERUM large_mode) REDDE VERBUM
+  EVOCA VERBUM svg_text AD CONIURA muralx_trace_svg_body(state, trace_id, file_path)
+  EVOCA VERBUM class_attr AD "class=\"sigil-svg\""
+  SI CONIURA len(svg_text) == 0
+    REDDE "<div class=\"muted\">Trace SVG unavailable.</div>"
+  FIN SI
+  SI large_mode
+    VINCIRE class_attr AD "class=\"sigil-svg sigil-svg-large\""
+  FIN SI
+  REDDE CONIURA replace_all(svg_text, "<svg ", CONIURA concat("<svg ", CONIURA concat(class_attr, " ")))
+EXPLICIT RITUALE
+
+RITUALE muralx_recent_rendered_sigils(SPECULUM MuralExpandidoState state, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL source AD CONIURA muralx_repository_recent_sigils((*state).cfg, limit_count)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(MuralExpandidoRenderedSigil))
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(source)
+    EVOCA SPECULUM MuralExpandidoSigil sigil_ptr AD CONIURA fluxus_get(source, i)
+    EVOCA MuralExpandidoRenderedSigil item
+    VINCIRE item.sigil AD *sigil_ptr
+    VINCIRE item.svg_markup AD CONIURA muralx_trace_svg_markup(state, (*sigil_ptr).trace_id, (*sigil_ptr).file_path, FALSUM)
+    CONIURA fluxus_push(out, SPECULUM item)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_trace_export_response(SPECULUM MuralExpandidoState state) REDDE WebResponse
+  EVOCA VERBUM output_dir AD CONIURA path_join(CONIURA path_dirname((*state).cfg.trace_dir), "trace_exports")
+  EVOCA VERBUM archive_path AD CONIURA path_join(output_dir, "mural-expandido-sigilos.zip")
+  CONIURA mkdir_all(output_dir)
+  EVOCA TraceExportConfig cfg AD CONIURA trace_export_default_config(SPECULUM (*state).trace_store, output_dir, (*state).cfg.site_title)
+  VINCIRE cfg.render_cfg AD CONIURA muralx_trace_render_config(state)
+  EVOCA SPECULUM NIHIL export_res AD CONIURA trace_export_write_zip(cfg, archive_path)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(export_res)
+    REDDE CONIURA response_internal_error(CONIURA result_unwrap_err GENUS(REX, VERBUM)(export_res))
+  FIN SI
+  SI NON CONIURA exists(archive_path)
+    REDDE CONIURA response_internal_error("trace export archive was not created")
+  FIN SI
+  EVOCA WebResponse out AD CONIURA response_with_body(200, CONIURA read_all(archive_path), WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM out, "content-type", "application/zip")
+  CONIURA response_set_header(SPECULUM out, "content-disposition", "attachment; filename=\"mural-expandido-sigilos.zip\"")
+  CONIURA response_set_header(SPECULUM out, "cache-control", "no-store")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_request_headers_from_raw(SPECULUM NIHIL raw_headers) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_copy_string_map(raw_headers)
+EXPLICIT RITUALE
+
+RITUALE muralx_request_from_raw(HttpRawRequest raw_req) REDDE SPECULUM NIHIL
+  REDDE CONIURA request_build(
+    raw_req.method,
+    raw_req.target,
+    raw_req.version,
+    CONIURA muralx_request_headers_from_raw(raw_req.headers),
+    raw_req.body,
+    raw_req.client_ip,
+    raw_req.scheme,
+    raw_req.original_host,
+    raw_req.request_id,
+    raw_req.proxy_addr,
+    raw_req.remote_addr,
+    raw_req.local_addr
+  )
+EXPLICIT RITUALE
+
+RITUALE muralx_response_to_raw(WebResponse res, VERUM keep_alive) REDDE HttpRawResponse
+  EVOCA HttpRawResponse raw AD CONIURA http_server_response_new(res.status, res.body)
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(res.headers)
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(keys)
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA http_server_headers_set(raw.headers, *key_ptr, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, *key_ptr, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE i AD 0
+  DUM i < CONIURA fluxus_len(res.set_cookies)
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(res.set_cookies, i)
+    CONIURA http_server_headers_set(raw.headers, "set-cookie", CONIURA cookie_build_set(*cookie_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI CONIURA len(CONIURA http_server_headers_get_or(raw.headers, "content-type", "")) == 0
+    EVOCA VERBUM default_ct AD CONIURA response_body_kind_default_content_type(res.body_kind)
+    SI CONIURA len(default_ct) > 0
+      CONIURA http_server_headers_set(raw.headers, "content-type", default_ct)
+    FIN SI
+  FIN SI
+  -- The example runs on the synchronous Civitas HTTP server, which handles one
+  -- active connection at a time. For browsers this is much more stable when
+  -- every response closes cleanly instead of attempting keep-alive reuse.
+  CONIURA http_server_headers_set(raw.headers, "connection", "close")
+  VINCIRE raw.close_connection AD VERUM
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE muralx_raw_headify(HttpRawResponse raw) REDDE HttpRawResponse
+  SI NON CONIURA http_server_headers_has(raw.headers, "content-length")
+    CONIURA http_server_headers_set(raw.headers, "content-length", CONIURA stringify_int(CONIURA len(raw.body)))
+  FIN SI
+  VINCIRE raw.body AD ""
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE muralx_method_not_allowed(SPECULUM NIHIL methods) REDDE WebResponse
+  REDDE CONIURA response_method_not_allowed(methods)
+EXPLICIT RITUALE
+
+RITUALE muralx_methods2(VERBUM a, VERBUM b) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(out, SPECULUM a)
+  CONIURA fluxus_push(out, SPECULUM b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_methods1(VERBUM a) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(VERBUM))
+  CONIURA fluxus_push(out, SPECULUM a)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE muralx_redirect_back(WebRequest req, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL next_opt AD CONIURA request_query_first(req, "next")
+  SI CONIURA option_is_some GENUS(VERBUM)(next_opt)
+    EVOCA VERBUM next_path AD CONIURA option_unwrap GENUS(VERBUM)(next_opt)
+    EVOCA VERUM next_is_local AD CONIURA starts_with(next_path, "/")
+    EVOCA VERBUM next_copy AD ""
+    SI next_is_local
+      VINCIRE next_copy AD CONIURA concat("", next_path)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(next_opt)
+    SI next_is_local
+      REDDE next_copy
+    FIN SI
+  ALITER
+    CONIURA option_free GENUS(VERBUM)(next_opt)
+  FIN SI
+  EVOCA SPECULUM NIHIL ref_opt AD CONIURA request_header(req, "referer")
+  SI CONIURA option_is_some GENUS(VERBUM)(ref_opt)
+    EVOCA VERBUM ref AD CONIURA option_unwrap GENUS(VERBUM)(ref_opt)
+    EVOCA VERUM ref_is_local AD CONIURA starts_with(ref, "/")
+    EVOCA VERBUM ref_copy AD ""
+    SI ref_is_local
+      VINCIRE ref_copy AD CONIURA concat("", ref)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(ref_opt)
+    SI ref_is_local
+      REDDE ref_copy
+    FIN SI
+  ALITER
+    CONIURA option_free GENUS(VERBUM)(ref_opt)
+  FIN SI
+  REDDE fallback
+EXPLICIT RITUALE
+
+RITUALE muralx_require_admin(WebRequest req, MuralExpandidoConfig cfg) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL auth_res AD CONIURA request_basic_auth(req)
+  SI CONIURA result_is_err GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+    EVOCA WebResponse res AD CONIURA response_unauthorized("authorization required")
+    CONIURA response_set_header(SPECULUM res, "www-authenticate", "Basic realm=\"Mural Expandido admin-lite\"")
+    CONIURA response_set_header(SPECULUM res, "connection", "close")
+    REDDE CONIURA Err GENUS(REX, WebResponse)(res)
+  FIN SI
+  EVOCA WebRequestBasicAuth auth AD CONIURA result_unwrap GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+  SI CONIURA compare(auth.username, "admin") != 0 VEL CONIURA compare(auth.password, cfg.admin_secret) != 0
+    EVOCA WebResponse denied AD CONIURA response_unauthorized("authorization required")
+    CONIURA response_set_header(SPECULUM denied, "www-authenticate", "Basic realm=\"Mural Expandido admin-lite\"")
+    CONIURA response_set_header(SPECULUM denied, "connection", "close")
+    REDDE CONIURA Err GENUS(REX, WebResponse)(denied)
+  FIN SI
+  REDDE CONIURA Ok GENUS(REX, WebResponse)(0)
+EXPLICIT RITUALE
+
+RITUALE muralx_cache_key_home(VERBUM locale) REDDE VERBUM
+  REDDE CONIURA concat("home:", locale)
+EXPLICIT RITUALE
+
+RITUALE muralx_cache_key_api_posts(VERBUM locale) REDDE VERBUM
+  REDDE CONIURA concat("api:posts:", locale)
+EXPLICIT RITUALE
+
+RITUALE muralx_flush_public_cache(SPECULUM MuralExpandidoState state) REDDE NIHIL
+  ELIGE (*state).cache.kind
+    CASUS CbMemoria:
+      CONIURA cache_mem_flush((*state).cache.state)
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_cache_get(SPECULUM MuralExpandidoState state, VERBUM key) REDDE CacheMaybeText
+  ELIGE (*state).cache.kind
+    CASUS CbMemoria:
+      REDDE CONIURA cache_mem_get((*state).cache.state, key)
+    ALIOQUIN:
+      REDDE CONIURA cache_maybe_none()
+  FIN ELIGE
+  REDDE CONIURA cache_maybe_none()
+EXPLICIT RITUALE
+
+RITUALE muralx_cache_set(SPECULUM MuralExpandidoState state, VERBUM key, VERBUM value, REX ttl) REDDE NIHIL
+  ELIGE (*state).cache.kind
+    CASUS CbMemoria:
+      CONIURA cache_mem_set((*state).cache.state, key, value, ttl)
+    ALIOQUIN:
+      REDDE
+  FIN ELIGE
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_current_user(SPECULUM MuralExpandidoState state, SPECULUM Session sess) REDDE MuralExpandidoUserLookup
+  EVOCA REX user_id AD CONIURA muralx_session_user_id(sess)
+  SI user_id <= 0
+    REDDE CONIURA muralx_user_lookup_empty()
+  FIN SI
+  REDDE CONIURA muralx_repository_user_by_id((*state).cfg, user_id)
+EXPLICIT RITUALE
+
+RITUALE muralx_json_post(MuralExpandidoPost post) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "id", CONIURA json_num(cast GENUS(UMBRA)(post.id)))
+  CONIURA json_obj_push(obj, "slug", CONIURA json_str(post.slug))
+  CONIURA json_obj_push(obj, "title", CONIURA json_str(post.title))
+  CONIURA json_obj_push(obj, "excerpt", CONIURA json_str(post.excerpt))
+  CONIURA json_obj_push(obj, "body", CONIURA json_str(post.body))
+  CONIURA json_obj_push(obj, "cover_url", CONIURA json_str(post.cover_url))
+  CONIURA json_obj_push(obj, "video_url", CONIURA json_str(post.video_url))
+  CONIURA json_obj_push(obj, "author_handle", CONIURA json_str(post.author_handle))
+  CONIURA json_obj_push(obj, "author_display_name", CONIURA json_str(post.author_display_name))
+  CONIURA json_obj_push(obj, "locale", CONIURA json_str(post.locale))
+  CONIURA json_obj_push(obj, "tags_csv", CONIURA json_str(post.tags_csv))
+  CONIURA json_obj_push(obj, "comment_count", CONIURA json_num(cast GENUS(UMBRA)(post.comment_count)))
+  CONIURA json_obj_push(obj, "like_count", CONIURA json_num(cast GENUS(UMBRA)(post.like_count)))
+  CONIURA json_obj_push(obj, "love_count", CONIURA json_num(cast GENUS(UMBRA)(post.love_count)))
+  CONIURA json_obj_push(obj, "bookmark_count", CONIURA json_num(cast GENUS(UMBRA)(post.bookmark_count)))
+  CONIURA json_obj_push(obj, "view_count", CONIURA json_num(cast GENUS(UMBRA)(post.view_count)))
+  CONIURA json_obj_push(obj, "published_at_unix", CONIURA json_num(cast GENUS(UMBRA)(post.published_at_unix)))
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE muralx_json_comment(MuralExpandidoCommentItem item) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "id", CONIURA json_num(cast GENUS(UMBRA)(item.id)))
+  CONIURA json_obj_push(obj, "author_name", CONIURA json_str(item.author_name))
+  CONIURA json_obj_push(obj, "body", CONIURA json_str(item.body))
+  CONIURA json_obj_push(obj, "created_at_unix", CONIURA json_num(cast GENUS(UMBRA)(item.created_at_unix)))
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE muralx_api_posts_response(SPECULUM MuralExpandidoState state, VERBUM locale) REDDE WebResponse
+  EVOCA SPECULUM NIHIL posts AD CONIURA muralx_repository_recent_posts((*state).cfg, 20, "", 0)
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(posts)
+    EVOCA SPECULUM MuralExpandidoPost ptr AD CONIURA fluxus_get(posts, i)
+    CONIURA json_arr_push(arr, CONIURA muralx_json_post(*ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA response_json_text(CONIURA json_stringify(arr))
+EXPLICIT RITUALE
+
+RITUALE muralx_api_post_detail_response(SPECULUM MuralExpandidoState state, VERBUM slug, VERBUM actor_id, REX viewer_user_id) REDDE WebResponse
+  EVOCA MuralExpandidoPostLookup lookup AD CONIURA muralx_repository_post_by_slug((*state).cfg, slug, actor_id, viewer_user_id)
+  SI NON lookup.found
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA SPECULUM NIHIL comments AD CONIURA muralx_repository_list_approved_comments((*state).cfg, lookup.post.id, lookup.post.slug, lookup.post.title)
+  EVOCA Json obj AD CONIURA muralx_json_post(lookup.post)
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(comments)
+    EVOCA SPECULUM MuralExpandidoCommentItem ptr AD CONIURA fluxus_get(comments, i)
+    CONIURA json_arr_push(arr, CONIURA muralx_json_comment(*ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_obj_push(obj, "comments", arr)
+  REDDE CONIURA response_json_text(CONIURA json_stringify(obj))
+EXPLICIT RITUALE
+
+RITUALE muralx_home_response(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  VERBUM locale,
+  MuralExpandidoUserLookup current_user,
+  VERBUM flash_message,
+  FormData post_form,
+  ValidationResult post_vr
+) REDDE WebResponse
+  EVOCA VERBUM viewer_actor_id AD ""
+  EVOCA REX viewer_user_id AD 0
+  SI current_user.found
+    VINCIRE viewer_user_id AD current_user.user.id
+    VINCIRE viewer_actor_id AD CONIURA concat("user:", CONIURA stringify_int(current_user.user.id))
+  FIN SI
+  SI NON current_user.found ET CONIURA len(flash_message) == 0 ET post_vr.valido
+    EVOCA CacheMaybeText cached AD CONIURA muralx_cache_get(state, CONIURA muralx_cache_key_home(locale))
+    SI cached.found
+      REDDE CONIURA response_html(cached.valor)
+    FIN SI
+  FIN SI
+
+  EVOCA SPECULUM NIHIL posts AD CONIURA muralx_repository_recent_posts((*state).cfg, (*state).cfg.recent_limit, viewer_actor_id, viewer_user_id)
+  EVOCA VERBUM html AD CONIURA muralx_render_home(*state, static_index, locale, current_user, posts, flash_message, post_form, post_vr)
+  SI NON current_user.found ET CONIURA len(flash_message) == 0 ET post_vr.valido
+    CONIURA muralx_cache_set(state, CONIURA muralx_cache_key_home(locale), html, 30)
+  FIN SI
+  REDDE CONIURA response_html(html)
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_register(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale
+) REDDE WebResponse
+  SI CONIURA compare(req.method, "GET") == 0
+    REDDE CONIURA response_html(CONIURA muralx_render_auth_page(*state, static_index, locale, CONIURA muralx_current_user(state, sess), CONIURA muralx_flash_take(sess), "/registrar", CONIURA muralx_t(*state, locale, "auth.register_title"), CONIURA muralx_t(*state, locale, "auth.register_subtitle"), CONIURA muralx_blank_form(), CONIURA muralx_blank_validation(), VERUM))
+  FIN SI
+  SI CONIURA compare(req.method, "POST") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods2("GET", "POST"))
+  FIN SI
+  EVOCA FormData fd AD CONIURA muralx_decode_form(req.body)
+  EVOCA ValidationResult vr AD CONIURA validate_form(CONIURA muralx_register_schema(), fd)
+  SI NON vr.valido
+    EVOCA WebResponse invalid_res AD CONIURA response_html(CONIURA muralx_render_auth_page(*state, static_index, locale, CONIURA muralx_current_user(state, sess), "", "/registrar", CONIURA muralx_t(*state, locale, "auth.register_title"), CONIURA muralx_t(*state, locale, "auth.register_subtitle"), fd, vr, VERUM))
+    VINCIRE invalid_res.status AD 422
+    REDDE invalid_res
+  FIN SI
+  EVOCA MuralExpandidoCreateUser input
+  VINCIRE input.handle AD CONIURA form_data_get_or(fd, "handle", "")
+  VINCIRE input.display_name AD CONIURA form_data_get_or(fd, "display_name", "")
+  VINCIRE input.email AD CONIURA form_data_get_or(fd, "email", "")
+  VINCIRE input.password AD CONIURA form_data_get_or(fd, "password", "")
+  VINCIRE input.bio AD CONIURA form_data_get_or(fd, "bio", "")
+  VINCIRE input.avatar_url AD CONIURA form_data_get_or(fd, "avatar_url", "")
+  VINCIRE input.locale AD locale
+  VINCIRE input.is_admin AD FALSUM
+  EVOCA MuralExpandidoUserLookup created AD CONIURA muralx_repository_create_user((*state).cfg, input)
+  CONIURA muralx_session_set_user_id(sess, created.user.id)
+  CONIURA session_rotate_id(sess, (*state).session_store, (*state).session_cfg)
+  CONIURA muralx_flash_set(sess, "Welcome to the network.")
+  CONIURA muralx_flush_public_cache(state)
+  REDDE CONIURA response_redirect("/")
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_login(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale
+) REDDE WebResponse
+  SI CONIURA compare(req.method, "GET") == 0
+    REDDE CONIURA response_html(CONIURA muralx_render_auth_page(*state, static_index, locale, CONIURA muralx_current_user(state, sess), CONIURA muralx_flash_take(sess), "/entrar", CONIURA muralx_t(*state, locale, "auth.login_title"), CONIURA muralx_t(*state, locale, "auth.login_subtitle"), CONIURA muralx_blank_form(), CONIURA muralx_blank_validation(), FALSUM))
+  FIN SI
+  SI CONIURA compare(req.method, "POST") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods2("GET", "POST"))
+  FIN SI
+  EVOCA FormData fd AD CONIURA muralx_decode_form(req.body)
+  EVOCA ValidationResult vr AD CONIURA validate_form(CONIURA muralx_login_schema(), fd)
+  SI NON vr.valido
+    EVOCA WebResponse invalid_res AD CONIURA response_html(CONIURA muralx_render_auth_page(*state, static_index, locale, CONIURA muralx_current_user(state, sess), "", "/entrar", CONIURA muralx_t(*state, locale, "auth.login_title"), CONIURA muralx_t(*state, locale, "auth.login_subtitle"), fd, vr, FALSUM))
+    VINCIRE invalid_res.status AD 422
+    REDDE invalid_res
+  FIN SI
+  EVOCA MuralExpandidoUserLookup user_lookup AD CONIURA muralx_repository_authenticate((*state).cfg, CONIURA form_data_get_or(fd, "email", ""), CONIURA form_data_get_or(fd, "password", ""))
+  SI NON user_lookup.found
+    CONIURA validation_result_add_error(SPECULUM vr, "email", "Invalid email or password.")
+    EVOCA WebResponse bad_res AD CONIURA response_html(CONIURA muralx_render_auth_page(*state, static_index, locale, CONIURA muralx_current_user(state, sess), "", "/entrar", CONIURA muralx_t(*state, locale, "auth.login_title"), CONIURA muralx_t(*state, locale, "auth.login_subtitle"), fd, vr, FALSUM))
+    VINCIRE bad_res.status AD 422
+    REDDE bad_res
+  FIN SI
+  CONIURA muralx_session_set_user_id(sess, user_lookup.user.id)
+  CONIURA session_rotate_id(sess, (*state).session_store, (*state).session_cfg)
+  CONIURA muralx_flash_set(sess, "Signed in.")
+  REDDE CONIURA response_redirect("/")
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_logout(SPECULUM MuralExpandidoState state, WebRequest req, SPECULUM Session sess) REDDE WebResponse
+  SI CONIURA compare(req.method, "POST") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("POST"))
+  FIN SI
+  CONIURA muralx_session_set_user_id(sess, 0)
+  CONIURA session_clear(sess)
+  CONIURA muralx_flash_set(sess, "Signed out.")
+  REDDE CONIURA response_redirect("/")
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_create_post(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale
+) REDDE WebResponse
+  SI CONIURA compare(req.method, "POST") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("POST"))
+  FIN SI
+  EVOCA MuralExpandidoUserLookup current_user AD CONIURA muralx_current_user(state, sess)
+  SI NON current_user.found
+    CONIURA muralx_flash_set(sess, "Please sign in before publishing.")
+    REDDE CONIURA response_redirect("/entrar")
+  FIN SI
+  EVOCA FormData fd AD CONIURA muralx_decode_form(req.body)
+  EVOCA ValidationResult vr AD CONIURA validate_form(CONIURA muralx_post_schema(), fd)
+  SI NON vr.valido
+    EVOCA WebResponse invalid_res AD CONIURA muralx_home_response(state, static_index, locale, current_user, "", fd, vr)
+    VINCIRE invalid_res.status AD 422
+    REDDE invalid_res
+  FIN SI
+  EVOCA MuralExpandidoCreatePost input
+  VINCIRE input.author_id AD current_user.user.id
+  VINCIRE input.title AD CONIURA form_data_get_or(fd, "title", "")
+  VINCIRE input.excerpt AD CONIURA form_data_get_or(fd, "excerpt", "")
+  VINCIRE input.body AD CONIURA form_data_get_or(fd, "body", "")
+  VINCIRE input.cover_url AD CONIURA form_data_get_or(fd, "cover_url", "")
+  VINCIRE input.video_url AD CONIURA form_data_get_or(fd, "video_url", "")
+  VINCIRE input.locale AD locale
+  VINCIRE input.tags_csv AD CONIURA form_data_get_or(fd, "tags_csv", "")
+  EVOCA VERBUM slug AD CONIURA muralx_repository_create_post((*state).cfg, input)
+  CONIURA muralx_flash_set(sess, "Post published.")
+  CONIURA muralx_flush_public_cache(state)
+  REDDE CONIURA response_redirect(CONIURA concat("/posts/", slug))
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_profile(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale,
+  VERBUM handle
+) REDDE WebResponse
+  EVOCA MuralExpandidoUserLookup current_user AD CONIURA muralx_current_user(state, sess)
+  EVOCA REX viewer_user_id AD 0
+  EVOCA VERBUM viewer_actor_id AD ""
+  SI current_user.found
+    VINCIRE viewer_user_id AD current_user.user.id
+    VINCIRE viewer_actor_id AD CONIURA concat("user:", CONIURA stringify_int(current_user.user.id))
+  FIN SI
+  SI CONIURA compare(req.method, "POST") == 0
+    SI NON current_user.found
+      CONIURA muralx_flash_set(sess, "Please sign in before following creators.")
+      REDDE CONIURA response_redirect("/entrar")
+    FIN SI
+    EVOCA MuralExpandidoProfileLookup profile_lookup_mut AD CONIURA muralx_repository_profile_by_handle((*state).cfg, handle, current_user.user.id)
+    SI NON profile_lookup_mut.found
+      REDDE CONIURA response_not_found()
+    FIN SI
+    CONIURA muralx_repository_toggle_follow((*state).cfg, current_user.user.id, profile_lookup_mut.profile.user_id)
+    CONIURA muralx_flash_set(sess, "Follow graph updated.")
+    REDDE CONIURA response_redirect(CONIURA concat("/perfil/", handle))
+  FIN SI
+  SI CONIURA compare(req.method, "GET") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods2("GET", "POST"))
+  FIN SI
+  EVOCA MuralExpandidoProfileLookup profile_lookup AD CONIURA muralx_repository_profile_by_handle((*state).cfg, handle, viewer_user_id)
+  SI NON profile_lookup.found
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA SPECULUM NIHIL posts AD CONIURA muralx_repository_posts_by_author((*state).cfg, profile_lookup.profile.user_id, 24, viewer_actor_id, viewer_user_id)
+  REDDE CONIURA response_html(CONIURA muralx_render_profile_page(*state, static_index, locale, current_user, profile_lookup.profile, posts, CONIURA muralx_flash_take(sess)))
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_post_detail(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale,
+  VERBUM slug
+) REDDE WebResponse
+  EVOCA MuralExpandidoUserLookup current_user AD CONIURA muralx_current_user(state, sess)
+  EVOCA VERBUM actor_id AD CONIURA muralx_actor_id(sess)
+  EVOCA REX viewer_user_id AD 0
+  SI current_user.found
+    VINCIRE viewer_user_id AD current_user.user.id
+  FIN SI
+  SI CONIURA compare(req.method, "POST") == 0
+    SI NON current_user.found
+      CONIURA muralx_flash_set(sess, "Please sign in before commenting.")
+      REDDE CONIURA response_redirect("/entrar")
+    FIN SI
+    EVOCA FormData fd AD CONIURA muralx_decode_form(req.body)
+    EVOCA ValidationResult vr AD CONIURA validate_form(CONIURA muralx_comment_schema(), fd)
+    SI NON vr.valido
+      EVOCA MuralExpandidoPostLookup lookup_invalid AD CONIURA muralx_repository_post_by_slug((*state).cfg, slug, actor_id, current_user.user.id)
+      SI NON lookup_invalid.found
+        REDDE CONIURA response_not_found()
+      FIN SI
+      EVOCA SPECULUM NIHIL comments_invalid AD CONIURA muralx_repository_list_approved_comments((*state).cfg, lookup_invalid.post.id, lookup_invalid.post.slug, lookup_invalid.post.title)
+      EVOCA WebResponse invalid_res AD CONIURA response_html(CONIURA muralx_render_post_page(*state, static_index, locale, current_user, lookup_invalid.post, comments_invalid, "", fd, vr))
+      VINCIRE invalid_res.status AD 422
+      REDDE invalid_res
+    FIN SI
+    CONIURA muralx_repository_add_comment((*state).cfg, slug, current_user.user.display_name, current_user.user.email, CONIURA form_data_get_or(fd, "body", ""))
+    CONIURA muralx_flash_set(sess, "Comment sent for moderation.")
+    CONIURA muralx_flush_public_cache(state)
+    REDDE CONIURA response_redirect(CONIURA concat("/posts/", slug))
+  FIN SI
+  SI CONIURA compare(req.method, "GET") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods2("GET", "POST"))
+  FIN SI
+  CONIURA muralx_repository_increment_post_view((*state).cfg, slug)
+  EVOCA MuralExpandidoPostLookup lookup AD CONIURA muralx_repository_post_by_slug((*state).cfg, slug, actor_id, viewer_user_id)
+  SI NON lookup.found
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA SPECULUM NIHIL comments AD CONIURA muralx_repository_list_approved_comments((*state).cfg, lookup.post.id, lookup.post.slug, lookup.post.title)
+  REDDE CONIURA response_html(CONIURA muralx_render_post_page(*state, static_index, locale, current_user, lookup.post, comments, CONIURA muralx_flash_take(sess), CONIURA muralx_blank_form(), CONIURA muralx_blank_validation()))
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_reaction(
+  SPECULUM MuralExpandidoState state,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM slug,
+  VERBUM reaction_name
+) REDDE WebResponse
+  SI CONIURA compare(req.method, "POST") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("POST"))
+  FIN SI
+  CONIURA muralx_repository_toggle_reaction((*state).cfg, slug, CONIURA muralx_actor_id(sess), CONIURA muralx_reaction_kind_from_name(reaction_name))
+  CONIURA muralx_flush_public_cache(state)
+  REDDE CONIURA response_redirect(CONIURA concat("/posts/", slug))
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_locale(SPECULUM Session sess, WebRequest req, VERBUM locale) REDDE WebResponse
+  SI CONIURA compare(req.method, "GET") != 0
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+  FIN SI
+  CONIURA muralx_session_set_locale(sess, locale)
+  REDDE CONIURA response_redirect(CONIURA muralx_redirect_back(req, "/"))
+EXPLICIT RITUALE
+
+RITUALE muralx_extract_suffix(VERBUM path, VERBUM prefix) REDDE VERBUM
+  SI NON CONIURA starts_with(path, prefix)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(path, CONIURA len(prefix), CONIURA len(path))
+EXPLICIT RITUALE
+
+RITUALE muralx_comment_admin_id(VERBUM path, VERBUM suffix) REDDE SPECULUM NIHIL
+  EVOCA VERBUM prefix AD "/admin-lite/comments/"
+  SI NON CONIURA starts_with(path, prefix)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  SI NON CONIURA ends_with(path, suffix)
+    REDDE CONIURA None GENUS(REX)()
+  FIN SI
+  EVOCA VERBUM middle AD CONIURA substring(path, CONIURA len(prefix), CONIURA len(path) - CONIURA len(suffix))
+  REDDE CONIURA try_int(middle)
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_admin(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale
+) REDDE WebResponse
+  EVOCA SPECULUM NIHIL auth AD CONIURA muralx_require_admin(req, (*state).cfg)
+  SI CONIURA result_is_err GENUS(REX, WebResponse)(auth)
+    REDDE CONIURA result_unwrap_err GENUS(REX, WebResponse)(auth)
+  FIN SI
+  SI CONIURA compare(req.path, "/admin-lite") == 0 ET CONIURA compare(req.method, "GET") == 0
+    REDDE CONIURA response_html(CONIURA muralx_render_admin_page(*state, static_index, locale, CONIURA muralx_repository_stats((*state).cfg), CONIURA muralx_repository_list_pending_comments((*state).cfg), CONIURA muralx_flash_take(sess)))
+  FIN SI
+  SI CONIURA compare(req.path, "/admin-lite/cache/flush") == 0 ET CONIURA compare(req.method, "POST") == 0
+    CONIURA muralx_flush_public_cache(state)
+    CONIURA muralx_flash_set(sess, "Public cache flushed.")
+    REDDE CONIURA response_redirect("/admin-lite")
+  FIN SI
+  SI CONIURA compare(req.method, "POST") == 0 ET CONIURA ends_with(req.path, "/approve")
+    EVOCA SPECULUM NIHIL id_opt AD CONIURA muralx_comment_admin_id(req.path, "/approve")
+    SI CONIURA option_is_some GENUS(REX)(id_opt)
+      CONIURA muralx_repository_admin_approve_comment((*state).cfg, CONIURA option_unwrap GENUS(REX)(id_opt))
+      CONIURA option_free GENUS(REX)(id_opt)
+      CONIURA muralx_flash_set(sess, "Comment approved.")
+      CONIURA muralx_flush_public_cache(state)
+      REDDE CONIURA response_redirect("/admin-lite")
+    FIN SI
+    CONIURA option_free GENUS(REX)(id_opt)
+    REDDE CONIURA response_not_found()
+  FIN SI
+  SI CONIURA compare(req.method, "POST") == 0 ET CONIURA ends_with(req.path, "/reject")
+    EVOCA SPECULUM NIHIL id_opt2 AD CONIURA muralx_comment_admin_id(req.path, "/reject")
+    SI CONIURA option_is_some GENUS(REX)(id_opt2)
+      CONIURA muralx_repository_admin_reject_comment((*state).cfg, CONIURA option_unwrap GENUS(REX)(id_opt2))
+      CONIURA option_free GENUS(REX)(id_opt2)
+      CONIURA muralx_flash_set(sess, "Comment rejected.")
+      REDDE CONIURA response_redirect("/admin-lite")
+    FIN SI
+    CONIURA option_free GENUS(REX)(id_opt2)
+    REDDE CONIURA response_not_found()
+  FIN SI
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_ops(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess,
+  VERBUM locale
+) REDDE WebResponse
+  EVOCA SPECULUM NIHIL auth AD CONIURA muralx_require_admin(req, (*state).cfg)
+  SI CONIURA result_is_err GENUS(REX, WebResponse)(auth)
+    REDDE CONIURA result_unwrap_err GENUS(REX, WebResponse)(auth)
+  FIN SI
+  SI CONIURA compare(req.path, "/sigilos-vivos/export.zip") == 0 VEL CONIURA compare(req.path, "/ops/traces/export.zip") == 0
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    REDDE CONIURA muralx_trace_export_response(state)
+  FIN SI
+  SI CONIURA compare(req.path, "/ops/traces") == 0 VEL CONIURA starts_with(req.path, "/ops/traces/")
+    EVOCA TracePanelConfig panel_cfg AD CONIURA trace_panel_default_config(SPECULUM (*state).trace_store)
+    VINCIRE panel_cfg.render_cfg AD CONIURA muralx_trace_render_config(state)
+    EVOCA HttpRequest http_req AD CONIURA muralx_http_request_from_web(req, CONIURA muralx_trace_panel_target(req.raw_target))
+    REDDE CONIURA muralx_web_response_from_http(CONIURA trace_panel_handle(http_req, panel_cfg))
+  FIN SI
+  SI CONIURA compare(req.path, "/sigilos-vivos") == 0
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    REDDE CONIURA response_html(CONIURA muralx_render_traces_page(*state, static_index, locale, CONIURA muralx_recent_rendered_sigils(state, 30), CONIURA muralx_flash_take(sess)))
+  FIN SI
+  SI CONIURA starts_with(req.path, "/sigilos-vivos/") ET CONIURA ends_with(req.path, "/svg")
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    EVOCA VERBUM trace_id_svg AD CONIURA substring(CONIURA muralx_extract_suffix(req.path, "/sigilos-vivos/"), 0, CONIURA len(CONIURA muralx_extract_suffix(req.path, "/sigilos-vivos/")) - CONIURA len("/svg"))
+    EVOCA MuralExpandidoSigilLookup sigil_svg_lookup AD CONIURA muralx_repository_sigil_by_id((*state).cfg, trace_id_svg)
+    SI NON sigil_svg_lookup.found
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA VERBUM raw_svg AD CONIURA muralx_trace_svg_body(state, sigil_svg_lookup.sigil.trace_id, sigil_svg_lookup.sigil.file_path)
+    SI CONIURA len(raw_svg) == 0
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA WebResponse svg_res AD CONIURA response_with_body(200, raw_svg, WEB_RESPONSE_TEXT)
+    CONIURA response_set_header(SPECULUM svg_res, "content-type", "image/svg+xml; charset=utf-8")
+    REDDE svg_res
+  FIN SI
+  SI CONIURA starts_with(req.path, "/sigilos-vivos/")
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    EVOCA VERBUM trace_id AD CONIURA muralx_extract_suffix(req.path, "/sigilos-vivos/")
+    EVOCA MuralExpandidoSigilLookup sigil_lookup AD CONIURA muralx_repository_sigil_by_id((*state).cfg, trace_id)
+    SI NON sigil_lookup.found
+      REDDE CONIURA response_not_found()
+    FIN SI
+    EVOCA VERBUM raw_trace_text AD ""
+    SI CONIURA len(sigil_lookup.sigil.file_path) > 0 ET CONIURA exists(sigil_lookup.sigil.file_path)
+      VINCIRE raw_trace_text AD CONIURA read_all(sigil_lookup.sigil.file_path)
+    FIN SI
+    REDDE CONIURA response_html(CONIURA muralx_render_trace_detail_page(*state, static_index, locale, sigil_lookup.sigil, CONIURA muralx_trace_svg_markup(state, sigil_lookup.sigil.trace_id, sigil_lookup.sigil.file_path, VERUM), raw_trace_text))
+  FIN SI
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+RITUALE muralx_handle_dynamic(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  WebRequest req,
+  SPECULUM Session sess
+) REDDE WebResponse
+  EVOCA VERBUM locale AD CONIURA muralx_request_locale(req, sess, *state)
+  SI CONIURA compare(req.path, "/") == 0
+    SI CONIURA compare(req.method, "GET") == 0
+      REDDE CONIURA muralx_home_response(state, static_index, locale, CONIURA muralx_current_user(state, sess), CONIURA muralx_flash_take(sess), CONIURA muralx_blank_form(), CONIURA muralx_blank_validation())
+    FIN SI
+    REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+  FIN SI
+  SI CONIURA compare(req.path, "/registrar") == 0
+    REDDE CONIURA muralx_handle_register(state, static_index, req, sess, locale)
+  FIN SI
+  SI CONIURA compare(req.path, "/entrar") == 0
+    REDDE CONIURA muralx_handle_login(state, static_index, req, sess, locale)
+  FIN SI
+  SI CONIURA compare(req.path, "/sair") == 0
+    REDDE CONIURA muralx_handle_logout(state, req, sess)
+  FIN SI
+  SI CONIURA compare(req.path, "/posts") == 0
+    REDDE CONIURA muralx_handle_create_post(state, static_index, req, sess, locale)
+  FIN SI
+  SI CONIURA compare(req.path, "/api/posts") == 0
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    REDDE CONIURA muralx_api_posts_response(state, locale)
+  FIN SI
+  SI CONIURA starts_with(req.path, "/locale/")
+    REDDE CONIURA muralx_handle_locale(sess, req, CONIURA muralx_extract_suffix(req.path, "/locale/"))
+  FIN SI
+  SI CONIURA starts_with(req.path, "/perfil/")
+    EVOCA VERBUM tail_profile AD CONIURA muralx_extract_suffix(req.path, "/perfil/")
+    SI CONIURA ends_with(req.path, "/seguir")
+      REDDE CONIURA muralx_handle_profile(state, static_index, req, sess, locale, CONIURA substring(tail_profile, 0, CONIURA len(tail_profile) - CONIURA len("/seguir")))
+    FIN SI
+    REDDE CONIURA muralx_handle_profile(state, static_index, req, sess, locale, tail_profile)
+  FIN SI
+  SI CONIURA starts_with(req.path, "/posts/")
+    EVOCA VERBUM tail_post AD CONIURA muralx_extract_suffix(req.path, "/posts/")
+    SI CONIURA ends_with(req.path, "/comentarios")
+      REDDE CONIURA muralx_handle_post_detail(state, static_index, req, sess, locale, CONIURA substring(tail_post, 0, CONIURA len(tail_post) - CONIURA len("/comentarios")))
+    FIN SI
+    SI CONIURA starts_with(tail_post, "") ET CONIURA find(tail_post, "/reagir/") != -1
+      EVOCA REX cut AD CONIURA find(tail_post, "/reagir/")
+      EVOCA VERBUM slug AD CONIURA substring(tail_post, 0, cut)
+      EVOCA VERBUM reaction_name AD CONIURA substring(tail_post, cut + CONIURA len("/reagir/"), CONIURA len(tail_post))
+      REDDE CONIURA muralx_handle_reaction(state, req, sess, slug, reaction_name)
+    FIN SI
+    REDDE CONIURA muralx_handle_post_detail(state, static_index, req, sess, locale, tail_post)
+  FIN SI
+  SI CONIURA compare(req.path, "/admin-lite") == 0 VEL CONIURA starts_with(req.path, "/admin-lite/comments/")
+    REDDE CONIURA muralx_handle_admin(state, static_index, req, sess, locale)
+  FIN SI
+  SI CONIURA compare(req.path, "/ops/traces") == 0 VEL CONIURA starts_with(req.path, "/ops/traces/") VEL CONIURA compare(req.path, "/sigilos-vivos") == 0 VEL CONIURA starts_with(req.path, "/sigilos-vivos/")
+    REDDE CONIURA muralx_handle_ops(state, static_index, req, sess, locale)
+  FIN SI
+  SI CONIURA starts_with(req.path, "/api/posts/")
+    SI CONIURA compare(req.method, "GET") != 0
+      REDDE CONIURA muralx_method_not_allowed(CONIURA muralx_methods1("GET"))
+    FIN SI
+    REDDE CONIURA muralx_api_post_detail_response(state, CONIURA muralx_extract_suffix(req.path, "/api/posts/"), CONIURA muralx_actor_id(sess), CONIURA muralx_session_user_id(sess))
+  FIN SI
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+RITUALE muralx_index_trace(
+  SPECULUM MuralExpandidoState state,
+  WebRequest req,
+  SPECULUM WebResponse res,
+  REX started_ms,
+  VERBUM user_id
+) REDDE NIHIL
+  EVOCA VERBUM trace_id AD CONIURA trace_request_new_id()
+  EVOCA REX duration_ms AD (CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000) - started_ms
+  EVOCA Trace trace AD CONIURA trace_new_with_id(trace_id)
+  EVOCA VERBUM root_span_id AD CONIURA span_start(SPECULUM trace, CONIURA concat(req.method, CONIURA concat(" ", req.path)))
+  EVOCA VERBUM route_span_id AD ""
+  EVOCA VERBUM storage_span_id AD ""
+  EVOCA VERBUM file_path AD CONIURA path_join(CONIURA path_join((*state).trace_store.trace_dir, CONIURA datetime_format(CONIURA datetime_now(), "%Y%m%d")), CONIURA concat(trace_id, ".ctrace"))
+
+  CONIURA span_set_attribute(SPECULUM trace, root_span_id, "http.method", req.method)
+  CONIURA span_set_attribute(SPECULUM trace, root_span_id, "http.path", req.path)
+  CONIURA span_set_attribute(SPECULUM trace, root_span_id, "http.status", CONIURA stringify_int((*res).status))
+  SI CONIURA len(user_id) > 0
+    CONIURA span_set_attribute(SPECULUM trace, root_span_id, "user.id", user_id)
+  FIN SI
+
+  SI CONIURA starts_with(req.path, "/static/")
+    VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "static.resolve")
+    CONIURA span_set_attribute(SPECULUM trace, route_span_id, "target", req.path)
+    CONIURA span_end(SPECULUM trace, route_span_id)
+  ALITER
+    SI CONIURA compare(req.path, "/") == 0
+      VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "feed.render")
+      CONIURA span_set_attribute(SPECULUM trace, route_span_id, "surface", "home")
+      CONIURA span_end(SPECULUM trace, route_span_id)
+    ALITER
+      SI CONIURA starts_with(req.path, "/posts/")
+        VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "post.thread")
+        CONIURA span_set_attribute(SPECULUM trace, route_span_id, "slug", CONIURA muralx_extract_suffix(req.path, "/posts/"))
+        CONIURA span_end(SPECULUM trace, route_span_id)
+      ALITER
+        SI CONIURA starts_with(req.path, "/perfil/")
+          VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "profile.graph")
+          CONIURA span_set_attribute(SPECULUM trace, route_span_id, "handle", CONIURA muralx_extract_suffix(req.path, "/perfil/"))
+          CONIURA span_end(SPECULUM trace, route_span_id)
+        ALITER
+          SI CONIURA starts_with(req.path, "/api/")
+            VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "api.serialize")
+            CONIURA span_set_attribute(SPECULUM trace, route_span_id, "route", req.path)
+            CONIURA span_end(SPECULUM trace, route_span_id)
+          ALITER
+            SI CONIURA compare(req.path, "/sigilos-vivos") == 0 VEL CONIURA starts_with(req.path, "/sigilos-vivos/")
+              VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "sigil.render")
+              CONIURA span_set_attribute(SPECULUM trace, route_span_id, "route", req.path)
+              CONIURA span_end(SPECULUM trace, route_span_id)
+            ALITER
+              SI CONIURA starts_with(req.path, "/admin-lite")
+                VINCIRE route_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "admin.guard")
+                CONIURA span_set_attribute(SPECULUM trace, route_span_id, "route", req.path)
+                CONIURA span_end(SPECULUM trace, route_span_id)
+              FIN SI
+            FIN SI
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN SI
+
+  VINCIRE storage_span_id AD CONIURA span_start_child(SPECULUM trace, root_span_id, "trace.persist")
+  CONIURA span_set_attribute(SPECULUM trace, storage_span_id, "trace.file", file_path)
+  CONIURA span_end(SPECULUM trace, storage_span_id)
+  CONIURA span_end(SPECULUM trace, root_span_id)
+
+  CONIURA mkdir_all(CONIURA path_dirname(file_path))
+  CONIURA response_set_header(res, "x-trace-id", trace_id)
+  CONIURA trace_write_file(trace, file_path)
+  CONIURA trace_store_index_trace(SPECULUM (*state).trace_store, trace_id, req.path, req.method, (*res).status, duration_ms, CONIURA trace_span_count(trace), user_id, file_path, CONIURA datetime_to_unix(CONIURA datetime_now()))
+  CONIURA trace_store_prune_by_count(SPECULUM (*state).trace_store)
+  CONIURA trace_store_prune_by_hours(SPECULUM (*state).trace_store)
+  -- The current CCT trace value still carries shared string references across spans.
+  -- Freeing it here can abort the example server on real requests, so the example
+  -- keeps the trace alive after persisting/indexing and prioritizes request safety.
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_should_ignore_transport_fault(VERBUM message) REDDE VERUM
+  SI CONIURA find(message, "timeout na leitura dos headers") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "request truncada antes do fim dos headers") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "sock_recv falhou") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "sock_send falhou") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "envio de response incompleto") != -1
+    REDDE VERUM
+  FIN SI
+  SI CONIURA find(message, "nenhuma conexao ativa") != -1
+    REDDE VERUM
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE muralx_dispatch_raw(
+  SPECULUM MuralExpandidoState state,
+  StaticIndex static_index,
+  SPECULUM NIHIL allowed_hosts,
+  HttpRawRequest raw_req
+) REDDE HttpRawResponse
+  EVOCA SPECULUM NIHIL req_res AD CONIURA muralx_request_from_raw(raw_req)
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    REDDE CONIURA muralx_response_to_raw(CONIURA response_bad_request(CONIURA result_unwrap_err GENUS(WebRequest, VERBUM)(req_res)), raw_req.keep_alive)
+  FIN SI
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA REX req_started_ms AD (CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000)
+  CONIURA muralx_state_next_request_ordinal(state)
+
+  SI NON CONIURA security_host_is_allowed(allowed_hosts, req.host)
+    EVOCA WebResponse host_res AD CONIURA response_bad_request("invalid host")
+    CONIURA muralx_index_trace(state, req, SPECULUM host_res, req_started_ms, "")
+    REDDE CONIURA muralx_response_to_raw(host_res, raw_req.keep_alive)
+  FIN SI
+
+  SI CONIURA starts_with(req.path, "/static/")
+    EVOCA StaticServeResult static_res AD CONIURA static_serve(static_index, req, CONIURA substring(req.path, 8, CONIURA len(req.path)))
+    EVOCA WebResponse out AD CONIURA response_not_found()
+    ELIGE static_res.kind
+      CASUS SrOk:
+        CONIURA response_fill(SPECULUM out, CONIURA option_unwrap GENUS(WebResponse)(static_res.response))
+      CASUS SrNaoModificado:
+        CONIURA response_fill(SPECULUM out, CONIURA option_unwrap GENUS(WebResponse)(static_res.response))
+      CASUS SrProibido:
+        CONIURA response_fill(SPECULUM out, CONIURA response_bad_request("invalid static path"))
+      ALIOQUIN:
+        CONIURA response_fill(SPECULUM out, CONIURA response_not_found())
+    FIN ELIGE
+    CONIURA muralx_index_trace(state, req, SPECULUM out, req_started_ms, "")
+    EVOCA HttpRawResponse raw_static AD CONIURA muralx_response_to_raw(out, raw_req.keep_alive)
+    SI CONIURA compare(req.method, "HEAD") == 0
+      REDDE CONIURA muralx_raw_headify(raw_static)
+    FIN SI
+    REDDE raw_static
+  FIN SI
+
+  EVOCA Session sess AD CONIURA session_load(req, (*state).session_store, (*state).session_cfg)
+  EVOCA WebResponse base_res AD CONIURA muralx_handle_dynamic(state, static_index, req, SPECULUM sess)
+  EVOCA WebResponse finalized_res AD CONIURA session_finalize(SPECULUM sess, (*state).session_store, (*state).session_cfg, base_res)
+  EVOCA WebResponse res AD CONIURA response_new(finalized_res.status)
+  CONIURA response_fill(SPECULUM res, finalized_res)
+  EVOCA VERBUM indexed_user_id AD ""
+  SI CONIURA muralx_session_user_id(SPECULUM sess) > 0
+    VINCIRE indexed_user_id AD CONIURA stringify_int(CONIURA muralx_session_user_id(SPECULUM sess))
+  FIN SI
+  CONIURA muralx_index_trace(state, req, SPECULUM res, req_started_ms, indexed_user_id)
+  EVOCA HttpRawResponse raw AD CONIURA muralx_response_to_raw(res, raw_req.keep_alive)
+  SI CONIURA compare(req.method, "HEAD") == 0
+    REDDE CONIURA muralx_raw_headify(raw)
+  FIN SI
+  REDDE raw
+EXPLICIT RITUALE
+
+RITUALE muralx_run_server_limit(
+  HttpServer server,
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  SPECULUM NIHIL allowed_hosts,
+  REX max_requests
+) REDDE NIHIL
+  EVOCA REX served AD 0
+  DUM max_requests <= 0 VEL served < max_requests
+    TEMPTA
+      EVOCA SPECULUM NIHIL raw_req_res AD CONIURA civitas_http_server_accept(server)
+      SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+        EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+        SI CONIURA compare(err.message, "accept interrupted") == 0
+          FRANGE
+        FIN SI
+        SI CONIURA compare(err.message, "server stopped") == 0
+          FRANGE
+        FIN SI
+        SI CONIURA compare(err.message, "server stopping") == 0
+          FRANGE
+        FIN SI
+        SI NON CONIURA muralx_should_ignore_transport_fault(err.message)
+          IACE err.message
+        FIN SI
+      ALITER
+        EVOCA HttpRawRequest raw_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(raw_req_res)
+        EVOCA SPECULUM NIHIL respond_res AD CONIURA http_server_respond(server, CONIURA muralx_dispatch_raw(SPECULUM state, static_index, allowed_hosts, raw_req))
+        SI CONIURA result_is_err GENUS(REX, HttpServerError)(respond_res)
+          EVOCA HttpServerError respond_err AD CONIURA result_unwrap_err GENUS(REX, HttpServerError)(respond_res)
+          SI NON CONIURA muralx_should_ignore_transport_fault(respond_err.message)
+            IACE respond_err.message
+          FIN SI
+        ALITER
+          VINCIRE served AD served + 1
+        FIN SI
+      FIN SI
+    CAPE FRACTUM erro
+      EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(erro)
+      SI NON CONIURA muralx_should_ignore_transport_fault(error_text)
+        IACE error_text
+      FIN SI
+    FIN TEMPTA
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_send_socket_response(SPECULUM NIHIL sock, HttpRawResponse response) REDDE NIHIL
+  EVOCA VERBUM payload AD CONIURA http_server_response_bytes(response)
+  EVOCA REX sent AD CONIURA sock_send(sock, payload)
+  SI sent != CONIURA len(payload)
+    IACE "envio de response incompleto"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_should_ignore_listener_fault(VERBUM message) REDDE VERUM
+  SI CONIURA find(message, "sock_accept falhou") != -1
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA muralx_should_ignore_transport_fault(message)
+EXPLICIT RITUALE
+
+RITUALE muralx_run_listener_limit(
+  SPECULUM NIHIL listener,
+  HttpServerOptions options,
+  MuralExpandidoState state,
+  StaticIndex static_index,
+  SPECULUM NIHIL allowed_hosts,
+  REX max_requests
+) REDDE NIHIL
+  EVOCA REX served AD 0
+
+  DUM max_requests <= 0 VEL served < max_requests
+    TEMPTA
+      EVOCA SPECULUM NIHIL client AD CONIURA sock_accept(listener)
+      EVOCA VERBUM peer_addr AD CONIURA sock_peer_addr(client)
+      EVOCA VERBUM local_addr AD CONIURA sock_local_addr(client)
+      EVOCA SPECULUM NIHIL req_res AD CONIURA http_server_read_request_from_socket(
+        client,
+        peer_addr,
+        local_addr,
+        options,
+        ConnPolicyRespondAndClose
+      )
+
+      SI CONIURA result_is_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        EVOCA HttpServerError err AD CONIURA result_unwrap_err GENUS(HttpRawRequest, HttpServerError)(req_res)
+        SI CONIURA http_server_error_should_respond(err)
+          TEMPTA
+            CONIURA muralx_send_socket_response(client, CONIURA http_server_error_response(err))
+          CAPE FRACTUM send_erro
+            EVOCA VERBUM send_error_text AD OBSECRO fractum_to_verbum(send_erro)
+            SI NON CONIURA muralx_should_ignore_transport_fault(send_error_text)
+              CONIURA net_close(client)
+              IACE send_error_text
+            FIN SI
+          FIN TEMPTA
+        FIN SI
+        CONIURA net_close(client)
+        RECEDE
+      FIN SI
+
+      EVOCA HttpRawRequest raw_req AD CONIURA result_unwrap GENUS(HttpRawRequest, HttpServerError)(req_res)
+      TEMPTA
+        CONIURA muralx_send_socket_response(client, CONIURA muralx_dispatch_raw(SPECULUM state, static_index, allowed_hosts, raw_req))
+      CAPE FRACTUM dispatch_erro
+        EVOCA VERBUM dispatch_error_text AD OBSECRO fractum_to_verbum(dispatch_erro)
+        CONIURA net_close(client)
+        SI NON CONIURA muralx_should_ignore_transport_fault(dispatch_error_text)
+          IACE dispatch_error_text
+        FIN SI
+        RECEDE
+      FIN TEMPTA
+
+      CONIURA net_close(client)
+      VINCIRE served AD served + 1
+    CAPE FRACTUM erro
+      EVOCA VERBUM error_text AD OBSECRO fractum_to_verbum(erro)
+      SI CONIURA muralx_should_ignore_listener_fault(error_text)
+        CONIURA sleep_ms(10)
+        RECEDE
+      FIN SI
+      IACE error_text
+    FIN TEMPTA
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

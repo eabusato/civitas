@@ -1,0 +1,26 @@
+INCIPIT grimoire "civitas_admin_router"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../router.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "admin.cct"
+
+RITUALE admin_stub_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("admin stub"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE admin_register_routes(SPECULUM Router router, AdminModelConfig cfg) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.routes)
+  DUM i < n
+    EVOCA SPECULUM AdminRouteInfo route_ptr AD CONIURA fluxus_get(cfg.routes, i)
+    CONIURA router_add(router, (*route_ptr).method, (*route_ptr).pattern, (*route_ptr).name, (*route_ptr).handler_symbol, admin_stub_handler)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,22 @@
+INCIPIT grimoire "fase7_7d_allowlist_none_matches_strip_tags_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/validate/sanitize.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HtmlAllowList al AD CONIURA allowlist_none()
+  EVOCA HtmlSanitizeConfig cfg AD CONIURA html_sanitize_config_default(al)
+  EVOCA VERBUM raw AD "<p>Oi <b>mundo</b></p>"
+  EVOCA VERBUM clean AD CONIURA html_sanitize(raw, cfg)
+  EVOCA VERBUM stripped AD CONIURA sanitize_strip_tags(raw)
+  CONIURA html_sanitize_config_free(SPECULUM cfg)
+
+  SI CONIURA compare(clean, stripped) != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

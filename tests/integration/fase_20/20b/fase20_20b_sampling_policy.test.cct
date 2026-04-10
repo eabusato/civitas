@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase20_20b_sampling_policy"
+
+ADVOCARE "../../../../lib/civitas/trace_collector/trace_collector.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TraceCollectorConfig cfg AD CONIURA trace_collector_config_default()
+  VINCIRE cfg.sample_rate AD 3
+  SI CONIURA trace_collector_should_sample(cfg, 1)
+    REDDE 1
+  FIN SI
+  SI CONIURA trace_collector_should_sample(cfg, 2)
+    REDDE 2
+  FIN SI
+  SI NON CONIURA trace_collector_should_sample(cfg, 3)
+    REDDE 3
+  FIN SI
+  VINCIRE cfg.sample_rate AD 1
+  SI NON CONIURA trace_collector_should_sample(cfg, 5)
+    REDDE 4
+  FIN SI
+  VINCIRE cfg.enabled AD FALSUM
+  SI CONIURA trace_collector_should_sample(cfg, 6)
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,33 @@
+INCIPIT grimoire "civitas_core_version"
+
+ADVOCARE "cct/verbum.cct"
+
+RITUALE civitas_name() REDDE VERBUM
+  REDDE "civitas"
+EXPLICIT RITUALE
+
+RITUALE civitas_version() REDDE VERBUM
+  REDDE "0.1.0"
+EXPLICIT RITUALE
+
+RITUALE civitas_cct_min_version() REDDE VERBUM
+  REDDE "0.40.0"
+EXPLICIT RITUALE
+
+RITUALE civitas_capability_floor() REDDE VERBUM
+  REDDE "FASE 40"
+EXPLICIT RITUALE
+
+RITUALE civitas_banner() REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA civitas_name()
+  VINCIRE out AD CONIURA concat(out, " ")
+  VINCIRE out AD CONIURA concat(out, CONIURA civitas_version())
+  VINCIRE out AD CONIURA concat(out, " (CCT >= ")
+  VINCIRE out AD CONIURA concat(out, CONIURA civitas_cct_min_version())
+  VINCIRE out AD CONIURA concat(out, "; baseline funcional ")
+  VINCIRE out AD CONIURA concat(out, CONIURA civitas_capability_floor())
+  VINCIRE out AD CONIURA concat(out, ")")
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

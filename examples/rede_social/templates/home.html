@@ -1,0 +1,37 @@
+{% EVOCA RedeHomePageContext %}
+{% EXTENDE "base.html" %}
+{% SECTIO content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Fresh project scaffold</p>
+    <h1>Small network, full Civitas surface</h1>
+    <p>This example starts from the current project layout and mixes feed, profiles, traces, storage, auditing and performance tooling in one place.</p>
+  </div>
+  <aside class="hero-card">
+    <strong>{{ online_count }}</strong>
+    <span>people recently seen in the feed</span>
+    <a href="/api/activity">poll activity</a>
+  </aside>
+</section>
+
+<section class="grid-main">
+  <div class="feed-stack">
+    {% DUM post IN posts %}
+      {% ADVOCARE "partials/post_card.html" AD post %}
+    {% FIN DUM %}
+  </div>
+  <aside class="side-panel">
+    <div class="card">
+      <h3>Activity lane</h3>
+      {% DUM item IN activity %}
+        <div class="activity-item">
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.body }}</p>
+          <span class="muted">{{ item.created_at }}</span>
+        </div>
+      {% FIN DUM %}
+      <div class="card-note">Phase 25 is represented here by persisted activity and room logs exposed through regular HTTP surfaces.</div>
+    </div>
+  </aside>
+</section>
+{% FIN SECTIO %}

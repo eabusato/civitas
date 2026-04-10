@@ -1,0 +1,59 @@
+INCIPIT grimoire "fase20_20d_storage_trace"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace/trace_storage.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase20_reset_root("20d_storage_trace")
+  EVOCA VERBUM files_dir AD CONIURA path_join(root, "files")
+  EVOCA VERBUM file_path AD CONIURA path_join(files_dir, "asset.txt")
+  CONIURA mkdir_all(files_dir)
+  CONIURA instrument_enable(INSTR_MODE_FULL)
+  CONIURA instrument_buffer_clear()
+
+  CONIURA trace_storage_write(file_path, "hello-storage", "local")
+  SI NON CONIURA trace_storage_exists(file_path)
+    CONIURA instrument_disable()
+    REDDE 1
+  FIN SI
+  CONIURA trace_storage_delete(file_path, "local")
+  SI CONIURA trace_storage_exists(file_path)
+    CONIURA instrument_disable()
+    REDDE 2
+  FIN SI
+
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace("trace-20d-storage")
+  SI CONIURA trace_span_count(trace) != 4
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 3
+  FIN SI
+  EVOCA Span write_span AD CONIURA trace_get_span(trace, 0)
+  SI CONIURA compare(write_span.name, "write:local") != 0
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 4
+  FIN SI
+  SI NON CONIURA contains(write_span.attributes_json, "\"storage.bytes\":\"13\"")
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 5
+  FIN SI
+  EVOCA Span delete_span AD CONIURA trace_get_span(trace, 2)
+  SI CONIURA compare(delete_span.name, "delete:local") != 0
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_disable()
+    REDDE 6
+  FIN SI
+
+  CONIURA trace_free(SPECULUM trace)
+  CONIURA instrument_disable()
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

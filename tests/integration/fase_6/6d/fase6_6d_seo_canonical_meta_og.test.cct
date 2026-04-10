@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase6_6d_seo_canonical_meta_og_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/seo.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SeoConfig cfg
+  EVOCA VERBUM canonical AD ""
+  EVOCA VERBUM meta_desc AD ""
+  EVOCA VERBUM og AD ""
+
+  VINCIRE cfg.base_url AD "https://civitas.dev"
+  VINCIRE cfg.site_name AD "Civitas"
+  VINCIRE canonical AD CONIURA seo_canonical_tag(cfg, "/posts/como-usar")
+  VINCIRE meta_desc AD CONIURA seo_meta_description("Aprenda <Civitas> & CCT")
+  VINCIRE og AD CONIURA seo_og_tags("Titulo <forte>", "Descricao & resumo", "https://img.dev/cover.png", "https://civitas.dev/posts/como-usar")
+
+  SI CONIURA find(canonical, "href=\"https://civitas.dev/posts/como-usar\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(meta_desc, "&lt;Civitas&gt; &amp; CCT") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(og, "og:title") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(og, "Titulo &lt;forte&gt;") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(og, "Descricao &amp; resumo") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

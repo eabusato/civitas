@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase8_8d_unknown_state_returns_orphan_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA UploadDescriptor parsed AD CONIURA upload_descriptor_from_json(
+    "{\"path\":\"uploads/a.pdf\",\"hash\":\"h1\",\"size\":10,\"mime\":\"application/pdf\",\"original_name\":\"a.pdf\",\"state\":\"mystery\"}"
+  )
+  SI parsed.state != UsOrphan
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(parsed.path, "uploads/a.pdf") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_mail_templates_root"
+
+ADVOCARE "mail_templates/mail_tpl_base.cct"
+ADVOCARE "mail_templates/mail_tpl_reset.cct"
+ADVOCARE "mail_templates/mail_tpl_verificar.cct"
+ADVOCARE "mail_templates/mail_tpl_alterar_email.cct"
+ADVOCARE "mail_templates/mail_tpl_boas_vindas.cct"
+
+EXPLICIT grimoire

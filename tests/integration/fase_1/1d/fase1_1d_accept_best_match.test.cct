@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase1_1d_accept_best_match_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL supported AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM html AD "text/html"
+  EVOCA VERBUM json AD "application/json"
+  CONIURA fluxus_push(supported, SPECULUM html)
+  CONIURA fluxus_push(supported, SPECULUM json)
+  EVOCA SPECULUM NIHIL best_opt AD CONIURA mime_accept_best("application/json, text/html;q=0.8", supported)
+  SI CONIURA option_is_none GENUS(VERBUM)(best_opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(best_opt), "application/json") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

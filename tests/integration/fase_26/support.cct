@@ -1,0 +1,151 @@
+INCIPIT grimoire "fase26_support"
+
+ADVOCARE "../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/router.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase26_root(VERBUM name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_26", name)
+EXPLICIT RITUALE
+
+RITUALE phase26_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase26_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_reset_root(VERBUM name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase26_root(name)
+  SI CONIURA exists(root)
+    CONIURA phase26_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase26_router_ok_or_fail(SPECULUM NIHIL res, REX code) REDDE NIHIL
+  SI CONIURA result_is_ok GENUS(REX, VERBUM)(res)
+    REDDE
+  FIN SI
+  CONIURA println(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res))
+  IACE CONIURA stringify_int(code)
+EXPLICIT RITUALE
+
+RITUALE phase26_fast_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("fast"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_slow_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA sleep_ms(8)
+  CONIURA response_fill(out, CONIURA response_text("slow"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_header_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebRequest req AD req_ref
+  EVOCA SPECULUM WebResponse out AD out_ref
+  SI CONIURA compare(CONIURA request_header_or((*req).headers, "x-bench", ""), "1") != 0
+    CONIURA response_fill(out, CONIURA response_bad_request("missing header"))
+    REDDE
+  FIN SI
+  CONIURA response_fill(out, CONIURA response_no_content())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_profiled_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA REX handler_span AD CONIURA instrument_span_begin("call", "handler.profiled")
+  EVOCA REX cache_span AD CONIURA instrument_span_begin("cache", "cache:homepage")
+  CONIURA sleep_ms(1)
+  CONIURA instrument_span_end(cache_span)
+
+  EVOCA REX i AD 0
+  DUM i < 3
+    EVOCA REX db_span AD CONIURA instrument_span_begin("db", "select:comments_by_post")
+    CONIURA instrument_span_attr(db_span, "db.target", "comments_by_post")
+    CONIURA instrument_span_attr(db_span, "sql.template", "SELECT comments WHERE post_id = ?")
+    CONIURA sleep_ms(1)
+    CONIURA instrument_span_end(db_span)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  EVOCA REX render_span AD CONIURA instrument_span_begin("call", "template.render_feed")
+  CONIURA sleep_ms(2)
+  CONIURA instrument_span_end(render_span)
+  CONIURA instrument_span_end(handler_span)
+  CONIURA response_fill(out, CONIURA response_text("profiled"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_mem_clean_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM NIHIL values AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX a AD 10
+  EVOCA REX b AD 20
+  CONIURA fluxus_push(values, SPECULUM a)
+  CONIURA fluxus_push(values, SPECULUM b)
+  CONIURA fluxus_free(values)
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("mem-clean"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_mem_leaky_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM NIHIL leak AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX a AD 99
+  EVOCA REX b AD 100
+  CONIURA fluxus_push(leak, SPECULUM a)
+  CONIURA fluxus_push(leak, SPECULUM b)
+  EVOCA SPECULUM WebResponse out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("mem-leaky"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase26_bench_router() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/fast", "fast", "phase26_fast_handler", phase26_fast_handler), 1)
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/slow", "slow", "phase26_slow_handler", phase26_slow_handler), 2)
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/needs-header", "needs_header", "phase26_header_handler", phase26_header_handler), 3)
+  REDDE router
+EXPLICIT RITUALE
+
+RITUALE phase26_profiler_router() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/profiled", "profiled", "phase26_profiled_handler", phase26_profiled_handler), 1)
+  REDDE router
+EXPLICIT RITUALE
+
+RITUALE phase26_memory_router() REDDE Router
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/mem-clean", "mem_clean", "phase26_mem_clean_handler", phase26_mem_clean_handler), 1)
+  CONIURA phase26_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/mem-leaky", "mem_leaky", "phase26_mem_leaky_handler", phase26_mem_leaky_handler), 2)
+  REDDE router
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase10_10b_query_loop_stmt_rows"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/query/query_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10b_query_loop_stmt_rows")
+  CONIURA db_exec(db, "CREATE TABLE posts(id INTEGER PRIMARY KEY, title TEXT NOT NULL)")
+  CONIURA db_exec(db, "INSERT INTO posts(id, title) VALUES(1, 'one')")
+  CONIURA db_exec(db, "INSERT INTO posts(id, title) VALUES(2, 'two')")
+  CONIURA db_exec(db, "INSERT INTO posts(id, title) VALUES(3, 'three')")
+
+  EVOCA Query q AD CONIURA query_from("posts")
+  CONIURA query_order_by(q, "id", Asc)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA query_all(db, q)
+  EVOCA VERBUM titles AD ""
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    SI CONIURA len(titles) > 0
+      VINCIRE titles AD CONIURA concat(titles, ",")
+    FIN SI
+    VINCIRE titles AD CONIURA concat(titles, CONIURA stmt_get_text(stmt, 1))
+  FIN DUM
+  CONIURA query_rows_close(stmt)
+  CONIURA db_close(db)
+  SI CONIURA compare(titles, "one,two,three") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase11_11a_query_exec_dbh_filters"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "../../../../lib/civitas/query/query_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase11_dbh_sqlite("11a_query_exec_dbh_filters")
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE users(id INTEGER PRIMARY KEY, email TEXT NOT NULL, active INTEGER NOT NULL)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO users(id, email, active) VALUES(1, 'a@example.com', 1)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO users(id, email, active) VALUES(2, 'b@example.com', 0)")
+  EVOCA Query q AD CONIURA query_from("users")
+  CONIURA query_filter_int(q, "active", Eq, 1)
+  SI CONIURA query_count_dbh(dbh, q) != 1
+    REDDE 1
+  FIN SI
+  SI NON CONIURA query_exists_dbh(dbh, q)
+    REDDE 2
+  FIN SI
+  EVOCA DbRows rows AD CONIURA query_first_dbh(dbh, q)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 1), "a@example.com") != 0
+    REDDE 4
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA db_close(dbh.sqlite_conn)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

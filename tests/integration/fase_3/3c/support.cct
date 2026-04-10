@@ -1,0 +1,78 @@
+INCIPIT grimoire "fase3_3c_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/events.cct"
+ADVOCARE "../../../../lib/civitas/outbox.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase3_3c_ok_or_fail_unit(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_ok_or_fail_store(SPECULUM NIHIL res) REDDE OutboxStore
+  SI CONIURA result_is_err GENUS(OutboxStore, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(OutboxStore, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(OutboxStore, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_ok_or_fail_entry_id(SPECULUM NIHIL res) REDDE VERBUM
+  SI CONIURA result_is_err GENUS(VERBUM, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(VERBUM, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERBUM, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_ok_or_fail_entry(SPECULUM NIHIL res) REDDE OutboxEntry
+  SI CONIURA result_is_err GENUS(OutboxEntry, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(OutboxEntry, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(OutboxEntry, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_ok_or_fail_claim_batch(SPECULUM NIHIL res) REDDE OutboxClaimBatch
+  SI CONIURA result_is_err GENUS(OutboxClaimBatch, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(OutboxClaimBatch, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(OutboxClaimBatch, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_claim_count(SPECULUM NIHIL res) REDDE REX
+  SI CONIURA result_is_err GENUS(OutboxClaimBatch, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(OutboxClaimBatch, VERBUM)(res)
+  FIN SI
+  EVOCA OutboxClaimBatch batch AD CONIURA result_unwrap GENUS(OutboxClaimBatch, VERBUM)(res)
+  REDDE batch.leased_count
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_ok_or_fail_report(SPECULUM NIHIL res) REDDE OutboxPublishReport
+  SI CONIURA result_is_err GENUS(OutboxPublishReport, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(OutboxPublishReport, VERBUM)(res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(OutboxPublishReport, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase3_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase3_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_3c_event(VERBUM event_type, VERBUM request_id, VERBUM actor_id, VERBUM payload_json, VERBUM scope) REDDE EventEnvelope
+  EVOCA EventEnvelope env
+  EVOCA SPECULUM NIHIL attrs AD CONIURA event_attributes_new()
+  SI CONIURA len(scope) != 0
+    CONIURA event_attributes_set(attrs, "scope", scope)
+  FIN SI
+  CONIURA event_envelope_init(SPECULUM env, event_type, request_id, actor_id, attrs, payload_json)
+  REDDE env
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase4_4a_invalid_type_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase4_4a_tmp_dir("4a_invalid_type")
+  EVOCA SPECULUM NIHIL envs AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM err AD ""
+
+  CONIURA phase4_4a_reset_dir(root)
+  CONIURA phase4_4a_write(
+    CONIURA path_join(root, "civitas.toml"),
+    "[app]\nname = \"desviados\"\nallowed_hosts = [\"localhost\"]\n\n[http]\nport = \"abc\"\n"
+  )
+
+  VINCIRE err AD CONIURA phase4_4a_run_probe(root, root, "", "dump", "", envs)
+  SI CONIURA find(err, "ERR:") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA find(err, "http.port") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase9_9b_dev_mode_direct_and_forbidden"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/static/static.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9b_root("dev_mode")
+  EVOCA VERBUM static_root AD CONIURA phase9_9b_prepare_files(root)
+  EVOCA StaticIndex idx AD CONIURA phase9_9b_index_dev(static_root)
+  EVOCA VERBUM css_url AD CONIURA static_url(idx, "css/app.css")
+  EVOCA WebRequest req_ok AD CONIURA phase9_request("GET", css_url, CONIURA phase9_headers(), "")
+  EVOCA StaticServeResult ok_res AD CONIURA static_serve(idx, req_ok, "css/app.css")
+  EVOCA WebRequest req_bad AD CONIURA phase9_request("GET", "/static/../../etc/passwd", CONIURA phase9_headers(), "")
+  EVOCA StaticServeResult bad_res AD CONIURA static_serve(idx, req_bad, "../../etc/passwd")
+
+  SI CONIURA compare(css_url, "/static/css/app.css") != 0
+    IACE "dev mode should not fingerprint urls"
+  FIN SI
+  SI ok_res.kind != SrOk
+    IACE "dev mode should serve direct file"
+  FIN SI
+  SI bad_res.kind != SrProibido
+    IACE "path traversal should be forbidden"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

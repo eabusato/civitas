@@ -1,0 +1,171 @@
+INCIPIT grimoire "civitas_trace_collector"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../middleware.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+ADVOCARE "../trace/trace_request.cct"
+
+SIGILLUM TraceCollectorConfig
+  enabled: VERUM
+  trace_dir: VERBUM
+  sample_rate: REX
+  max_spans_per_trace: REX
+  add_trace_header: VERUM
+FIN SIGILLUM
+
+SIGILLUM TraceRequestContext
+  trace_id: VERBUM
+  root_span_id: REX
+  sampled: VERUM
+  active: VERUM
+  start_ms: REX
+  request_ordinal: REX
+FIN SIGILLUM
+
+SIGILLUM TracePersistResult
+  persisted: VERUM
+  trace_id: VERBUM
+  file_path: VERBUM
+  span_count: REX
+FIN SIGILLUM
+
+RITUALE trace_collector_config_default() REDDE TraceCollectorConfig
+  EVOCA TraceCollectorConfig cfg
+  VINCIRE cfg.enabled AD VERUM
+  VINCIRE cfg.trace_dir AD "tests/tmp/traces"
+  VINCIRE cfg.sample_rate AD 1
+  VINCIRE cfg.max_spans_per_trace AD 512
+  VINCIRE cfg.add_trace_header AD VERUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE trace_collector_context_key() REDDE VERBUM
+  REDDE "civitas.trace.ctx"
+EXPLICIT RITUALE
+
+RITUALE trace_collector_should_sample(TraceCollectorConfig cfg, REX request_ordinal) REDDE VERUM
+  SI NON cfg.enabled
+    REDDE FALSUM
+  FIN SI
+  SI cfg.sample_rate <= 1
+    REDDE VERUM
+  FIN SI
+  REDDE (request_ordinal % cfg.sample_rate) == 0
+EXPLICIT RITUALE
+
+RITUALE trace_collector_make_path(VERBUM trace_dir, VERBUM trace_id) REDDE VERBUM
+  EVOCA VERBUM date_dir AD CONIURA datetime_format(CONIURA datetime_now(), "%Y%m%d")
+  REDDE CONIURA path_join(CONIURA path_join(trace_dir, date_dir), CONIURA concat(trace_id, ".ctrace"))
+EXPLICIT RITUALE
+
+RITUALE trace_collector_bind_request_context(SPECULUM RequestContext ctx, SPECULUM TraceRequestContext trace_ctx) REDDE NIHIL
+  CONIURA middleware_context_set(ctx, CONIURA trace_collector_context_key(), trace_ctx)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE trace_collector_context_trace_id(RequestContext ctx) REDDE VERBUM
+  SI NON CONIURA middleware_context_has(ctx, CONIURA trace_collector_context_key())
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM TraceRequestContext ptr AD CONIURA middleware_context_get(ctx, CONIURA trace_collector_context_key())
+  REDDE (*ptr).trace_id
+EXPLICIT RITUALE
+
+RITUALE trace_collector_fields_json(VERBUM trace_id, VERBUM fields_json) REDDE VERBUM
+  SI CONIURA len(trace_id) == 0
+    REDDE fields_json
+  FIN SI
+  SI CONIURA len(fields_json) == 0 VEL CONIURA compare(fields_json, "{}") == 0
+    EVOCA VERBUM out AD "{\"trace_id\":\""
+    VINCIRE out AD CONIURA concat(out, CONIURA trace_json_escape(trace_id))
+    VINCIRE out AD CONIURA concat(out, "\"}")
+    REDDE out
+  FIN SI
+  EVOCA REX n AD CONIURA len(fields_json)
+  EVOCA VERBUM prefix AD CONIURA substring(fields_json, 0, n - 1)
+  VINCIRE prefix AD CONIURA concat(prefix, ",\"trace_id\":\"")
+  VINCIRE prefix AD CONIURA concat(prefix, CONIURA trace_json_escape(trace_id))
+  VINCIRE prefix AD CONIURA concat(prefix, "\"}")
+  REDDE prefix
+EXPLICIT RITUALE
+
+RITUALE trace_persist_result_empty() REDDE TracePersistResult
+  EVOCA TracePersistResult out
+  VINCIRE out.persisted AD FALSUM
+  VINCIRE out.trace_id AD ""
+  VINCIRE out.file_path AD ""
+  VINCIRE out.span_count AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_collector_begin(TraceCollectorConfig cfg, WebRequest req, REX request_ordinal) REDDE TraceRequestContext
+  EVOCA TraceRequestContext ctx
+  VINCIRE ctx.trace_id AD ""
+  VINCIRE ctx.root_span_id AD 0
+  VINCIRE ctx.sampled AD FALSUM
+  VINCIRE ctx.active AD FALSUM
+  VINCIRE ctx.start_ms AD 0
+  VINCIRE ctx.request_ordinal AD request_ordinal
+  SI NON cfg.enabled
+    REDDE ctx
+  FIN SI
+  CONIURA instrument_buffer_clear()
+  VINCIRE ctx.trace_id AD CONIURA trace_request_new_id()
+  VINCIRE ctx.root_span_id AD CONIURA instrument_http_span(req.method, req.path)
+  VINCIRE ctx.sampled AD CONIURA trace_collector_should_sample(cfg, request_ordinal)
+  VINCIRE ctx.active AD VERUM
+  VINCIRE ctx.start_ms AD CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000
+  REDDE ctx
+EXPLICIT RITUALE
+
+RITUALE trace_collector_end(TraceCollectorConfig cfg, SPECULUM TraceRequestContext ctx, WebRequest req, SPECULUM WebResponse res) REDDE TracePersistResult
+  EVOCA TracePersistResult out AD CONIURA trace_persist_result_empty()
+  SI NON (*ctx).active
+    REDDE out
+  FIN SI
+
+  CONIURA instrument_span_attr((*ctx).root_span_id, "http.status", CONIURA stringify_int((*res).status))
+  CONIURA instrument_span_attr((*ctx).root_span_id, "http.request_id", req.request_id)
+  CONIURA instrument_span_end((*ctx).root_span_id)
+
+  SI cfg.add_trace_header
+    CONIURA response_set_header(res, "x-trace-id", (*ctx).trace_id)
+  FIN SI
+
+  SI NON (*ctx).sampled ET (*res).status < 400
+    CONIURA instrument_buffer_clear()
+    REDDE out
+  FIN SI
+
+  EVOCA VERBUM file_path AD CONIURA trace_collector_make_path(cfg.trace_dir, (*ctx).trace_id)
+  CONIURA mkdir_all(CONIURA path_dirname(file_path))
+  EVOCA Trace trace AD CONIURA instrument_buffer_drain_trace((*ctx).trace_id)
+  SI cfg.max_spans_per_trace > 0 ET CONIURA trace_span_count(trace) > cfg.max_spans_per_trace
+    CONIURA trace_free(SPECULUM trace)
+    CONIURA instrument_buffer_clear()
+    REDDE out
+  FIN SI
+  EVOCA REX span_count AD CONIURA trace_span_count(trace)
+  EVOCA SPECULUM NIHIL write_res AD CONIURA trace_write_file(trace, file_path)
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA result_is_err GENUS(REX, TraceError)(write_res)
+    CONIURA instrument_buffer_clear()
+    REDDE out
+  FIN SI
+
+  VINCIRE out.persisted AD VERUM
+  VINCIRE out.trace_id AD (*ctx).trace_id
+  VINCIRE out.file_path AD file_path
+  VINCIRE out.span_count AD span_count
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

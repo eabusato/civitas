@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase14_14a_plural_and_english_fallback"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(CONIURA i18n_config_new("pt-BR", ""))
+
+  EVOCA Catalog cat_pt AD CONIURA gettext_catalog_new("pt-BR")
+  CONIURA gettext_add_plural(SPECULUM cat_pt, "item", "items", "item", "itens")
+  CONIURA i18n_registry_add_catalog(SPECULUM reg, "pt-BR", cat_pt)
+
+  SI CONIURA compare(CONIURA i18n_t_plural(reg, "pt-BR", "item", "items", 1), "item") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t_plural(reg, "pt-BR", "item", "items", 2), "itens") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t_plural(reg, "fr-FR", "apple", "apples", 2), "apples") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

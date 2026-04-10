@@ -1,0 +1,285 @@
+INCIPIT grimoire "mural_example_home_and_validation_test"
+
+ADVOCARE "../../../../examples/mural/lib/config.cct"
+ADVOCARE "../../../../examples/mural/lib/repository.cct"
+ADVOCARE "../../../../examples/mural/lib/web_runtime.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "../../../../lib/civitas/core/settings.cct"
+ADVOCARE "../../../../lib/civitas/core/settings_schema.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/static/static_index.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE mural_test_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/examples/mural", test_name)
+EXPLICIT RITUALE
+
+RITUALE mural_test_write_config(VERBUM root) REDDE NIHIL
+  CONIURA mkdir_all(root)
+  CONIURA mkdir_all(CONIURA path_join(root, "static"))
+  CONIURA write_all(CONIURA path_join(root, "static/app.css"), "body{background:#faf7ef;color:#201915;}")
+  CONIURA write_all(
+    CONIURA path_join(root, "civitas.toml"),
+    "[app]\nname = \"Mural\"\nallowed_hosts = [\"example.test\"]\n\n[http]\nhost = \"127.0.0.1\"\nport = 9090\n\n[security]\nrate_limit_enabled = false\nenforce_https = false\n\n[mural]\nsite_title = \"Mural\"\ndatabase_path = \"var/mural.db\"\nstatic_dir = \"static\"\nrecent_limit = 20\nadmin_secret = \"test-admin\"\n"
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE mural_test_config(VERBUM root) REDDE MuralConfig
+  EVOCA SPECULUM NIHIL cfg_res AD CONIURA mural_config_load(root)
+  SI CONIURA result_is_err GENUS(MuralConfig, VERBUM)(cfg_res)
+    IACE CONIURA result_unwrap_err GENUS(MuralConfig, VERBUM)(cfg_res)
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(MuralConfig, VERBUM)(cfg_res)
+EXPLICIT RITUALE
+
+RITUALE mural_test_settings(VERBUM root) REDDE Settings
+  EVOCA SPECULUM NIHIL settings_res AD CONIURA settings_load(root)
+  SI CONIURA result_is_err GENUS(Settings, SettingsError)(settings_res)
+    IACE CONIURA settings_error_message(CONIURA result_unwrap_err GENUS(Settings, SettingsError)(settings_res))
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(Settings, SettingsError)(settings_res)
+EXPLICIT RITUALE
+
+RITUALE mural_test_request(VERBUM method, VERBUM path, VERBUM body, SPECULUM NIHIL headers) REDDE WebRequest
+  SI NON CONIURA map_contains GENUS(VERBUM, VERBUM)(headers, "host")
+    CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "host", "example.test")
+  FIN SI
+  SI CONIURA compare(method, "POST") == 0 ET NON CONIURA map_contains GENUS(VERBUM, VERBUM)(headers, "content-type")
+    CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "content-type", "application/x-www-form-urlencoded")
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(CONIURA request_build(method, path, "HTTP/1.1", headers, body, "127.0.0.1", "http", "example.test", "rid", "", "", ""))
+EXPLICIT RITUALE
+
+RITUALE mural_empty_headers() REDDE SPECULUM NIHIL
+  REDDE CONIURA request_empty_headers()
+EXPLICIT RITUALE
+
+RITUALE mural_response_cookie_value(WebResponse res, VERBUM cookie_name) REDDE VERBUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(res.set_cookies)
+  DUM i < n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(res.set_cookies, i)
+    SI CONIURA compare((*cookie_ptr).name, cookie_name) == 0
+      REDDE (*cookie_ptr).value
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM raw_header AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, "set-cookie", "")
+  EVOCA VERBUM prefix AD CONIURA concat(cookie_name, "=")
+  EVOCA REX semi AD 0
+  SI NON CONIURA starts_with(raw_header, prefix)
+    REDDE ""
+  FIN SI
+  VINCIRE semi AD CONIURA find(raw_header, ";")
+  SI semi == -1
+    REDDE CONIURA substring(raw_header, CONIURA len(prefix), CONIURA len(raw_header))
+  FIN SI
+  REDDE CONIURA substring(raw_header, CONIURA len(prefix), semi)
+EXPLICIT RITUALE
+
+RITUALE mural_extract_between(VERBUM text, VERBUM prefix, VERBUM suffix) REDDE VERBUM
+  EVOCA REX start AD CONIURA find(text, prefix)
+  EVOCA REX finish
+  SI start == -1
+    REDDE ""
+  FIN SI
+  VINCIRE start AD start + CONIURA len(prefix)
+  VINCIRE finish AD CONIURA find(CONIURA substring(text, start, CONIURA len(text)), suffix)
+  SI finish == -1
+    REDDE ""
+  FIN SI
+  REDDE CONIURA substring(text, start, start + finish)
+EXPLICIT RITUALE
+
+RITUALE mural_cookie_header(VERBUM flash_value) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  SI CONIURA len(flash_value) > 0
+    VINCIRE out AD CONIURA concat("mural_flash=", flash_value)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE mural_admin_auth_header() REDDE VERBUM
+  REDDE CONIURA concat("Basic ", CONIURA base64_encode("admin:test-admin"))
+EXPLICIT RITUALE
+
+RITUALE test_home_renders_empty_wall() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("home")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  CONIURA mural_repository_init_schema(cfg)
+  EVOCA WebRequest req AD CONIURA mural_test_request("GET", "/", "", CONIURA mural_empty_headers())
+  EVOCA WebResponse res AD CONIURA mural_handle_index_runtime(cfg, static_index, SPECULUM req)
+  SI res.status != 200
+    IACE "expected 200"
+  FIN SI
+  SI CONIURA find(res.body, "Leave a message") == -1 VEL CONIURA find(res.body, "No messages yet. Be the first to post.") == -1
+    IACE "home body missing expected content"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_invalid_post_rerenders_errors() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("invalid_post")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  EVOCA WebRequest get_req AD CONIURA mural_test_request("GET", "/", "", CONIURA mural_empty_headers())
+  EVOCA WebResponse get_res AD CONIURA mural_handle_index_runtime(cfg, static_index, SPECULUM get_req)
+  EVOCA WebRequest post_req AD CONIURA mural_test_request("POST", "/mensagens", "name=&email=bad&body=", CONIURA mural_empty_headers())
+  EVOCA WebResponse post_res AD CONIURA mural_handle_create_runtime(cfg, static_index, SPECULUM post_req)
+  SI post_res.status != 422
+    IACE "expected 422"
+  FIN SI
+  SI CONIURA find(post_res.body, "Name is required.") == -1 VEL CONIURA find(post_res.body, "Message is required.") == -1
+    IACE "validation errors not rendered"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_success_post_redirects_and_shows_flash() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("success_post")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  CONIURA mural_repository_init_schema(cfg)
+
+  EVOCA WebRequest get_req AD CONIURA mural_test_request("GET", "/", "", CONIURA mural_empty_headers())
+  EVOCA WebResponse get_res AD CONIURA mural_handle_index_runtime(cfg, static_index, SPECULUM get_req)
+  EVOCA WebRequest post_req AD CONIURA mural_test_request("POST", "/mensagens", "name=Alice&email=alice%40example.test&body=Hello+wall", CONIURA mural_empty_headers())
+  EVOCA WebResponse post_res AD CONIURA mural_handle_create_runtime(cfg, static_index, SPECULUM post_req)
+  SI post_res.status != 302
+    IACE "expected 302"
+  FIN SI
+  SI CONIURA compare(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(post_res.headers, "location", ""), "/") != 0
+    IACE "redirect target missing"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL follow_headers AD CONIURA mural_empty_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(follow_headers, "cookie", CONIURA mural_cookie_header(CONIURA mural_response_cookie_value(post_res, "mural_flash")))
+  EVOCA WebRequest follow_req AD CONIURA mural_test_request("GET", "/", "", follow_headers)
+  EVOCA WebResponse follow_res AD CONIURA mural_handle_index_runtime(cfg, static_index, SPECULUM follow_req)
+  SI CONIURA find(follow_res.body, "Message posted.") == -1
+    IACE "flash message missing after redirect"
+  FIN SI
+  SI CONIURA find(follow_res.body, "Hello wall") == -1
+    IACE "stored message missing after redirect"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_admin_requires_basic_auth() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("admin_auth")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  EVOCA WebRequest req AD CONIURA mural_test_request("GET", "/admin-lite", "", CONIURA mural_empty_headers())
+  EVOCA WebResponse res AD CONIURA mural_handle_admin_runtime(cfg, static_index, SPECULUM req)
+  SI res.status != 401
+    IACE "expected 401"
+  FIN SI
+  SI CONIURA find(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, "www-authenticate", ""), "Basic") == -1
+    IACE "missing basic auth challenge"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_admin_lists_and_deletes_message() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("admin_delete")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  CONIURA mural_repository_init_schema(cfg)
+  EVOCA MuralCreateMessage input
+  VINCIRE input.name AD "Bob"
+  VINCIRE input.email AD ""
+  VINCIRE input.body AD "Needs moderation"
+  EVOCA REX message_id AD CONIURA mural_repository_insert(cfg, input)
+
+  EVOCA SPECULUM NIHIL admin_headers AD CONIURA mural_empty_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(admin_headers, "authorization", CONIURA mural_admin_auth_header())
+  EVOCA WebRequest admin_req AD CONIURA mural_test_request("GET", "/admin-lite", "", admin_headers)
+  EVOCA WebResponse admin_res AD CONIURA mural_handle_admin_runtime(cfg, static_index, SPECULUM admin_req)
+  SI admin_res.status != 200
+    IACE "expected 200 on admin"
+  FIN SI
+  SI CONIURA find(admin_res.body, "Needs moderation") == -1
+    IACE "admin page missing stored message"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL delete_headers AD CONIURA mural_empty_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(delete_headers, "authorization", CONIURA mural_admin_auth_header())
+  EVOCA WebRequest delete_req AD CONIURA mural_test_request("POST", CONIURA concat("/admin-lite/mensagens/", CONIURA concat(CONIURA stringify_int(message_id), "/delete")), "", delete_headers)
+  EVOCA WebResponse delete_res AD CONIURA mural_handle_delete_runtime(cfg, SPECULUM delete_req)
+  SI delete_res.status != 302
+    IACE "expected redirect after delete"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL reload_headers AD CONIURA mural_empty_headers()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(reload_headers, "authorization", CONIURA mural_admin_auth_header())
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(reload_headers, "cookie", CONIURA mural_cookie_header(CONIURA mural_response_cookie_value(delete_res, "mural_flash")))
+  EVOCA WebRequest reload_req AD CONIURA mural_test_request("GET", "/admin-lite", "", reload_headers)
+  EVOCA WebResponse reload_res AD CONIURA mural_handle_admin_runtime(cfg, static_index, SPECULUM reload_req)
+  SI CONIURA find(reload_res.body, "Message deleted.") == -1
+    IACE "delete flash missing"
+  FIN SI
+  SI CONIURA find(reload_res.body, "Needs moderation") != -1
+    IACE "message should have been deleted"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_static_css_is_served() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("static")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  EVOCA Settings settings AD CONIURA mural_test_settings(root)
+  EVOCA StaticIndex static_index AD CONIURA mural_static_index(root, SPECULUM settings, cfg)
+  EVOCA WebRequest req AD CONIURA mural_test_request("GET", "/static/app.css", "", CONIURA mural_empty_headers())
+  EVOCA WebResponse res AD CONIURA mural_handle_static_runtime(static_index, SPECULUM req)
+  SI res.status != 200
+    IACE "expected 200 for static css"
+  FIN SI
+  SI CONIURA find(CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, "content-type", ""), "text/css") == -1
+    IACE "static css missing content type"
+  FIN SI
+  SI CONIURA find(res.body, "background:#faf7ef") == -1
+    IACE "static css body missing"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_repository_persists_real_timestamp() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA mural_test_root("timestamp")
+  CONIURA mural_test_write_config(root)
+  EVOCA MuralConfig cfg AD CONIURA mural_test_config(root)
+  CONIURA mural_repository_init_schema(cfg)
+  EVOCA MuralCreateMessage input
+  VINCIRE input.name AD "Clock"
+  VINCIRE input.email AD ""
+  VINCIRE input.body AD "Timestamp check"
+  CONIURA mural_repository_insert(cfg, input)
+  EVOCA SPECULUM NIHIL records AD CONIURA mural_repository_recent(cfg, 1)
+  EVOCA SPECULUM MuralMessageRecord first_ptr AD CONIURA fluxus_get(records, 0)
+  SI CONIURA starts_with((*first_ptr).created_at, "1970-01-01")
+    IACE "repository timestamp should be wall-clock time, not epoch"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

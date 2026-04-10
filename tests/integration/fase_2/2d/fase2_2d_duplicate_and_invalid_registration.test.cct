@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase2_2d_duplicate_and_invalid_registration_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE noop_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  EVOCA SPECULUM NIHIL duplicate_pattern_res
+  EVOCA SPECULUM NIHIL duplicate_name_res
+  EVOCA SPECULUM NIHIL invalid_rest_res
+
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/posts/{id:int}", "posts.show", "noop_handler", noop_handler), 1)
+  VINCIRE duplicate_pattern_res AD CONIURA router_add(SPECULUM router, "GET", "/posts/{id:int}", "posts.other", "noop_handler", noop_handler)
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(duplicate_pattern_res)
+    REDDE 1
+  FIN SI
+
+  VINCIRE duplicate_name_res AD CONIURA router_add(SPECULUM router, "POST", "/posts", "posts.show", "noop_handler", noop_handler)
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(duplicate_name_res)
+    REDDE 2
+  FIN SI
+
+  VINCIRE invalid_rest_res AD CONIURA router_add(SPECULUM router, "GET", "/files/{rest:*}/meta", "files.meta", "noop_handler", noop_handler)
+  SI NON CONIURA result_is_err GENUS(REX, VERBUM)(invalid_rest_res)
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,42 @@
+INCIPIT grimoire "mural_expandido_build_templates"
+
+ADVOCARE "../../lib/civitas/template/compiler.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE muralx_patch_generated_imports(VERBUM path) REDDE NIHIL
+  EVOCA VERBUM code AD CONIURA read_all(path)
+  VINCIRE code AD CONIURA replace_all(code, "../lib/civitas/", "../../../lib/civitas/")
+  CONIURA write_all(path, code)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE muralx_patch_generated_directory(VERBUM gen_dir) REDDE NIHIL
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(gen_dir)
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(entries)
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    SI CONIURA ends_with(*name_ptr, ".cct")
+      CONIURA muralx_patch_generated_imports(CONIURA path_join(gen_dir, *name_ptr))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL res AD CONIURA template_compile_directory_cli("templates", "gen", "templates")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    CONIURA eprintln(CONIURA result_unwrap_err GENUS(REX, VERBUM)(res))
+    REDDE 1
+  FIN SI
+  CONIURA muralx_patch_generated_directory("gen")
+  CONIURA println("templates compiled")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

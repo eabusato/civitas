@@ -1,0 +1,46 @@
+INCIPIT grimoire "civitas_trace_request"
+
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE trace_request_new_id() REDDE VERBUM
+  REDDE CONIURA uuid_to_string(CONIURA uuid_v4())
+EXPLICIT RITUALE
+
+RITUALE trace_request_drain(VERBUM trace_id) REDDE SPECULUM NIHIL
+  SI NON CONIURA instrument_is_enabled()
+    REDDE CONIURA None GENUS(Trace)()
+  FIN SI
+  REDDE CONIURA Some GENUS(Trace)(CONIURA instrument_buffer_drain_trace(trace_id))
+EXPLICIT RITUALE
+
+RITUALE trace_request_file_path(VERBUM trace_dir, VERBUM trace_id) REDDE VERBUM
+  REDDE CONIURA path_join(trace_dir, CONIURA concat(trace_id, ".ctrace"))
+EXPLICIT RITUALE
+
+RITUALE trace_request_flush_to_disk(VERBUM trace_id, VERBUM trace_dir) REDDE REX
+  EVOCA SPECULUM NIHIL opt AD CONIURA trace_request_drain(trace_id)
+  SI CONIURA option_is_none GENUS(Trace)(opt)
+    CONIURA option_free GENUS(Trace)(opt)
+    REDDE 0
+  FIN SI
+  CONIURA mkdir_all(trace_dir)
+  EVOCA Trace trace AD CONIURA option_unwrap GENUS(Trace)(opt)
+  CONIURA option_free GENUS(Trace)(opt)
+  EVOCA VERBUM path AD CONIURA trace_request_file_path(trace_dir, trace_id)
+  EVOCA REX count AD CONIURA trace_span_count(trace)
+  EVOCA SPECULUM NIHIL write_res AD CONIURA trace_write_file(trace, path)
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA result_is_err GENUS(REX, TraceError)(write_res)
+    REDDE -1
+  FIN SI
+  REDDE count
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

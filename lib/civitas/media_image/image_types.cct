@@ -1,0 +1,61 @@
+INCIPIT grimoire "civitas_media_image_types"
+
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/media_store.cct"
+
+ORDO ImageModerationState
+  ImsPending
+  ImsApproved
+  ImsRejected
+  ImsUnsafe
+FIN ORDO
+
+ORDO ImageValidateError
+  IveNotAnImage
+  IveFileTooLarge
+  IveDimensionsTooLarge
+  IveCorrupted
+FIN ORDO
+
+SIGILLUM ImageRecord
+  artifact_id: VERBUM
+  owner_id: VERBUM
+  original_filename: VERBUM
+  content_type: VERBUM
+  filetype: FileType
+  width: REX
+  height: REX
+  size_bytes: REX
+  checksum: VERBUM
+  zone: MediaZone
+  moderation_state: ImageModerationState
+  active: VERUM
+  deleted: VERUM
+  created_at_iso: VERBUM
+  updated_at_iso: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ImageDerivativeSpec
+  name: VERBUM
+  max_width: REX
+  max_height: REX
+  format: ImageFormat
+  quality: REX
+  crop_square: VERUM
+FIN SIGILLUM
+
+SIGILLUM ImageDerivative
+  spec_name: VERBUM
+  artifact: MediaArtifact
+  width: REX
+  height: REX
+FIN SIGILLUM
+
+SIGILLUM ImageProcessConfig
+  specs: SPECULUM NIHIL
+  strip_exif: VERUM
+  auto_promote_zone: MediaZone
+FIN SIGILLUM
+
+EXPLICIT grimoire

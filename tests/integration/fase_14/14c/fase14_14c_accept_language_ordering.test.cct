@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase14_14c_accept_language_ordering"
+
+ADVOCARE "../../../../lib/civitas/locale/locale.cct"
+ADVOCARE "../../../../lib/civitas/locale/locale_accept.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL prefs AD CONIURA locale_parse_accept_language("pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7")
+  EVOCA SPECULUM AcceptLangEntry p0 AD CONIURA fluxus_get(prefs, 0)
+  EVOCA SPECULUM AcceptLangEntry p1 AD CONIURA fluxus_get(prefs, 1)
+  SI CONIURA compare(CONIURA locale_to_string((*p0).locale), "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  SI NON CONIURA locale_matches_lang((*p1).locale, CONIURA locale_new("pt", "PT"))
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

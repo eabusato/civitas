@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase10_10b_query_build_sql"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Query q AD CONIURA query_from("users")
+  CONIURA query_select(q, "id")
+  CONIURA query_select(q, "email")
+  CONIURA query_filter(q, "email", Like, "%@example.com")
+  CONIURA query_order_by(q, "id", Desc)
+  CONIURA query_set_limit(SPECULUM q, 10)
+  CONIURA query_set_offset(SPECULUM q, 20)
+  CONIURA query_set_distinct(SPECULUM q, VERUM)
+  EVOCA VERBUM sql AD CONIURA query_build_sql(q)
+  SI CONIURA compare(sql, "SELECT DISTINCT id, email FROM users WHERE email LIKE ? ORDER BY id DESC LIMIT 10 OFFSET 20") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

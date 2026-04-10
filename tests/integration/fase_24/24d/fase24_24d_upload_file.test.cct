@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase24_24d_upload_file"
+
+ADVOCARE "../../../../lib/civitas/test_client/test_client.cct"
+ADVOCARE "../../../../lib/civitas/test_seo/test_seo.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_upload_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out AD out_ref
+  EVOCA FormParseConfig cfg AD CONIURA form_parse_config_default()
+  EVOCA SPECULUM NIHIL parsed AD CONIURA form_parse(req_ref, cfg)
+  SI CONIURA result_is_err GENUS(FormData, FormParseError)(parsed)
+    CONIURA response_fill(out, CONIURA response_bad_request("upload invalido"))
+    REDDE
+  FIN SI
+  EVOCA FormData form AD CONIURA result_unwrap GENUS(FormData, FormParseError)(parsed)
+  EVOCA SPECULUM NIHIL file_opt AD CONIURA form_data_get_file(form, "asset")
+  SI CONIURA option_is_none GENUS(UploadedFile)(file_opt)
+    CONIURA option_free GENUS(UploadedFile)(file_opt)
+    CONIURA response_fill(out, CONIURA response_bad_request("missing file"))
+    REDDE
+  FIN SI
+  EVOCA UploadedFile up AD CONIURA option_unwrap GENUS(UploadedFile)(file_opt)
+  CONIURA option_free GENUS(UploadedFile)(file_opt)
+  CONIURA response_fill(out, CONIURA response_json_text(CONIURA concat("{\"filename\":\"", CONIURA concat(up.filename, "\"}"))))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA router_add(SPECULUM router, "POST", "/upload", "upload", "phase24_upload_handler", phase24_upload_handler))
+    REDDE 1
+  FIN SI
+  EVOCA TestClient client AD CONIURA test_client_new(SPECULUM router)
+  EVOCA TestResponse res AD CONIURA test_upload_file(SPECULUM client, "/upload", "asset", "cover.jpg", "image/jpeg", "fake-jpeg")
+  CONIURA assert_status(res, 200)
+  CONIURA assert_json_str(res, "filename", "cover.jpg")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

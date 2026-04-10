@@ -1,0 +1,67 @@
+INCIPIT grimoire "civitas_csrf_runtime"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/log.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "request_core.cct"
+ADVOCARE "csrf.cct"
+ADVOCARE "core/keyring.cct"
+ADVOCARE "core/secrets.cct"
+
+RITUALE csrf_request_has_bearer(SPECULUM WebRequest req) REDDE VERUM
+  EVOCA SPECULUM NIHIL bearer_opt AD CONIURA request_bearer_token(*req)
+  EVOCA VERUM has_bearer AD CONIURA option_is_some GENUS(VERBUM)(bearer_opt)
+  CONIURA option_free GENUS(VERBUM)(bearer_opt)
+  REDDE has_bearer
+EXPLICIT RITUALE
+
+RITUALE csrf_log_failure(SPECULUM Logger logger, CsrfError err, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM message AD CONIURA csrf_error_message(err)
+  VINCIRE message AD CONIURA concat(message, " method=")
+  VINCIRE message AD CONIURA concat(message, (*req).method)
+  VINCIRE message AD CONIURA concat(message, " path=")
+  VINCIRE message AD CONIURA concat(message, (*req).path)
+  VINCIRE message AD CONIURA concat(message, " ip=")
+  VINCIRE message AD CONIURA concat(message, (*req).client_ip)
+  CONIURA log_warn(logger, message, CONIURA log_fields_empty())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_log_validation_failure(SPECULUM Logger logger, SPECULUM NIHIL validation_res, SPECULUM WebRequest req) REDDE NIHIL
+  EVOCA VERBUM message AD CONIURA csrf_validation_error_message(validation_res)
+  VINCIRE message AD CONIURA concat(message, " method=")
+  VINCIRE message AD CONIURA concat(message, (*req).method)
+  VINCIRE message AD CONIURA concat(message, " path=")
+  VINCIRE message AD CONIURA concat(message, (*req).path)
+  VINCIRE message AD CONIURA concat(message, " ip=")
+  VINCIRE message AD CONIURA concat(message, (*req).client_ip)
+  CONIURA log_warn(logger, message, CONIURA log_fields_empty())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE csrf_secret_candidates_from_registry(SPECULUM NIHIL registry_ref) REDDE SPECULUM NIHIL
+  REDDE CONIURA secrets_verify_candidates_or_empty(registry_ref, SECRET_DOMAIN_CSRF)
+EXPLICIT RITUALE
+
+RITUALE csrf_validate_with_candidates(SPECULUM CsrfConfig cfg, SPECULUM NIHIL candidates, SPECULUM WebRequest req) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(candidates)
+
+  DUM i < n
+    EVOCA SPECULUM SecretKey key_ptr AD CONIURA fluxus_get(candidates, i)
+    EVOCA SPECULUM NIHIL validation_res AD CONIURA csrf_validate_request(cfg, (*key_ptr).material, (*req).headers, (*req).body)
+    SI CONIURA result_is_ok GENUS(REX, CsrfError)(validation_res)
+      REDDE validation_res
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI n == 0
+    REDDE CONIURA csrf_validation_err(CsrfErrSecretMissing)
+  FIN SI
+  REDDE CONIURA csrf_validation_err(CsrfErrInvalidToken)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

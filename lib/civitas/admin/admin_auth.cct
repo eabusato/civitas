@@ -1,0 +1,46 @@
+INCIPIT grimoire "civitas_admin_auth"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../permissions/permissions_check.cct"
+ADVOCARE "admin.cct"
+
+RITUALE admin_permission_code(AdminModelConfig cfg, VERBUM action_name) REDDE VERBUM
+  EVOCA VERBUM base AD cfg.permissions_prefix
+  SI CONIURA len(base) == 0
+    VINCIRE base AD CONIURA to_lower(cfg.model_name)
+  FIN SI
+  REDDE CONIURA concat(CONIURA concat(base, "."), action_name)
+EXPLICIT RITUALE
+
+RITUALE admin_string_has_wildcard_match(VERBUM permission, VERBUM wildcard) REDDE VERUM
+  SI CONIURA compare(wildcard, "*") == 0
+    REDDE VERUM
+  FIN SI
+  SI NON CONIURA ends_with(wildcard, "*")
+    REDDE CONIURA compare(permission, wildcard) == 0
+  FIN SI
+  EVOCA VERBUM prefix AD CONIURA substring(wildcard, 0, CONIURA len(wildcard) - 1)
+  REDDE CONIURA starts_with(permission, prefix)
+EXPLICIT RITUALE
+
+RITUALE admin_user_has_permission(DbHandle dbh, VERBUM user_id, AdminModelConfig cfg, VERBUM action_name) REDDE VERUM
+  EVOCA VERBUM permission AD CONIURA admin_permission_code(cfg, action_name)
+  SI CONIURA usuario_tem_permissao(CONIURA dbh_raw_conn(dbh), user_id, permission)
+    REDDE VERUM
+  FIN SI
+  EVOCA SPECULUM NIHIL perms AD CONIURA usuario_listar_permissoes(CONIURA dbh_raw_conn(dbh), user_id)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(perms)
+  DUM i < n
+    EVOCA SPECULUM VERBUM ptr AD CONIURA fluxus_get(perms, i)
+    SI CONIURA admin_string_has_wildcard_match(permission, *ptr)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

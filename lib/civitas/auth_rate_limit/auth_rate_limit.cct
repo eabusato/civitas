@@ -1,0 +1,61 @@
+INCIPIT grimoire "civitas_auth_rate_limit"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/verbum.cct"
+SIGILLUM RateLimitConfig
+  max_tentativas: REX
+  janela_segundos: REX
+  lockout_segundos: REX
+FIN SIGILLUM
+
+ORDO RateLimitResult
+  RlPermitido,
+  RlBloqueado(REX restante_segundos)
+FIN ORDO
+
+RITUALE rate_limit_config_default() REDDE RateLimitConfig
+  EVOCA RateLimitConfig cfg
+  VINCIRE cfg.max_tentativas AD 5
+  VINCIRE cfg.janela_segundos AD 300
+  VINCIRE cfg.lockout_segundos AD 900
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE rate_limit_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE rate_limit_chave_email(VERBUM email) REDDE VERBUM
+  REDDE CONIURA concat("email:", email)
+EXPLICIT RITUALE
+
+RITUALE rate_limit_chave_ip(VERBUM ip) REDDE VERBUM
+  REDDE CONIURA concat("ip:", ip)
+EXPLICIT RITUALE
+
+RITUALE rate_limit_chave_ip_email(VERBUM ip, VERBUM email) REDDE VERBUM
+  EVOCA VERBUM chave AD CONIURA concat("ip_email:", ip)
+  VINCIRE chave AD CONIURA concat(chave, ":")
+  VINCIRE chave AD CONIURA concat(chave, email)
+  REDDE chave
+EXPLICIT RITUALE
+
+RITUALE rate_limit_result_ok(RateLimitResult rl) REDDE VERUM
+  QUANDO rl
+    CASO RlPermitido:
+      REDDE VERUM
+    CASO RlBloqueado(_):
+      REDDE FALSUM
+  FIN QUANDO
+EXPLICIT RITUALE
+
+RITUALE rate_limit_resposta_429(REX restante_segundos) REDDE HttpResponse
+  EVOCA VERBUM retry_after AD CONIURA stringify_int(restante_segundos)
+  EVOCA REX headers AD CONIURA http_headers_new()
+  CONIURA http_headers_set_or_push(headers, "Retry-After", retry_after)
+  REDDE CONIURA http_response_with_headers(429, headers, "")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

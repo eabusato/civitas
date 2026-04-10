@@ -1,0 +1,74 @@
+INCIPIT grimoire "fase4_4a_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase4_4a_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase4_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase4_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_write(VERBUM path, VERBUM content) REDDE NIHIL
+  CONIURA phase4_write(path, content)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_probe_empty_marker() REDDE VERBUM
+  REDDE "__civitas_empty__"
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_probe_arg(VERBUM value) REDDE VERBUM
+  SI CONIURA len(value) == 0
+    REDDE CONIURA phase4_4a_probe_empty_marker()
+  FIN SI
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_compile_probe(VERBUM work_dir) REDDE VERBUM
+  EVOCA VERBUM probe_src AD CONIURA phase4_copy_fixture_to_tmp("settings_probe.cct", work_dir)
+  EVOCA VERBUM compiler AD CONIURA phase4_compiler_bin()
+  EVOCA VERBUM cmd AD CONIURA concat(compiler, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, probe_src)
+  SI CONIURA run(cmd) != 0
+    IACE "falha ao compilar settings_probe"
+  FIN SI
+  REDDE CONIURA substring(probe_src, 0, CONIURA len(probe_src) - 4)
+EXPLICIT RITUALE
+
+RITUALE phase4_4a_run_probe(
+  VERBUM work_dir,
+  VERBUM project_root,
+  VERBUM env_name,
+  VERBUM action,
+  VERBUM key,
+  SPECULUM NIHIL env_pairs
+) REDDE VERBUM
+  EVOCA VERBUM bin AD CONIURA phase4_4a_compile_probe(work_dir)
+  EVOCA VERBUM out_path AD CONIURA path_join(work_dir, CONIURA concat(action, ".out"))
+  EVOCA VERBUM cmd AD bin
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, project_root)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase4_4a_probe_arg(env_name))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, action)
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, CONIURA phase4_4a_probe_arg(key))
+  VINCIRE cmd AD CONIURA concat(cmd, " ")
+  VINCIRE cmd AD CONIURA concat(cmd, out_path)
+  SI CONIURA run_env(cmd, env_pairs) != 0
+    IACE "falha ao executar settings_probe"
+  FIN SI
+  REDDE CONIURA read_all(out_path)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

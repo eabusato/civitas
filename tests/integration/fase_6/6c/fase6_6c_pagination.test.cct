@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase6_6c_pagination_test"
+
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM html AD CONIURA html_render_free(CONIURA html_pagination(2, 3, "/posts?page="))
+
+  SI CONIURA find(html, "aria-current=\"page\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "href=\"/posts?page=1\"") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "href=\"/posts?page=3\"") == -1
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

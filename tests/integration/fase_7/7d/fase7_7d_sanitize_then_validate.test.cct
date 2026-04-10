@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase7_7d_sanitize_then_validate_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/html.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+
+RITUALE main() REDDE REX
+  EVOCA HtmlAllowList al AD CONIURA allowlist_minimal()
+  EVOCA HtmlSanitizeConfig cfg AD CONIURA html_sanitize_config_default(al)
+  EVOCA FormData fd AD CONIURA form_data_new()
+  EVOCA FormSchema schema AD CONIURA phase7_7d_validation_schema_min_len("bio", 3)
+  EVOCA VERBUM clean AD CONIURA html_sanitize("<p>  Oi  </p>", cfg)
+
+  CONIURA form_data_put_text(SPECULUM fd, "bio", clean)
+  EVOCA ValidationResult vr AD CONIURA validate_form(schema, fd)
+  CONIURA html_sanitize_config_free(SPECULUM cfg)
+
+  SI NON vr.valido
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

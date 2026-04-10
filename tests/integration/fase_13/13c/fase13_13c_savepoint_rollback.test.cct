@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase13_13c_savepoint_rollback"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_setup.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_tx.cct"
+ADVOCARE "../../../../lib/civitas/test_db/test_db_assert.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA TestDb tdb AD CONIURA test_db_open_memory()
+  CONIURA test_db_run_migrations(tdb, CONIURA phase13_registry_basic())
+  CONIURA test_db_begin_test(SPECULUM tdb)
+  CONIURA db_exec(tdb.db, "INSERT INTO categorias (nome, slug, ativo) VALUES ('Tech', 'tech', 1)")
+  SI CONIURA test_db_count(tdb, "categorias") != 1
+    REDDE 1
+  FIN SI
+  CONIURA test_db_rollback_test(SPECULUM tdb)
+  SI CONIURA test_db_count(tdb, "categorias") != 0
+    REDDE 2
+  FIN SI
+  CONIURA test_db_close(tdb)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase2_2b_multiple_set_cookie_headers_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "../../../../lib/civitas/cookie.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE count_set_cookie(HttpResponse res) REDDE REX
+  EVOCA REX handle AD CONIURA http_response_headers_handle(res)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA http_headers_len(handle)
+  EVOCA REX count AD 0
+  DUM i < n
+    EVOCA SPECULUM HttpHeader header AD CONIURA http_headers_get_ptr(handle, i)
+    SI CONIURA compare(CONIURA to_lower((*header).nome), "set-cookie") == 0
+      VINCIRE count AD count + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA WebResponse res AD CONIURA response_ok()
+  CONIURA response_set_cookie(SPECULUM res, CONIURA cookie_default_set("a", "1"))
+  CONIURA response_set_cookie(SPECULUM res, CONIURA cookie_default_set("b", "2"))
+  EVOCA SPECULUM NIHIL http_res AD CONIURA response_to_http(res)
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_res)
+    REDDE 1
+  FIN SI
+  SI CONIURA count_set_cookie(CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_res)) != 2
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

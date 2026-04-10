@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase23_23d_management_loader_uses_shared_config"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_management/civitas_management.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23d_management_loader_uses_shared_config")
+  CONIURA write_all(CONIURA path_join(root, "civitas.toml"), "[project]\nname = \"shared\"\nentry = \"project/main.cct\"\n\n[database]\ndriver = \"sqlite\"\nurl = \"var/custom.db\"\n\n[dirs]\nmigrations = \"db/migrations\"\ntests = \"suite\"\n\n[static]\nsrc_dir = \"assets\"\nout_dir = \"public/files\"\n")
+  EVOCA ManagementProject proj AD CONIURA civitas_management_load_project(CONIURA path_join(root, "civitas.toml"))
+  SI CONIURA compare(proj.name, "shared") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(proj.db_url, CONIURA path_join(root, "var/custom.db")) != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(proj.migrations_dir, CONIURA path_join(root, "db/migrations")) != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(proj.tests_dir, CONIURA path_join(root, "suite")) != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(proj.static_out_dir, CONIURA path_join(root, "public/files")) != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

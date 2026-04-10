@@ -1,0 +1,225 @@
+INCIPIT grimoire "civitas_trace_export"
+
+ADVOCARE "cct/archive_zip.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/verbum_builder.cct"
+ADVOCARE "../trace_render/trace_render.cct"
+ADVOCARE "../trace_store/trace_store.cct"
+
+SIGILLUM TraceExportConfig
+  store: SPECULUM TraceStore
+  render_cfg: TraceRenderConfig
+  output_dir: VERBUM
+  app_name: VERBUM
+FIN SIGILLUM
+
+SIGILLUM EndpointEntry
+  method: VERBUM
+  path: VERBUM
+  slug: VERBUM
+  best_trace_id: VERBUM
+  best_ctrace_path: VERBUM
+  avg_duration_ms: REX
+  sample_count: REX
+  has_error: VERUM
+  best_span_count: REX
+FIN SIGILLUM
+
+RITUALE trace_export_default_config(SPECULUM TraceStore store, VERBUM output_dir, VERBUM app_name) REDDE TraceExportConfig
+  EVOCA TraceExportConfig cfg
+  VINCIRE cfg.store AD store
+  VINCIRE cfg.render_cfg AD CONIURA trace_render_default_config()
+  VINCIRE cfg.output_dir AD output_dir
+  VINCIRE cfg.app_name AD app_name
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE trace_export_slug(VERBUM method, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA concat(method, "__")
+  VINCIRE out AD CONIURA concat(out, path)
+  VINCIRE out AD CONIURA replace_all(out, "/", "__")
+  VINCIRE out AD CONIURA replace_all(out, "{", "_")
+  VINCIRE out AD CONIURA replace_all(out, "}", "_")
+  VINCIRE out AD CONIURA replace_all(out, "?", "_")
+  VINCIRE out AD CONIURA replace_all(out, "#", "_")
+  VINCIRE out AD CONIURA replace_all(out, "&", "_")
+  VINCIRE out AD CONIURA replace_all(out, "=", "_")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_export_collect_endpoints(SPECULUM TraceStore store) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL entries AD CONIURA fluxus_init(MENSURA(EndpointEntry))
+  EVOCA TraceResultSet rs AD CONIURA trace_store_query_recent(store, 1000)
+  EVOCA REX i AD 0
+  DUM i < rs.count
+    EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, i)
+    EVOCA REX j AD 0
+    EVOCA VERUM found AD FALSUM
+    DUM j < CONIURA fluxus_len(entries)
+      EVOCA SPECULUM EndpointEntry entry_ptr AD CONIURA fluxus_get(entries, j)
+      SI CONIURA compare((*entry_ptr).method, (*row_ptr).method) == 0 ET CONIURA compare((*entry_ptr).path, (*row_ptr).path) == 0
+        VINCIRE found AD VERUM
+        VINCIRE (*entry_ptr).avg_duration_ms AD (((*entry_ptr).avg_duration_ms * (*entry_ptr).sample_count) + (*row_ptr).duration_ms) / ((*entry_ptr).sample_count + 1)
+        VINCIRE (*entry_ptr).sample_count AD (*entry_ptr).sample_count + 1
+        SI (*row_ptr).status >= 400
+          VINCIRE (*entry_ptr).has_error AD VERUM
+        FIN SI
+        SI (*row_ptr).span_count > (*entry_ptr).best_span_count
+          VINCIRE (*entry_ptr).best_span_count AD (*row_ptr).span_count
+          VINCIRE (*entry_ptr).best_trace_id AD (*row_ptr).trace_id
+          VINCIRE (*entry_ptr).best_ctrace_path AD (*row_ptr).file_path
+        FIN SI
+      FIN SI
+      VINCIRE j AD j + 1
+    FIN DUM
+    SI NON found
+      EVOCA EndpointEntry entry
+      VINCIRE entry.method AD (*row_ptr).method
+      VINCIRE entry.path AD (*row_ptr).path
+      VINCIRE entry.slug AD CONIURA trace_export_slug((*row_ptr).method, (*row_ptr).path)
+      VINCIRE entry.best_trace_id AD (*row_ptr).trace_id
+      VINCIRE entry.best_ctrace_path AD (*row_ptr).file_path
+      VINCIRE entry.avg_duration_ms AD (*row_ptr).duration_ms
+      VINCIRE entry.sample_count AD 1
+      VINCIRE entry.has_error AD (*row_ptr).status >= 400
+      VINCIRE entry.best_span_count AD (*row_ptr).span_count
+      CONIURA fluxus_push(entries, SPECULUM entry)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+  REDDE entries
+EXPLICIT RITUALE
+
+RITUALE trace_export_css() REDDE VERBUM
+  EVOCA VERBUM out AD "*{box-sizing:border-box}body{margin:0;background:#020817;color:#e2e8f0;font:13px/1.55 ui-monospace,monospace;padding:24px}"
+  VINCIRE out AD CONIURA concat(out, "a{color:#38bdf8;text-decoration:none}a:hover{text-decoration:underline}.shell{max-width:1360px;margin:0 auto}.hero h1{margin:0 0 8px;font-size:26px}.hero p{margin:0 0 24px;color:#94a3b8}")
+  VINCIRE out AD CONIURA concat(out, "table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid #1e293b}th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b}")
+  VINCIRE out AD CONIURA concat(out, ".panel{background:linear-gradient(180deg,#0f172a,#0b1220);border:1px solid #1e293b;border-radius:18px;padding:18px}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.get{background:#052e16;color:#86efac}.post{background:#082f49;color:#7dd3fc}.put{background:#422006;color:#fcd34d}.delete{background:#450a0a;color:#fca5a5}")
+  VINCIRE out AD CONIURA concat(out, ".warn{color:#fbbf24}.svg-wrap{overflow:auto;background:#020617;border:1px solid #1e293b;border-radius:16px;padding:12px}.meta{display:flex;gap:16px;flex-wrap:wrap;color:#94a3b8;margin:16px 0}")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_export_method_badge(VERBUM method) REDDE VERBUM
+  EVOCA VERBUM cls AD "get"
+  SI CONIURA compare(method, "POST") == 0
+    VINCIRE cls AD "post"
+  FIN SI
+  SI CONIURA compare(method, "PUT") == 0 VEL CONIURA compare(method, "PATCH") == 0
+    VINCIRE cls AD "put"
+  FIN SI
+  SI CONIURA compare(method, "DELETE") == 0
+    VINCIRE cls AD "delete"
+  FIN SI
+  EVOCA VERBUM out AD "<span class=\"badge "
+  VINCIRE out AD CONIURA concat(out, cls)
+  VINCIRE out AD CONIURA concat(out, "\">")
+  VINCIRE out AD CONIURA concat(out, method)
+  VINCIRE out AD CONIURA concat(out, "</span>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_export_generated_at() REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_now(), "%Y-%m-%d %H:%M:%S")
+EXPLICIT RITUALE
+
+RITUALE trace_export_index_html(SPECULUM NIHIL entries, VERBUM app_name, VERBUM generated_at) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>")
+  CONIURA builder_append(b, CONIURA html_encode(app_name))
+  CONIURA builder_append(b, " · Trace Export</title><link rel=\"stylesheet\" href=\"static/panel.css\"></head><body><div class=\"shell\"><div class=\"hero\"><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(app_name))
+  CONIURA builder_append(b, " Trace Export</h1><p>Generated at ")
+  CONIURA builder_append(b, CONIURA html_encode(generated_at))
+  CONIURA builder_append(b, " from the Civitas trace store.</p></div><div class=\"panel\"><table><thead><tr><th>Method</th><th>Path</th><th>Samples</th><th>Average</th><th>Trace</th></tr></thead><tbody>")
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(entries)
+    EVOCA SPECULUM EndpointEntry entry_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA builder_append(b, "<tr><td>")
+    CONIURA builder_append(b, CONIURA trace_export_method_badge((*entry_ptr).method))
+    CONIURA builder_append(b, "</td><td><a href=\"endpoints/")
+    CONIURA builder_append(b, CONIURA html_encode((*entry_ptr).slug))
+    CONIURA builder_append(b, ".html\">")
+    CONIURA builder_append(b, CONIURA html_encode((*entry_ptr).path))
+    CONIURA builder_append(b, "</a>")
+    SI (*entry_ptr).has_error
+      CONIURA builder_append(b, "<span class=\"warn\">error seen</span>")
+    FIN SI
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int((*entry_ptr).sample_count))
+    CONIURA builder_append(b, "</td><td>")
+    CONIURA builder_append(b, CONIURA stringify_int((*entry_ptr).avg_duration_ms))
+    CONIURA builder_append(b, "ms</td><td><a href=\"traces/")
+    CONIURA builder_append(b, CONIURA html_encode((*entry_ptr).slug))
+    CONIURA builder_append(b, ".svg\">")
+    CONIURA builder_append(b, CONIURA html_encode((*entry_ptr).best_trace_id))
+    CONIURA builder_append(b, "</a></td></tr>")
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA builder_append(b, "</tbody></table></div></div></body></html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_export_detail_html(EndpointEntry entry, VERBUM generated_at) REDDE VERBUM
+  EVOCA SPECULUM NIHIL b AD CONIURA builder_init()
+  CONIURA builder_append(b, "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>")
+  CONIURA builder_append(b, CONIURA html_encode(entry.method))
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, CONIURA html_encode(entry.path))
+  CONIURA builder_append(b, "</title><link rel=\"stylesheet\" href=\"../static/panel.css\"></head><body><div class=\"shell\"><p><a href=\"../index.html\">Back to index</a></p><div class=\"hero\"><h1>")
+  CONIURA builder_append(b, CONIURA html_encode(entry.method))
+  CONIURA builder_append(b, " ")
+  CONIURA builder_append(b, CONIURA html_encode(entry.path))
+  CONIURA builder_append(b, "</h1><p>Representative trace rendered offline at ")
+  CONIURA builder_append(b, CONIURA html_encode(generated_at))
+  CONIURA builder_append(b, ".</p></div><div class=\"meta\"><span>samples ")
+  CONIURA builder_append(b, CONIURA stringify_int(entry.sample_count))
+  CONIURA builder_append(b, "</span><span>avg ")
+  CONIURA builder_append(b, CONIURA stringify_int(entry.avg_duration_ms))
+  CONIURA builder_append(b, "ms</span><span>trace ")
+  CONIURA builder_append(b, CONIURA html_encode(entry.best_trace_id))
+  CONIURA builder_append(b, "</span></div><div class=\"svg-wrap\"><img alt=\"Trace SVG\" src=\"../traces/")
+  CONIURA builder_append(b, CONIURA html_encode(entry.slug))
+  CONIURA builder_append(b, ".svg\" style=\"max-width:100%\"></div></div></body></html>")
+  EVOCA VERBUM out AD CONIURA builder_to_verbum(b)
+  CONIURA builder_free(b)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE trace_export_write_zip(TraceExportConfig cfg, VERBUM archive_path) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL entries AD CONIURA trace_export_collect_endpoints(cfg.store)
+  EVOCA VERBUM generated_at AD CONIURA trace_export_generated_at()
+  EVOCA SPECULUM NIHIL zip_res AD CONIURA zip_create(archive_path)
+  SI CONIURA result_is_err GENUS(ZipArchive, VERBUM)(zip_res)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA result_unwrap_err GENUS(ZipArchive, VERBUM)(zip_res))
+  FIN SI
+  EVOCA ZipArchive archive AD CONIURA result_unwrap GENUS(ZipArchive, VERBUM)(zip_res)
+  CONIURA zip_add_text(archive, "static/panel.css", CONIURA trace_export_css())
+  CONIURA zip_add_text(archive, "index.html", CONIURA trace_export_index_html(entries, cfg.app_name, generated_at))
+  EVOCA REX i AD 0
+  DUM i < CONIURA fluxus_len(entries)
+    EVOCA SPECULUM EndpointEntry entry_ptr AD CONIURA fluxus_get(entries, i)
+    EVOCA SPECULUM NIHIL render_res AD CONIURA trace_render_file((*entry_ptr).best_ctrace_path, cfg.render_cfg)
+    SI CONIURA result_is_ok GENUS(TraceRenderResult, VERBUM)(render_res)
+      EVOCA TraceRenderResult rendered AD CONIURA result_unwrap GENUS(TraceRenderResult, VERBUM)(render_res)
+      CONIURA zip_add_text(archive, CONIURA concat("traces/", CONIURA concat((*entry_ptr).slug, ".svg")), rendered.svg)
+      CONIURA zip_add_text(archive, CONIURA concat("endpoints/", CONIURA concat((*entry_ptr).slug, ".html")), CONIURA trace_export_detail_html(*entry_ptr, generated_at))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA zip_close(SPECULUM archive)
+  EVOCA REX total AD CONIURA fluxus_len(entries)
+  CONIURA fluxus_free(entries)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(total)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

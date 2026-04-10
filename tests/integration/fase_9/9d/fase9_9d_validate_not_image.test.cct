@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase9_9d_validate_not_image"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "cct/filetype.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("validate_not_image")
+  EVOCA VERBUM file_path AD CONIURA concat(root, "/raw.txt")
+  CONIURA phase9_reset_dir(root)
+  CONIURA mkdir_all(root)
+  CONIURA write_all(file_path, "plain text")
+
+  EVOCA SPECULUM NIHIL res AD CONIURA image_validate(file_path, 1024)
+  SI NON CONIURA result_is_err GENUS(FileType, ImageValidateError)(res)
+    IACE "text file should be rejected as image"
+  FIN SI
+  SI CONIURA result_unwrap_err GENUS(FileType, ImageValidateError)(res) != IveNotAnImage
+    IACE "expected IveNotAnImage"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

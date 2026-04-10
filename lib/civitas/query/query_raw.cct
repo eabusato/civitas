@@ -1,0 +1,21 @@
+INCIPIT grimoire "civitas_query_raw"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/log.cct"
+
+RITUALE query_raw(SPECULUM NIHIL db, VERBUM sql, SPECULUM NIHIL logger) REDDE SPECULUM NIHIL
+  SI logger != NIHIL
+    CONIURA log_debug(logger, sql, "{\"op\":\"raw\"}")
+  FIN SI
+  REDDE CONIURA db_query(db, sql)
+EXPLICIT RITUALE
+
+RITUALE query_raw_exec(SPECULUM NIHIL db, VERBUM sql, SPECULUM NIHIL logger) REDDE NIHIL
+  SI logger != NIHIL
+    CONIURA log_debug(logger, sql, "{\"op\":\"raw_exec\"}")
+  FIN SI
+  CONIURA db_exec(db, sql)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_doc_gen_root"
+
+ADVOCARE "doc_gen/doc_gen.cct"
+
+EXPLICIT grimoire

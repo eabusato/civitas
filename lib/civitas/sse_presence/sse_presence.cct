@@ -1,0 +1,188 @@
+INCIPIT grimoire "civitas_sse_presence"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../sse/sse.cct"
+
+SIGILLUM PresenceRecord
+  user_id: REX
+  sala: VERBUM
+  conn_id: VERBUM
+  joined_at: REX
+  last_seen: REX
+FIN SIGILLUM
+
+SIGILLUM InboxEntry
+  id: REX
+  user_id: REX
+  tipo: VERBUM
+  payload: VERBUM
+  lido: VERUM
+  criado_em: REX
+FIN SIGILLUM
+
+SIGILLUM PresenceCtx
+  db: SPECULUM NIHIL
+  user_id: REX
+  sala: VERBUM
+  conn_id: VERBUM
+  bus: SPECULUM SseBus
+FIN SIGILLUM
+
+RITUALE sse_presence_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS sse_presence (user_id INTEGER NOT NULL, sala TEXT NOT NULL DEFAULT 'global', conn_id TEXT NOT NULL, joined_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, PRIMARY KEY (user_id, sala, conn_id))")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_sse_presence_sala ON sse_presence(sala, last_seen)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS sse_inbox (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, tipo TEXT NOT NULL, payload TEXT NOT NULL, lido INTEGER NOT NULL DEFAULT 0, criado_em INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_sse_inbox_user ON sse_inbox(user_id, lido, criado_em DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_presence_join(SPECULUM NIHIL db, REX user_id, VERBUM sala, VERBUM conn_id) REDDE NIHIL
+  CONIURA sse_presence_schema_up(db)
+  EVOCA REX agora AD CONIURA now_ms()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO sse_presence(user_id, sala, conn_id, joined_at, last_seen) VALUES(?,?,?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, sala)
+  CONIURA stmt_bind_text(stmt, 3, conn_id)
+  CONIURA stmt_bind_int(stmt, 4, agora)
+  CONIURA stmt_bind_int(stmt, 5, agora)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_presence_heartbeat(SPECULUM NIHIL db, REX user_id, VERBUM sala, VERBUM conn_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sse_presence SET last_seen = ? WHERE user_id = ? AND sala = ? AND conn_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA now_ms())
+  CONIURA stmt_bind_int(stmt, 2, user_id)
+  CONIURA stmt_bind_text(stmt, 3, sala)
+  CONIURA stmt_bind_text(stmt, 4, conn_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_presence_leave(SPECULUM NIHIL db, REX user_id, VERBUM sala, VERBUM conn_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM sse_presence WHERE user_id = ? AND sala = ? AND conn_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, sala)
+  CONIURA stmt_bind_text(stmt, 3, conn_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_presence_sweep(SPECULUM NIHIL db, REX timeout_ms) REDDE REX
+  EVOCA REX before AD CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sse_presence")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM sse_presence WHERE last_seen < ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA now_ms() - timeout_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE before - CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sse_presence")
+EXPLICIT RITUALE
+
+RITUALE sse_presence_list(SPECULUM NIHIL db, VERBUM sala, REX timeout_ms) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT DISTINCT user_id FROM sse_presence WHERE sala = ? AND last_seen >= ? ORDER BY joined_at")
+  CONIURA stmt_bind_text(stmt, 1, sala)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - timeout_ms)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX uid AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA fluxus_push(out, SPECULUM uid)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE sse_presence_count(SPECULUM NIHIL db, VERBUM sala, REX timeout_ms) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(DISTINCT user_id) FROM sse_presence WHERE sala = ? AND last_seen >= ?")
+  CONIURA stmt_bind_text(stmt, 1, sala)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA now_ms() - timeout_ms)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX total AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA stmt_finalize(stmt)
+      REDDE total
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE sse_inbox_push(SPECULUM NIHIL db, REX user_id, VERBUM tipo, VERBUM payload) REDDE REX
+  CONIURA sse_presence_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO sse_inbox(user_id, tipo, payload, lido, criado_em) VALUES(?,?,?,0,?)")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, tipo)
+  CONIURA stmt_bind_text(stmt, 3, payload)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA now_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA db_scalar_int(db, "SELECT COALESCE(MAX(id), 0) FROM sse_inbox")
+EXPLICIT RITUALE
+
+RITUALE sse_inbox_count_unread(SPECULUM NIHIL db, REX user_id) REDDE REX
+  CONIURA sse_presence_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM sse_inbox WHERE user_id = ? AND lido = 0")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA REX total AD CONIURA stmt_get_int(stmt, 0)
+      CONIURA stmt_finalize(stmt)
+      REDDE total
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE sse_inbox_mark_read(SPECULUM NIHIL db, REX user_id, REX id) REDDE NIHIL
+  CONIURA sse_presence_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sse_inbox SET lido = 1 WHERE user_id = ? AND id = ?")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_inbox_mark_all_read(SPECULUM NIHIL db, REX user_id) REDDE NIHIL
+  CONIURA sse_presence_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE sse_inbox SET lido = 1 WHERE user_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE sse_inbox_list(SPECULUM NIHIL db, REX user_id, REX limite, REX offset) REDDE SPECULUM NIHIL
+  CONIURA sse_presence_schema_up(db)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(InboxEntry))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, user_id, tipo, payload, lido, criado_em FROM sse_inbox WHERE user_id = ? ORDER BY criado_em DESC, id DESC LIMIT ? OFFSET ?")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, limite)
+  CONIURA stmt_bind_int(stmt, 3, offset)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA InboxEntry entry
+      VINCIRE entry.id AD CONIURA stmt_get_int(stmt, 0)
+      VINCIRE entry.user_id AD CONIURA stmt_get_int(stmt, 1)
+      VINCIRE entry.tipo AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+      VINCIRE entry.payload AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+      VINCIRE entry.lido AD CONIURA stmt_get_int(stmt, 4) != 0
+      VINCIRE entry.criado_em AD CONIURA stmt_get_int(stmt, 5)
+      CONIURA fluxus_push(out, SPECULUM entry)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

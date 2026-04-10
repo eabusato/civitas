@@ -1,0 +1,205 @@
+INCIPIT grimoire "civitas_test_tasks"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../db_handle/db_handle_sqlite.cct"
+ADVOCARE "../tasks/tasks.cct"
+
+SIGILLUM TestTaskQueue
+  db: SPECULUM NIHIL
+  dbh: DbHandle
+  cfg: TaskConfig
+  registry: TaskRegistry
+  queue_name: VERBUM
+FIN SIGILLUM
+
+RITUALE tt_scalar_count(DbHandle dbh, VERBUM sql) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE tt_count_name_state(DbHandle dbh, VERBUM task_name, VERBUM state_name) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, state_name)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM task_queue WHERE task_name = ? AND state = ?", params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE tt_count_name(DbHandle dbh, VERBUM task_name) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM task_queue WHERE task_name = ?", params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+RITUALE tt_fail(VERBUM msg) REDDE NIHIL
+  CONIURA println(msg)
+  IACE msg
+EXPLICIT RITUALE
+
+RITUALE test_tasks_setup() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(":memory:")
+  EVOCA SPECULUM TestTaskQueue q AD OBSECRO mem_alloc(MENSURA(TestTaskQueue))
+  EVOCA DbHandle sqlite_dbh AD CONIURA dbh_from_sqlite(db)
+  EVOCA TaskConfig cfg AD CONIURA task_config_default()
+  EVOCA TaskRegistry registry AD CONIURA task_registry_new()
+  VINCIRE cfg.queue_name AD "default"
+  VINCIRE cfg.worker_name AD "test-worker"
+  VINCIRE cfg.poll_interval_ms AD 0
+  VINCIRE cfg.default_timeout_ms AD 1000
+  VINCIRE cfg.retry_policy.initial_backoff_ms AD 0
+  VINCIRE cfg.retry_policy.max_backoff_ms AD 0
+  VINCIRE cfg.retry_policy.jitter_ms AD 0
+  VINCIRE (*q).db AD db
+  CONIURA dbh_fill(SPECULUM (*q).dbh, sqlite_dbh)
+  VINCIRE (*q).cfg AD cfg
+  VINCIRE (*q).registry.items AD registry.items
+  VINCIRE (*q).queue_name AD "default"
+  CONIURA tasks_schema_up((*q).dbh)
+  REDDE q
+EXPLICIT RITUALE
+
+RITUALE test_tasks_free(SPECULUM NIHIL q_ref) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  CONIURA task_registry_free(SPECULUM (*q).registry)
+  CONIURA dbh_close(SPECULUM (*q).dbh)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_tasks_db(SPECULUM NIHIL q_ref) REDDE DbHandle
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  REDDE (*q).dbh
+EXPLICIT RITUALE
+
+RITUALE test_tasks_config(SPECULUM NIHIL q_ref) REDDE TaskConfig
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  REDDE (*q).cfg
+EXPLICIT RITUALE
+
+RITUALE test_tasks_set_queue(SPECULUM NIHIL q_ref, VERBUM queue_name) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  VINCIRE (*q).queue_name AD queue_name
+  VINCIRE (*q).cfg.queue_name AD queue_name
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_tasks_register(SPECULUM NIHIL q_ref, VERBUM task_name, SPECULUM NIHIL callback) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  CONIURA task_register(SPECULUM (*q).registry, task_name, callback)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_tasks_enqueue(SPECULUM NIHIL q_ref, VERBUM task_name, VERBUM payload_json) REDDE VERBUM
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  REDDE CONIURA task_enqueue_json((*q).dbh, (*q).cfg.queue_name, task_name, payload_json, CONIURA task_enqueue_options_default(), (*q).cfg)
+EXPLICIT RITUALE
+
+RITUALE test_tasks_flush(SPECULUM NIHIL q_ref) REDDE REX
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  EVOCA REX executed AD 0
+  EVOCA REX guard AD 0
+  DUM guard < 1000
+    EVOCA TaskWorkerRun run AD CONIURA task_worker_run_once((*q).dbh, (*q).cfg, (*q).registry, (*q).cfg.worker_name)
+    SI NON run.processed
+      FRANGE
+    FIN SI
+    VINCIRE executed AD executed + 1
+    VINCIRE guard AD guard + 1
+  FIN DUM
+  REDDE executed
+EXPLICIT RITUALE
+
+RITUALE test_tasks_flush_one(SPECULUM NIHIL q_ref, VERBUM task_name) REDDE REX
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  EVOCA REX executed AD 0
+  EVOCA REX guard AD 0
+  DUM guard < 1000
+    SI CONIURA tt_count_name_state((*q).dbh, task_name, "queued") == 0 ET CONIURA tt_count_name_state((*q).dbh, task_name, "retry") == 0
+      FRANGE
+    FIN SI
+    EVOCA TaskWorkerRun run AD CONIURA task_worker_run_once((*q).dbh, (*q).cfg, (*q).registry, (*q).cfg.worker_name)
+    SI NON run.processed
+      FRANGE
+    FIN SI
+    VINCIRE executed AD executed + 1
+    VINCIRE guard AD guard + 1
+  FIN DUM
+  REDDE executed
+EXPLICIT RITUALE
+
+RITUALE test_tasks_count(SPECULUM NIHIL q_ref) REDDE REX
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  REDDE CONIURA tt_scalar_count((*q).dbh, "SELECT COUNT(*) FROM task_queue")
+EXPLICIT RITUALE
+
+RITUALE test_tasks_count_name(SPECULUM NIHIL q_ref, VERBUM task_name) REDDE REX
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  REDDE CONIURA tt_count_name((*q).dbh, task_name)
+EXPLICIT RITUALE
+
+RITUALE test_tasks_clear(SPECULUM NIHIL q_ref) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec((*q).dbh, "DELETE FROM task_dead_letters", params)
+  CONIURA dbh_exec((*q).dbh, "DELETE FROM task_attempts", params)
+  CONIURA dbh_exec((*q).dbh, "DELETE FROM task_queue", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE assert_task_enqueued(SPECULUM NIHIL q_ref, VERBUM task_name) REDDE NIHIL
+  SI CONIURA test_tasks_count_name(q_ref, task_name) > 0
+    REDDE
+  FIN SI
+  CONIURA tt_fail(CONIURA concat("ASSERT FALHOU - assert_task_enqueued: task nao encontrada: ", task_name))
+EXPLICIT RITUALE
+
+RITUALE assert_task_ran(SPECULUM NIHIL q_ref, VERBUM task_name) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  SI CONIURA tt_count_name_state((*q).dbh, task_name, "done") > 0
+    REDDE
+  FIN SI
+  CONIURA tt_fail(CONIURA concat("ASSERT FALHOU - assert_task_ran: task nao ficou done: ", task_name))
+EXPLICIT RITUALE
+
+RITUALE assert_task_failed(SPECULUM NIHIL q_ref, VERBUM task_name) REDDE NIHIL
+  EVOCA SPECULUM TestTaskQueue q AD q_ref
+  SI CONIURA tt_count_name_state((*q).dbh, task_name, "dead") > 0
+    REDDE
+  FIN SI
+  CONIURA tt_fail(CONIURA concat("ASSERT FALHOU - assert_task_failed: task nao ficou dead: ", task_name))
+EXPLICIT RITUALE
+
+RITUALE assert_task_count(SPECULUM NIHIL q_ref, REX expected) REDDE NIHIL
+  EVOCA REX actual AD CONIURA test_tasks_count(q_ref)
+  SI actual == expected
+    REDDE
+  FIN SI
+  CONIURA tt_fail(CONIURA concat("ASSERT FALHOU - assert_task_count: esperado ", CONIURA concat(CONIURA stringify_int(expected), CONIURA concat(", recebido ", CONIURA stringify_int(actual)))))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

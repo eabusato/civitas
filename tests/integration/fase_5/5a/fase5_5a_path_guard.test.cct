@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase5_5a_path_guard_test"
+
+ADVOCARE "../../../../lib/civitas/security.cct"
+
+RITUALE main() REDDE REX
+  SI NON CONIURA path_is_safe("var/www/public", "css/site.css")
+    REDDE 1
+  FIN SI
+  SI NON CONIURA path_is_safe("var/www/public", "images/../css/app.css")
+    REDDE 2
+  FIN SI
+  SI CONIURA path_is_safe("var/www/public", "../../../etc/passwd")
+    REDDE 3
+  FIN SI
+  SI CONIURA path_is_safe("var/www/public", "%2e%2e/%2e%2e/etc/passwd")
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

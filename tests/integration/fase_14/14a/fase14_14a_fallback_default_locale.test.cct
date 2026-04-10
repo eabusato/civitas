@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase14_14a_fallback_default_locale"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD "tests/tmp/fase_14/14a_fallback_default"
+  EVOCA VERBUM pt_path AD CONIURA concat(dir, "/pt-BR.po")
+  EVOCA VERBUM en_path AD CONIURA concat(dir, "/en-US.po")
+  SI CONIURA exists(pt_path)
+    CONIURA delete_file(pt_path)
+  FIN SI
+  SI CONIURA exists(en_path)
+    CONIURA delete_file(en_path)
+  FIN SI
+  SI CONIURA exists(dir)
+    CONIURA delete_dir(dir)
+  FIN SI
+  CONIURA mkdir_all(dir)
+
+  CONIURA write_all(pt_path, "msgid \"posts.title\"\nmsgstr \"Publicacoes\"\n\n")
+  CONIURA write_all(en_path, "msgid \"nav.home\"\nmsgstr \"Home\"\n\n")
+
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(CONIURA i18n_config_new("pt-BR", dir))
+  SI CONIURA i18n_registry_load_all(SPECULUM reg) != 2
+    REDDE 1
+  FIN SI
+
+  SI CONIURA compare(CONIURA i18n_t(reg, "en-US", "posts.title"), "Publicacoes") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t(reg, "en-US", "missing.key"), "missing.key") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

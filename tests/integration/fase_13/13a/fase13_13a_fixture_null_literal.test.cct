@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase13_13a_fixture_null_literal"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture_exec.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase13_db_open("13a_fixture_null_literal")
+  CONIURA phase13_seed_schema(db)
+
+  EVOCA FixtureSuite suite AD CONIURA fixture_suite_new("posts", FkTest)
+  EVOCA FixtureEntry cat
+  CONIURA fixture_entry_fill(SPECULUM cat, "categorias", "1")
+  CONIURA fixture_entry_add_field(SPECULUM cat, "nome", "Tecnologia", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM cat, "slug", "tecnologia", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM cat, "ativo", "1", FALSUM)
+  CONIURA fixture_suite_add_entry(SPECULUM suite, cat)
+  EVOCA FixtureEntry post
+  CONIURA fixture_entry_fill(SPECULUM post, "posts", "10")
+  CONIURA fixture_entry_add_field(SPECULUM post, "titulo", "Post", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM post, "slug", "post", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM post, "categoria_id", "1", FALSUM)
+  CONIURA fixture_entry_add_field(SPECULUM post, "email", "", VERUM)
+  CONIURA fixture_suite_add_entry(SPECULUM suite, post)
+
+  CONIURA fixture_install(db, suite)
+  SI CONIURA compare(CONIURA db_scalar_text(db, "SELECT COALESCE(email, '__nil__') FROM posts WHERE id = 10"), "__nil__") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

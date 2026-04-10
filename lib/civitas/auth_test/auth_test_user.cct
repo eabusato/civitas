@@ -1,0 +1,143 @@
+INCIPIT grimoire "civitas_auth_test_user"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../auth/auth.cct"
+ADVOCARE "../auth/auth_users.cct"
+ADVOCARE "../permissions/permissions.cct"
+ADVOCARE "../permissions/permissions_assign.cct"
+ADVOCARE "../permissions/permissions_db.cct"
+ADVOCARE "../test_db/test_db.cct"
+ADVOCARE "auth_test.cct"
+
+SIGILLUM AuthTestUser
+  user: User
+  senha: VERBUM
+FIN SIGILLUM
+
+RITUALE auth_test_user_id(SPECULUM AuthTestUser tu) REDDE VERBUM
+  REDDE (*tu).user.id
+EXPLICIT RITUALE
+
+RITUALE auth_test_user_email(SPECULUM AuthTestUser tu) REDDE VERBUM
+  REDDE (*tu).user.email
+EXPLICIT RITUALE
+
+RITUALE auth_test_user_password(SPECULUM AuthTestUser tu) REDDE VERBUM
+  REDDE (*tu).senha
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario(TestDb tdb, VERBUM email, VERBUM senha) REDDE AuthTestUser
+  EVOCA AuthConfig cfg AD CONIURA auth_test_config()
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_criar_usuario(tdb.db, cfg, email, senha)
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    IACE "auth_test_criar_usuario: falha ao criar usuario de teste"
+  FIN SI
+  EVOCA AuthTestUser tu
+  VINCIRE tu.user AD CONIURA result_unwrap GENUS(User, AuthError)(res)
+  VINCIRE tu.senha AD senha
+  REDDE tu
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_into(SPECULUM AuthTestUser out, TestDb tdb, VERBUM email, VERBUM senha) REDDE NIHIL
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario(tdb, email, senha)
+  VINCIRE (*out).user AD tu.user
+  VINCIRE (*out).senha AD tu.senha
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_id(TestDb tdb, VERBUM email, VERBUM senha) REDDE VERBUM
+  EVOCA AuthConfig cfg AD CONIURA auth_test_config()
+  EVOCA SPECULUM NIHIL res AD CONIURA auth_criar_usuario(tdb.db, cfg, email, senha)
+  SI CONIURA result_is_err GENUS(User, AuthError)(res)
+    IACE "auth_test_criar_usuario_id: falha ao criar usuario de teste"
+  FIN SI
+  EVOCA User user AD CONIURA result_unwrap GENUS(User, AuthError)(res)
+  REDDE user.id
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_unico(TestDb tdb) REDDE AuthTestUser
+  EVOCA VERBUM uid AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA VERBUM email AD CONIURA concat("user_", uid)
+  VINCIRE email AD CONIURA concat(email, "@test.example")
+  REDDE CONIURA auth_test_criar_usuario(tdb, email, "teste1234")
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_unico_into(SPECULUM AuthTestUser out, TestDb tdb) REDDE NIHIL
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_unico(tdb)
+  VINCIRE (*out).user AD tu.user
+  VINCIRE (*out).senha AD tu.senha
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_unico_id(TestDb tdb) REDDE VERBUM
+  EVOCA VERBUM uid AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA VERBUM email AD CONIURA concat("user_", uid)
+  VINCIRE email AD CONIURA concat(email, "@test.example")
+  REDDE CONIURA auth_test_criar_usuario_id(tdb, email, "teste1234")
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_admin(TestDb tdb, VERBUM email) REDDE AuthTestUser
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario(tdb, email, "admin1234")
+  CONIURA perm_registrar(tdb.db, "admin.*", "Superadmin de teste")
+  CONIURA user_perm_conceder(tdb.db, tu.user.id, "admin.*")
+  REDDE tu
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_admin_into(SPECULUM AuthTestUser out, TestDb tdb, VERBUM email) REDDE NIHIL
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_admin(tdb, email)
+  VINCIRE (*out).user AD tu.user
+  VINCIRE (*out).senha AD tu.senha
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_admin_id(TestDb tdb, VERBUM email) REDDE VERBUM
+  EVOCA VERBUM user_id AD CONIURA auth_test_criar_usuario_id(tdb, email, "admin1234")
+  CONIURA perm_registrar(tdb.db, "admin.*", "Superadmin de teste")
+  CONIURA user_perm_conceder(tdb.db, user_id, "admin.*")
+  REDDE user_id
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_com_permissoes(TestDb tdb, VERBUM email, SPECULUM NIHIL permissoes) REDDE AuthTestUser
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario(tdb, email, "teste1234")
+  EVOCA REX n AD CONIURA fluxus_len(permissoes)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM cod_ptr AD CONIURA fluxus_get(permissoes, i)
+    EVOCA VERBUM cod AD *cod_ptr
+    SI CONIURA option_is_none GENUS(Permission)(CONIURA perm_buscar_por_codigo(tdb.db, cod))
+      CONIURA perm_registrar(tdb.db, cod, cod)
+    FIN SI
+    CONIURA user_perm_conceder(tdb.db, tu.user.id, cod)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE tu
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_com_permissoes_into(SPECULUM AuthTestUser out, TestDb tdb, VERBUM email, SPECULUM NIHIL permissoes) REDDE NIHIL
+  EVOCA AuthTestUser tu AD CONIURA auth_test_criar_usuario_com_permissoes(tdb, email, permissoes)
+  VINCIRE (*out).user AD tu.user
+  VINCIRE (*out).senha AD tu.senha
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_criar_usuario_com_permissoes_id(TestDb tdb, VERBUM email, SPECULUM NIHIL permissoes) REDDE VERBUM
+  EVOCA VERBUM user_id AD CONIURA auth_test_criar_usuario_id(tdb, email, "teste1234")
+  EVOCA REX n AD CONIURA fluxus_len(permissoes)
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA SPECULUM VERBUM cod_ptr AD CONIURA fluxus_get(permissoes, i)
+    EVOCA VERBUM cod AD *cod_ptr
+    SI CONIURA option_is_none GENUS(Permission)(CONIURA perm_buscar_por_codigo(tdb.db, cod))
+      CONIURA perm_registrar(tdb.db, cod, cod)
+    FIN SI
+    CONIURA user_perm_conceder(tdb.db, user_id, cod)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE user_id
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

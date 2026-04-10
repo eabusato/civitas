@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase6_6d_qs_set_get_encoding_test"
+
+ADVOCARE "../../../../lib/civitas/template_extras/qs.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM url AD CONIURA qs_set("/posts?categoria=tech&page=3", "q", "cct & civitas")
+  EVOCA SPECULUM NIHIL value_opt AD CONIURA qs_get(url, "q")
+
+  SI CONIURA find(url, "categoria=tech") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(url, "page=3") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(url, "q=cct%20%26%20civitas") == -1
+    REDDE 3
+  FIN SI
+  SI NON CONIURA option_is_some GENUS(VERBUM)(value_opt)
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(value_opt), "cct & civitas") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,54 @@
+INCIPIT grimoire "civitas_permissions_object"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "permissions.cct"
+ADVOCARE "permissions_check.cct"
+
+RITUALE obj_perm_conceder(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao, VERBUM modelo, VERBUM objeto_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO object_permissions (user_id, permissao, modelo, objeto_id) VALUES (?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA stmt_bind_text(stmt, 3, modelo)
+  CONIURA stmt_bind_text(stmt, 4, objeto_id)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE obj_perm_revogar(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao, VERBUM modelo, VERBUM objeto_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM object_permissions WHERE user_id = ? AND permissao = ? AND modelo = ? AND objeto_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA stmt_bind_text(stmt, 3, modelo)
+  CONIURA stmt_bind_text(stmt, 4, objeto_id)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE usuario_tem_permissao_em(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao, VERBUM modelo, VERBUM objeto_id) REDDE VERUM
+  SI CONIURA usuario_tem_permissao(db, user_id, permissao)
+    REDDE VERUM
+  FIN SI
+
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM object_permissions WHERE user_id = ? AND permissao = ? AND modelo = ? AND objeto_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA stmt_bind_text(stmt, 3, modelo)
+  CONIURA stmt_bind_text(stmt, 4, objeto_id)
+  CONIURA stmt_step(stmt)
+  EVOCA REX count AD 0
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count > 0
+EXPLICIT RITUALE
+
+RITUALE obj_perm_revogar_objeto(SPECULUM NIHIL db, VERBUM modelo, VERBUM objeto_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM object_permissions WHERE modelo = ? AND objeto_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, modelo)
+  CONIURA stmt_bind_text(stmt, 2, objeto_id)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

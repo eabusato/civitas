@@ -1,0 +1,52 @@
+INCIPIT grimoire "fase15_15f_login_wrapper_fail_and_success_clear"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_users.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit.cct"
+ADVOCARE "../../../../lib/civitas/auth_rate_limit/auth_rate_limit_check.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_full_db_open("15f_login_wrapper_fail_and_success_clear")
+  EVOCA AuthConfig auth_cfg AD CONIURA auth_config_default()
+  EVOCA RateLimitConfig rl_cfg AD CONIURA rate_limit_config_default()
+  EVOCA User user AD CONIURA result_unwrap GENUS(User, AuthError)(CONIURA auth_criar_usuario(db, auth_cfg, "alice@example.com", "S3nh@Forte!"))
+  EVOCA SPECULUM NIHIL bad_res AD CONIURA auth_login_com_rate_limit(db, auth_cfg, rl_cfg, "alice@example.com", "errada", "127.0.0.1")
+  SI NON CONIURA result_is_err GENUS(User, AuthError)(bad_res)
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+  SI CONIURA rate_limit_contagem_por_chave(db, rl_cfg, CONIURA rate_limit_chave_ip("127.0.0.1")) != 1
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  SI CONIURA rate_limit_contagem_por_chave(db, rl_cfg, CONIURA rate_limit_chave_email("alice@example.com")) != 1
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  EVOCA SPECULUM NIHIL ok_res AD CONIURA auth_login_com_rate_limit(db, auth_cfg, rl_cfg, "alice@example.com", "S3nh@Forte!", "127.0.0.1")
+  SI CONIURA result_is_err GENUS(User, AuthError)(ok_res)
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+  EVOCA User logged AD CONIURA result_unwrap GENUS(User, AuthError)(ok_res)
+  SI CONIURA compare(logged.id, user.id) != 0
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  SI CONIURA rate_limit_contagem_por_chave(db, rl_cfg, CONIURA rate_limit_chave_ip("127.0.0.1")) != 0
+    CONIURA db_close(db)
+    REDDE 6
+  FIN SI
+  SI CONIURA rate_limit_contagem_por_chave(db, rl_cfg, CONIURA rate_limit_chave_email("alice@example.com")) != 0
+    CONIURA db_close(db)
+    REDDE 7
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

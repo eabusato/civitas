@@ -1,0 +1,9 @@
+INCIPIT grimoire "civitas_l10n"
+
+ADVOCARE "l10n/l10n.cct"
+ADVOCARE "l10n/l10n_rules.cct"
+ADVOCARE "l10n/l10n_number.cct"
+ADVOCARE "l10n/l10n_date.cct"
+ADVOCARE "l10n/l10n_currency.cct"
+
+EXPLICIT grimoire

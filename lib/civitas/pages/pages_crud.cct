@@ -1,0 +1,181 @@
+INCIPIT grimoire "civitas_pages_crud"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "../authorship/authorship.cct"
+ADVOCARE "pages.cct"
+
+RITUALE page_create(SPECULUM NIHIL db, VERBUM locale, VERBUM slug, VERBUM title, VERBUM body_html, ContentOrigin origin) REDDE Page
+  CONIURA pages_ensure_schema(db)
+  EVOCA REX now AD CONIURA pages_now()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_pages (locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, title)
+  CONIURA stmt_bind_text(stmt, 4, body_html)
+  CONIURA stmt_bind_int(stmt, 5, CONIURA page_publish_state_to_int(PsDraft))
+  CONIURA stmt_bind_text(stmt, 6, title)
+  CONIURA stmt_bind_text(stmt, 7, "")
+  CONIURA stmt_bind_text(stmt, 8, "")
+  CONIURA stmt_bind_text(stmt, 9, "")
+  CONIURA stmt_bind_text(stmt, 10, "")
+  CONIURA stmt_bind_int(stmt, 11, 0)
+  CONIURA stmt_bind_int(stmt, 12, 0)
+  CONIURA stmt_bind_int(stmt, 13, 0)
+  CONIURA stmt_bind_text(stmt, 14, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 15, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 16, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 17, now)
+  CONIURA stmt_bind_int(stmt, 18, now)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA page_get_by_id(db, CONIURA db_scalar_int(db, "SELECT last_insert_rowid()"))
+EXPLICIT RITUALE
+
+RITUALE page_get_by_id(SPECULUM NIHIL db, REX id) REDDE Page
+  EVOCA Page page AD CONIURA page_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at FROM civitas_pages WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, id)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE page AD CONIURA page_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE page
+EXPLICIT RITUALE
+
+RITUALE page_get_by_slug(SPECULUM NIHIL db, VERBUM slug, VERBUM locale) REDDE Page
+  EVOCA Page page AD CONIURA page_empty()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at FROM civitas_pages WHERE slug = ? AND locale = ?")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  CONIURA stmt_bind_text(stmt, 2, locale)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE page AD CONIURA page_from_stmt(stmt)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE page
+EXPLICIT RITUALE
+
+RITUALE page_update_body(SPECULUM NIHIL db, REX id, VERBUM body_html, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET body_html = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, body_html)
+  CONIURA stmt_bind_text(stmt, 2, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 3, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 5, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_update_seo(SPECULUM NIHIL db, REX id, PageSeo seo, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET seo_title = ?, seo_description = ?, canonical_url = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, seo.title)
+  CONIURA stmt_bind_text(stmt, 2, seo.description)
+  CONIURA stmt_bind_text(stmt, 3, seo.canonical_url)
+  CONIURA stmt_bind_text(stmt, 4, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 5, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 6, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 7, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_update_menu_slot(SPECULUM NIHIL db, REX id, MenuSlot slot, REX menu_order, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET menu_slot = ?, menu_label = ?, menu_order = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_text(stmt, 1, slot.name)
+  CONIURA stmt_bind_text(stmt, 2, slot.label)
+  CONIURA stmt_bind_int(stmt, 3, menu_order)
+  CONIURA stmt_bind_text(stmt, 4, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 5, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 6, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 7, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_publish(SPECULUM NIHIL db, REX id, ContentOrigin origin) REDDE NIHIL
+  EVOCA REX now AD CONIURA pages_now()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET state = ?, published_at = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA page_publish_state_to_int(PsPublished))
+  CONIURA stmt_bind_int(stmt, 2, now)
+  CONIURA stmt_bind_text(stmt, 3, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 4, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 5, now)
+  CONIURA stmt_bind_int(stmt, 6, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_schedule(SPECULUM NIHIL db, REX id, REX scheduled_for, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET state = ?, scheduled_for = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA page_publish_state_to_int(PsScheduled))
+  CONIURA stmt_bind_int(stmt, 2, scheduled_for)
+  CONIURA stmt_bind_text(stmt, 3, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 4, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 5, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 6, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_unpublish(SPECULUM NIHIL db, REX id, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET state = ?, published_at = 0, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA page_publish_state_to_int(PsDraft))
+  CONIURA stmt_bind_text(stmt, 2, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 3, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 5, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_archive(SPECULUM NIHIL db, REX id, ContentOrigin origin) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "UPDATE civitas_pages SET state = ?, updated_by = ?, request_id = ?, updated_at = ? WHERE id = ?")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA page_publish_state_to_int(PsArchived))
+  CONIURA stmt_bind_text(stmt, 2, origin.user_id)
+  CONIURA stmt_bind_text(stmt, 3, origin.request_id)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA pages_now())
+  CONIURA stmt_bind_int(stmt, 5, id)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE page_list_published(SPECULUM NIHIL db, VERBUM locale) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Page))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at FROM civitas_pages WHERE locale = ? AND state = ? ORDER BY published_at DESC, id DESC")
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  CONIURA stmt_bind_int(stmt, 2, CONIURA page_publish_state_to_int(PsPublished))
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Page page AD CONIURA page_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM page)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE page_list_scheduled_due(SPECULUM NIHIL db, REX now) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(Page))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at FROM civitas_pages WHERE state = ? AND scheduled_for > 0 AND scheduled_for <= ? ORDER BY scheduled_for ASC")
+  CONIURA stmt_bind_int(stmt, 1, CONIURA page_publish_state_to_int(PsScheduled))
+  CONIURA stmt_bind_int(stmt, 2, now)
+  DUM CONIURA stmt_step(stmt)
+    SI NON CONIURA stmt_has_row(stmt)
+      FRANGE
+    FIN SI
+    EVOCA Page page AD CONIURA page_from_stmt(stmt)
+    CONIURA fluxus_push(out, SPECULUM page)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

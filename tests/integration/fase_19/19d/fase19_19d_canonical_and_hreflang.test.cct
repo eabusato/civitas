@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase19_19d_canonical_and_hreflang"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/seo/seo.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_canonical_and_hreflang() REDDE NIHIL
+  EVOCA SeoPublicConfig cfg AD CONIURA seo_public_config_default("https://example.test")
+  EVOCA VERBUM canonical AD CONIURA seo_canonical_url(cfg, "/about")
+  EVOCA VERBUM hreflang AD CONIURA seo_hreflang_tags_for_path(cfg, "/about")
+  SI CONIURA compare(canonical, "https://example.test/about") != 0
+    IACE "canonical mismatch"
+  FIN SI
+  SI CONIURA find(hreflang, "hreflang=\"pt-BR\"") == -1 VEL CONIURA find(hreflang, "hreflang=\"en\"") == -1
+    IACE "hreflang tags missing"
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_canonical_and_hreflang()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

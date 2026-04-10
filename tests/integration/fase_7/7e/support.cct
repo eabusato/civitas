@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase7_7e_support"
+
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase7_7e_large_form(REX total) REDDE FormDef
+  EVOCA FormDef def AD CONIURA form_def_new("/cadastro", CONIURA phase7_render_csrf("token"))
+  EVOCA REX i AD 0
+
+  DUM i < total
+    EVOCA FieldDef field AD CONIURA field_def_new(CONIURA concat("campo_", CONIURA stringify_int(i)), CONIURA concat("Campo ", CONIURA stringify_int(i)), IkText)
+    VINCIRE field.help_text AD "Ajuda"
+    SI i == 0
+      VINCIRE field.required AD VERUM
+    FIN SI
+    CONIURA form_def_add_field(SPECULUM def, field)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE def
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

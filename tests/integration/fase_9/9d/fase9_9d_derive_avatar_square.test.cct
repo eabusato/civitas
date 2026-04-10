@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase9_9d_derive_avatar_square"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_derive.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "cct/image_ops.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("derive_avatar")
+  EVOCA VERBUM dest_path AD CONIURA concat(root, "/avatar.webp")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM source_path AD CONIURA phase9_9d_make_image(root, "wide.jpg", "blue", 1600, 900)
+  EVOCA ImageDerivativeSpec spec AD CONIURA image_spec_avatar()
+
+  EVOCA SPECULUM NIHIL derive_res AD CONIURA image_derive_one(source_path, spec, dest_path)
+  SI CONIURA result_is_err GENUS(ImageDimensions, VERBUM)(derive_res)
+    IACE CONIURA result_unwrap_err GENUS(ImageDimensions, VERBUM)(derive_res)
+  FIN SI
+  EVOCA ImageDimensions dims AD CONIURA result_unwrap GENUS(ImageDimensions, VERBUM)(derive_res)
+  SI dims.width != dims.height
+    IACE "avatar derivative should be square"
+  FIN SI
+  SI dims.width > 128
+    IACE "avatar derivative should not exceed 128 pixels"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

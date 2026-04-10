@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase13_13e_field_type_and_mapping"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_schema_map.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA django_field_type_parse("CharField") != DftCharField
+    REDDE 1
+  FIN SI
+  SI CONIURA django_field_to_civitas(DftImageField) != FkBlob
+    REDDE 2
+  FIN SI
+  SI CONIURA django_field_to_civitas(DftDateTimeField) != FkDateTime
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

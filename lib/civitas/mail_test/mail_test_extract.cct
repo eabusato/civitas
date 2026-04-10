@@ -1,0 +1,64 @@
+INCIPIT grimoire "civitas_mail_test_extract"
+
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "mail_test.cct"
+
+RITUALE mail_test_extrair_token_de_url(VERBUM corpo, VERBUM param_nome) REDDE SPECULUM NIHIL
+  EVOCA VERBUM chave AD CONIURA concat(param_nome, "=")
+  EVOCA REX pos AD CONIURA find(corpo, chave)
+  SI pos == -1
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA REX inicio AD pos + CONIURA len(chave)
+  EVOCA VERBUM resto AD CONIURA substring(corpo, inicio, CONIURA len(corpo))
+  EVOCA REX fim_amp AD CONIURA find(resto, "&")
+  EVOCA REX fim_sp AD CONIURA find(resto, " ")
+  EVOCA REX fim_nl AD CONIURA find(resto, "\n")
+  EVOCA REX fim AD CONIURA len(resto)
+  SI fim_amp != -1 ET fim_amp < fim
+    VINCIRE fim AD fim_amp
+  FIN SI
+  SI fim_sp != -1 ET fim_sp < fim
+    VINCIRE fim AD fim_sp
+  FIN SI
+  SI fim_nl != -1 ET fim_nl < fim
+    VINCIRE fim AD fim_nl
+  FIN SI
+  EVOCA VERBUM token AD CONIURA substring(resto, 0, fim)
+  SI CONIURA len(token) == 0
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  REDDE CONIURA Some GENUS(VERBUM)(token)
+EXPLICIT RITUALE
+
+RITUALE mail_test_extrair_token_reset(Mailer m, REX index) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA mailer_memory_get(m, index)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(res)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA MailMessage msg AD CONIURA result_unwrap GENUS(MailMessage, MailerError)(res)
+  EVOCA VERBUM corpo AD msg.text_body
+  SI CONIURA len(corpo) == 0
+    VINCIRE corpo AD msg.html_body
+  FIN SI
+  REDDE CONIURA mail_test_extrair_token_de_url(corpo, "t")
+EXPLICIT RITUALE
+
+RITUALE mail_test_extrair_token_verificacao(Mailer m, REX index) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL res AD CONIURA mailer_memory_get(m, index)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(res)
+    REDDE CONIURA None GENUS(VERBUM)()
+  FIN SI
+  EVOCA MailMessage msg AD CONIURA result_unwrap GENUS(MailMessage, MailerError)(res)
+  EVOCA VERBUM corpo AD msg.text_body
+  SI CONIURA len(corpo) == 0
+    VINCIRE corpo AD msg.html_body
+  FIN SI
+  REDDE CONIURA mail_test_extrair_token_de_url(corpo, "token")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

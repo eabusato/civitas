@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase0_0b_check_cct_failure_old_version_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM fake AD CONIURA tmp_file("fake_cct_old.sh")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase0_0b_check_cct_failure.log")
+  EVOCA VERBUM script AD "#!/bin/sh\n"
+  VINCIRE script AD CONIURA concat(script, "echo 'Clavicula Turing (CCT) v0.39.0'\n")
+
+  CONIURA cleanup_file(fake)
+  CONIURA cleanup_file(log)
+  CONIURA write_executable_script(fake, script)
+
+  SI CONIURA run_to_log(CONIURA concat("make check-cct CCT_BIN=", fake), log) == 0
+    REDDE 1
+  FIN SI
+
+  EVOCA VERBUM out AD CONIURA read_all(log)
+  SI NON CONIURA contains(out, "Civitas requer CCT >= 0.40.0")
+    REDDE 2
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

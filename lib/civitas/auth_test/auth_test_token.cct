@@ -1,0 +1,89 @@
+INCIPIT grimoire "civitas_auth_test_token"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "../auth_token/auth_token.cct"
+ADVOCARE "../auth_token/auth_token_issue.cct"
+ADVOCARE "../auth_token/auth_token_verify.cct"
+ADVOCARE "../test_db/test_db.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+
+RITUALE auth_test_token_config() REDDE TokenConfig
+  REDDE CONIURA token_config_new("segredo_de_teste_min_32bytes_ok!", 3600, 86400)
+EXPLICIT RITUALE
+
+RITUALE auth_test_token_ttl_acesso() REDDE REX
+  EVOCA TokenConfig cfg AD CONIURA auth_test_token_config()
+  REDDE cfg.ttl_acesso
+EXPLICIT RITUALE
+
+RITUALE auth_test_gerar_token(VERBUM user_id, VERBUM escopos) REDDE VERBUM
+  EVOCA TokenConfig cfg AD CONIURA auth_test_token_config()
+  REDDE CONIURA token_issue(cfg, user_id, escopos)
+EXPLICIT RITUALE
+
+RITUALE auth_test_gerar_token_expirado(VERBUM user_id) REDDE VERBUM
+  EVOCA TokenConfig cfg AD CONIURA token_config_new("segredo_de_teste_min_32bytes_ok!", -1, 86400)
+  REDDE CONIURA token_issue(cfg, user_id, "leitura")
+EXPLICIT RITUALE
+
+RITUALE auth_test_gerar_refresh(TestDb tdb, VERBUM user_id) REDDE RefreshToken
+  EVOCA TokenConfig cfg AD CONIURA auth_test_token_config()
+  REDDE CONIURA refresh_token_issue(tdb.db, cfg, user_id, "")
+EXPLICIT RITUALE
+
+RITUALE auth_test_gerar_refresh_into(SPECULUM RefreshToken out, TestDb tdb, VERBUM user_id) REDDE NIHIL
+  EVOCA RefreshToken rt AD CONIURA auth_test_gerar_refresh(tdb, user_id)
+  VINCIRE (*out).id AD rt.id
+  VINCIRE (*out).user_id AD rt.user_id
+  VINCIRE (*out).emitido_em AD rt.emitido_em
+  VINCIRE (*out).expira_em AD rt.expira_em
+  VINCIRE (*out).familia AD rt.familia
+  VINCIRE (*out).revogado AD rt.revogado
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE auth_test_gerar_refresh_id(TestDb tdb, VERBUM user_id) REDDE VERBUM
+  EVOCA TokenConfig cfg AD CONIURA auth_test_token_config()
+  EVOCA REX iat AD CONIURA datetime_to_unix(CONIURA datetime_now())
+  EVOCA REX exp AD iat + cfg.ttl_refresh
+  EVOCA VERBUM id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA VERBUM fam AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(tdb.db, "INSERT INTO refresh_tokens (id, user_id, emitido_em, expira_em, familia, revogado) VALUES (?, ?, ?, ?, ?, 0)")
+  CONIURA stmt_bind_text(stmt, 1, id)
+  CONIURA stmt_bind_text(stmt, 2, user_id)
+  CONIURA stmt_bind_int(stmt, 3, iat)
+  CONIURA stmt_bind_int(stmt, 4, exp)
+  CONIURA stmt_bind_text(stmt, 5, fam)
+  CONIURA token_exec_stmt_no_rows(stmt)
+  REDDE id
+EXPLICIT RITUALE
+
+RITUALE auth_test_token_payload(VERBUM token) REDDE TokenPayload
+  EVOCA SPECULUM NIHIL res AD CONIURA token_parse_payload(token)
+  SI CONIURA result_is_err GENUS(TokenPayload, TokenError)(res)
+    IACE "auth_test_token_payload: token invalido"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(TokenPayload, TokenError)(res)
+EXPLICIT RITUALE
+
+RITUALE auth_test_token_payload_user_id(VERBUM token) REDDE VERBUM
+  EVOCA TokenPayload payload AD CONIURA auth_test_token_payload(token)
+  REDDE payload.user_id
+EXPLICIT RITUALE
+
+RITUALE auth_test_token_payload_scopes(VERBUM token) REDDE VERBUM
+  EVOCA TokenPayload payload AD CONIURA auth_test_token_payload(token)
+  REDDE payload.escopos
+EXPLICIT RITUALE
+
+RITUALE auth_test_refresh_user_id(RefreshToken rt) REDDE VERBUM
+  REDDE rt.user_id
+EXPLICIT RITUALE
+
+RITUALE auth_test_refresh_revogado(RefreshToken rt) REDDE VERUM
+  REDDE rt.revogado
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

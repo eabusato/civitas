@@ -1,0 +1,418 @@
+INCIPIT grimoire "civitas_bench"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../test_client.cct"
+ADVOCARE "../test_client/test_client.cct"
+ADVOCARE "../router.cct"
+
+SIGILLUM BenchConfig
+  url: VERBUM
+  method: VERBUM
+  body: VERBUM
+  n_requests: REX
+  concurrency: REX
+  timeout_ms: REX
+  warmup: REX
+  headers_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM BenchSample
+  duration_ms: REX
+  status: REX
+  success: VERUM
+FIN SIGILLUM
+
+SIGILLUM BenchResult
+  config_url: VERBUM
+  config_method: VERBUM
+  n_requests: REX
+  n_success: REX
+  n_error: REX
+  duration_total_ms: REX
+  throughput: UMBRA
+  min_ms: REX
+  max_ms: REX
+  mean_ms: UMBRA
+  p50_ms: REX
+  p95_ms: REX
+  p99_ms: REX
+  timestamp_ms: REX
+FIN SIGILLUM
+
+SIGILLUM BenchComparison
+  before: BenchResult
+  after: BenchResult
+  delta_throughput_pct: UMBRA
+  delta_p95_pct: UMBRA
+  delta_p99_pct: UMBRA
+  improved: VERUM
+FIN SIGILLUM
+
+SIGILLUM BenchHistoryEntry
+  label: VERBUM
+  result: BenchResult
+FIN SIGILLUM
+
+RITUALE bench_config_new(VERBUM url, VERBUM method) REDDE BenchConfig
+  EVOCA BenchConfig cfg
+  VINCIRE cfg.url AD url
+  VINCIRE cfg.method AD CONIURA to_upper(method)
+  VINCIRE cfg.body AD ""
+  VINCIRE cfg.n_requests AD 100
+  VINCIRE cfg.concurrency AD 1
+  VINCIRE cfg.timeout_ms AD 5000
+  VINCIRE cfg.warmup AD 5
+  VINCIRE cfg.headers_json AD "{}"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_n(SPECULUM BenchConfig cfg, REX n_requests) REDDE NIHIL
+  VINCIRE (*cfg).n_requests AD n_requests
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_body(SPECULUM BenchConfig cfg, VERBUM body) REDDE NIHIL
+  VINCIRE (*cfg).body AD body
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_headers_json(SPECULUM BenchConfig cfg, VERBUM headers_json) REDDE NIHIL
+  VINCIRE (*cfg).headers_json AD headers_json
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_warmup(SPECULUM BenchConfig cfg, REX warmup) REDDE NIHIL
+  VINCIRE (*cfg).warmup AD warmup
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_timeout_ms(SPECULUM BenchConfig cfg, REX timeout_ms) REDDE NIHIL
+  VINCIRE (*cfg).timeout_ms AD timeout_ms
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_config_set_concurrency(SPECULUM BenchConfig cfg, REX concurrency) REDDE NIHIL
+  VINCIRE (*cfg).concurrency AD concurrency
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_result_empty(BenchConfig cfg) REDDE BenchResult
+  EVOCA BenchResult out
+  VINCIRE out.config_url AD cfg.url
+  VINCIRE out.config_method AD cfg.method
+  VINCIRE out.n_requests AD cfg.n_requests
+  VINCIRE out.n_success AD 0
+  VINCIRE out.n_error AD 0
+  VINCIRE out.duration_total_ms AD 0
+  VINCIRE out.throughput AD 0.0
+  VINCIRE out.min_ms AD 0
+  VINCIRE out.max_ms AD 0
+  VINCIRE out.mean_ms AD 0.0
+  VINCIRE out.p50_ms AD 0
+  VINCIRE out.p95_ms AD 0
+  VINCIRE out.p99_ms AD 0
+  VINCIRE out.timestamp_ms AD CONIURA now_ms()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE bench_headers_apply_json(SPECULUM TestClient client, VERBUM headers_json) REDDE NIHIL
+  SI CONIURA len(headers_json) == 0 VEL CONIURA compare(headers_json, "{}") == 0
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL parsed_res AD CONIURA json_try_parse(headers_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed_res)
+    IACE "bench headers_json invalid"
+  FIN SI
+  EVOCA Json root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed_res)
+  SI NON CONIURA json_is_obj(root)
+    IACE "bench headers_json must be object"
+  FIN SI
+  EVOCA SPECULUM NIHIL keys AD CONIURA json_keys(root)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    CONIURA test_client_set_header(client, *key_ptr, CONIURA json_expect_str(CONIURA json_get_key(root, *key_ptr)))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_content_type_or_default(VERBUM headers_json, VERBUM fallback) REDDE VERBUM
+  SI CONIURA len(headers_json) == 0 VEL CONIURA compare(headers_json, "{}") == 0
+    REDDE fallback
+  FIN SI
+  EVOCA SPECULUM NIHIL parsed_res AD CONIURA json_try_parse(headers_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed_res)
+    REDDE fallback
+  FIN SI
+  EVOCA Json root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed_res)
+  SI NON CONIURA json_is_obj(root)
+    REDDE fallback
+  FIN SI
+  SI NON CONIURA json_has_key(root, "content-type")
+    REDDE fallback
+  FIN SI
+  REDDE CONIURA json_expect_str(CONIURA json_get_key(root, "content-type"))
+EXPLICIT RITUALE
+
+RITUALE bench_dispatch_once(SPECULUM TestClient client, BenchConfig cfg) REDDE TestResponse
+  SI CONIURA compare(cfg.method, "GET") == 0
+    REDDE CONIURA test_client_get(client, cfg.url)
+  FIN SI
+  SI CONIURA compare(cfg.method, "DELETE") == 0
+    REDDE CONIURA test_client_delete(client, cfg.url)
+  FIN SI
+  SI CONIURA compare(cfg.method, "PUT") == 0
+    REDDE CONIURA test_client_put(client, cfg.url, cfg.body, CONIURA bench_content_type_or_default(cfg.headers_json, "application/json"))
+  FIN SI
+  SI CONIURA compare(cfg.method, "PATCH") == 0
+    REDDE CONIURA test_client_patch(client, cfg.url, cfg.body, CONIURA bench_content_type_or_default(cfg.headers_json, "application/json"))
+  FIN SI
+  SI CONIURA compare(cfg.method, "POST") == 0
+    REDDE CONIURA test_client_post(client, cfg.url, cfg.body, CONIURA bench_content_type_or_default(cfg.headers_json, "application/json"))
+  FIN SI
+  REDDE CONIURA test_client_get(client, cfg.url)
+EXPLICIT RITUALE
+
+RITUALE bench_percentile(SPECULUM NIHIL samples_ms, UMBRA pct) REDDE REX
+  EVOCA REX n AD CONIURA fluxus_len(samples_ms)
+  SI n <= 0
+    REDDE 0
+  FIN SI
+  EVOCA SPECULUM NIHIL sorted AD CONIURA fluxus_copy GENUS(REX)(samples_ms)
+  CONIURA fluxus_sort_int(sorted)
+  EVOCA REX idx AD cast GENUS(REX)((pct * cast GENUS(UMBRA)(n - 1)) / 100.0)
+  SI idx < 0
+    VINCIRE idx AD 0
+  FIN SI
+  SI idx >= n
+    VINCIRE idx AD n - 1
+  FIN SI
+  EVOCA SPECULUM REX ptr AD CONIURA fluxus_get(sorted, idx)
+  EVOCA REX out AD *ptr
+  CONIURA fluxus_free(sorted)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE bench_run_inprocess(SPECULUM Router router_ptr, BenchConfig cfg) REDDE BenchResult
+  EVOCA BenchResult out AD CONIURA bench_result_empty(cfg)
+  EVOCA TestClient client AD CONIURA test_client_new(router_ptr)
+  EVOCA SPECULUM NIHIL samples_ms AD CONIURA fluxus_init(MENSURA(REX))
+  EVOCA REX total_ms_sum AD 0
+  EVOCA REX total_started_ms AD 0
+  EVOCA REX total_finished_ms AD 0
+  EVOCA REX i AD 0
+
+  CONIURA bench_headers_apply_json(SPECULUM client, cfg.headers_json)
+
+  DUM i < cfg.warmup
+    CONIURA bench_dispatch_once(SPECULUM client, cfg)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE total_started_ms AD CONIURA now_ms()
+  VINCIRE i AD 0
+  DUM i < cfg.n_requests
+    EVOCA REX started_ms AD CONIURA now_ms()
+    EVOCA TestResponse res AD CONIURA bench_dispatch_once(SPECULUM client, cfg)
+    EVOCA REX duration_ms AD CONIURA now_ms() - started_ms
+    CONIURA fluxus_push(samples_ms, SPECULUM duration_ms)
+    VINCIRE total_ms_sum AD total_ms_sum + duration_ms
+    SI i == 0 VEL duration_ms < out.min_ms
+      VINCIRE out.min_ms AD duration_ms
+    FIN SI
+    SI duration_ms > out.max_ms
+      VINCIRE out.max_ms AD duration_ms
+    FIN SI
+    SI res.status >= 200 ET res.status < 400
+      VINCIRE out.n_success AD out.n_success + 1
+    ALITER
+      VINCIRE out.n_error AD out.n_error + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE total_finished_ms AD CONIURA now_ms()
+
+  VINCIRE out.duration_total_ms AD total_finished_ms - total_started_ms
+  SI cfg.n_requests > 0
+    VINCIRE out.mean_ms AD cast GENUS(UMBRA)(total_ms_sum) / cast GENUS(UMBRA)(cfg.n_requests)
+    VINCIRE out.p50_ms AD CONIURA bench_percentile(samples_ms, 50.0)
+    VINCIRE out.p95_ms AD CONIURA bench_percentile(samples_ms, 95.0)
+    VINCIRE out.p99_ms AD CONIURA bench_percentile(samples_ms, 99.0)
+  FIN SI
+  SI out.duration_total_ms > 0
+    VINCIRE out.throughput AD (cast GENUS(UMBRA)(out.n_requests) * 1000.0) / cast GENUS(UMBRA)(out.duration_total_ms)
+  FIN SI
+  VINCIRE out.timestamp_ms AD CONIURA now_ms()
+
+  CONIURA fluxus_free(samples_ms)
+  CONIURA test_client_free(SPECULUM client)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE bench_compare(BenchResult before, BenchResult after) REDDE BenchComparison
+  EVOCA BenchComparison cmp
+  VINCIRE cmp.before AD before
+  VINCIRE cmp.after AD after
+  VINCIRE cmp.delta_throughput_pct AD 0.0
+  VINCIRE cmp.delta_p95_pct AD 0.0
+  VINCIRE cmp.delta_p99_pct AD 0.0
+  SI before.throughput > 0.0
+    VINCIRE cmp.delta_throughput_pct AD ((after.throughput - before.throughput) / before.throughput) * 100.0
+  FIN SI
+  SI before.p95_ms > 0
+    VINCIRE cmp.delta_p95_pct AD ((cast GENUS(UMBRA)(after.p95_ms) - cast GENUS(UMBRA)(before.p95_ms)) / cast GENUS(UMBRA)(before.p95_ms)) * 100.0
+  FIN SI
+  SI before.p99_ms > 0
+    VINCIRE cmp.delta_p99_pct AD ((cast GENUS(UMBRA)(after.p99_ms) - cast GENUS(UMBRA)(before.p99_ms)) / cast GENUS(UMBRA)(before.p99_ms)) * 100.0
+  FIN SI
+  VINCIRE cmp.improved AD cmp.delta_throughput_pct > 0.0 ET cmp.delta_p99_pct < 0.0
+  REDDE cmp
+EXPLICIT RITUALE
+
+RITUALE bench_result_to_json(BenchResult result) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  CONIURA json_obj_push(root, "config_url", CONIURA json_str(result.config_url))
+  CONIURA json_obj_push(root, "config_method", CONIURA json_str(result.config_method))
+  CONIURA json_obj_push(root, "n_requests", CONIURA json_num(cast GENUS(UMBRA)(result.n_requests)))
+  CONIURA json_obj_push(root, "n_success", CONIURA json_num(cast GENUS(UMBRA)(result.n_success)))
+  CONIURA json_obj_push(root, "n_error", CONIURA json_num(cast GENUS(UMBRA)(result.n_error)))
+  CONIURA json_obj_push(root, "duration_total_ms", CONIURA json_num(cast GENUS(UMBRA)(result.duration_total_ms)))
+  CONIURA json_obj_push(root, "throughput", CONIURA json_num(result.throughput))
+  CONIURA json_obj_push(root, "min_ms", CONIURA json_num(cast GENUS(UMBRA)(result.min_ms)))
+  CONIURA json_obj_push(root, "max_ms", CONIURA json_num(cast GENUS(UMBRA)(result.max_ms)))
+  CONIURA json_obj_push(root, "mean_ms", CONIURA json_num(result.mean_ms))
+  CONIURA json_obj_push(root, "p50_ms", CONIURA json_num(cast GENUS(UMBRA)(result.p50_ms)))
+  CONIURA json_obj_push(root, "p95_ms", CONIURA json_num(cast GENUS(UMBRA)(result.p95_ms)))
+  CONIURA json_obj_push(root, "p99_ms", CONIURA json_num(cast GENUS(UMBRA)(result.p99_ms)))
+  CONIURA json_obj_push(root, "timestamp_ms", CONIURA json_num(cast GENUS(UMBRA)(result.timestamp_ms)))
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+RITUALE bench_result_from_json(VERBUM raw) REDDE BenchResult
+  EVOCA SPECULUM NIHIL parsed_res AD CONIURA json_try_parse(raw)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed_res)
+    IACE "bench result json invalid"
+  FIN SI
+  EVOCA Json root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed_res)
+  EVOCA BenchConfig cfg AD CONIURA bench_config_new(
+    CONIURA json_expect_str(CONIURA json_get_key(root, "config_url")),
+    CONIURA json_expect_str(CONIURA json_get_key(root, "config_method"))
+  )
+  EVOCA BenchResult out AD CONIURA bench_result_empty(cfg)
+  VINCIRE out.n_requests AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "n_requests")))
+  VINCIRE out.n_success AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "n_success")))
+  VINCIRE out.n_error AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "n_error")))
+  VINCIRE out.duration_total_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "duration_total_ms")))
+  VINCIRE out.throughput AD CONIURA json_expect_num(CONIURA json_get_key(root, "throughput"))
+  VINCIRE out.min_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "min_ms")))
+  VINCIRE out.max_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "max_ms")))
+  VINCIRE out.mean_ms AD CONIURA json_expect_num(CONIURA json_get_key(root, "mean_ms"))
+  VINCIRE out.p50_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "p50_ms")))
+  VINCIRE out.p95_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "p95_ms")))
+  VINCIRE out.p99_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "p99_ms")))
+  VINCIRE out.timestamp_ms AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(root, "timestamp_ms")))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE bench_write_json(BenchResult result, VERBUM path) REDDE NIHIL
+  CONIURA write_all(path, CONIURA bench_result_to_json(result))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_read_json(VERBUM path) REDDE BenchResult
+  REDDE CONIURA bench_result_from_json(CONIURA read_all(path))
+EXPLICIT RITUALE
+
+RITUALE bench_export_text(BenchResult result) REDDE VERBUM
+  EVOCA VERBUM out AD "bench "
+  VINCIRE out AD CONIURA concat(out, result.config_method)
+  VINCIRE out AD CONIURA concat(out, " ")
+  VINCIRE out AD CONIURA concat(out, result.config_url)
+  VINCIRE out AD CONIURA concat(out, " p50=")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(result.p50_ms))
+  VINCIRE out AD CONIURA concat(out, "ms p95=")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(result.p95_ms))
+  VINCIRE out AD CONIURA concat(out, "ms p99=")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(result.p99_ms))
+  VINCIRE out AD CONIURA concat(out, "ms throughput=")
+  VINCIRE out AD CONIURA concat(out, CONIURA stringify_real_fixed(result.throughput, 2))
+  VINCIRE out AD CONIURA concat(out, " req/s")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE bench_history_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS bench_history (id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, config_url TEXT NOT NULL, config_method TEXT NOT NULL, n_requests INTEGER NOT NULL, n_success INTEGER NOT NULL, n_error INTEGER NOT NULL, duration_total_ms INTEGER NOT NULL, throughput REAL NOT NULL, min_ms INTEGER NOT NULL, max_ms INTEGER NOT NULL, mean_ms REAL NOT NULL, p50_ms INTEGER NOT NULL, p95_ms INTEGER NOT NULL, p99_ms INTEGER NOT NULL, timestamp_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_bench_history_label ON bench_history(label)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_bench_history_timestamp ON bench_history(timestamp_ms DESC)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_history_insert(SPECULUM NIHIL db, VERBUM label, BenchResult result) REDDE NIHIL
+  CONIURA bench_history_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO bench_history (label, config_url, config_method, n_requests, n_success, n_error, duration_total_ms, throughput, min_ms, max_ms, mean_ms, p50_ms, p95_ms, p99_ms, timestamp_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, label)
+  CONIURA stmt_bind_text(stmt, 2, result.config_url)
+  CONIURA stmt_bind_text(stmt, 3, result.config_method)
+  CONIURA stmt_bind_int(stmt, 4, result.n_requests)
+  CONIURA stmt_bind_int(stmt, 5, result.n_success)
+  CONIURA stmt_bind_int(stmt, 6, result.n_error)
+  CONIURA stmt_bind_int(stmt, 7, result.duration_total_ms)
+  CONIURA stmt_bind_real(stmt, 8, result.throughput)
+  CONIURA stmt_bind_int(stmt, 9, result.min_ms)
+  CONIURA stmt_bind_int(stmt, 10, result.max_ms)
+  CONIURA stmt_bind_real(stmt, 11, result.mean_ms)
+  CONIURA stmt_bind_int(stmt, 12, result.p50_ms)
+  CONIURA stmt_bind_int(stmt, 13, result.p95_ms)
+  CONIURA stmt_bind_int(stmt, 14, result.p99_ms)
+  CONIURA stmt_bind_int(stmt, 15, result.timestamp_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE bench_history_count(SPECULUM NIHIL db) REDDE REX
+  CONIURA bench_history_schema_up(db)
+  REDDE CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM bench_history")
+EXPLICIT RITUALE
+
+RITUALE bench_history_latest(SPECULUM NIHIL db, VERBUM label) REDDE SPECULUM NIHIL
+  CONIURA bench_history_schema_up(db)
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT config_url, config_method, n_requests, n_success, n_error, duration_total_ms, throughput, min_ms, max_ms, mean_ms, p50_ms, p95_ms, p99_ms, timestamp_ms FROM bench_history WHERE label = ? ORDER BY timestamp_ms DESC, id DESC LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, label)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA BenchConfig cfg AD CONIURA bench_config_new(CONIURA concat("", CONIURA stmt_get_text(stmt, 0)), CONIURA concat("", CONIURA stmt_get_text(stmt, 1)))
+      EVOCA BenchResult out AD CONIURA bench_result_empty(cfg)
+      VINCIRE out.n_requests AD CONIURA stmt_get_int(stmt, 2)
+      VINCIRE out.n_success AD CONIURA stmt_get_int(stmt, 3)
+      VINCIRE out.n_error AD CONIURA stmt_get_int(stmt, 4)
+      VINCIRE out.duration_total_ms AD CONIURA stmt_get_int(stmt, 5)
+      VINCIRE out.throughput AD CONIURA stmt_get_real(stmt, 6)
+      VINCIRE out.min_ms AD CONIURA stmt_get_int(stmt, 7)
+      VINCIRE out.max_ms AD CONIURA stmt_get_int(stmt, 8)
+      VINCIRE out.mean_ms AD CONIURA stmt_get_real(stmt, 9)
+      VINCIRE out.p50_ms AD CONIURA stmt_get_int(stmt, 10)
+      VINCIRE out.p95_ms AD CONIURA stmt_get_int(stmt, 11)
+      VINCIRE out.p99_ms AD CONIURA stmt_get_int(stmt, 12)
+      VINCIRE out.timestamp_ms AD CONIURA stmt_get_int(stmt, 13)
+      CONIURA stmt_finalize(stmt)
+      REDDE CONIURA Some GENUS(BenchResult)(out)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE CONIURA None GENUS(BenchResult)()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

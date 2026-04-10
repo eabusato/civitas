@@ -1,0 +1,137 @@
+INCIPIT grimoire "civitas_l10n_rules"
+
+ADVOCARE "cct/context_local.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "l10n.cct"
+
+RITUALE l10n_rules_pt_br() REDDE LocaleRules
+  EVOCA LocaleRules r
+  VINCIRE r.locale AD "pt-BR"
+  VINCIRE r.numero.sep_decimal AD 44
+  VINCIRE r.numero.sep_milhar AD 46
+  VINCIRE r.numero.grupos AD 3
+  VINCIRE r.data.formato_data AD "%d/%m/%Y"
+  VINCIRE r.data.formato_hora AD "%H:%M"
+  VINCIRE r.data.formato_datetime AD "%d/%m/%Y %H:%M"
+  VINCIRE r.data.hora_24 AD VERUM
+  VINCIRE r.moeda.simbolo_prefixo AD VERUM
+  VINCIRE r.moeda.espaco_simbolo AD VERUM
+  VINCIRE r.moeda.casas_decimais AD 2
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_en_us() REDDE LocaleRules
+  EVOCA LocaleRules r
+  VINCIRE r.locale AD "en-US"
+  VINCIRE r.numero.sep_decimal AD 46
+  VINCIRE r.numero.sep_milhar AD 44
+  VINCIRE r.numero.grupos AD 3
+  VINCIRE r.data.formato_data AD "%m/%d/%Y"
+  VINCIRE r.data.formato_hora AD "%I:%M %p"
+  VINCIRE r.data.formato_datetime AD "%m/%d/%Y %I:%M %p"
+  VINCIRE r.data.hora_24 AD FALSUM
+  VINCIRE r.moeda.simbolo_prefixo AD VERUM
+  VINCIRE r.moeda.espaco_simbolo AD FALSUM
+  VINCIRE r.moeda.casas_decimais AD 2
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_de_de() REDDE LocaleRules
+  EVOCA LocaleRules r
+  VINCIRE r.locale AD "de-DE"
+  VINCIRE r.numero.sep_decimal AD 44
+  VINCIRE r.numero.sep_milhar AD 46
+  VINCIRE r.numero.grupos AD 3
+  VINCIRE r.data.formato_data AD "%d.%m.%Y"
+  VINCIRE r.data.formato_hora AD "%H:%M"
+  VINCIRE r.data.formato_datetime AD "%d.%m.%Y %H:%M"
+  VINCIRE r.data.hora_24 AD VERUM
+  VINCIRE r.moeda.simbolo_prefixo AD FALSUM
+  VINCIRE r.moeda.espaco_simbolo AD VERUM
+  VINCIRE r.moeda.casas_decimais AD 2
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_fr_fr() REDDE LocaleRules
+  EVOCA LocaleRules r
+  VINCIRE r.locale AD "fr-FR"
+  VINCIRE r.numero.sep_decimal AD 44
+  VINCIRE r.numero.sep_milhar AD 32
+  VINCIRE r.numero.grupos AD 3
+  VINCIRE r.data.formato_data AD "%d/%m/%Y"
+  VINCIRE r.data.formato_hora AD "%H:%M"
+  VINCIRE r.data.formato_datetime AD "%d/%m/%Y %H:%M"
+  VINCIRE r.data.hora_24 AD VERUM
+  VINCIRE r.moeda.simbolo_prefixo AD FALSUM
+  VINCIRE r.moeda.espaco_simbolo AD VERUM
+  VINCIRE r.moeda.casas_decimais AD 2
+  REDDE r
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_registry_new(VERBUM locale_padrao) REDDE L10nRulesRegistry
+  EVOCA L10nRulesRegistry reg
+  VINCIRE reg.regras AD CONIURA fluxus_init(MENSURA(LocaleRules))
+  VINCIRE reg.padrao AD locale_padrao
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_registry_add(SPECULUM L10nRulesRegistry reg, LocaleRules r) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*reg).regras)
+  DUM i < n
+    EVOCA SPECULUM LocaleRules rp AD CONIURA fluxus_get((*reg).regras, i)
+    SI CONIURA compare((*rp).locale, r.locale) == 0
+      CONIURA fluxus_set((*reg).regras, i, SPECULUM r)
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_push((*reg).regras, SPECULUM r)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_registry_get(L10nRulesRegistry reg, VERBUM locale) REDDE LocaleRules
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(reg.regras)
+  DUM i < n
+    EVOCA SPECULUM LocaleRules rp AD CONIURA fluxus_get(reg.regras, i)
+    SI CONIURA compare((*rp).locale, locale) == 0
+      REDDE *rp
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  VINCIRE i AD 0
+  DUM i < n
+    EVOCA SPECULUM LocaleRules rp AD CONIURA fluxus_get(reg.regras, i)
+    SI CONIURA compare((*rp).locale, reg.padrao) == 0
+      REDDE *rp
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA l10n_rules_en_us()
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_registry_default() REDDE L10nRulesRegistry
+  EVOCA L10nRulesRegistry reg AD CONIURA l10n_rules_registry_new("pt-BR")
+  CONIURA l10n_rules_registry_add(SPECULUM reg, CONIURA l10n_rules_pt_br())
+  CONIURA l10n_rules_registry_add(SPECULUM reg, CONIURA l10n_rules_en_us())
+  CONIURA l10n_rules_registry_add(SPECULUM reg, CONIURA l10n_rules_de_de())
+  CONIURA l10n_rules_registry_add(SPECULUM reg, CONIURA l10n_rules_fr_fr())
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE l10n_rules_for_ctx(L10nRulesRegistry reg, LocalContext ctx) REDDE LocaleRules
+  EVOCA VERBUM locale AD reg.padrao
+  EVOCA SPECULUM NIHIL opt AD CONIURA local_context_locale(ctx)
+  SI CONIURA option_is_some GENUS(VERBUM)(opt)
+    VINCIRE locale AD CONIURA option_unwrap GENUS(VERBUM)(opt)
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(opt)
+  REDDE CONIURA l10n_rules_registry_get(reg, locale)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

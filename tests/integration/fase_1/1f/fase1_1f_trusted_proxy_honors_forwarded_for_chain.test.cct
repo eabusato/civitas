@@ -1,0 +1,65 @@
+INCIPIT grimoire "fase1_1f_trusted_proxy_honors_forwarded_for_chain_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "./support.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/net.cct"
+ADVOCARE "cct/socket.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM ready AD CONIURA tmp_file("fase1_1f_xff.ready")
+  EVOCA VERBUM done AD CONIURA tmp_file("fase1_1f_xff.done")
+  EVOCA VERBUM log AD CONIURA tmp_file("fase1_1f_xff.log")
+  EVOCA VERBUM reqlog AD CONIURA tmp_file("fase1_1f_xff.requests.log")
+  EVOCA VERBUM access_log AD CONIURA tmp_file("fase1_1f_xff.access.log")
+  EVOCA VERBUM stats AD CONIURA tmp_file("fase1_1f_xff.stats")
+  EVOCA SPECULUM NIHIL sock
+  EVOCA VERBUM req AD "GET /forwarded HTTP/1.1"
+  EVOCA HttpResponse res
+
+  CONIURA cleanup_file(ready)
+  CONIURA cleanup_file(done)
+  CONIURA cleanup_file(log)
+  CONIURA cleanup_file(reqlog)
+  CONIURA cleanup_file(access_log)
+  CONIURA cleanup_file(stats)
+
+  SI CONIURA build_probe_server(log) != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA spawn_to_log(CONIURA probe_command_with_proxy(18120, 1, ready, done, reqlog, access_log, stats, "127.0.0.1", 1, 0, 0), log) != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA wait_for_file(ready, 4000)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA read_all(ready), "skip") == 0
+    REDDE 0
+  FIN SI
+
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "Host: app.local")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, "X-Forwarded-For: 198.51.100.10, 10.0.0.1")
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+  VINCIRE req AD CONIURA concat(req, CONIURA crlf())
+
+  VINCIRE sock AD CONIURA open_local_socket(18120)
+  SI CONIURA send_raw(sock, req) != 0
+    REDDE 4
+  FIN SI
+  VINCIRE res AD CONIURA read_http_response(sock)
+  CONIURA net_close(sock)
+
+  SI CONIURA compare(CONIURA forwarded_field(CONIURA http_response_body(res), 1), "198.51.100.10") != 0
+    REDDE 5
+  FIN SI
+  SI NON CONIURA wait_for_file(done, 4000)
+    REDDE 6
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

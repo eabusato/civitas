@@ -1,0 +1,199 @@
+INCIPIT grimoire "civitas_pagination"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "request_core.cct"
+
+ORDO SortDirection
+  SORT_ASC,
+  SORT_DESC
+FIN ORDO
+
+SIGILLUM PaginationRequest
+  page: REX
+  page_size: REX
+  sort_by: VERBUM
+  sort_direction: SortDirection
+FIN SIGILLUM
+
+SIGILLUM PaginationMeta
+  page: REX
+  page_size: REX
+  total_items: REX
+  total_pages: REX
+  offset: REX
+  limit: REX
+  has_next: VERUM
+  has_prev: VERUM
+  total_known: VERUM
+FIN SIGILLUM
+
+RITUALE pagination_default(REX default_page_size) REDDE PaginationRequest
+  EVOCA PaginationRequest out
+  VINCIRE out.page AD 1
+  VINCIRE out.page_size AD default_page_size
+  VINCIRE out.sort_by AD ""
+  VINCIRE out.sort_direction AD SORT_ASC
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pagination_sort_is_allowed(VERBUM field, SPECULUM NIHIL allowed_sort_fields) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(allowed_sort_fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM current_ptr AD CONIURA fluxus_get(allowed_sort_fields, i)
+    SI CONIURA compare(*current_ptr, field) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE pagination_sort_direction_name(SortDirection dir) REDDE VERBUM
+  SI dir == SORT_ASC
+    REDDE "asc"
+  FIN SI
+  REDDE "desc"
+EXPLICIT RITUALE
+
+RITUALE pagination_parse_positive_or_error(VERBUM raw, VERBUM field_name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parsed_opt AD CONIURA try_int(raw)
+  SI CONIURA option_is_none GENUS(REX)(parsed_opt)
+    CONIURA option_free GENUS(REX)(parsed_opt)
+    REDDE CONIURA Err GENUS(REX, VERBUM)(CONIURA concat("valor invalido para ", field_name))
+  FIN SI
+  EVOCA REX value AD CONIURA option_unwrap GENUS(REX)(parsed_opt)
+  CONIURA option_free GENUS(REX)(parsed_opt)
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE pagination_from_request(
+  WebRequest req,
+  SPECULUM NIHIL allowed_sort_fields,
+  REX default_page_size,
+  REX max_page_size,
+  VERBUM default_sort_by,
+  SortDirection default_sort_direction
+) REDDE SPECULUM NIHIL
+  EVOCA PaginationRequest out AD CONIURA pagination_default(default_page_size)
+  EVOCA SPECULUM NIHIL page_opt AD CONIURA request_query_first(req, "page")
+  EVOCA SPECULUM NIHIL page_size_opt AD CONIURA request_query_first(req, "page_size")
+  EVOCA SPECULUM NIHIL sort_opt AD CONIURA request_query_first(req, "sort")
+  EVOCA SPECULUM NIHIL dir_opt AD CONIURA request_query_first(req, "dir")
+
+  VINCIRE out.sort_by AD default_sort_by
+  VINCIRE out.sort_direction AD default_sort_direction
+
+  SI CONIURA option_is_some GENUS(VERBUM)(page_opt)
+    EVOCA SPECULUM NIHIL page_res AD CONIURA pagination_parse_positive_or_error(CONIURA option_unwrap GENUS(VERBUM)(page_opt), "page")
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(page_res)
+      REDDE CONIURA Err GENUS(PaginationRequest, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(page_res))
+    FIN SI
+    VINCIRE out.page AD CONIURA result_unwrap GENUS(REX, VERBUM)(page_res)
+    SI out.page <= 0
+      VINCIRE out.page AD 1
+    FIN SI
+  FIN SI
+
+  SI CONIURA option_is_some GENUS(VERBUM)(page_size_opt)
+    EVOCA SPECULUM NIHIL page_size_res AD CONIURA pagination_parse_positive_or_error(CONIURA option_unwrap GENUS(VERBUM)(page_size_opt), "page_size")
+    SI CONIURA result_is_err GENUS(REX, VERBUM)(page_size_res)
+      REDDE CONIURA Err GENUS(PaginationRequest, VERBUM)(CONIURA result_unwrap_err GENUS(REX, VERBUM)(page_size_res))
+    FIN SI
+    VINCIRE out.page_size AD CONIURA result_unwrap GENUS(REX, VERBUM)(page_size_res)
+    SI out.page_size <= 0
+      VINCIRE out.page_size AD default_page_size
+    FIN SI
+  FIN SI
+
+  SI out.page_size > max_page_size
+    VINCIRE out.page_size AD max_page_size
+  FIN SI
+
+  SI CONIURA option_is_some GENUS(VERBUM)(sort_opt)
+    VINCIRE out.sort_by AD CONIURA option_unwrap GENUS(VERBUM)(sort_opt)
+  FIN SI
+  SI NON CONIURA pagination_sort_is_allowed(out.sort_by, allowed_sort_fields)
+    REDDE CONIURA Err GENUS(PaginationRequest, VERBUM)("sort field nao permitido")
+  FIN SI
+
+  SI CONIURA option_is_some GENUS(VERBUM)(dir_opt)
+    EVOCA VERBUM dir_name AD CONIURA to_lower(CONIURA option_unwrap GENUS(VERBUM)(dir_opt))
+    SI CONIURA compare(dir_name, "asc") == 0
+      VINCIRE out.sort_direction AD SORT_ASC
+    ALITER
+      SI CONIURA compare(dir_name, "desc") == 0
+        VINCIRE out.sort_direction AD SORT_DESC
+      ALITER
+        REDDE CONIURA Err GENUS(PaginationRequest, VERBUM)("direcao de sort invalida")
+      FIN SI
+    FIN SI
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(PaginationRequest, VERBUM)(out)
+EXPLICIT RITUALE
+
+RITUALE pagination_offset(PaginationRequest p) REDDE REX
+  REDDE (p.page - 1) * p.page_size
+EXPLICIT RITUALE
+
+RITUALE pagination_limit(PaginationRequest p) REDDE REX
+  REDDE p.page_size
+EXPLICIT RITUALE
+
+RITUALE pagination_total_pages(REX total_items, REX page_size) REDDE REX
+  SI total_items <= 0
+    REDDE 0
+  FIN SI
+  REDDE CONIURA quotient(total_items + page_size - 1, page_size)
+EXPLICIT RITUALE
+
+RITUALE pagination_meta(PaginationRequest p, REX total_items) REDDE PaginationMeta
+  EVOCA PaginationMeta out
+  VINCIRE out.page AD p.page
+  VINCIRE out.page_size AD p.page_size
+  VINCIRE out.total_items AD total_items
+  VINCIRE out.total_pages AD CONIURA pagination_total_pages(total_items, p.page_size)
+  VINCIRE out.offset AD CONIURA pagination_offset(p)
+  VINCIRE out.limit AD CONIURA pagination_limit(p)
+  VINCIRE out.has_prev AD p.page > 1
+  VINCIRE out.has_next AD out.page < out.total_pages
+  VINCIRE out.total_known AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pagination_meta_unknown_total(PaginationRequest p, VERUM has_next_hint) REDDE PaginationMeta
+  EVOCA PaginationMeta out
+  VINCIRE out.page AD p.page
+  VINCIRE out.page_size AD p.page_size
+  VINCIRE out.total_items AD 0
+  VINCIRE out.total_pages AD 0
+  VINCIRE out.offset AD CONIURA pagination_offset(p)
+  VINCIRE out.limit AD CONIURA pagination_limit(p)
+  VINCIRE out.has_prev AD p.page > 1
+  VINCIRE out.has_next AD has_next_hint
+  VINCIRE out.total_known AD FALSUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE pagination_meta_json(PaginationMeta meta) REDDE Json
+  EVOCA Json out AD CONIURA json_obj()
+  CONIURA json_obj_push(out, "page", CONIURA json_num(cast GENUS(UMBRA)(meta.page)))
+  CONIURA json_obj_push(out, "page_size", CONIURA json_num(cast GENUS(UMBRA)(meta.page_size)))
+  CONIURA json_obj_push(out, "total_items", CONIURA json_num(cast GENUS(UMBRA)(meta.total_items)))
+  CONIURA json_obj_push(out, "total_pages", CONIURA json_num(cast GENUS(UMBRA)(meta.total_pages)))
+  CONIURA json_obj_push(out, "offset", CONIURA json_num(cast GENUS(UMBRA)(meta.offset)))
+  CONIURA json_obj_push(out, "limit", CONIURA json_num(cast GENUS(UMBRA)(meta.limit)))
+  CONIURA json_obj_push(out, "has_next", CONIURA json_bool(meta.has_next))
+  CONIURA json_obj_push(out, "has_prev", CONIURA json_bool(meta.has_prev))
+  CONIURA json_obj_push(out, "total_known", CONIURA json_bool(meta.total_known))
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

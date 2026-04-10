@@ -1,0 +1,13 @@
+# Shared project notes for all environments.
+# Put common ports, hostnames, storage and mail defaults here when turning this
+# example into a real project.
+
+[database]
+engine = "sqlite"
+
+[static]
+src_dir = "static"
+
+[apps]
+# Register user-owned apps here as the project grows:
+# enabled = ["public", "accounts", "social", "ops"]

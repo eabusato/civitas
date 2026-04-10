@@ -1,0 +1,339 @@
+INCIPIT grimoire "civitas_dep_review"
+
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+ORDO DepType
+  DEP_HOST_BRIDGE
+  DEP_SYSTEM_LIB
+  DEP_EXTERNAL_BIN
+  DEP_PURE_CCT
+FIN ORDO
+
+ORDO CveSeverity
+  CVE_CRITICAL
+  CVE_HIGH
+  CVE_MEDIUM
+  CVE_LOW
+  CVE_UNKNOWN
+FIN ORDO
+
+SIGILLUM CveEntry
+  cve_id: VERBUM
+  severidade: CveSeverity
+  descricao: VERBUM
+  versao_afetada: VERBUM
+  corrigido_em: VERBUM
+  fonte: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DepInfo
+  nome: VERBUM
+  tipo: DepType
+  versao_detectada: VERBUM
+  versao_minima: VERBUM
+  modulo_cct: VERBUM
+  surface: VERBUM
+  cves: SPECULUM NIHIL
+  tem_cve_critico: VERUM
+  tem_cve_alto: VERUM
+FIN SIGILLUM
+
+SIGILLUM DepReport
+  deps: SPECULUM NIHIL
+  total_deps: REX
+  deps_com_cve_critico: REX
+  deps_com_cve_alto: REX
+  aprovado: VERUM
+FIN SIGILLUM
+
+RITUALE dep_review_default_db_path() REDDE VERBUM
+  REDDE "security/known_cves.json"
+EXPLICIT RITUALE
+
+RITUALE dep_review_cve_severity_from_string(VERBUM raw) REDDE CveSeverity
+  EVOCA VERBUM norm AD CONIURA to_lower(CONIURA trim(raw))
+  SI CONIURA compare(norm, "critical") == 0
+    REDDE CVE_CRITICAL
+  FIN SI
+  SI CONIURA compare(norm, "high") == 0
+    REDDE CVE_HIGH
+  FIN SI
+  SI CONIURA compare(norm, "medium") == 0
+    REDDE CVE_MEDIUM
+  FIN SI
+  SI CONIURA compare(norm, "low") == 0
+    REDDE CVE_LOW
+  FIN SI
+  REDDE CVE_UNKNOWN
+EXPLICIT RITUALE
+
+RITUALE dep_review_cve_severity_string(CveSeverity sev) REDDE VERBUM
+  ELIGE sev
+    CASUS CVE_CRITICAL:
+      REDDE "critical"
+    CASUS CVE_HIGH:
+      REDDE "high"
+    CASUS CVE_MEDIUM:
+      REDDE "medium"
+    CASUS CVE_LOW:
+      REDDE "low"
+    ALIOQUIN:
+      REDDE "unknown"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE dep_review_new_dep(VERBUM nome, DepType tipo, VERBUM versao_detectada, VERBUM versao_minima, VERBUM modulo_cct, VERBUM surface) REDDE DepInfo
+  EVOCA DepInfo dep
+  VINCIRE dep.nome AD nome
+  VINCIRE dep.tipo AD tipo
+  VINCIRE dep.versao_detectada AD versao_detectada
+  VINCIRE dep.versao_minima AD versao_minima
+  VINCIRE dep.modulo_cct AD modulo_cct
+  VINCIRE dep.surface AD surface
+  VINCIRE dep.cves AD CONIURA fluxus_init(MENSURA(CveEntry))
+  VINCIRE dep.tem_cve_critico AD FALSUM
+  VINCIRE dep.tem_cve_alto AD FALSUM
+  REDDE dep
+EXPLICIT RITUALE
+
+RITUALE dep_review_empty_report() REDDE DepReport
+  EVOCA DepReport report
+  VINCIRE report.deps AD CONIURA fluxus_init(MENSURA(DepInfo))
+  VINCIRE report.total_deps AD 0
+  VINCIRE report.deps_com_cve_critico AD 0
+  VINCIRE report.deps_com_cve_alto AD 0
+  VINCIRE report.aprovado AD VERUM
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE dep_review_normalize_version(VERBUM raw) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(raw)
+  EVOCA VERUM started AD FALSUM
+  DUM i < n
+    EVOCA MILES c AD CONIURA char_at(raw, i)
+    SI (c >= 48 ET c <= 57) VEL c == 46
+      VINCIRE out AD CONIURA concat(out, CONIURA substring(raw, i, i + 1))
+      VINCIRE started AD VERUM
+    ALITER
+      SI started
+        FRANGE
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE dep_review_version_part(VERBUM version, REX idx) REDDE REX
+  EVOCA REX part_idx AD 0
+  EVOCA REX start AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(version)
+  DUM i <= n
+    SI i == n VEL CONIURA char_at(version, i) == 46
+      SI part_idx == idx
+        SI i <= start
+          REDDE 0
+        FIN SI
+        REDDE OBSECRO fmt_parse_int(CONIURA substring(version, start, i))
+      FIN SI
+      VINCIRE part_idx AD part_idx + 1
+      VINCIRE start AD i + 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE dep_review_version_compare(VERBUM left_raw, VERBUM right_raw) REDDE REX
+  EVOCA VERBUM left AD CONIURA dep_review_normalize_version(left_raw)
+  EVOCA VERBUM right AD CONIURA dep_review_normalize_version(right_raw)
+  EVOCA REX i AD 0
+  DUM i < 6
+    EVOCA REX l AD CONIURA dep_review_version_part(left, i)
+    EVOCA REX r AD CONIURA dep_review_version_part(right, i)
+    SI l < r
+      REDDE -1
+    FIN SI
+    SI l > r
+      REDDE 1
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE dep_review_version_matches(VERBUM version_raw, VERBUM expr_raw) REDDE VERUM
+  EVOCA VERBUM version AD CONIURA dep_review_normalize_version(version_raw)
+  EVOCA VERBUM expr AD CONIURA trim(expr_raw)
+  SI CONIURA len(version) == 0 VEL CONIURA compare(version, "unknown") == 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA starts_with(expr, "<=")
+    REDDE CONIURA dep_review_version_compare(version, CONIURA trim(CONIURA substring(expr, 2, CONIURA len(expr)))) <= 0
+  FIN SI
+  SI CONIURA starts_with(expr, ">=")
+    REDDE CONIURA dep_review_version_compare(version, CONIURA trim(CONIURA substring(expr, 2, CONIURA len(expr)))) >= 0
+  FIN SI
+  SI CONIURA starts_with(expr, "<")
+    REDDE CONIURA dep_review_version_compare(version, CONIURA trim(CONIURA substring(expr, 1, CONIURA len(expr)))) < 0
+  FIN SI
+  SI CONIURA starts_with(expr, ">")
+    REDDE CONIURA dep_review_version_compare(version, CONIURA trim(CONIURA substring(expr, 1, CONIURA len(expr)))) > 0
+  FIN SI
+  SI CONIURA starts_with(expr, "=")
+    REDDE CONIURA dep_review_version_compare(version, CONIURA trim(CONIURA substring(expr, 1, CONIURA len(expr)))) == 0
+  FIN SI
+  REDDE CONIURA dep_review_version_compare(version, expr) == 0
+EXPLICIT RITUALE
+
+RITUALE dep_review_detect_version(VERBUM dep_name) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  SI CONIURA compare(dep_name, "openssl") == 0
+    VINCIRE out AD CONIURA trim(CONIURA run_capture("openssl version"))
+  ALITER
+    SI CONIURA compare(dep_name, "ffprobe") == 0
+      VINCIRE out AD CONIURA trim(CONIURA run_capture("ffprobe -version 2>/dev/null"))
+    ALITER
+      VINCIRE out AD CONIURA trim(CONIURA run_capture(CONIURA concat(CONIURA concat("pkg-config --modversion ", dep_name), " 2>/dev/null")))
+    FIN SI
+  FIN SI
+  SI CONIURA len(out) == 0
+    REDDE "unknown"
+  FIN SI
+  REDDE CONIURA dep_review_normalize_version(out)
+EXPLICIT RITUALE
+
+RITUALE dep_review_inventory_civitas() REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL deps AD CONIURA fluxus_init(MENSURA(DepInfo))
+  EVOCA DepInfo sqlite AD CONIURA dep_review_new_dep("libsqlite3", DEP_SYSTEM_LIB, CONIURA dep_review_detect_version("sqlite3"), "3.38.0", "cct/db_sqlite", "Embedded SQL database with prepared statements and transaction support.")
+  EVOCA DepInfo postgres AD CONIURA dep_review_new_dep("libpq", DEP_SYSTEM_LIB, CONIURA dep_review_detect_version("libpq"), "14.0", "cct/db_postgres", "PostgreSQL client connectivity, prepared statements and LISTEN/NOTIFY.")
+  EVOCA DepInfo openssl AD CONIURA dep_review_new_dep("openssl", DEP_SYSTEM_LIB, CONIURA dep_review_detect_version("openssl"), "3.0.0", "cct/crypto", "PBKDF2, HMAC, SHA-1/SHA-256 and CSPRNG builtins exposed through crypto.")
+  EVOCA DepInfo zlib AD CONIURA dep_review_new_dep("zlib", DEP_SYSTEM_LIB, CONIURA dep_review_detect_version("zlib"), "1.2.13", "cct/compress", "gzip and deflate compression primitives.")
+  EVOCA DepInfo ffprobe AD CONIURA dep_review_new_dep("ffprobe", DEP_EXTERNAL_BIN, CONIURA dep_review_detect_version("ffprobe"), "5.0", "cct/media_probe", "Metadata probing for media files via fixed argument subprocess execution.")
+  CONIURA fluxus_push(deps, SPECULUM sqlite)
+  CONIURA fluxus_push(deps, SPECULUM postgres)
+  CONIURA fluxus_push(deps, SPECULUM openssl)
+  CONIURA fluxus_push(deps, SPECULUM zlib)
+  CONIURA fluxus_push(deps, SPECULUM ffprobe)
+  REDDE deps
+EXPLICIT RITUALE
+
+RITUALE dep_review_apply_db(SPECULUM NIHIL deps, VERBUM db_path) REDDE DepReport
+  EVOCA DepReport report AD CONIURA dep_review_empty_report()
+  EVOCA Json root AD CONIURA json_obj()
+  SI CONIURA exists(db_path)
+    EVOCA SPECULUM NIHIL parsed_res AD CONIURA json_try_parse_file(db_path)
+    SI CONIURA result_is_ok GENUS(Json, JsonError)(parsed_res)
+      VINCIRE root AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed_res)
+    FIN SI
+  FIN SI
+
+  EVOCA Json db_deps AD CONIURA json_get_key(root, "deps")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(deps)
+  DUM i < n
+    EVOCA SPECULUM DepInfo dep_ptr AD CONIURA fluxus_get(deps, i)
+    EVOCA DepInfo dep AD *dep_ptr
+    EVOCA REX j AD 0
+    EVOCA REX dep_n AD 0
+    SI CONIURA json_is_arr(db_deps)
+      VINCIRE dep_n AD CONIURA json_arr_len(db_deps)
+    FIN SI
+    DUM j < dep_n
+      EVOCA Json db_dep AD CONIURA json_arr_get(db_deps, j)
+      SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(db_dep, "name")), dep.nome) == 0
+        EVOCA Json cves AD CONIURA json_get_key(db_dep, "cves")
+        EVOCA REX k AD 0
+        EVOCA REX cve_n AD 0
+        SI CONIURA json_is_arr(cves)
+          VINCIRE cve_n AD CONIURA json_arr_len(cves)
+        FIN SI
+        DUM k < cve_n
+          EVOCA Json db_cve AD CONIURA json_arr_get(cves, k)
+          EVOCA CveEntry entry
+          VINCIRE entry.cve_id AD CONIURA json_expect_str(CONIURA json_get_key(db_cve, "id"))
+          VINCIRE entry.severidade AD CONIURA dep_review_cve_severity_from_string(CONIURA json_expect_str(CONIURA json_get_key(db_cve, "severity")))
+          VINCIRE entry.descricao AD CONIURA json_expect_str(CONIURA json_get_key(db_cve, "description"))
+          VINCIRE entry.versao_afetada AD CONIURA json_expect_str(CONIURA json_get_key(db_cve, "affected"))
+          VINCIRE entry.corrigido_em AD CONIURA json_expect_str(CONIURA json_get_key(db_cve, "fixed"))
+          VINCIRE entry.fonte AD CONIURA json_expect_str(CONIURA json_get_key(db_cve, "source"))
+          SI CONIURA dep_review_version_matches(dep.versao_detectada, entry.versao_afetada)
+            CONIURA fluxus_push(dep.cves, SPECULUM entry)
+            SI entry.severidade == CVE_CRITICAL
+              VINCIRE dep.tem_cve_critico AD VERUM
+            FIN SI
+            SI entry.severidade == CVE_HIGH
+              VINCIRE dep.tem_cve_alto AD VERUM
+            FIN SI
+          FIN SI
+          VINCIRE k AD k + 1
+        FIN DUM
+      FIN SI
+      VINCIRE j AD j + 1
+    FIN DUM
+    SI dep.tem_cve_critico
+      VINCIRE report.deps_com_cve_critico AD report.deps_com_cve_critico + 1
+      VINCIRE report.aprovado AD FALSUM
+    FIN SI
+    SI dep.tem_cve_alto
+      VINCIRE report.deps_com_cve_alto AD report.deps_com_cve_alto + 1
+      VINCIRE report.aprovado AD FALSUM
+    FIN SI
+    CONIURA fluxus_push(report.deps, SPECULUM dep)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE report.total_deps AD CONIURA fluxus_len(report.deps)
+  REDDE report
+EXPLICIT RITUALE
+
+RITUALE dep_review_run(VERBUM db_path) REDDE DepReport
+  REDDE CONIURA dep_review_apply_db(CONIURA dep_review_inventory_civitas(), db_path)
+EXPLICIT RITUALE
+
+RITUALE dep_review_report_json(DepReport report) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json deps_arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(report.deps)
+  DUM i < n
+    EVOCA SPECULUM DepInfo dep_ptr AD CONIURA fluxus_get(report.deps, i)
+    EVOCA Json dep_json AD CONIURA json_obj()
+    EVOCA Json cves_arr AD CONIURA json_arr()
+    CONIURA json_obj_push(dep_json, "name", CONIURA json_str((*dep_ptr).nome))
+    CONIURA json_obj_push(dep_json, "version", CONIURA json_str((*dep_ptr).versao_detectada))
+    CONIURA json_obj_push(dep_json, "module", CONIURA json_str((*dep_ptr).modulo_cct))
+    CONIURA json_obj_push(dep_json, "surface", CONIURA json_str((*dep_ptr).surface))
+    EVOCA REX j AD 0
+    EVOCA REX cve_n AD CONIURA fluxus_len((*dep_ptr).cves)
+    DUM j < cve_n
+      EVOCA SPECULUM CveEntry cve_ptr AD CONIURA fluxus_get((*dep_ptr).cves, j)
+      EVOCA Json cve_json AD CONIURA json_obj()
+      CONIURA json_obj_push(cve_json, "id", CONIURA json_str((*cve_ptr).cve_id))
+      CONIURA json_obj_push(cve_json, "severity", CONIURA json_str(CONIURA dep_review_cve_severity_string((*cve_ptr).severidade)))
+      CONIURA json_obj_push(cve_json, "affected", CONIURA json_str((*cve_ptr).versao_afetada))
+      CONIURA json_obj_push(cve_json, "fixed", CONIURA json_str((*cve_ptr).corrigido_em))
+      CONIURA json_arr_push(cves_arr, cve_json)
+      VINCIRE j AD j + 1
+    FIN DUM
+    CONIURA json_obj_push(dep_json, "cves", cves_arr)
+    CONIURA json_arr_push(deps_arr, dep_json)
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA json_obj_push(root, "total_deps", CONIURA json_num(cast GENUS(UMBRA)(report.total_deps)))
+  CONIURA json_obj_push(root, "critical", CONIURA json_num(cast GENUS(UMBRA)(report.deps_com_cve_critico)))
+  CONIURA json_obj_push(root, "high", CONIURA json_num(cast GENUS(UMBRA)(report.deps_com_cve_alto)))
+  CONIURA json_obj_push(root, "approved", CONIURA json_bool(report.aprovado))
+  CONIURA json_obj_push(root, "deps", deps_arr)
+  REDDE CONIURA json_stringify(root)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

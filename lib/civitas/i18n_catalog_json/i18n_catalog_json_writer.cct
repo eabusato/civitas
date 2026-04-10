@@ -1,0 +1,45 @@
+INCIPIT grimoire "civitas_i18n_catalog_json_writer"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "i18n_catalog_json.cct"
+
+RITUALE i18n_json_catalog_to_json(JsonCatalog cat) REDDE Json
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json entries AD CONIURA json_obj()
+  EVOCA Json plurais AD CONIURA json_obj()
+  CONIURA json_obj_push(root, "locale", CONIURA json_str(cat.locale))
+  CONIURA json_obj_push(root, "version", CONIURA json_num(cast GENUS(UMBRA)(cat.version)))
+  SI CONIURA len(cat.fallback) != 0
+    CONIURA json_obj_push(root, "fallback", CONIURA json_str(cat.fallback))
+  FIN SI
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cat.entradas)
+  DUM i < n
+    EVOCA SPECULUM JsonCatalogEntry ep AD CONIURA fluxus_get(cat.entradas, i)
+    ELIGE (*ep).kind
+      CASUS JcekSimple:
+        CONIURA json_obj_push(entries, (*ep).chave, CONIURA json_str((*ep).traducao))
+      CASUS JcekPlural:
+        EVOCA Json pair AD CONIURA json_obj()
+        CONIURA json_obj_push(pair, "singular", CONIURA json_str((*ep).singular))
+        CONIURA json_obj_push(pair, "plural", CONIURA json_str((*ep).plural))
+        CONIURA json_obj_push(plurais, (*ep).chave, pair)
+    FIN ELIGE
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA json_obj_push(root, "entries", entries)
+  SI CONIURA json_obj_len(plurais) > 0
+    CONIURA json_obj_push(root, "plurais", plurais)
+  FIN SI
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE i18n_json_write(JsonCatalog cat) REDDE VERBUM
+  REDDE CONIURA json_stringify(CONIURA i18n_json_catalog_to_json(cat))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,18 @@
+INCIPIT grimoire "civitas_trace_task"
+
+ADVOCARE "cct/instrument.cct"
+
+RITUALE trace_task_enqueue_begin(VERBUM kind, VERBUM queue) REDDE REX
+  EVOCA REX span_id AD CONIURA instrument_span_begin(CONIURA instrument_category_string(SPAN_CATEGORY_TASK), "task:enqueue")
+  CONIURA instrument_span_attr(span_id, "task.kind", kind)
+  CONIURA instrument_span_attr(span_id, "task.queue", queue)
+  REDDE span_id
+EXPLICIT RITUALE
+
+RITUALE trace_task_enqueue_end(REX span_id, VERBUM task_id) REDDE NIHIL
+  CONIURA instrument_span_attr(span_id, "task.id", task_id)
+  CONIURA instrument_span_end(span_id)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase12_12c_raw_serialization"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query_exec.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/query/query.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase12_dbh_sqlite("12c_raw")
+  CONIURA phase12_12c_setup_items(dbh)
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12c-raw")
+  EVOCA CacheQuery cq AD CONIURA cache_query_new(SPECULUM h, 60, "cq12c", NIHIL)
+  EVOCA Query q AD CONIURA query_from("items")
+  CONIURA query_select(q, "name")
+  CONIURA query_select(q, "active")
+  CONIURA query_order_by(q, "id", Asc)
+
+  EVOCA VERBUM payload AD CONIURA query_all_cache_raw(dbh, q, SPECULUM cq, 2)
+  EVOCA Json root AD CONIURA phase12_12c_parse(payload)
+  SI CONIURA json_arr_len(root) != 2
+    REDDE 1
+  FIN SI
+  EVOCA Json row0 AD CONIURA json_arr_get(root, 0)
+  SI NON CONIURA json_has_key(row0, "c0")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA json_has_key(row0, "c1")
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA json_expect_str(CONIURA json_get_key(row0, "c0")), "alpha") != 0
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

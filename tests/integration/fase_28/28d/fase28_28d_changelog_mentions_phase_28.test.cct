@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase28_28d_changelog_mentions_phase_28"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/release.cct"
+ADVOCARE "../../../../lib/civitas/release/release.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28d_changelog")
+  EVOCA ReleaseConfig cfg AD CONIURA release_config_default(root, "1.0.0")
+  EVOCA VERBUM path AD CONIURA release_build_changelog(cfg)
+  EVOCA VERBUM content AD CONIURA read_all(path)
+  SI CONIURA find(content, "FASE 20-28") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(content, "FASE 0-9") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

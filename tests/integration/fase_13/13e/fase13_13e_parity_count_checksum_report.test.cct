@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase13_13e_parity_count_checksum_report"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_migrate.cct"
+ADVOCARE "../../../../lib/civitas/django_migrate/django_parity.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase13_tmp_dir("13e_parity")
+  CONIURA phase13_reset_dir(root)
+  EVOCA SPECULUM NIHIL db_dj AD CONIURA db_open(CONIURA path_join(root, "dj.db"))
+  EVOCA SPECULUM NIHIL db_cv AD CONIURA db_open(CONIURA path_join(root, "cv.db"))
+  CONIURA db_exec(db_dj, "CREATE TABLE blog_post (id INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT NOT NULL)")
+  CONIURA db_exec(db_cv, "CREATE TABLE blog_post (id INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT NOT NULL)")
+  CONIURA db_exec(db_dj, "INSERT INTO blog_post (titulo) VALUES ('Hello')")
+  CONIURA db_exec(db_cv, "INSERT INTO blog_post (titulo) VALUES ('Hello')")
+  EVOCA SPECULUM NIHIL tabelas AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM tabela AD "blog_post"
+  CONIURA fluxus_push(tabelas, SPECULUM tabela)
+  EVOCA SPECULUM NIHIL counts AD CONIURA django_parity_count(db_dj, db_cv, tabelas)
+  EVOCA DjangoParityChecksum cs AD CONIURA django_parity_checksum_field(db_dj, db_cv, "blog_post", "titulo")
+  EVOCA SPECULUM NIHIL checksums AD CONIURA fluxus_init(MENSURA(DjangoParityChecksum))
+  CONIURA fluxus_push(checksums, SPECULUM cs)
+  EVOCA VERBUM report AD CONIURA django_parity_report(counts, checksums)
+  EVOCA SPECULUM DjangoParityCount pcp AD CONIURA fluxus_get(counts, 0)
+  SI NON (*pcp).ok
+    REDDE 1
+  FIN SI
+  SI NON cs.ok
+    REDDE 2
+  FIN SI
+  SI NON CONIURA contains(report, "blog_post")
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

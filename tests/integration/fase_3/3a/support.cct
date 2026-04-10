@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase3_3a_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/signals.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase3_3a_router_ok_or_fail(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_3a_ok_or_fail(SPECULUM NIHIL res) REDDE NIHIL
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    IACE CONIURA result_unwrap_err GENUS(REX, VERBUM)(res)
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase3_3a_request(VERBUM method, VERBUM target) REDDE WebRequest
+  REDDE CONIURA phase3_request(method, target)
+EXPLICIT RITUALE
+
+RITUALE phase3_3a_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA phase3_tmp_dir(test_name)
+EXPLICIT RITUALE
+
+RITUALE phase3_3a_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase3_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

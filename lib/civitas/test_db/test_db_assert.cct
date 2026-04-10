@@ -1,0 +1,45 @@
+INCIPIT grimoire "civitas_test_db_assert"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "test_db.cct"
+
+RITUALE test_db_literal(VERBUM v) REDDE VERBUM
+  EVOCA VERBUM esc AD CONIURA replace_all(v, "'", "''")
+  REDDE CONIURA concat(CONIURA concat("'", esc), "'")
+EXPLICIT RITUALE
+
+RITUALE test_db_count(TestDb tdb, VERBUM tabela) REDDE REX
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM ", tabela)
+  REDDE CONIURA db_scalar_int(tdb.db, sql)
+EXPLICIT RITUALE
+
+RITUALE test_db_count_where(TestDb tdb, VERBUM tabela, VERBUM campo, VERBUM valor) REDDE REX
+  EVOCA VERBUM sql AD CONIURA concat("SELECT COUNT(*) FROM ", tabela)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, campo)
+  VINCIRE sql AD CONIURA concat(sql, " = ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA test_db_literal(valor))
+  REDDE CONIURA db_scalar_int(tdb.db, sql)
+EXPLICIT RITUALE
+
+RITUALE test_db_exists(TestDb tdb, VERBUM tabela, VERBUM campo, VERBUM valor) REDDE VERUM
+  REDDE CONIURA test_db_count_where(tdb, tabela, campo, valor) > 0
+EXPLICIT RITUALE
+
+RITUALE test_db_exists_id(TestDb tdb, VERBUM tabela, REX id) REDDE VERUM
+  REDDE CONIURA test_db_exists(tdb, tabela, "id", CONIURA stringify_int(id))
+EXPLICIT RITUALE
+
+RITUALE test_db_row_field(TestDb tdb, VERBUM tabela, REX id, VERBUM campo) REDDE VERBUM
+  EVOCA VERBUM sql AD CONIURA concat("SELECT ", campo)
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, tabela)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE id = ")
+  VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(id))
+  VINCIRE sql AD CONIURA concat(sql, " LIMIT 1")
+  REDDE CONIURA db_scalar_text(tdb.db, sql)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

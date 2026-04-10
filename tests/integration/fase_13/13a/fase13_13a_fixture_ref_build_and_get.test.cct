@@ -1,0 +1,36 @@
+INCIPIT grimoire "fase13_13a_fixture_ref_build_and_get"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture_ref.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FixtureSuite suite AD CONIURA fixture_suite_new("refs", FkReference)
+  EVOCA FixtureEntry cat
+  CONIURA fixture_entry_fill(SPECULUM cat, "categorias", "1")
+  CONIURA fixture_entry_add_field(SPECULUM cat, "nome", "Tecnologia", FALSUM)
+  CONIURA fixture_suite_add_entry(SPECULUM suite, cat)
+  SI CONIURA fluxus_len(suite.entradas) != 1
+    REDDE 3
+  FIN SI
+  EVOCA SPECULUM FixtureEntry stored_entry AD CONIURA fluxus_get(suite.entradas, 0)
+  SI CONIURA compare((*stored_entry).pk, "1") != 0
+    REDDE 4
+  FIN SI
+
+  EVOCA FixtureRef ref AD CONIURA fixture_ref_build(SPECULUM suite, 1)
+  EVOCA SPECULUM NIHIL found AD CONIURA fixture_ref_get(ref, "categorias", "1")
+  SI CONIURA option_is_none GENUS(FixtureEntry)(found)
+    REDDE 1
+  FIN SI
+  EVOCA FixtureEntry entry AD CONIURA option_unwrap GENUS(FixtureEntry)(found)
+  SI CONIURA compare(entry.pk, "1") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

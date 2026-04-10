@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase8_8b_flash_lifecycle_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Session sess AD CONIURA session_new()
+  CONIURA flash_set(SPECULUM sess, FlSuccess, "Teste 1")
+  CONIURA flash_set(SPECULUM sess, FlError, "Teste 2")
+
+  SI NON CONIURA starts_with(CONIURA session_get_or(SPECULUM sess, "_civitas_flash_pending", "[]"), "[")
+    REDDE 1
+  FIN SI
+
+  CONIURA session_set(SPECULUM sess, "_civitas_flash", CONIURA session_get_or(SPECULUM sess, "_civitas_flash_pending", "[]"))
+  CONIURA session_set(SPECULUM sess, "_civitas_flash_pending", "[]")
+
+  EVOCA SPECULUM NIHIL msgs AD CONIURA flash_get_all(SPECULUM sess)
+  SI CONIURA fluxus_len(msgs) != 2
+    REDDE 2
+  FIN SI
+  CONIURA fluxus_free(msgs)
+
+  CONIURA session_set(SPECULUM sess, "_civitas_flash", CONIURA session_get_or(SPECULUM sess, "_civitas_flash_pending", "[]"))
+  EVOCA SPECULUM NIHIL empty_msgs AD CONIURA flash_get_all(SPECULUM sess)
+  SI CONIURA fluxus_len(empty_msgs) != 0
+    REDDE 3
+  FIN SI
+  CONIURA fluxus_free(empty_msgs)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

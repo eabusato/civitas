@@ -1,0 +1,51 @@
+INCIPIT grimoire "fase14_14a_load_all_po_catalogs"
+
+ADVOCARE "../../../../lib/civitas/i18n/i18n.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_registry.cct"
+ADVOCARE "../../../../lib/civitas/i18n/i18n_translate.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/gettext.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM dir AD "tests/tmp/fase_14/14a_load_all"
+  EVOCA VERBUM pt_path AD CONIURA concat(dir, "/pt-BR.po")
+  EVOCA VERBUM en_path AD CONIURA concat(dir, "/en-US.po")
+  SI CONIURA exists(pt_path)
+    CONIURA delete_file(pt_path)
+  FIN SI
+  SI CONIURA exists(en_path)
+    CONIURA delete_file(en_path)
+  FIN SI
+  SI CONIURA exists(dir)
+    CONIURA delete_dir(dir)
+  FIN SI
+  CONIURA mkdir_all(dir)
+
+  EVOCA VERBUM pt AD "msgid \"hello\"\n"
+  VINCIRE pt AD CONIURA concat(pt, "msgstr \"ola\"\n\n")
+  CONIURA write_all(pt_path, pt)
+
+  EVOCA VERBUM en AD "msgid \"hello\"\n"
+  VINCIRE en AD CONIURA concat(en, "msgstr \"hello\"\n\n")
+  CONIURA write_all(en_path, en)
+
+  EVOCA I18nConfig cfg AD CONIURA i18n_config_new("pt-BR", dir)
+  EVOCA I18nRegistry reg AD CONIURA i18n_registry_new(cfg)
+  SI CONIURA i18n_registry_load_all(SPECULUM reg) != 2
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(reg.locales) != 2
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t(reg, "en-US", "hello"), "hello") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA i18n_t(reg, "pt-BR", "hello"), "ola") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

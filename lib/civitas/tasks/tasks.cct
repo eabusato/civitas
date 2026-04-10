@@ -1,0 +1,634 @@
+INCIPIT grimoire "civitas_tasks"
+
+ADVOCARE "cct/callback.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+ORDO TaskState
+  TASK_QUEUED
+  TASK_RUNNING
+  TASK_RETRY
+  TASK_DONE
+  TASK_DEAD
+  TASK_CANCELLED
+FIN ORDO
+
+ORDO TaskBackendKind
+  TASK_BACKEND_SQLITE
+  TASK_BACKEND_POSTGRES
+FIN ORDO
+
+ORDO TaskOutcome
+  TASK_OUTCOME_OK
+  TASK_OUTCOME_RETRY
+  TASK_OUTCOME_TIMEOUT
+  TASK_OUTCOME_ERROR
+  TASK_OUTCOME_CANCELLED
+FIN ORDO
+
+ORDO TaskError
+  TaskNotRegistered
+  TaskInvalidPayload
+  TaskBackendClosed
+  TaskAlreadyClaimed
+  TaskTimedOut
+  TaskRetryScheduled
+  TaskMovedToDeadLetter
+  TaskCancelled
+  TaskInternalError(VERBUM message)
+FIN ORDO
+
+SIGILLUM TaskRetryPolicy
+  max_attempts: REX
+  initial_backoff_ms: REX
+  max_backoff_ms: REX
+  backoff_multiplier: REX
+  jitter_ms: REX
+FIN SIGILLUM
+
+SIGILLUM TaskConfig
+  backend_kind: TaskBackendKind
+  queue_name: VERBUM
+  poll_interval_ms: REX
+  default_timeout_ms: REX
+  retry_policy: TaskRetryPolicy
+  worker_name: VERBUM
+  listen_channel: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TaskEnqueueOptions
+  dedupe_key: VERBUM
+  priority: REX
+  delay_seconds: REX
+  timeout_ms: REX
+  max_attempts: REX
+FIN SIGILLUM
+
+SIGILLUM TaskRecord
+  id: VERBUM
+  queue_name: VERBUM
+  task_name: VERBUM
+  payload_json: VERBUM
+  dedupe_key: VERBUM
+  state: TaskState
+  priority: REX
+  attempts: REX
+  max_attempts: REX
+  timeout_ms: REX
+  run_after_unix: REX
+  visible_at_unix: REX
+  claimed_by: VERBUM
+  claimed_at_unix: REX
+  last_error_code: VERBUM
+  last_error_json: VERBUM
+  result_json: VERBUM
+  created_at_unix: REX
+  updated_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM TaskAttemptRecord
+  id: VERBUM
+  task_id: VERBUM
+  attempt_no: REX
+  worker_name: VERBUM
+  started_at_unix: REX
+  finished_at_unix: REX
+  outcome: TaskOutcome
+  error_json: VERBUM
+  result_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TaskCallbackResult
+  success: VERUM
+  retryable: VERUM
+  result_json: VERBUM
+  error_code: VERBUM
+  error_json: VERBUM
+FIN SIGILLUM
+
+SIGILLUM TaskRegistryEntry
+  task_name: VERBUM
+  callback: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM TaskRegistry
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM TaskLookup
+  found: VERUM
+  task: TaskRecord
+FIN SIGILLUM
+
+SIGILLUM TaskWorkerRun
+  processed: VERUM
+  claimed: VERUM
+  task_id: VERBUM
+  state_after: TaskState
+FIN SIGILLUM
+
+RITUALE task_now_unix() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now())
+EXPLICIT RITUALE
+
+RITUALE task_state_to_string(TaskState state) REDDE VERBUM
+  ELIGE state
+    CASUS TASK_QUEUED:
+      REDDE "queued"
+    CASUS TASK_RUNNING:
+      REDDE "running"
+    CASUS TASK_RETRY:
+      REDDE "retry"
+    CASUS TASK_DONE:
+      REDDE "done"
+    CASUS TASK_DEAD:
+      REDDE "dead"
+    CASUS TASK_CANCELLED:
+      REDDE "cancelled"
+    ALIOQUIN:
+      REDDE "queued"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE task_state_from_string(VERBUM state) REDDE TaskState
+  SI CONIURA compare(state, "running") == 0
+    REDDE TASK_RUNNING
+  FIN SI
+  SI CONIURA compare(state, "retry") == 0
+    REDDE TASK_RETRY
+  FIN SI
+  SI CONIURA compare(state, "done") == 0
+    REDDE TASK_DONE
+  FIN SI
+  SI CONIURA compare(state, "dead") == 0
+    REDDE TASK_DEAD
+  FIN SI
+  SI CONIURA compare(state, "cancelled") == 0
+    REDDE TASK_CANCELLED
+  FIN SI
+  REDDE TASK_QUEUED
+EXPLICIT RITUALE
+
+RITUALE task_outcome_to_string(TaskOutcome outcome) REDDE VERBUM
+  ELIGE outcome
+    CASUS TASK_OUTCOME_OK:
+      REDDE "ok"
+    CASUS TASK_OUTCOME_RETRY:
+      REDDE "retry"
+    CASUS TASK_OUTCOME_TIMEOUT:
+      REDDE "timeout"
+    CASUS TASK_OUTCOME_CANCELLED:
+      REDDE "cancelled"
+    ALIOQUIN:
+      REDDE "error"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE task_retry_policy_default() REDDE TaskRetryPolicy
+  EVOCA TaskRetryPolicy policy
+  VINCIRE policy.max_attempts AD 3
+  VINCIRE policy.initial_backoff_ms AD 1000
+  VINCIRE policy.max_backoff_ms AD 30000
+  VINCIRE policy.backoff_multiplier AD 2
+  VINCIRE policy.jitter_ms AD 0
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE task_config_default() REDDE TaskConfig
+  EVOCA TaskConfig cfg
+  VINCIRE cfg.backend_kind AD TASK_BACKEND_SQLITE
+  VINCIRE cfg.queue_name AD "default"
+  VINCIRE cfg.poll_interval_ms AD 1000
+  VINCIRE cfg.default_timeout_ms AD 30000
+  VINCIRE cfg.retry_policy AD CONIURA task_retry_policy_default()
+  VINCIRE cfg.worker_name AD "worker-default"
+  VINCIRE cfg.listen_channel AD "civitas_tasks"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE task_enqueue_options_default() REDDE TaskEnqueueOptions
+  EVOCA TaskEnqueueOptions out
+  VINCIRE out.dedupe_key AD ""
+  VINCIRE out.priority AD 100
+  VINCIRE out.delay_seconds AD 0
+  VINCIRE out.timeout_ms AD 0
+  VINCIRE out.max_attempts AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_record_empty() REDDE TaskRecord
+  EVOCA TaskRecord t
+  VINCIRE t.id AD ""
+  VINCIRE t.queue_name AD ""
+  VINCIRE t.task_name AD ""
+  VINCIRE t.payload_json AD ""
+  VINCIRE t.dedupe_key AD ""
+  VINCIRE t.state AD TASK_QUEUED
+  VINCIRE t.priority AD 0
+  VINCIRE t.attempts AD 0
+  VINCIRE t.max_attempts AD 0
+  VINCIRE t.timeout_ms AD 0
+  VINCIRE t.run_after_unix AD 0
+  VINCIRE t.visible_at_unix AD 0
+  VINCIRE t.claimed_by AD ""
+  VINCIRE t.claimed_at_unix AD 0
+  VINCIRE t.last_error_code AD ""
+  VINCIRE t.last_error_json AD ""
+  VINCIRE t.result_json AD ""
+  VINCIRE t.created_at_unix AD 0
+  VINCIRE t.updated_at_unix AD 0
+  REDDE t
+EXPLICIT RITUALE
+
+RITUALE task_lookup_empty() REDDE TaskLookup
+  EVOCA TaskLookup out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.task AD CONIURA task_record_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_callback_result_ok(VERBUM result_json) REDDE TaskCallbackResult
+  EVOCA TaskCallbackResult out
+  VINCIRE out.success AD VERUM
+  VINCIRE out.retryable AD FALSUM
+  VINCIRE out.result_json AD result_json
+  VINCIRE out.error_code AD ""
+  VINCIRE out.error_json AD ""
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_callback_result_retry(VERBUM error_code, VERBUM error_json) REDDE TaskCallbackResult
+  EVOCA TaskCallbackResult out
+  VINCIRE out.success AD FALSUM
+  VINCIRE out.retryable AD VERUM
+  VINCIRE out.result_json AD ""
+  VINCIRE out.error_code AD error_code
+  VINCIRE out.error_json AD error_json
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_callback_result_error(VERBUM error_code, VERBUM error_json) REDDE TaskCallbackResult
+  EVOCA TaskCallbackResult out
+  VINCIRE out.success AD FALSUM
+  VINCIRE out.retryable AD FALSUM
+  VINCIRE out.result_json AD ""
+  VINCIRE out.error_code AD error_code
+  VINCIRE out.error_json AD error_json
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_registry_new() REDDE TaskRegistry
+  EVOCA TaskRegistry registry
+  VINCIRE registry.items AD CONIURA fluxus_init(MENSURA(TaskRegistryEntry))
+  REDDE registry
+EXPLICIT RITUALE
+
+RITUALE task_registry_free(SPECULUM TaskRegistry registry) REDDE NIHIL
+  CONIURA fluxus_free((*registry).items)
+  VINCIRE (*registry).items AD NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_register(SPECULUM TaskRegistry registry, VERBUM task_name, SPECULUM NIHIL callback) REDDE NIHIL
+  EVOCA TaskRegistryEntry entry
+  VINCIRE entry.task_name AD task_name
+  VINCIRE entry.callback AD callback
+  CONIURA fluxus_push((*registry).items, SPECULUM entry)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_registry_find(TaskRegistry registry, VERBUM task_name) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(registry.items)
+  DUM i < n
+    EVOCA SPECULUM TaskRegistryEntry entry AD CONIURA fluxus_get(registry.items, i)
+    SI CONIURA compare((*entry).task_name, task_name) == 0
+      REDDE (*entry).callback
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE tasks_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS task_queue (id TEXT PRIMARY KEY, queue_name TEXT NOT NULL, task_name TEXT NOT NULL, payload_json TEXT NOT NULL, dedupe_key TEXT NOT NULL DEFAULT '', state TEXT NOT NULL, priority INTEGER NOT NULL DEFAULT 100, attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3, timeout_ms INTEGER NOT NULL DEFAULT 30000, backoff_kind TEXT NOT NULL DEFAULT 'exponential', run_after_unix INTEGER NOT NULL, visible_at_unix INTEGER NOT NULL, claimed_by TEXT NOT NULL DEFAULT '', claimed_at_unix INTEGER NOT NULL DEFAULT 0, last_error_code TEXT NOT NULL DEFAULT '', last_error_json TEXT NOT NULL DEFAULT '', result_json TEXT NOT NULL DEFAULT '', created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_task_queue_pick ON task_queue(queue_name, state, run_after_unix, priority, created_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_task_queue_dedupe ON task_queue(queue_name, dedupe_key)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS task_attempts (id TEXT PRIMARY KEY, task_id TEXT NOT NULL, attempt_no INTEGER NOT NULL, worker_name TEXT NOT NULL, started_at_unix INTEGER NOT NULL, finished_at_unix INTEGER NOT NULL DEFAULT 0, outcome TEXT NOT NULL, error_json TEXT NOT NULL DEFAULT '', result_json TEXT NOT NULL DEFAULT '')", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_task_attempts_task ON task_attempts(task_id, attempt_no)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS task_dead_letters (task_id TEXT PRIMARY KEY, queue_name TEXT NOT NULL, task_name TEXT NOT NULL, payload_json TEXT NOT NULL, failed_at_unix INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_json TEXT NOT NULL)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE tasks_schema_down(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS task_dead_letters", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS task_attempts", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS task_queue", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_dedupe_exists(DbHandle dbh, VERBUM queue_name, VERBUM dedupe_key) REDDE VERUM
+  SI CONIURA len(dedupe_key) == 0
+    REDDE FALSUM
+  FIN SI
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, queue_name)
+  CONIURA dbh_param_text(SPECULUM params, dedupe_key)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM task_queue WHERE queue_name = ? AND dedupe_key = ? AND state IN ('queued', 'running', 'retry')", params)
+  EVOCA VERUM exists AD FALSUM
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE exists AD CONIURA dbrows_get_int(rows, 0) > 0
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE exists
+EXPLICIT RITUALE
+
+RITUALE task_backoff_seconds(TaskRetryPolicy policy, REX attempt_no) REDDE REX
+  EVOCA REX delay_ms AD policy.initial_backoff_ms
+  EVOCA REX i AD 1
+  DUM i < attempt_no
+    VINCIRE delay_ms AD delay_ms * policy.backoff_multiplier
+    VINCIRE i AD i + 1
+  FIN DUM
+  SI delay_ms > policy.max_backoff_ms
+    VINCIRE delay_ms AD policy.max_backoff_ms
+  FIN SI
+  REDDE delay_ms / 1000
+EXPLICIT RITUALE
+
+RITUALE task_enqueue_json(DbHandle dbh, VERBUM queue_name, VERBUM task_name, VERBUM payload_json, TaskEnqueueOptions options, TaskConfig cfg) REDDE VERBUM
+  SI CONIURA len(options.dedupe_key) > 0 ET CONIURA task_dedupe_exists(dbh, queue_name, options.dedupe_key)
+    REDDE ""
+  FIN SI
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA VERBUM id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  EVOCA REX timeout_ms AD options.timeout_ms
+  SI timeout_ms <= 0
+    VINCIRE timeout_ms AD cfg.default_timeout_ms
+  FIN SI
+  EVOCA REX max_attempts AD options.max_attempts
+  SI max_attempts <= 0
+    VINCIRE max_attempts AD cfg.retry_policy.max_attempts
+  FIN SI
+  EVOCA REX run_after_unix AD now_unix + options.delay_seconds
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, id)
+  CONIURA dbh_param_text(SPECULUM params, queue_name)
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, payload_json)
+  CONIURA dbh_param_text(SPECULUM params, options.dedupe_key)
+  CONIURA dbh_param_text(SPECULUM params, "queued")
+  CONIURA dbh_param_int(SPECULUM params, options.priority)
+  CONIURA dbh_param_int(SPECULUM params, max_attempts)
+  CONIURA dbh_param_int(SPECULUM params, timeout_ms)
+  CONIURA dbh_param_int(SPECULUM params, run_after_unix)
+  CONIURA dbh_param_int(SPECULUM params, run_after_unix)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO task_queue (id, queue_name, task_name, payload_json, dedupe_key, state, priority, attempts, max_attempts, timeout_ms, backoff_kind, run_after_unix, visible_at_unix, claimed_by, claimed_at_unix, last_error_code, last_error_json, result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'exponential', ?, ?, '', 0, '', '', '', ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE id
+EXPLICIT RITUALE
+
+RITUALE task_record_from_rows(DbRows rows) REDDE TaskRecord
+  EVOCA TaskRecord t AD CONIURA task_record_empty()
+  VINCIRE t.id AD CONIURA dbrows_get_text(rows, 0)
+  VINCIRE t.queue_name AD CONIURA dbrows_get_text(rows, 1)
+  VINCIRE t.task_name AD CONIURA dbrows_get_text(rows, 2)
+  VINCIRE t.payload_json AD CONIURA dbrows_get_text(rows, 3)
+  VINCIRE t.dedupe_key AD CONIURA dbrows_get_text(rows, 4)
+  VINCIRE t.state AD CONIURA task_state_from_string(CONIURA dbrows_get_text(rows, 5))
+  VINCIRE t.priority AD CONIURA dbrows_get_int(rows, 6)
+  VINCIRE t.attempts AD CONIURA dbrows_get_int(rows, 7)
+  VINCIRE t.max_attempts AD CONIURA dbrows_get_int(rows, 8)
+  VINCIRE t.timeout_ms AD CONIURA dbrows_get_int(rows, 9)
+  VINCIRE t.run_after_unix AD CONIURA dbrows_get_int(rows, 10)
+  VINCIRE t.visible_at_unix AD CONIURA dbrows_get_int(rows, 11)
+  VINCIRE t.claimed_by AD CONIURA dbrows_get_text(rows, 12)
+  VINCIRE t.claimed_at_unix AD CONIURA dbrows_get_int(rows, 13)
+  VINCIRE t.last_error_code AD CONIURA dbrows_get_text(rows, 14)
+  VINCIRE t.last_error_json AD CONIURA dbrows_get_text(rows, 15)
+  VINCIRE t.result_json AD CONIURA dbrows_get_text(rows, 16)
+  VINCIRE t.created_at_unix AD CONIURA dbrows_get_int(rows, 17)
+  VINCIRE t.updated_at_unix AD CONIURA dbrows_get_int(rows, 18)
+  REDDE t
+EXPLICIT RITUALE
+
+RITUALE task_find_by_id(DbHandle dbh, VERBUM task_id) REDDE TaskLookup
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task_id)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id, queue_name, task_name, payload_json, dedupe_key, state, priority, attempts, max_attempts, timeout_ms, run_after_unix, visible_at_unix, claimed_by, claimed_at_unix, last_error_code, last_error_json, result_json, created_at_unix, updated_at_unix FROM task_queue WHERE id = ?", params)
+  EVOCA TaskLookup out AD CONIURA task_lookup_empty()
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.task AD CONIURA task_record_from_rows(rows)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_claim_next(DbHandle dbh, TaskConfig cfg, VERBUM worker_name) REDDE TaskLookup
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, cfg.queue_name)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id, queue_name, task_name, payload_json, dedupe_key, state, priority, attempts, max_attempts, timeout_ms, run_after_unix, visible_at_unix, claimed_by, claimed_at_unix, last_error_code, last_error_json, result_json, created_at_unix, updated_at_unix FROM task_queue WHERE queue_name = ? AND state IN ('queued', 'retry') AND run_after_unix <= ? ORDER BY priority ASC, created_at_unix ASC LIMIT 1", params)
+  EVOCA TaskLookup out AD CONIURA task_lookup_empty()
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out.found AD VERUM
+    VINCIRE out.task AD CONIURA task_record_from_rows(rows)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  SI NON out.found
+    REDDE out
+  FIN SI
+
+  VINCIRE out.task.state AD TASK_RUNNING
+  VINCIRE out.task.claimed_by AD worker_name
+  VINCIRE out.task.claimed_at_unix AD now_unix
+  VINCIRE out.task.visible_at_unix AD now_unix + (out.task.timeout_ms / 1000) + 5
+  VINCIRE out.task.attempts AD out.task.attempts + 1
+  VINCIRE out.task.updated_at_unix AD now_unix
+
+  EVOCA DbParams up AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM up, "running")
+  CONIURA dbh_param_text(SPECULUM up, worker_name)
+  CONIURA dbh_param_int(SPECULUM up, now_unix)
+  CONIURA dbh_param_int(SPECULUM up, out.task.visible_at_unix)
+  CONIURA dbh_param_int(SPECULUM up, out.task.attempts)
+  CONIURA dbh_param_int(SPECULUM up, now_unix)
+  CONIURA dbh_param_text(SPECULUM up, out.task.id)
+  CONIURA dbh_exec(dbh, "UPDATE task_queue SET state = ?, claimed_by = ?, claimed_at_unix = ?, visible_at_unix = ?, attempts = ?, updated_at_unix = ? WHERE id = ?", up)
+  CONIURA dbh_params_free(SPECULUM up)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_attempt_start(DbHandle dbh, TaskRecord task, VERBUM worker_name) REDDE TaskAttemptRecord
+  EVOCA TaskAttemptRecord attempt
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  VINCIRE attempt.id AD CONIURA uuid_to_string(CONIURA uuid_v4())
+  VINCIRE attempt.task_id AD task.id
+  VINCIRE attempt.attempt_no AD task.attempts
+  VINCIRE attempt.worker_name AD worker_name
+  VINCIRE attempt.started_at_unix AD now_unix
+  VINCIRE attempt.finished_at_unix AD 0
+  VINCIRE attempt.outcome AD TASK_OUTCOME_ERROR
+  VINCIRE attempt.error_json AD ""
+  VINCIRE attempt.result_json AD ""
+
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, attempt.id)
+  CONIURA dbh_param_text(SPECULUM params, attempt.task_id)
+  CONIURA dbh_param_int(SPECULUM params, attempt.attempt_no)
+  CONIURA dbh_param_text(SPECULUM params, attempt.worker_name)
+  CONIURA dbh_param_int(SPECULUM params, attempt.started_at_unix)
+  CONIURA dbh_param_text(SPECULUM params, "running")
+  CONIURA dbh_exec(dbh, "INSERT INTO task_attempts (id, task_id, attempt_no, worker_name, started_at_unix, finished_at_unix, outcome, error_json, result_json) VALUES (?, ?, ?, ?, ?, 0, ?, '', '')", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE attempt
+EXPLICIT RITUALE
+
+RITUALE task_attempt_finish(DbHandle dbh, TaskAttemptRecord attempt, TaskOutcome outcome, VERBUM error_json, VERBUM result_json) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA task_outcome_to_string(outcome))
+  CONIURA dbh_param_text(SPECULUM params, error_json)
+  CONIURA dbh_param_text(SPECULUM params, result_json)
+  CONIURA dbh_param_text(SPECULUM params, attempt.id)
+  CONIURA dbh_exec(dbh, "UPDATE task_attempts SET finished_at_unix = ?, outcome = ?, error_json = ?, result_json = ? WHERE id = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_move_to_dead_letter(DbHandle dbh, TaskRecord task, VERBUM reason_code, VERBUM reason_json) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task.id)
+  CONIURA dbh_param_text(SPECULUM params, task.queue_name)
+  CONIURA dbh_param_text(SPECULUM params, task.task_name)
+  CONIURA dbh_param_text(SPECULUM params, task.payload_json)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_text(SPECULUM params, reason_code)
+  CONIURA dbh_param_text(SPECULUM params, reason_json)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO task_dead_letters (task_id, queue_name, task_name, payload_json, failed_at_unix, reason_code, reason_json) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_worker_run_empty() REDDE TaskWorkerRun
+  EVOCA TaskWorkerRun out
+  VINCIRE out.processed AD FALSUM
+  VINCIRE out.claimed AD FALSUM
+  VINCIRE out.task_id AD ""
+  VINCIRE out.state_after AD TASK_QUEUED
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE task_update_state(DbHandle dbh, TaskRecord task, TaskState state, VERBUM error_code, VERBUM error_json, VERBUM result_json, REX run_after_unix) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA task_state_to_string(state))
+  CONIURA dbh_param_text(SPECULUM params, error_code)
+  CONIURA dbh_param_text(SPECULUM params, error_json)
+  CONIURA dbh_param_text(SPECULUM params, result_json)
+  CONIURA dbh_param_int(SPECULUM params, run_after_unix)
+  CONIURA dbh_param_int(SPECULUM params, run_after_unix)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_param_text(SPECULUM params, task.id)
+  CONIURA dbh_exec(dbh, "UPDATE task_queue SET state = ?, last_error_code = ?, last_error_json = ?, result_json = ?, run_after_unix = ?, visible_at_unix = ?, updated_at_unix = ? WHERE id = ?", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE task_worker_run_once(DbHandle dbh, TaskConfig cfg, TaskRegistry registry, VERBUM worker_name) REDDE TaskWorkerRun
+  EVOCA TaskWorkerRun run AD CONIURA task_worker_run_empty()
+  EVOCA TaskLookup lookup AD CONIURA task_claim_next(dbh, cfg, worker_name)
+  SI NON lookup.found
+    REDDE run
+  FIN SI
+  VINCIRE run.processed AD VERUM
+  VINCIRE run.claimed AD VERUM
+  VINCIRE run.task_id AD lookup.task.id
+
+  EVOCA SPECULUM NIHIL callback AD CONIURA task_registry_find(registry, lookup.task.task_name)
+  EVOCA TaskAttemptRecord attempt AD CONIURA task_attempt_start(dbh, lookup.task, worker_name)
+
+  SI callback == NIHIL
+    CONIURA task_attempt_finish(dbh, attempt, TASK_OUTCOME_ERROR, "{\"error\":\"task_not_registered\"}", "")
+    CONIURA task_update_state(dbh, lookup.task, TASK_DEAD, "task_not_registered", "{\"error\":\"task_not_registered\"}", "", CONIURA task_now_unix())
+    CONIURA task_move_to_dead_letter(dbh, lookup.task, "task_not_registered", "{\"error\":\"task_not_registered\"}")
+    VINCIRE run.state_after AD TASK_DEAD
+    REDDE run
+  FIN SI
+
+  EVOCA TaskCallbackResult cb_res AD CONIURA callback_invoke2 GENUS(DbHandle, TaskRecord, TaskCallbackResult)(callback, dbh, lookup.task)
+  SI cb_res.success
+    CONIURA task_attempt_finish(dbh, attempt, TASK_OUTCOME_OK, "", cb_res.result_json)
+    CONIURA task_update_state(dbh, lookup.task, TASK_DONE, "", "", cb_res.result_json, CONIURA task_now_unix())
+    VINCIRE run.state_after AD TASK_DONE
+    REDDE run
+  FIN SI
+
+  SI cb_res.retryable ET lookup.task.attempts < lookup.task.max_attempts
+    EVOCA REX delay_seconds AD CONIURA task_backoff_seconds(cfg.retry_policy, lookup.task.attempts)
+    CONIURA task_attempt_finish(dbh, attempt, TASK_OUTCOME_RETRY, cb_res.error_json, "")
+    CONIURA task_update_state(dbh, lookup.task, TASK_RETRY, cb_res.error_code, cb_res.error_json, "", CONIURA task_now_unix() + delay_seconds)
+    VINCIRE run.state_after AD TASK_RETRY
+    REDDE run
+  FIN SI
+
+  CONIURA task_attempt_finish(dbh, attempt, TASK_OUTCOME_ERROR, cb_res.error_json, "")
+  CONIURA task_update_state(dbh, lookup.task, TASK_DEAD, cb_res.error_code, cb_res.error_json, "", CONIURA task_now_unix())
+  CONIURA task_move_to_dead_letter(dbh, lookup.task, cb_res.error_code, cb_res.error_json)
+  VINCIRE run.state_after AD TASK_DEAD
+  REDDE run
+EXPLICIT RITUALE
+
+RITUALE task_recover_visible_timeouts(DbHandle dbh, TaskConfig cfg) REDDE REX
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT id, queue_name, task_name, payload_json, dedupe_key, state, priority, attempts, max_attempts, timeout_ms, run_after_unix, visible_at_unix, claimed_by, claimed_at_unix, last_error_code, last_error_json, result_json, created_at_unix, updated_at_unix FROM task_queue WHERE state = 'running' AND visible_at_unix < ?", params)
+  EVOCA REX recovered AD 0
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA TaskRecord task AD CONIURA task_record_from_rows(rows)
+    SI task.attempts < task.max_attempts
+      CONIURA task_update_state(dbh, task, TASK_RETRY, "timeout", "{\"error\":\"visible_timeout\"}", "", now_unix + CONIURA task_backoff_seconds(cfg.retry_policy, task.attempts))
+    ALITER
+      CONIURA task_update_state(dbh, task, TASK_DEAD, "timeout", "{\"error\":\"visible_timeout\"}", "", now_unix)
+      CONIURA task_move_to_dead_letter(dbh, task, "timeout", "{\"error\":\"visible_timeout\"}")
+    FIN SI
+    VINCIRE recovered AD recovered + 1
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE recovered
+EXPLICIT RITUALE
+
+RITUALE task_count_by_state(DbHandle dbh, VERBUM state_name) REDDE REX
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, state_name)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT COUNT(*) FROM task_queue WHERE state = ?", params)
+  EVOCA REX total AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE total AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE total
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

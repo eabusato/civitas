@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase19_19e_config_roundtrip"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/embed/embed.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_config_roundtrip() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19e_config")
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_default("video", "videos", "id", "Civitas", "https://example.test")
+  VINCIRE cfg.allowed_origins AD "https://allowed.test"
+  CONIURA embed_schema_up(stack.db)
+  CONIURA embed_config_register(stack.db, cfg)
+  EVOCA EmbedConfig loaded AD CONIURA embed_config_load(stack.db, "video")
+  SI CONIURA compare(loaded.table_name, "videos") != 0 VEL CONIURA compare(loaded.allowed_origins, "https://allowed.test") != 0
+    IACE "embed config roundtrip mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_config_roundtrip()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

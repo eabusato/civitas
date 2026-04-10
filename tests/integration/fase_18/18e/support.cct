@@ -1,0 +1,189 @@
+INCIPIT grimoire "fase18_18e_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard_schema.cct"
+ADVOCARE "../../../../lib/civitas/admin_dashboard/admin_dashboard_task.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_schema.cct"
+ADVOCARE "../../../../lib/civitas/auth/auth_schema.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/pages/pages.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/session/session_schema.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase18_dashboard_stack_open(VERBUM test_name) REDDE Phase18Stack
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open(test_name)
+  CONIURA pages_ensure_schema(stack.db)
+  CONIURA auth_schema_up(stack.db)
+  CONIURA session_schema_up(stack.db)
+  CONIURA tasks_schema_up(stack.dbh)
+  CONIURA scheduled_schema_up(stack.dbh)
+  CONIURA media_jobs_schema_up(stack.dbh)
+  CONIURA moderation_schema_up(stack.dbh)
+  CONIURA admin_dashboard_schema_up(stack.dbh)
+  REDDE stack
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_page(SPECULUM NIHIL db, VERBUM slug, REX state, REX created_at) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO civitas_pages (locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, "en")
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, slug)
+  CONIURA stmt_bind_text(stmt, 4, "<p>body</p>")
+  CONIURA stmt_bind_int(stmt, 5, state)
+  CONIURA stmt_bind_text(stmt, 6, slug)
+  CONIURA stmt_bind_text(stmt, 7, slug)
+  CONIURA stmt_bind_text(stmt, 8, "")
+  CONIURA stmt_bind_text(stmt, 9, "")
+  CONIURA stmt_bind_text(stmt, 10, "")
+  CONIURA stmt_bind_int(stmt, 11, 0)
+  CONIURA stmt_bind_int(stmt, 12, 0)
+  CONIURA stmt_bind_int(stmt, 13, created_at)
+  CONIURA stmt_bind_text(stmt, 14, "user-1")
+  CONIURA stmt_bind_text(stmt, 15, "user-1")
+  CONIURA stmt_bind_text(stmt, 16, "req-1")
+  CONIURA stmt_bind_int(stmt, 17, created_at)
+  CONIURA stmt_bind_int(stmt, 18, created_at)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_user(SPECULUM NIHIL db, VERBUM user_id, VERUM active) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO usuarios (id, email, senha_hash, ativo, email_verificado, email_verificacao_pendente, criado_em, ultimo_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+  EVOCA REX active_int AD 0
+  SI active
+    VINCIRE active_int AD 1
+  FIN SI
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, CONIURA concat(user_id, "@example.test"))
+  CONIURA stmt_bind_text(stmt, 3, "hash")
+  CONIURA stmt_bind_int(stmt, 4, active_int)
+  CONIURA stmt_bind_int(stmt, 5, 1)
+  CONIURA stmt_bind_text(stmt, 6, "")
+  CONIURA stmt_bind_text(stmt, 7, "2026-03-30T00:00:00Z")
+  CONIURA stmt_bind_text(stmt, 8, "")
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_session(SPECULUM NIHIL db, VERBUM session_id, VERBUM user_id, REX created_at) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO sessoes (id, user_id, dados, criado_em, expira_em, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, session_id)
+  CONIURA stmt_bind_text(stmt, 2, user_id)
+  CONIURA stmt_bind_text(stmt, 3, "{}")
+  CONIURA stmt_bind_int(stmt, 4, created_at)
+  CONIURA stmt_bind_int(stmt, 5, created_at + 3600)
+  CONIURA stmt_bind_text(stmt, 6, "127.0.0.1")
+  CONIURA stmt_bind_text(stmt, 7, "test")
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_task(DbHandle dbh, VERBUM task_id, VERBUM queue_name, VERBUM task_name, VERBUM state, VERBUM error_code, REX created_at, REX updated_at) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task_id)
+  CONIURA dbh_param_text(SPECULUM params, queue_name)
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, state)
+  CONIURA dbh_param_int(SPECULUM params, 100)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, 3)
+  CONIURA dbh_param_int(SPECULUM params, 30000)
+  CONIURA dbh_param_int(SPECULUM params, created_at)
+  CONIURA dbh_param_int(SPECULUM params, created_at)
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_text(SPECULUM params, error_code)
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_int(SPECULUM params, created_at)
+  CONIURA dbh_param_int(SPECULUM params, updated_at)
+  CONIURA dbh_exec(dbh, "INSERT INTO task_queue (id, queue_name, task_name, payload_json, dedupe_key, state, priority, attempts, max_attempts, timeout_ms, run_after_unix, visible_at_unix, claimed_by, claimed_at_unix, last_error_code, last_error_json, result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_dead_letter(DbHandle dbh, VERBUM task_id, VERBUM queue_name, VERBUM task_name, REX failed_at_unix) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, task_id)
+  CONIURA dbh_param_text(SPECULUM params, queue_name)
+  CONIURA dbh_param_text(SPECULUM params, task_name)
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_int(SPECULUM params, failed_at_unix)
+  CONIURA dbh_param_text(SPECULUM params, "dead")
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_exec(dbh, "INSERT INTO task_dead_letters (task_id, queue_name, task_name, payload_json, failed_at_unix, reason_code, reason_json) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_media_job(DbHandle dbh, VERBUM job_id, VERBUM state, REX created_at_unix) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, job_id)
+  CONIURA dbh_param_text(SPECULUM params, "obj-1")
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_text(SPECULUM params, "/tmp/in")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, "thumb")
+  CONIURA dbh_param_text(SPECULUM params, state)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA concat("hash-", job_id))
+  CONIURA dbh_param_text(SPECULUM params, "small")
+  CONIURA dbh_param_text(SPECULUM params, "/tmp/out")
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, 3)
+  CONIURA dbh_param_int(SPECULUM params, 30000)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_int(SPECULUM params, created_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, created_at_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO media_jobs (id, object_id, descriptor_json, source_path, fallback_path, job_kind, state, input_hash, output_variant, output_path, attempts, max_attempts, timeout_ms, require_approval, approved, allow_fallback, last_error_json, result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_moderation_item(DbHandle dbh, VERBUM item_id, VERBUM kind, VERBUM state, REX created_at_unix) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, item_id)
+  CONIURA dbh_param_text(SPECULUM params, kind)
+  CONIURA dbh_param_text(SPECULUM params, state)
+  CONIURA dbh_param_text(SPECULUM params, CONIURA concat("obj-", item_id))
+  CONIURA dbh_param_text(SPECULUM params, kind)
+  CONIURA dbh_param_text(SPECULUM params, "user-1")
+  CONIURA dbh_param_text(SPECULUM params, "{}")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_int(SPECULUM params, 10)
+  CONIURA dbh_param_int(SPECULUM params, created_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, created_at_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO moderation_items (id, kind, state, object_id, object_type, submitter_id, content_preview_json, report_reason, assigned_to, priority, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase18_dashboard_insert_moderation_decision(DbHandle dbh, VERBUM decision_id, VERBUM item_id, REX created_at_unix) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, decision_id)
+  CONIURA dbh_param_text(SPECULUM params, item_id)
+  CONIURA dbh_param_text(SPECULUM params, "mod-1")
+  CONIURA dbh_param_text(SPECULUM params, "approve")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, created_at_unix)
+  CONIURA dbh_exec(dbh, "INSERT INTO moderation_decisions (id, item_id, moderator_id, action, reason, notify_submitter, created_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

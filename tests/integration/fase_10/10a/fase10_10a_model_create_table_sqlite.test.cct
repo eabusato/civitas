@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase10_10a_model_create_table_sqlite"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/model/model.cct"
+ADVOCARE "../../../../lib/civitas/model/model_ddl.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10a_model_create_table_sqlite")
+  EVOCA ModelDef def AD CONIURA model_def_new("attachments")
+  CONIURA model_def_add_int(def, "id", VERUM, VERUM, VERUM)
+  CONIURA model_def_add_blob(def, "upload", VERUM)
+  CONIURA model_def_add_bool(def, "active", VERUM)
+  CONIURA model_def_add_index(def, "active", FALSUM)
+  CONIURA model_def_create_table(db, def)
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'attachments'") != 1
+    REDDE 1
+  FIN SI
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_attachments_active'") != 1
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

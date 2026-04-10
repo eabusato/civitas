@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase17_17e_translation_respects_human_lock"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Phase17Stack stack AD CONIURA phase17_stack_open("17e_translation_respects_human_lock")
+  EVOCA TaskRegistry registry AD CONIURA phase17_registry_basic()
+  EVOCA TaskConfig task_cfg AD CONIURA phase17_task_cfg()
+  CONIURA db_exec(stack.db, "INSERT INTO editorial_translations (id, model_name, object_id, source_locale, target_locale, source_hash, translated_text, human_locked, updated_at_unix) VALUES ('t1', 'page', '1', 'pt-BR', 'en', 'oldhash', 'Manual', 1, 1)")
+  EVOCA EditorialAutomationConfig cfg AD CONIURA editorial_automation_config_default()
+  VINCIRE cfg.translation_provider AD TRANSLATION_PROVIDER_PROCESS
+  VINCIRE cfg.translation_command AD "tr a-z A-Z"
+  CONIURA editorial_enqueue_translate(stack.dbh, "page", "1", "pt-BR", "en", "ola mundo", cfg, task_cfg)
+  CONIURA task_worker_run_once(stack.dbh, task_cfg, registry, "editorial-worker")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(stack.db, "SELECT translated_text FROM editorial_translations WHERE model_name = 'page' AND object_id = '1' LIMIT 1")
+  CONIURA stmt_step(stmt)
+  SI CONIURA compare(CONIURA stmt_get_text(stmt, 0), "Manual") != 0
+    CONIURA stmt_finalize(stmt)
+    CONIURA task_registry_free(SPECULUM registry)
+    CONIURA phase17_stack_close(stack)
+    REDDE 1
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  CONIURA task_registry_free(SPECULUM registry)
+  CONIURA phase17_stack_close(stack)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

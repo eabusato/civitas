@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase11_11a_dbh_exec_query_scalar"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle_sqlite.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase11_dbh_sqlite("11a_dbh_exec_query_scalar")
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+  EVOCA DbParams p1 AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM p1, 1)
+  CONIURA dbh_param_text(SPECULUM p1, "alpha")
+  CONIURA dbh_exec(dbh, "INSERT INTO items(id, name) VALUES(?, ?)", p1)
+  CONIURA dbh_params_free(SPECULUM p1)
+  EVOCA DbParams p2 AD CONIURA dbh_params_new()
+  CONIURA dbh_param_int(SPECULUM p2, 1)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT name FROM items WHERE id = ?", p2)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), "alpha") != 0
+    REDDE 2
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM p2)
+  SI CONIURA dbh_scalar_int(dbh, "SELECT COUNT(*) FROM items") != 1
+    REDDE 3
+  FIN SI
+  CONIURA db_close(dbh.sqlite_conn)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

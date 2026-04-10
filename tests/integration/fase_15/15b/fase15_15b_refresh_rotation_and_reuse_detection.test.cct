@@ -1,0 +1,64 @@
+INCIPIT grimoire "fase15_15b_refresh_rotation_and_reuse_detection"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_issue.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token_refresh.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE count_revoked_in_family(SPECULUM NIHIL db, VERBUM familia) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM refresh_tokens WHERE familia = ? AND revogado = 1")
+  CONIURA stmt_bind_text(stmt, 1, familia)
+  CONIURA stmt_step(stmt)
+  EVOCA REX count AD 0
+  SI CONIURA stmt_has_row(stmt)
+    VINCIRE count AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase15_auth_token_db_open("15b_refresh_rotation_and_reuse_detection")
+  EVOCA TokenConfig cfg AD CONIURA token_config_new("segredo_hmac_32bytes_min_123456789", 3600, 86400)
+  EVOCA RefreshToken first AD CONIURA refresh_token_issue(db, cfg, "user-123", "")
+  SI CONIURA len(first.familia) == 0
+    CONIURA db_close(db)
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL rotated_res AD CONIURA refresh_token_rotate(db, cfg, first.id)
+  SI CONIURA result_is_err GENUS(RefreshToken, TokenError)(rotated_res)
+    CONIURA db_close(db)
+    REDDE 2
+  FIN SI
+  EVOCA RefreshToken second AD CONIURA result_unwrap GENUS(RefreshToken, TokenError)(rotated_res)
+  SI CONIURA compare(second.familia, first.familia) != 0
+    CONIURA db_close(db)
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(second.id, first.id) == 0
+    CONIURA db_close(db)
+    REDDE 4
+  FIN SI
+
+  EVOCA SPECULUM NIHIL reuse_res AD CONIURA refresh_token_rotate(db, cfg, first.id)
+  SI NON CONIURA result_is_err GENUS(RefreshToken, TokenError)(reuse_res)
+    CONIURA db_close(db)
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA token_error_name(CONIURA result_unwrap_err GENUS(RefreshToken, TokenError)(reuse_res)), "TokenRevogado") != 0
+    CONIURA db_close(db)
+    REDDE 6
+  FIN SI
+  SI CONIURA count_revoked_in_family(db, first.familia) < 2
+    CONIURA db_close(db)
+    REDDE 7
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

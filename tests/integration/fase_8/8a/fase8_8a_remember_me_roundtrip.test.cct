@@ -1,0 +1,35 @@
+INCIPIT grimoire "fase8_8a_remember_me_roundtrip_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session_remember.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA RememberMeConfig cfg AD CONIURA remember_me_config_default()
+  EVOCA VERBUM token
+  EVOCA SPECULUM NIHIL user_opt
+
+  VINCIRE cfg.segredo AD "remember-secret-8a"
+  VINCIRE cfg.duracao_dias AD 7
+  VINCIRE token AD CONIURA remember_me_generate("abc123", cfg)
+  VINCIRE user_opt AD CONIURA remember_me_verify(token, cfg)
+
+  SI CONIURA option_is_none GENUS(VERBUM)(user_opt)
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA option_unwrap GENUS(VERBUM)(user_opt), "abc123") != 0
+    REDDE 2
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(user_opt)
+
+  VINCIRE user_opt AD CONIURA remember_me_verify(CONIURA concat(token, "x"), cfg)
+  SI NON CONIURA option_is_none GENUS(VERBUM)(user_opt)
+    REDDE 3
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(user_opt)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

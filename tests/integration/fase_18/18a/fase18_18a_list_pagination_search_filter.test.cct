@@ -1,0 +1,43 @@
+INCIPIT grimoire "fase18_18a_list_pagination_search_filter"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_list.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_list_with_search_filter_and_pagination() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18a_list")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Alpha", "draft", "u1", 100)
+  CONIURA phase18_insert_post(stack.db, "Beta", "published", "u1", 200)
+  CONIURA phase18_insert_post(stack.db, "Gamma", "published", "u2", 300)
+  EVOCA AdminListQuery q AD CONIURA admin_list_query_default()
+  VINCIRE q.page AD 1
+  VINCIRE q.page_size AD 2
+  VINCIRE q.search_term AD "a"
+  VINCIRE q.order_by AD "created_at"
+  VINCIRE q.descending AD VERUM
+  VINCIRE q.filters_json AD "{\"state\":\"published\"}"
+  EVOCA AdminListResult res AD CONIURA admin_list(*cfg_ptr, stack.dbh, q)
+  SI res.total_count != 2
+    IACE "expected 2 filtered rows"
+  FIN SI
+  SI res.total_pages != 1
+    IACE "expected one page"
+  FIN SI
+  SI CONIURA find(res.rows_json, "\"title\":\"Gamma\"") == -1
+    IACE "missing latest row"
+  FIN SI
+  SI CONIURA find(res.rows_json, "\"title\":\"Alpha\"") != -1
+    IACE "filter/search unexpectedly included Alpha"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_list_with_search_filter_and_pagination()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

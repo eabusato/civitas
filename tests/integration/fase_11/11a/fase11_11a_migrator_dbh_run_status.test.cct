@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase11_11a_migrator_dbh_run_status"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/migrate/migrate.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE migration_users(DbHandle dbh) REDDE NIHIL
+  CONIURA dbh_exec(dbh, "CREATE TABLE users(id INTEGER PRIMARY KEY)", CONIURA dbh_params_new())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE migration_posts(DbHandle dbh) REDDE NIHIL
+  CONIURA dbh_exec(dbh, "CREATE TABLE posts(id INTEGER PRIMARY KEY)", CONIURA dbh_params_new())
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE noop_down(DbHandle dbh) REDDE NIHIL
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA DbHandle dbh AD CONIURA phase11_dbh_sqlite("11a_migrator_dbh_run_status")
+  EVOCA MigratorDbHandle mgr AD CONIURA migrator_new_dbh(dbh, NIHIL)
+  CONIURA migrator_add_dbh(mgr, "0001", "users", migration_users, noop_down)
+  CONIURA migrator_add_dbh(mgr, "0002", "posts", migration_posts, noop_down)
+  EVOCA SPECULUM NIHIL run_result AD CONIURA migrator_run_dbh(mgr)
+  SI CONIURA result_is_err GENUS(REX, MigrateError)(run_result)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL status AD CONIURA migrator_status_dbh(mgr)
+  SI CONIURA fluxus_len(status) != 2
+    REDDE 2
+  FIN SI
+  SI CONIURA len(CONIURA migrator_last_applied_version_dbh(dbh)) == 0
+    REDDE 3
+  FIN SI
+  CONIURA db_close(dbh.sqlite_conn)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

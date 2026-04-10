@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_security_audit_root"
+
+ADVOCARE "security_audit/security_audit.cct"
+
+EXPLICIT grimoire

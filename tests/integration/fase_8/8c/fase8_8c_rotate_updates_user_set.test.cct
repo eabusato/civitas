@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase8_8c_rotate_updates_user_set_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/session/session.cct"
+ADVOCARE "../../../../lib/civitas/session/session_redis.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase8_8c_tmp_dir("rotate")
+  CONIURA phase8_reset_dir(root)
+  SI CONIURA phase8_8c_start_fake_redis(root) != 0
+    REDDE 1
+  FIN SI
+  EVOCA SessionStore store AD CONIURA phase8_8c_store(root)
+  EVOCA SessionConfig cfg AD CONIURA phase8_session_config("redis-rotate-secret")
+  EVOCA Session sess AD CONIURA session_new()
+  EVOCA VERBUM old_id AD sess.id
+  CONIURA session_set(SPECULUM sess, "user_id", "77")
+  CONIURA session_finalize(SPECULUM sess, store, cfg, CONIURA response_ok())
+  CONIURA session_rotate_id(SPECULUM sess, store, cfg)
+  CONIURA session_finalize(SPECULUM sess, store, cfg, CONIURA response_ok())
+
+  EVOCA SPECULUM Redis redis AD CONIURA session_redis_handle(store)
+  EVOCA SPECULUM SessionRedisState rs AD store.state
+  EVOCA VERBUM user_key AD CONIURA session_redis_user_key((*rs).config.prefixo_user_sessions, "77")
+  EVOCA SPECULUM NIHIL members_res AD CONIURA redis_smembers(*redis, user_key)
+  CONIURA phase8_8c_stop_fake_redis(root)
+  SI CONIURA result_is_err GENUS(RedisTextList, VERBUM)(members_res)
+    REDDE 2
+  FIN SI
+  EVOCA RedisTextList members AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(members_res)
+  SI CONIURA redis_text_list_len(members) != 1
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(CONIURA redis_text_list_get(members, 0), sess.id) != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(CONIURA redis_text_list_get(members, 0), old_id) == 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

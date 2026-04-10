@@ -1,0 +1,15 @@
+INCIPIT grimoire "rede_social_main"
+
+ADVOCARE "config.cct"
+ADVOCARE "../apps/shared/app.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA RedeConfig cfg AD CONIURA rede_config_load()
+  EVOCA RedeAppState state AD CONIURA rede_app_open_state(cfg)
+  CONIURA rede_app_run_server(SPECULUM state)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

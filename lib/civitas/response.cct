@@ -1,0 +1,294 @@
+INCIPIT grimoire "civitas_response"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cookie.cct"
+
+ORDO WebResponseBodyKind
+  WEB_RESPONSE_EMPTY,
+  WEB_RESPONSE_TEXT,
+  WEB_RESPONSE_HTML,
+  WEB_RESPONSE_JSON
+FIN ORDO
+
+SIGILLUM WebResponse
+  status: REX
+  headers: SPECULUM NIHIL
+  body: VERBUM
+  body_kind: WebResponseBodyKind
+  set_cookies: SPECULUM NIHIL
+  gzip_enabled: VERUM
+FIN SIGILLUM
+
+RITUALE response_new(REX status) REDDE WebResponse
+  EVOCA WebResponse res
+  VINCIRE res.status AD status
+  VINCIRE res.headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  VINCIRE res.body AD ""
+  VINCIRE res.body_kind AD WEB_RESPONSE_EMPTY
+  VINCIRE res.set_cookies AD CONIURA fluxus_init(MENSURA(SetCookie))
+  VINCIRE res.gzip_enabled AD FALSUM
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_with_body(REX status, VERBUM body, WebResponseBodyKind body_kind) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(status)
+  VINCIRE res.body AD body
+  VINCIRE res.body_kind AD body_kind
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_headers_copy(SPECULUM NIHIL headers) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD CONIURA concat("", *key_ptr)
+    CONIURA map_insert GENUS(VERBUM, VERBUM)(out, key, CONIURA concat("", CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(headers, *key_ptr, "")))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE response_headers_put(SPECULUM NIHIL headers, VERBUM name, VERBUM value) REDDE NIHIL
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA response_header_storage_key(headers, name)
+  SI CONIURA option_is_some GENUS(VERBUM)(key_opt)
+    EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(
+      headers,
+      stored_key,
+      CONIURA concat("", value)
+    )
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE
+  FIN SI
+
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(
+    headers,
+    CONIURA concat("", CONIURA to_lower(name)),
+    CONIURA concat("", value)
+  )
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_fill(SPECULUM WebResponse dest, WebResponse src) REDDE NIHIL
+  EVOCA SPECULUM NIHIL merged_headers AD CONIURA response_headers_copy((*dest).headers)
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(src.headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA SPECULUM NIHIL merged_set_cookies AD CONIURA fluxus_copy GENUS(SetCookie)((*dest).set_cookies)
+  EVOCA REX cookie_i AD 0
+  EVOCA REX cookie_n AD CONIURA fluxus_len(src.set_cookies)
+  EVOCA VERUM merged_gzip AD (*dest).gzip_enabled VEL src.gzip_enabled
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    CONIURA response_headers_put(merged_headers, key, CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(src.headers, key, ""))
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  DUM cookie_i < cookie_n
+    EVOCA SPECULUM SetCookie cookie_ptr AD CONIURA fluxus_get(src.set_cookies, cookie_i)
+    CONIURA fluxus_push(merged_set_cookies, cookie_ptr)
+    VINCIRE cookie_i AD cookie_i + 1
+  FIN DUM
+
+  VINCIRE (*dest).status AD src.status
+  VINCIRE (*dest).headers AD merged_headers
+  VINCIRE (*dest).body AD src.body
+  VINCIRE (*dest).body_kind AD src.body_kind
+  VINCIRE (*dest).set_cookies AD merged_set_cookies
+  VINCIRE (*dest).gzip_enabled AD merged_gzip
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_ok() REDDE WebResponse
+  REDDE CONIURA response_new(200)
+EXPLICIT RITUALE
+
+RITUALE response_created() REDDE WebResponse
+  REDDE CONIURA response_new(201)
+EXPLICIT RITUALE
+
+RITUALE response_no_content() REDDE WebResponse
+  REDDE CONIURA response_new(204)
+EXPLICIT RITUALE
+
+RITUALE response_bad_request(VERBUM message) REDDE WebResponse
+  REDDE CONIURA response_with_body(400, message, WEB_RESPONSE_TEXT)
+EXPLICIT RITUALE
+
+RITUALE response_unauthorized(VERBUM message) REDDE WebResponse
+  REDDE CONIURA response_with_body(401, message, WEB_RESPONSE_TEXT)
+EXPLICIT RITUALE
+
+RITUALE response_not_found() REDDE WebResponse
+  REDDE CONIURA response_with_body(404, "not found", WEB_RESPONSE_TEXT)
+EXPLICIT RITUALE
+
+RITUALE response_allow_header(SPECULUM NIHIL allow_methods) REDDE VERBUM
+  REDDE CONIURA join(allow_methods, ", ")
+EXPLICIT RITUALE
+
+RITUALE response_method_not_allowed(SPECULUM NIHIL allow_methods) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(405, "method not allowed", WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM res, "allow", CONIURA response_allow_header(allow_methods))
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_internal_error(VERBUM message) REDDE WebResponse
+  REDDE CONIURA response_with_body(500, message, WEB_RESPONSE_TEXT)
+EXPLICIT RITUALE
+
+RITUALE response_text(VERBUM text) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, text, WEB_RESPONSE_TEXT)
+  CONIURA response_set_header(SPECULUM res, "content-type", "text/plain; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_html(VERBUM html) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, html, WEB_RESPONSE_HTML)
+  CONIURA response_set_header(SPECULUM res, "content-type", "text/html; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_json_text(VERBUM json_text) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_with_body(200, json_text, WEB_RESPONSE_JSON)
+  CONIURA response_set_header(SPECULUM res, "content-type", "application/json; charset=utf-8")
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_redirect(VERBUM url) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(302)
+  CONIURA response_set_header(SPECULUM res, "location", url)
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_redirect_permanent(VERBUM url) REDDE WebResponse
+  EVOCA WebResponse res AD CONIURA response_new(301)
+  CONIURA response_set_header(SPECULUM res, "location", url)
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE response_header_storage_key(SPECULUM NIHIL headers, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(headers)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM normalized AD CONIURA to_lower(name)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, normalized) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE response_set_header(SPECULUM WebResponse res, VERBUM name, VERBUM value) REDDE NIHIL
+  CONIURA response_headers_put((*res).headers, name, value)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_header_or(WebResponse res, VERBUM name, VERBUM fallback) REDDE VERBUM
+  EVOCA SPECULUM NIHIL key_opt AD CONIURA response_header_storage_key(res.headers, name)
+  SI CONIURA option_is_none GENUS(VERBUM)(key_opt)
+    CONIURA option_free GENUS(VERBUM)(key_opt)
+    REDDE fallback
+  FIN SI
+
+  EVOCA VERBUM stored_key AD CONIURA option_unwrap GENUS(VERBUM)(key_opt)
+  EVOCA VERBUM value AD CONIURA concat("", CONIURA map_get_or_default GENUS(VERBUM, VERBUM)(res.headers, stored_key, fallback))
+  CONIURA option_free GENUS(VERBUM)(key_opt)
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE response_append_vary(SPECULUM WebResponse res, VERBUM header_name) REDDE NIHIL
+  EVOCA VERBUM normalized AD CONIURA trim(header_name)
+  EVOCA VERBUM current AD CONIURA response_header_or(*res, "vary", "")
+  SI CONIURA len(current) == 0
+    CONIURA response_set_header(res, "vary", normalized)
+    REDDE
+  FIN SI
+  SI CONIURA find(CONIURA to_lower(current), CONIURA to_lower(normalized)) != -1
+    REDDE
+  FIN SI
+  CONIURA response_set_header(res, "vary", CONIURA concat(CONIURA concat(current, ", "), normalized))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_set_cookie(SPECULUM WebResponse res, SetCookie cookie) REDDE NIHIL
+  CONIURA fluxus_push((*res).set_cookies, SPECULUM cookie)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_delete_cookie(SPECULUM WebResponse res, VERBUM name, VERBUM path) REDDE NIHIL
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(name, "")
+  VINCIRE cookie.max_age AD 0
+  VINCIRE cookie.expires AD "Thu, 01 Jan 1970 00:00:00 GMT"
+  SI CONIURA len(path) != 0
+    VINCIRE cookie.path AD path
+  FIN SI
+  CONIURA response_set_cookie(res, cookie)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_enable_gzip(SPECULUM WebResponse res) REDDE NIHIL
+  VINCIRE (*res).gzip_enabled AD VERUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE response_body_is_permitted(REX status) REDDE VERUM
+  SI status == 204 VEL status == 304
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE response_body_kind_default_content_type(WebResponseBodyKind body_kind) REDDE VERBUM
+  ELIGE body_kind
+    CASUS WEB_RESPONSE_TEXT:
+      REDDE "text/plain; charset=utf-8"
+    CASUS WEB_RESPONSE_HTML:
+      REDDE "text/html; charset=utf-8"
+    CASUS WEB_RESPONSE_JSON:
+      REDDE "application/json; charset=utf-8"
+    ALIOQUIN:
+      REDDE ""
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE response_should_use_gzip(WebResponse res, VERUM client_accepts_gzip) REDDE VERUM
+  SI NON res.gzip_enabled VEL NON client_accepts_gzip
+    REDDE FALSUM
+  FIN SI
+  SI NON CONIURA response_body_is_permitted(res.status)
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA len(res.body) == 0
+    REDDE FALSUM
+  FIN SI
+  SI CONIURA len(CONIURA response_header_or(res, "content-encoding", "")) != 0
+    REDDE FALSUM
+  FIN SI
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE response_without_body(WebResponse res) REDDE WebResponse
+  EVOCA WebResponse out AD res
+  VINCIRE out.body AD ""
+  VINCIRE out.body_kind AD WEB_RESPONSE_EMPTY
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

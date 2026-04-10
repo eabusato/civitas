@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase7_7e_reserved_attrs_ignored_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../7c/support.cct"
+ADVOCARE "../../../../lib/civitas/forms/forms.cct"
+ADVOCARE "../../../../lib/civitas/forms/render.cct"
+ADVOCARE "../../../../lib/civitas/validate/validate.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA FieldDef field AD CONIURA field_def_new("email", "E-mail", IkEmail)
+  EVOCA FormData fd AD CONIURA phase7_render_form_data()
+  EVOCA ValidationResult vr AD CONIURA phase7_render_validation_ok()
+  EVOCA VERBUM html
+
+  CONIURA field_def_add_attr(SPECULUM field, "name", "hack")
+  CONIURA field_def_add_attr(SPECULUM field, "id", "hack")
+  VINCIRE html AD CONIURA render_field(field, vr, fd)
+
+  SI CONIURA find(html, "name=\"hack\"") != -1 VEL CONIURA find(html, "id=\"hack\"") != -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "name=\"email\"") == -1 VEL CONIURA find(html, "id=\"email\"") == -1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,32 @@
+INCIPIT grimoire "fase20_20c_query_slowest"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase20_reset_root("20c_query_slowest")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase20_trace_db_path("20c_query_slowest"), trace_dir, 10, 24)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-fast", "/fast", "GET", 200, 5, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-fast", "fast"), 100)
+  CONIURA trace_store_index_trace(SPECULUM store, "t-slow", "/slow", "GET", 200, 120, 1, "", CONIURA phase20_write_trace_file(trace_dir, "t-slow", "slow"), 101)
+  EVOCA TraceResultSet rs AD CONIURA trace_store_query_slowest(SPECULUM store, 20, 5)
+  SI rs.count != 1
+    CONIURA trace_store_result_set_free(SPECULUM rs)
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM TraceRow row_ptr AD CONIURA fluxus_get(rs.rows, 0)
+  SI CONIURA compare((*row_ptr).trace_id, "t-slow") != 0
+    CONIURA trace_store_result_set_free(SPECULUM rs)
+    CONIURA trace_store_close(SPECULUM store)
+    REDDE 2
+  FIN SI
+  CONIURA trace_store_result_set_free(SPECULUM rs)
+  CONIURA trace_store_close(SPECULUM store)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

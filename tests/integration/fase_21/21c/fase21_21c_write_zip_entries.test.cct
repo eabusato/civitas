@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase21_21c_write_zip_entries"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_export/trace_export.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/archive_zip.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase21_reset_root("21c_write_zip_entries")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase21_trace_db_path("21c_write_zip_entries"), trace_dir, 20, 24)
+  EVOCA VERBUM file_path AD CONIURA phase21_write_sample_trace(trace_dir, "trace-zip")
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-zip", "/api/posts", "GET", 200, 180, 4, "u", file_path, 100)
+  EVOCA TraceExportConfig cfg AD CONIURA trace_export_default_config(SPECULUM store, root, "Mural X")
+  VINCIRE cfg.render_cfg AD CONIURA phase21_render_config("21c_write_zip_entries")
+  EVOCA VERBUM archive_path AD CONIURA path_join(root, "catalog.zip")
+  EVOCA SPECULUM NIHIL export_res AD CONIURA trace_export_write_zip(cfg, archive_path)
+  CONIURA trace_store_close(SPECULUM store)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(export_res)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL zip_res AD CONIURA zip_open(archive_path)
+  SI CONIURA result_is_err GENUS(ZipArchive, VERBUM)(zip_res)
+    REDDE 2
+  FIN SI
+  EVOCA ZipArchive archive AD CONIURA result_unwrap GENUS(ZipArchive, VERBUM)(zip_res)
+  EVOCA SPECULUM NIHIL entries AD CONIURA zip_list(archive)
+  EVOCA REX count AD CONIURA fluxus_len(entries)
+  CONIURA zip_close(SPECULUM archive)
+  CONIURA fluxus_free(entries)
+  SI count < 4
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

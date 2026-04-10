@@ -1,0 +1,393 @@
+INCIPIT grimoire "civitas_url"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/form_codec.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM WebUrl
+  scheme: VERBUM
+  host: VERBUM
+  port: REX
+  path: VERBUM
+  normalized_path: VERBUM
+  query_raw: VERBUM
+  fragment: VERBUM
+  is_absolute: VERUM
+  has_explicit_port: VERUM
+FIN SIGILLUM
+
+SIGILLUM UrlQueryPair
+  key: VERBUM
+  value: VERBUM
+FIN SIGILLUM
+
+SIGILLUM UrlQueryMulti
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM UrlBuildOptions
+  include_default_port: VERUM
+  normalize_path: VERUM
+  keep_empty_fragment: VERUM
+FIN SIGILLUM
+
+RITUALE url_parse_error(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(WebUrl, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE url_parse_ok(WebUrl url) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(WebUrl, VERBUM)(url)
+EXPLICIT RITUALE
+
+RITUALE url_default_port_for_scheme(VERBUM scheme) REDDE REX
+  EVOCA VERBUM lowered AD CONIURA to_lower(scheme)
+  SI CONIURA compare(lowered, "http") == 0
+    REDDE 80
+  FIN SI
+  SI CONIURA compare(lowered, "https") == 0
+    REDDE 443
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE url_default_build_options() REDDE UrlBuildOptions
+  EVOCA UrlBuildOptions opts
+  VINCIRE opts.include_default_port AD FALSUM
+  VINCIRE opts.normalize_path AD VERUM
+  VINCIRE opts.keep_empty_fragment AD FALSUM
+  REDDE opts
+EXPLICIT RITUALE
+
+RITUALE url_is_absolute(WebUrl url) REDDE VERUM
+  REDDE url.is_absolute
+EXPLICIT RITUALE
+
+RITUALE url_extract_query(VERBUM raw) REDDE UrlQueryPair
+  EVOCA UrlQueryPair pair
+  EVOCA REX hash_idx AD CONIURA find(raw, "#")
+  EVOCA VERBUM body AD raw
+  SI hash_idx != -1
+    VINCIRE body AD CONIURA substring(raw, 0, hash_idx)
+  FIN SI
+  SI CONIURA starts_with(body, "?")
+    VINCIRE body AD CONIURA substring(body, 1, CONIURA len(body))
+  FIN SI
+  VINCIRE pair.key AD body
+  VINCIRE pair.value AD ""
+  REDDE pair
+EXPLICIT RITUALE
+
+RITUALE url_parse_query(VERBUM query) REDDE SPECULUM NIHIL
+  EVOCA UrlQueryPair parts AD CONIURA url_extract_query(query)
+  SI CONIURA len(parts.key) == 0
+    REDDE CONIURA map_init GENUS(VERBUM, VERBUM)()
+  FIN SI
+  REDDE CONIURA form_decode(parts.key)
+EXPLICIT RITUALE
+
+RITUALE url_query_get(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  REDDE CONIURA form_get(params, key)
+EXPLICIT RITUALE
+
+RITUALE url_parse_query_multi(VERBUM query) REDDE SPECULUM NIHIL
+  EVOCA UrlQueryPair parts AD CONIURA url_extract_query(query)
+  EVOCA SPECULUM NIHIL result AD CONIURA map_init GENUS(VERBUM, UrlQueryMulti)()
+  EVOCA VERBUM rest AD parts.key
+
+  DUM CONIURA len(rest) != 0
+    EVOCA REX amp AD CONIURA find(rest, "&")
+    EVOCA VERBUM token AD ""
+    SI amp == -1
+      VINCIRE token AD rest
+      VINCIRE rest AD ""
+    ALITER
+      VINCIRE token AD CONIURA substring(rest, 0, amp)
+      VINCIRE rest AD CONIURA substring(rest, amp + 1, CONIURA len(rest))
+    FIN SI
+
+    SI CONIURA len(token) == 0
+      RECEDE
+    FIN SI
+
+    EVOCA FormPair decoded AD CONIURA form_decode_pair(token)
+    EVOCA SPECULUM NIHIL current_opt AD CONIURA url_query_multi_get(result, decoded.chave)
+    SI CONIURA option_is_some GENUS(UrlQueryMulti)(current_opt)
+      EVOCA UrlQueryMulti current AD CONIURA option_unwrap GENUS(UrlQueryMulti)(current_opt)
+      CONIURA fluxus_push(current.items, SPECULUM decoded.valor)
+      CONIURA map_update_or_insert GENUS(VERBUM, UrlQueryMulti)(result, decoded.chave, current)
+      CONIURA option_free GENUS(UrlQueryMulti)(current_opt)
+      RECEDE
+    FIN SI
+
+    EVOCA UrlQueryMulti created
+    VINCIRE created.items AD CONIURA fluxus_init(MENSURA(VERBUM))
+    CONIURA fluxus_push(created.items, SPECULUM decoded.valor)
+    CONIURA map_insert GENUS(VERBUM, UrlQueryMulti)(result, decoded.chave, created)
+    CONIURA option_free GENUS(UrlQueryMulti)(current_opt)
+  FIN DUM
+
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE url_query_multi_get(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, UrlQueryMulti)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM current AD *key_ptr
+    SI CONIURA compare(current, key) == 0
+      REDDE CONIURA map_get GENUS(VERBUM, UrlQueryMulti)(params, current)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(UrlQueryMulti)()
+EXPLICIT RITUALE
+
+RITUALE url_build_query(SPECULUM NIHIL params) REDDE VERBUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)(params)
+  EVOCA VERBUM out AD ""
+  EVOCA VERUM first AD VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  CONIURA fluxus_sort_verbum(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM key AD *key_ptr
+    EVOCA SPECULUM NIHIL value_opt AD CONIURA url_query_get(params, key)
+    EVOCA VERBUM value AD ""
+    SI CONIURA option_is_some GENUS(VERBUM)(value_opt)
+      VINCIRE value AD CONIURA option_unwrap GENUS(VERBUM)(value_opt)
+    FIN SI
+    CONIURA option_free GENUS(VERBUM)(value_opt)
+    SI NON first
+      VINCIRE out AD CONIURA concat(out, "&")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA percent_encode(key))
+    VINCIRE out AD CONIURA concat(out, "=")
+    VINCIRE out AD CONIURA concat(out, CONIURA percent_encode(value))
+    VINCIRE first AD FALSUM
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE url_normalize_path(VERBUM path) REDDE VERBUM
+  EVOCA VERUM absolute AD VERUM
+  EVOCA VERUM keep_trailing AD FALSUM
+  EVOCA SPECULUM NIHIL segments AD CONIURA split(path, "/")
+  EVOCA SPECULUM NIHIL stack AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(segments)
+  EVOCA VERBUM out AD ""
+
+  SI CONIURA len(path) == 0
+    REDDE "/"
+  FIN SI
+
+  VINCIRE absolute AD CONIURA starts_with(path, "/")
+  SI CONIURA ends_with(path, "/") ET CONIURA len(path) > 1
+    VINCIRE keep_trailing AD VERUM
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM part_ptr AD CONIURA fluxus_get(segments, i)
+    EVOCA VERBUM part AD *part_ptr
+    SI CONIURA len(part) == 0 VEL CONIURA compare(part, ".") == 0
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI CONIURA compare(part, "..") == 0
+      SI CONIURA fluxus_len(stack) > 0
+        CONIURA fluxus_remove(stack, CONIURA fluxus_len(stack) - 1)
+      FIN SI
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    CONIURA fluxus_push(stack, SPECULUM part)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI absolute
+    VINCIRE out AD "/"
+  FIN SI
+
+  VINCIRE i AD 0
+  VINCIRE n AD CONIURA fluxus_len(stack)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(stack, i)
+    SI CONIURA len(out) != 0 ET NON CONIURA ends_with(out, "/")
+      VINCIRE out AD CONIURA concat(out, "/")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *item_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA len(out) == 0
+    VINCIRE out AD "/"
+  FIN SI
+
+  SI keep_trailing ET CONIURA compare(out, "/") != 0 ET NON CONIURA ends_with(out, "/")
+    VINCIRE out AD CONIURA concat(out, "/")
+  FIN SI
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE url_parse(VERBUM input) REDDE SPECULUM NIHIL
+  EVOCA WebUrl url
+  EVOCA VERBUM raw AD input
+  EVOCA VERBUM location AD input
+  EVOCA REX hash_idx AD CONIURA find(raw, "#")
+  EVOCA REX query_idx AD -1
+  EVOCA REX scheme_idx AD -1
+  EVOCA REX slash_idx AD -1
+  EVOCA REX colon_idx AD -1
+  EVOCA VERBUM authority AD ""
+  EVOCA VERBUM port_text AD ""
+  EVOCA SPECULUM NIHIL port_opt
+
+  VINCIRE url.scheme AD ""
+  VINCIRE url.host AD ""
+  VINCIRE url.port AD 0
+  VINCIRE url.path AD "/"
+  VINCIRE url.normalized_path AD "/"
+  VINCIRE url.query_raw AD ""
+  VINCIRE url.fragment AD ""
+  VINCIRE url.is_absolute AD FALSUM
+  VINCIRE url.has_explicit_port AD FALSUM
+
+  SI hash_idx != -1
+    VINCIRE url.fragment AD CONIURA substring(raw, hash_idx + 1, CONIURA len(raw))
+    VINCIRE location AD CONIURA substring(raw, 0, hash_idx)
+  FIN SI
+
+  VINCIRE query_idx AD CONIURA find(location, "?")
+  SI query_idx != -1
+    VINCIRE url.query_raw AD CONIURA substring(location, query_idx + 1, CONIURA len(location))
+    VINCIRE location AD CONIURA substring(location, 0, query_idx)
+  FIN SI
+
+  VINCIRE scheme_idx AD CONIURA find(location, "://")
+  SI scheme_idx != -1
+    VINCIRE url.scheme AD CONIURA to_lower(CONIURA substring(location, 0, scheme_idx))
+    VINCIRE url.is_absolute AD VERUM
+    VINCIRE location AD CONIURA substring(location, scheme_idx + 3, CONIURA len(location))
+    SI CONIURA len(url.scheme) == 0
+      REDDE CONIURA url_parse_error("url sem scheme")
+    FIN SI
+
+    VINCIRE slash_idx AD CONIURA find(location, "/")
+    VINCIRE authority AD location
+    SI slash_idx != -1
+      VINCIRE authority AD CONIURA substring(location, 0, slash_idx)
+      VINCIRE url.path AD CONIURA substring(location, slash_idx, CONIURA len(location))
+    FIN SI
+    SI CONIURA len(authority) == 0
+      REDDE CONIURA url_parse_error("url sem host")
+    FIN SI
+
+    VINCIRE colon_idx AD CONIURA find(authority, ":")
+    SI colon_idx == -1
+      VINCIRE url.host AD authority
+      VINCIRE url.port AD CONIURA url_default_port_for_scheme(url.scheme)
+    ALITER
+      VINCIRE url.host AD CONIURA substring(authority, 0, colon_idx)
+      VINCIRE port_text AD CONIURA substring(authority, colon_idx + 1, CONIURA len(authority))
+      SI CONIURA len(port_text) == 0
+        REDDE CONIURA url_parse_error("url com porta invalida")
+      FIN SI
+      VINCIRE port_opt AD CONIURA try_int(port_text)
+      SI CONIURA option_is_none GENUS(REX)(port_opt)
+        REDDE CONIURA url_parse_error("url com porta invalida")
+      FIN SI
+      VINCIRE url.port AD CONIURA option_unwrap GENUS(REX)(port_opt)
+      CONIURA option_free GENUS(REX)(port_opt)
+      SI url.port < 0
+        REDDE CONIURA url_parse_error("url com porta invalida")
+      FIN SI
+      VINCIRE url.has_explicit_port AD VERUM
+    FIN SI
+    SI CONIURA len(url.host) == 0
+      REDDE CONIURA url_parse_error("url sem host")
+    FIN SI
+  ALITER
+    SI CONIURA len(location) != 0
+      VINCIRE url.path AD location
+    FIN SI
+  FIN SI
+
+  VINCIRE url.normalized_path AD CONIURA url_normalize_path(url.path)
+  REDDE CONIURA url_parse_ok(url)
+EXPLICIT RITUALE
+
+RITUALE url_build_with_options(WebUrl url, UrlBuildOptions options) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA VERBUM path_value AD url.path
+  EVOCA REX default_port AD 0
+
+  SI options.normalize_path
+    VINCIRE path_value AD CONIURA url_normalize_path(url.path)
+  FIN SI
+
+  SI url.is_absolute
+    VINCIRE out AD CONIURA concat(out, url.scheme)
+    VINCIRE out AD CONIURA concat(out, "://")
+    VINCIRE out AD CONIURA concat(out, url.host)
+    VINCIRE default_port AD CONIURA url_default_port_for_scheme(url.scheme)
+    SI url.has_explicit_port VEL url.port != 0 ET (options.include_default_port VEL url.port != default_port)
+      VINCIRE out AD CONIURA concat(out, ":")
+      VINCIRE out AD CONIURA concat(out, CONIURA stringify_int(url.port))
+    FIN SI
+  FIN SI
+
+  VINCIRE out AD CONIURA concat(out, path_value)
+  SI CONIURA len(url.query_raw) != 0
+    VINCIRE out AD CONIURA concat(out, "?")
+    VINCIRE out AD CONIURA concat(out, url.query_raw)
+  FIN SI
+  SI CONIURA len(url.fragment) != 0 VEL options.keep_empty_fragment
+    VINCIRE out AD CONIURA concat(out, "#")
+    VINCIRE out AD CONIURA concat(out, url.fragment)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE url_build(WebUrl url) REDDE VERBUM
+  REDDE CONIURA url_build_with_options(url, CONIURA url_default_build_options())
+EXPLICIT RITUALE
+
+RITUALE url_join_path(WebUrl url, VERBUM segment) REDDE WebUrl
+  EVOCA WebUrl out AD url
+  EVOCA VERBUM base AD CONIURA url_normalize_path(url.path)
+  EVOCA VERBUM extra AD segment
+  SI CONIURA starts_with(extra, "/")
+    VINCIRE extra AD CONIURA substring(extra, 1, CONIURA len(extra))
+  FIN SI
+  SI CONIURA compare(base, "/") == 0
+    VINCIRE out.path AD CONIURA concat("/", extra)
+  ALITER
+    VINCIRE out.path AD CONIURA concat(CONIURA concat(base, "/"), extra)
+  FIN SI
+  VINCIRE out.normalized_path AD CONIURA url_normalize_path(out.path)
+  VINCIRE out.path AD out.normalized_path
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE url_with_query(WebUrl url, VERBUM key, VERBUM value) REDDE WebUrl
+  EVOCA WebUrl out AD url
+  EVOCA SPECULUM NIHIL params AD CONIURA url_parse_query(url.query_raw)
+  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)(params, key, value)
+  VINCIRE out.query_raw AD CONIURA url_build_query(params)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

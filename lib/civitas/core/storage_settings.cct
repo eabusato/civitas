@@ -1,0 +1,176 @@
+INCIPIT grimoire "civitas_core_storage_settings"
+
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "settings.cct"
+ADVOCARE "settings_schema.cct"
+
+RITUALE storage_get_verbum_or_empty(SPECULUM Settings settings, VERBUM key) REDDE VERBUM
+  SI NON CONIURA settings_has(settings, key)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, key))
+EXPLICIT RITUALE
+
+SIGILLUM ObjectStorageSettings
+  enabled: VERUM
+  configured: VERUM
+  endpoint: VERBUM
+  bucket: VERBUM
+  access_key: VERBUM
+  secret_key: VERBUM
+  region: VERBUM
+  use_tls: VERUM
+FIN SIGILLUM
+
+SIGILLUM StorageSettings
+  root_dir: VERBUM
+  public_base_url: VERBUM
+  private_base_url: VERBUM
+  tmp_max_age_minutes: REX
+  create_missing_dirs: VERUM
+  tmp_dir: VERBUM
+  quarantine_dir: VERBUM
+  processed_dir: VERBUM
+  public_dir: VERBUM
+  private_dir: VERBUM
+  object_storage_enabled: VERUM
+  object_storage: ObjectStorageSettings
+FIN SIGILLUM
+
+RITUALE storage_ok(StorageSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(StorageSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE object_storage_ok(ObjectStorageSettings value) REDDE SPECULUM NIHIL
+  REDDE CONIURA Ok GENUS(ObjectStorageSettings, VERBUM)(value)
+EXPLICIT RITUALE
+
+RITUALE storage_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(StorageSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE object_storage_err(VERBUM message) REDDE SPECULUM NIHIL
+  REDDE CONIURA Err GENUS(ObjectStorageSettings, VERBUM)(message)
+EXPLICIT RITUALE
+
+RITUALE storage_settings_zone_dir(VERBUM root_dir, MediaZone zone) REDDE VERBUM
+  ELIGE zone
+    CASUS MEDIA_ZONE_TMP:
+      REDDE CONIURA path_join(root_dir, "tmp")
+    CASUS MEDIA_ZONE_QUARANTINE:
+      REDDE CONIURA path_join(root_dir, "quarantine")
+    CASUS MEDIA_ZONE_PROCESSED:
+      REDDE CONIURA path_join(root_dir, "processed")
+    CASUS MEDIA_ZONE_PUBLIC:
+      REDDE CONIURA path_join(root_dir, "public")
+    CASUS MEDIA_ZONE_PRIVATE:
+      REDDE CONIURA path_join(root_dir, "private")
+  FIN ELIGE
+  REDDE root_dir
+EXPLICIT RITUALE
+
+RITUALE settings_object_storage_fill(SPECULUM ObjectStorageSettings out, SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA VERUM enabled AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "object_storage.enabled"))
+  EVOCA VERBUM endpoint AD CONIURA storage_get_verbum_or_empty(settings, "object_storage.endpoint")
+  EVOCA VERBUM bucket AD CONIURA storage_get_verbum_or_empty(settings, "object_storage.bucket")
+  EVOCA VERBUM access_key AD CONIURA storage_get_verbum_or_empty(settings, "object_storage.access_key")
+  EVOCA VERBUM secret_key AD CONIURA storage_get_verbum_or_empty(settings, "object_storage.secret_key")
+  EVOCA VERBUM region AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "object_storage.region"))
+  EVOCA VERUM use_tls AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "object_storage.use_tls"))
+
+  VINCIRE (*out).enabled AD enabled
+  VINCIRE (*out).configured AD enabled
+  VINCIRE (*out).endpoint AD endpoint
+  VINCIRE (*out).bucket AD bucket
+  VINCIRE (*out).access_key AD access_key
+  VINCIRE (*out).secret_key AD secret_key
+  VINCIRE (*out).region AD region
+  VINCIRE (*out).use_tls AD use_tls
+
+  SI NON enabled
+    REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+  FIN SI
+  SI CONIURA len(endpoint) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("object storage habilitado sem endpoint")
+  FIN SI
+  SI CONIURA len(bucket) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("object storage habilitado sem bucket")
+  FIN SI
+  SI CONIURA len(access_key) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("object storage habilitado sem access_key")
+  FIN SI
+  SI CONIURA len(secret_key) == 0
+    REDDE CONIURA Err GENUS(REX, VERBUM)("object storage habilitado sem secret_key")
+  FIN SI
+  SI NON CONIURA starts_with(endpoint, "http://") ET NON CONIURA starts_with(endpoint, "https://")
+    REDDE CONIURA Err GENUS(REX, VERBUM)("object storage endpoint invalido")
+  FIN SI
+
+  REDDE CONIURA Ok GENUS(REX, VERBUM)(0)
+EXPLICIT RITUALE
+
+RITUALE settings_object_storage(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA ObjectStorageSettings out
+  EVOCA SPECULUM NIHIL fill_res AD CONIURA settings_object_storage_fill(SPECULUM out, settings)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(fill_res)
+    REDDE CONIURA object_storage_err(CONIURA result_unwrap_err GENUS(REX, VERBUM)(fill_res))
+  FIN SI
+  REDDE CONIURA object_storage_ok(out)
+EXPLICIT RITUALE
+
+RITUALE settings_storage(SPECULUM Settings settings) REDDE SPECULUM NIHIL
+  EVOCA StorageSettings out
+  EVOCA SPECULUM NIHIL layout_res
+  EVOCA SPECULUM NIHIL object_fill_res
+  EVOCA VERBUM root_dir AD CONIURA storage_get_verbum_or_empty(settings, "media.root_dir")
+  EVOCA VERBUM public_base_url AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "media.public_base_url"))
+  EVOCA VERBUM private_base_url AD CONIURA result_unwrap GENUS(VERBUM, SettingsError)(CONIURA settings_get_verbum(settings, "media.private_base_url"))
+  EVOCA REX tmp_max_age_minutes AD CONIURA result_unwrap GENUS(REX, SettingsError)(CONIURA settings_get_rex(settings, "media.tmp_max_age_minutes"))
+  EVOCA VERUM create_missing_dirs AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "media.create_missing_dirs"))
+  EVOCA VERUM object_storage_enabled AD CONIURA result_unwrap GENUS(VERUM, SettingsError)(CONIURA settings_get_bool(settings, "media.object_storage_enabled"))
+
+  SI CONIURA len(root_dir) == 0
+    REDDE CONIURA storage_err("media.root_dir is required")
+  FIN SI
+  VINCIRE object_fill_res AD CONIURA settings_object_storage_fill(SPECULUM out.object_storage, settings)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(object_fill_res)
+    REDDE CONIURA storage_err(CONIURA result_unwrap_err GENUS(REX, VERBUM)(object_fill_res))
+  FIN SI
+
+  VINCIRE out.root_dir AD CONIURA normalize(root_dir)
+  VINCIRE out.public_base_url AD public_base_url
+  VINCIRE out.private_base_url AD private_base_url
+  VINCIRE out.tmp_max_age_minutes AD tmp_max_age_minutes
+  VINCIRE out.create_missing_dirs AD create_missing_dirs
+  VINCIRE out.tmp_dir AD CONIURA storage_settings_zone_dir(out.root_dir, MEDIA_ZONE_TMP)
+  VINCIRE out.quarantine_dir AD CONIURA storage_settings_zone_dir(out.root_dir, MEDIA_ZONE_QUARANTINE)
+  VINCIRE out.processed_dir AD CONIURA storage_settings_zone_dir(out.root_dir, MEDIA_ZONE_PROCESSED)
+  VINCIRE out.public_dir AD CONIURA storage_settings_zone_dir(out.root_dir, MEDIA_ZONE_PUBLIC)
+  VINCIRE out.private_dir AD CONIURA storage_settings_zone_dir(out.root_dir, MEDIA_ZONE_PRIVATE)
+  VINCIRE out.object_storage_enabled AD object_storage_enabled
+
+  SI object_storage_enabled ET NON out.object_storage.enabled
+    REDDE CONIURA storage_err("media.object_storage_enabled requires object_storage.enabled")
+  FIN SI
+  SI create_missing_dirs
+    CONIURA mkdir_all(out.root_dir)
+    CONIURA mkdir_all(out.tmp_dir)
+    CONIURA mkdir_all(out.quarantine_dir)
+    CONIURA mkdir_all(out.processed_dir)
+    CONIURA mkdir_all(out.public_dir)
+    CONIURA mkdir_all(out.private_dir)
+    VINCIRE layout_res AD CONIURA Ok GENUS(REX, VERBUM)(0)
+  ALITER
+    SI NON CONIURA is_dir(out.tmp_dir) VEL NON CONIURA is_dir(out.quarantine_dir) VEL NON CONIURA is_dir(out.processed_dir) VEL NON CONIURA is_dir(out.public_dir) VEL NON CONIURA is_dir(out.private_dir)
+      REDDE CONIURA storage_err("local media layout is missing")
+    FIN SI
+  FIN SI
+
+  REDDE CONIURA storage_ok(out)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

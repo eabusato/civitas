@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase18_18b_register_inline_registry"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_schema.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_register_inline_registry() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18b_register_inline")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA AdminInlineConfig inline_cfg AD CONIURA phase18_register_comment_inline(SPECULUM stack)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, "Post")
+  CONIURA dbh_param_text(SPECULUM params, "comments")
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT child_model, config_json FROM admin_inline_registry WHERE parent_model = ? AND inline_name = ?", params)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "inline registry row missing"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), "Comment") != 0
+    IACE "inline child model mismatch"
+  FIN SI
+  SI CONIURA find(CONIURA dbrows_get_text(rows, 1), "\"fk_field\":\"post_id\"") == -1
+    IACE "inline config json missing fk field"
+  FIN SI
+  SI CONIURA compare(inline_cfg.child_table, "comments") != 0
+    IACE "inline config child table mismatch"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_register_inline_registry()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

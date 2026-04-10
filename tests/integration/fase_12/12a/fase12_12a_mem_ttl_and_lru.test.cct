@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase12_12a_mem_ttl_and_lru"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_api.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA cache_mem_new("mem-lru", 3)
+  CONIURA cache_set(SPECULUM h, "ttl", "short", 1)
+  CONIURA sleep_ms(1200)
+  EVOCA CacheMaybeText ttl_maybe AD CONIURA cache_get(SPECULUM h, "ttl")
+  SI ttl_maybe.found
+    REDDE 1
+  FIN SI
+
+  CONIURA cache_set(SPECULUM h, "a", "1", 0)
+  CONIURA cache_set(SPECULUM h, "b", "2", 0)
+  CONIURA cache_set(SPECULUM h, "c", "3", 0)
+  EVOCA CacheMaybeText warm AD CONIURA cache_get(SPECULUM h, "b")
+  CONIURA cache_set(SPECULUM h, "d", "4", 0)
+
+  SI CONIURA cache_exists(SPECULUM h, "a")
+    REDDE 2
+  FIN SI
+  SI NON CONIURA cache_exists(SPECULUM h, "b")
+    REDDE 3
+  FIN SI
+  EVOCA CacheMetrics met AD CONIURA cache_metrics(SPECULUM h)
+  SI met.evicoes < 1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

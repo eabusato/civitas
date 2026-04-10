@@ -1,0 +1,374 @@
+INCIPIT grimoire "civitas_editorial_jobs"
+
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/process.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../tasks/tasks.cct"
+
+ORDO EditorialJobKind
+  EDITORIAL_TRANSLATE
+  EDITORIAL_SITEMAP
+  EDITORIAL_FEED
+  EDITORIAL_RANKINGS
+  EDITORIAL_COUNTERS
+FIN ORDO
+
+ORDO TranslationProviderKind
+  TRANSLATION_PROVIDER_NONE
+  TRANSLATION_PROVIDER_PROCESS
+FIN ORDO
+
+SIGILLUM EditorialAutomationConfig
+  translation_provider: TranslationProviderKind
+  translation_command: VERBUM
+  sitemap_output_path: VERBUM
+  feed_output_path: VERBUM
+  ranking_window_seconds: REX
+FIN SIGILLUM
+
+SIGILLUM EditorialJobRun
+  id: VERBUM
+  job_kind: EditorialJobKind
+  resource_name: VERBUM
+  started_at_unix: REX
+  finished_at_unix: REX
+  outcome: VERBUM
+  result_json: VERBUM
+FIN SIGILLUM
+
+RITUALE editorial_now_unix() REDDE REX
+  REDDE CONIURA task_now_unix()
+EXPLICIT RITUALE
+
+RITUALE editorial_job_kind_to_string(EditorialJobKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS EDITORIAL_FEED:
+      REDDE "feed"
+    CASUS EDITORIAL_RANKINGS:
+      REDDE "rankings"
+    CASUS EDITORIAL_COUNTERS:
+      REDDE "counters"
+    CASUS EDITORIAL_TRANSLATE:
+      REDDE "translate"
+    ALIOQUIN:
+      REDDE "sitemap"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE editorial_job_kind_from_string(VERBUM kind) REDDE EditorialJobKind
+  SI CONIURA compare(kind, "feed") == 0
+    REDDE EDITORIAL_FEED
+  FIN SI
+  SI CONIURA compare(kind, "rankings") == 0
+    REDDE EDITORIAL_RANKINGS
+  FIN SI
+  SI CONIURA compare(kind, "counters") == 0
+    REDDE EDITORIAL_COUNTERS
+  FIN SI
+  SI CONIURA compare(kind, "translate") == 0
+    REDDE EDITORIAL_TRANSLATE
+  FIN SI
+  REDDE EDITORIAL_SITEMAP
+EXPLICIT RITUALE
+
+RITUALE editorial_automation_config_default() REDDE EditorialAutomationConfig
+  EVOCA EditorialAutomationConfig cfg
+  VINCIRE cfg.translation_provider AD TRANSLATION_PROVIDER_NONE
+  VINCIRE cfg.translation_command AD ""
+  VINCIRE cfg.sitemap_output_path AD "public/sitemap.xml"
+  VINCIRE cfg.feed_output_path AD "public/feed.xml"
+  VINCIRE cfg.ranking_window_seconds AD 3600
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE editorial_jobs_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS editorial_job_runs (id TEXT PRIMARY KEY, job_kind TEXT NOT NULL, resource_name TEXT NOT NULL, started_at_unix INTEGER NOT NULL, finished_at_unix INTEGER NOT NULL DEFAULT 0, outcome TEXT NOT NULL, result_json TEXT NOT NULL DEFAULT '{}')", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_editorial_job_runs_lookup ON editorial_job_runs(job_kind, resource_name, started_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS editorial_translations (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, object_id TEXT NOT NULL, source_locale TEXT NOT NULL, target_locale TEXT NOT NULL, source_hash TEXT NOT NULL, translated_text TEXT NOT NULL, human_locked INTEGER NOT NULL DEFAULT 0, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE UNIQUE INDEX IF NOT EXISTS idx_editorial_translations_unique ON editorial_translations(model_name, object_id, source_locale, target_locale)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS editorial_rankings (resource_name TEXT PRIMARY KEY, score INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS editorial_counters (resource_name TEXT PRIMARY KEY, total INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE editorial_jobs_schema_down(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS editorial_counters", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS editorial_rankings", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS editorial_translations", params)
+  CONIURA dbh_exec(dbh, "DROP TABLE IF EXISTS editorial_job_runs", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE editorial_run_write(DbHandle dbh, VERBUM kind_str, VERBUM resource_name, REX started_at_unix, REX finished_at_unix, VERBUM outcome, VERBUM result_json) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, kind_str)
+  CONIURA dbh_param_text(SPECULUM params, resource_name)
+  CONIURA dbh_param_int(SPECULUM params, started_at_unix)
+  CONIURA dbh_param_int(SPECULUM params, finished_at_unix)
+  CONIURA dbh_param_text(SPECULUM params, outcome)
+  CONIURA dbh_param_text(SPECULUM params, result_json)
+  CONIURA dbh_exec(dbh, "INSERT INTO editorial_job_runs (id, job_kind, resource_name, started_at_unix, finished_at_unix, outcome, result_json) VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE editorial_translation_existing_human(DbHandle dbh, VERBUM model_name, VERBUM object_id, VERBUM source_locale, VERBUM target_locale) REDDE VERUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, model_name)
+  CONIURA dbh_param_text(SPECULUM params, object_id)
+  CONIURA dbh_param_text(SPECULUM params, source_locale)
+  CONIURA dbh_param_text(SPECULUM params, target_locale)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT human_locked FROM editorial_translations WHERE model_name = ? AND object_id = ? AND source_locale = ? AND target_locale = ? LIMIT 1", params)
+  EVOCA VERUM out AD FALSUM
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA dbrows_get_int(rows, 0) != 0
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE editorial_translation_upsert(DbHandle dbh, VERBUM model_name, VERBUM object_id, VERBUM source_locale, VERBUM target_locale, VERBUM source_hash, VERBUM translated_text) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA REX now_unix AD CONIURA editorial_now_unix()
+  CONIURA dbh_param_text(SPECULUM params, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA dbh_param_text(SPECULUM params, model_name)
+  CONIURA dbh_param_text(SPECULUM params, object_id)
+  CONIURA dbh_param_text(SPECULUM params, source_locale)
+  CONIURA dbh_param_text(SPECULUM params, target_locale)
+  CONIURA dbh_param_text(SPECULUM params, source_hash)
+  CONIURA dbh_param_text(SPECULUM params, translated_text)
+  CONIURA dbh_param_int(SPECULUM params, now_unix)
+  CONIURA dbh_exec(dbh, "INSERT OR REPLACE INTO editorial_translations (id, model_name, object_id, source_locale, target_locale, source_hash, translated_text, human_locked, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE editorial_render_sitemap(DbHandle dbh) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT locale, slug, canonical_url FROM civitas_pages WHERE state = 2 ORDER BY locale ASC, slug ASC", params)
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset>"
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA concat(out, "<url><loc>")
+    SI CONIURA len(CONIURA dbrows_get_text(rows, 2)) > 0
+      VINCIRE out AD CONIURA concat(out, CONIURA dbrows_get_text(rows, 2))
+    ALITER
+      VINCIRE out AD CONIURA concat(out, "/")
+      VINCIRE out AD CONIURA concat(out, CONIURA dbrows_get_text(rows, 0))
+      VINCIRE out AD CONIURA concat(out, "/")
+      VINCIRE out AD CONIURA concat(out, CONIURA dbrows_get_text(rows, 1))
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, "</loc></url>")
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "</urlset>")
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE editorial_render_feed(DbHandle dbh) REDDE VERBUM
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT title, slug, locale FROM civitas_pages WHERE state = 2 ORDER BY published_at DESC, id DESC LIMIT 20", params)
+  EVOCA VERBUM out AD "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss><channel>"
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA concat(out, "<item><title>")
+    VINCIRE out AD CONIURA concat(out, CONIURA dbrows_get_text(rows, 0))
+    VINCIRE out AD CONIURA concat(out, "</title><link>/")
+    VINCIRE out AD CONIURA concat(out, CONIURA dbrows_get_text(rows, 1))
+    VINCIRE out AD CONIURA concat(out, "</link></item>")
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "</channel></rss>")
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE editorial_recompute_rankings(DbHandle dbh) REDDE REX
+  EVOCA DbParams clear_params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DELETE FROM editorial_rankings", clear_params)
+  CONIURA dbh_params_free(SPECULUM clear_params)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT object_type, object_id, total FROM civitas_view_counters ORDER BY total DESC, object_id ASC", params)
+  EVOCA REX count AD 0
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA VERBUM resource_name AD CONIURA dbrows_get_text(rows, 0)
+    VINCIRE resource_name AD CONIURA concat(resource_name, ":")
+    VINCIRE resource_name AD CONIURA concat(resource_name, CONIURA stringify_int(CONIURA dbrows_get_int(rows, 1)))
+    EVOCA REX score AD CONIURA dbrows_get_int(rows, 2)
+    EVOCA REX now_unix AD CONIURA editorial_now_unix()
+    EVOCA DbParams up AD CONIURA dbh_params_new()
+    CONIURA dbh_param_text(SPECULUM up, resource_name)
+    CONIURA dbh_param_int(SPECULUM up, score)
+    CONIURA dbh_param_int(SPECULUM up, now_unix)
+    CONIURA dbh_exec(dbh, "INSERT INTO editorial_rankings (resource_name, score, updated_at_unix) VALUES (?, ?, ?)", up)
+    CONIURA dbh_params_free(SPECULUM up)
+    VINCIRE count AD count + 1
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE editorial_recompute_counters(DbHandle dbh) REDDE REX
+  EVOCA DbParams clear_params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "DELETE FROM editorial_counters", clear_params)
+  CONIURA dbh_params_free(SPECULUM clear_params)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, "SELECT object_type, object_id, COUNT(*) FROM civitas_reactions GROUP BY object_type, object_id ORDER BY object_type ASC, object_id ASC", params)
+  EVOCA REX count AD 0
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA VERBUM resource_name AD CONIURA dbrows_get_text(rows, 0)
+    VINCIRE resource_name AD CONIURA concat(resource_name, ":")
+    VINCIRE resource_name AD CONIURA concat(resource_name, CONIURA stringify_int(CONIURA dbrows_get_int(rows, 1)))
+    EVOCA REX total AD CONIURA dbrows_get_int(rows, 2)
+    EVOCA REX now_unix AD CONIURA editorial_now_unix()
+    EVOCA DbParams up AD CONIURA dbh_params_new()
+    CONIURA dbh_param_text(SPECULUM up, resource_name)
+    CONIURA dbh_param_int(SPECULUM up, total)
+    CONIURA dbh_param_int(SPECULUM up, now_unix)
+    CONIURA dbh_exec(dbh, "INSERT INTO editorial_counters (resource_name, total, updated_at_unix) VALUES (?, ?, ?)", up)
+    CONIURA dbh_params_free(SPECULUM up)
+    VINCIRE count AD count + 1
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE count
+EXPLICIT RITUALE
+
+RITUALE editorial_process_translate(DbHandle dbh, SPECULUM NIHIL parts) REDDE TaskCallbackResult
+  SI CONIURA fluxus_len(parts) < 7
+    REDDE CONIURA task_callback_result_error("editorial_bad_payload", "{\"error\":\"editorial_bad_payload\"}")
+  FIN SI
+  EVOCA SPECULUM VERBUM model_name_ptr AD CONIURA fluxus_get(parts, 1)
+  EVOCA SPECULUM VERBUM object_id_ptr AD CONIURA fluxus_get(parts, 2)
+  EVOCA SPECULUM VERBUM source_locale_ptr AD CONIURA fluxus_get(parts, 3)
+  EVOCA SPECULUM VERBUM target_locale_ptr AD CONIURA fluxus_get(parts, 4)
+  EVOCA SPECULUM VERBUM source_text_ptr AD CONIURA fluxus_get(parts, 5)
+  EVOCA SPECULUM VERBUM command_ptr AD CONIURA fluxus_get(parts, 6)
+  SI CONIURA editorial_translation_existing_human(dbh, *model_name_ptr, *object_id_ptr, *source_locale_ptr, *target_locale_ptr)
+    REDDE CONIURA task_callback_result_ok("{\"status\":\"human_locked\"}")
+  FIN SI
+  EVOCA VERBUM translated AD *source_text_ptr
+  SI CONIURA len(*command_ptr) > 0
+    VINCIRE translated AD CONIURA trim(CONIURA run_with_input(*command_ptr, *source_text_ptr))
+  FIN SI
+  CONIURA editorial_translation_upsert(dbh, *model_name_ptr, *object_id_ptr, *source_locale_ptr, *target_locale_ptr, CONIURA sha256(*source_text_ptr), translated)
+  REDDE CONIURA task_callback_result_ok("{\"status\":\"translated\"}")
+EXPLICIT RITUALE
+
+RITUALE editorial_process_sitemap(DbHandle dbh, SPECULUM NIHIL parts) REDDE TaskCallbackResult
+  EVOCA SPECULUM VERBUM output_ptr AD CONIURA fluxus_get(parts, 1)
+  CONIURA mkdir_all(CONIURA path_dirname(*output_ptr))
+  CONIURA write_all(*output_ptr, CONIURA editorial_render_sitemap(dbh))
+  REDDE CONIURA task_callback_result_ok("{\"status\":\"sitemap_written\"}")
+EXPLICIT RITUALE
+
+RITUALE editorial_process_feed(DbHandle dbh, SPECULUM NIHIL parts) REDDE TaskCallbackResult
+  EVOCA SPECULUM VERBUM output_ptr AD CONIURA fluxus_get(parts, 1)
+  CONIURA mkdir_all(CONIURA path_dirname(*output_ptr))
+  CONIURA write_all(*output_ptr, CONIURA editorial_render_feed(dbh))
+  REDDE CONIURA task_callback_result_ok("{\"status\":\"feed_written\"}")
+EXPLICIT RITUALE
+
+RITUALE editorial_process_rankings(DbHandle dbh) REDDE TaskCallbackResult
+  EVOCA REX count AD CONIURA editorial_recompute_rankings(dbh)
+  REDDE CONIURA task_callback_result_ok(CONIURA concat("{\"rankings\":", CONIURA concat(CONIURA stringify_int(count), "}")))
+EXPLICIT RITUALE
+
+RITUALE editorial_process_counters(DbHandle dbh) REDDE TaskCallbackResult
+  EVOCA REX count AD CONIURA editorial_recompute_counters(dbh)
+  REDDE CONIURA task_callback_result_ok(CONIURA concat("{\"counters\":", CONIURA concat(CONIURA stringify_int(count), "}")))
+EXPLICIT RITUALE
+
+RITUALE editorial_jobs_task_callback(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  EVOCA REX started_at AD CONIURA editorial_now_unix()
+  EVOCA SPECULUM NIHIL parts AD CONIURA split(task.payload_json, "\n")
+  SI CONIURA fluxus_len(parts) == 0
+    CONIURA fluxus_free(parts)
+    REDDE CONIURA task_callback_result_error("editorial_bad_payload", "{\"error\":\"editorial_bad_payload\"}")
+  FIN SI
+  EVOCA SPECULUM VERBUM kind_ptr AD CONIURA fluxus_get(parts, 0)
+  EVOCA TaskCallbackResult out AD CONIURA task_callback_result_error("editorial_unknown_kind", "{\"error\":\"editorial_unknown_kind\"}")
+  SI CONIURA compare(*kind_ptr, "translate") == 0
+    VINCIRE out AD CONIURA editorial_process_translate(dbh, parts)
+  ALITER
+    SI CONIURA compare(*kind_ptr, "sitemap") == 0
+      VINCIRE out AD CONIURA editorial_process_sitemap(dbh, parts)
+    ALITER
+      SI CONIURA compare(*kind_ptr, "feed") == 0
+        VINCIRE out AD CONIURA editorial_process_feed(dbh, parts)
+      ALITER
+        SI CONIURA compare(*kind_ptr, "rankings") == 0
+          VINCIRE out AD CONIURA editorial_process_rankings(dbh)
+        ALITER
+          SI CONIURA compare(*kind_ptr, "counters") == 0
+            VINCIRE out AD CONIURA editorial_process_counters(dbh)
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+  FIN SI
+  CONIURA editorial_run_write(dbh, *kind_ptr, task.task_name, started_at, CONIURA editorial_now_unix(), CONIURA task_outcome_to_string(TASK_OUTCOME_OK), out.result_json)
+  CONIURA fluxus_free(parts)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE editorial_enqueue_translate(DbHandle dbh, VERBUM model_name, VERBUM object_id, VERBUM source_locale, VERBUM target_locale, VERBUM source_text, EditorialAutomationConfig cfg, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA VERBUM payload AD "translate\n"
+  VINCIRE payload AD CONIURA concat(payload, model_name)
+  VINCIRE payload AD CONIURA concat(payload, "\n")
+  VINCIRE payload AD CONIURA concat(payload, object_id)
+  VINCIRE payload AD CONIURA concat(payload, "\n")
+  VINCIRE payload AD CONIURA concat(payload, source_locale)
+  VINCIRE payload AD CONIURA concat(payload, "\n")
+  VINCIRE payload AD CONIURA concat(payload, target_locale)
+  VINCIRE payload AD CONIURA concat(payload, "\n")
+  VINCIRE payload AD CONIURA concat(payload, source_text)
+  VINCIRE payload AD CONIURA concat(payload, "\n")
+  VINCIRE payload AD CONIURA concat(payload, cfg.translation_command)
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD CONIURA concat("editorial:translate:", CONIURA sha256(payload))
+  REDDE CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "editorial.process", payload, options, task_cfg)
+EXPLICIT RITUALE
+
+RITUALE editorial_enqueue_sitemap(DbHandle dbh, VERBUM output_path, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "editorial:sitemap"
+  REDDE CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "editorial.process", CONIURA concat("sitemap\n", output_path), options, task_cfg)
+EXPLICIT RITUALE
+
+RITUALE editorial_enqueue_feed(DbHandle dbh, VERBUM output_path, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "editorial:feed"
+  REDDE CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "editorial.process", CONIURA concat("feed\n", output_path), options, task_cfg)
+EXPLICIT RITUALE
+
+RITUALE editorial_enqueue_rankings(DbHandle dbh, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "editorial:rankings"
+  REDDE CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "editorial.process", "rankings", options, task_cfg)
+EXPLICIT RITUALE
+
+RITUALE editorial_enqueue_counters(DbHandle dbh, TaskConfig task_cfg) REDDE VERBUM
+  EVOCA TaskEnqueueOptions options AD CONIURA task_enqueue_options_default()
+  VINCIRE options.dedupe_key AD "editorial:counters"
+  REDDE CONIURA task_enqueue_json(dbh, task_cfg.queue_name, "editorial.process", "counters", options, task_cfg)
+EXPLICIT RITUALE
+
+RITUALE editorial_jobs_register_callbacks(SPECULUM TaskRegistry registry) REDDE NIHIL
+  CONIURA task_register(registry, "editorial.process", editorial_jobs_task_callback)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

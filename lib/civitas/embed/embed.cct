@@ -1,0 +1,458 @@
+INCIPIT grimoire "civitas_embed"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/uuid.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../api/api.cct"
+ADVOCARE "../auth_token/auth_token.cct"
+ADVOCARE "../auth_token/auth_token_verify.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+ADVOCARE "../request_core.cct"
+ADVOCARE "../response.cct"
+
+SIGILLUM EmbedConfig
+  model_name: VERBUM
+  table_name: VERBUM
+  pk_field: VERBUM
+  title_field: VERBUM
+  body_field: VERBUM
+  media_url_field: VERBUM
+  template_name: VERBUM
+  max_width: REX
+  max_height: REX
+  provider_name: VERBUM
+  provider_url: VERBUM
+  allowed_origins: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ExportConfig
+  model_name: VERBUM
+  table_name: VERBUM
+  fields: SPECULUM NIHIL
+  max_rows: REX
+  filename_prefix: VERBUM
+FIN SIGILLUM
+
+SIGILLUM EmbedObject
+  pk: VERBUM
+  title: VERBUM
+  body: VERBUM
+  media_url: VERBUM
+FIN SIGILLUM
+
+RITUALE embed_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS embed_configs (model_name TEXT PRIMARY KEY, config_json TEXT NOT NULL, registered_at_unix INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS embed_access_log (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, object_pk TEXT NOT NULL, origin TEXT NOT NULL DEFAULT '', referer TEXT NOT NULL DEFAULT '', created_at_unix INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_embed_access_log_object ON embed_access_log(model_name, object_pk, created_at_unix)")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE embed_config_default(VERBUM model_name, VERBUM table_name, VERBUM pk_field, VERBUM provider_name, VERBUM provider_url) REDDE EmbedConfig
+  EVOCA EmbedConfig cfg
+  VINCIRE cfg.model_name AD model_name
+  VINCIRE cfg.table_name AD table_name
+  VINCIRE cfg.pk_field AD pk_field
+  VINCIRE cfg.title_field AD "title"
+  VINCIRE cfg.body_field AD "body"
+  VINCIRE cfg.media_url_field AD "media_url"
+  VINCIRE cfg.template_name AD CONIURA concat("embed/", CONIURA concat(model_name, ".html"))
+  VINCIRE cfg.max_width AD 800
+  VINCIRE cfg.max_height AD 450
+  VINCIRE cfg.provider_name AD provider_name
+  VINCIRE cfg.provider_url AD provider_url
+  VINCIRE cfg.allowed_origins AD "*"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE export_config_default(VERBUM model_name, VERBUM table_name) REDDE ExportConfig
+  EVOCA ExportConfig cfg
+  VINCIRE cfg.model_name AD model_name
+  VINCIRE cfg.table_name AD table_name
+  VINCIRE cfg.fields AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE cfg.max_rows AD 1000
+  VINCIRE cfg.filename_prefix AD model_name
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE export_config_add_field(SPECULUM ExportConfig cfg, VERBUM field_name) REDDE NIHIL
+  CONIURA fluxus_push((*cfg).fields, SPECULUM field_name)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE embed_config_to_json(EmbedConfig cfg) REDDE VERBUM
+  EVOCA Json obj AD CONIURA json_obj()
+  CONIURA json_obj_push(obj, "model_name", CONIURA json_str(cfg.model_name))
+  CONIURA json_obj_push(obj, "table_name", CONIURA json_str(cfg.table_name))
+  CONIURA json_obj_push(obj, "pk_field", CONIURA json_str(cfg.pk_field))
+  CONIURA json_obj_push(obj, "title_field", CONIURA json_str(cfg.title_field))
+  CONIURA json_obj_push(obj, "body_field", CONIURA json_str(cfg.body_field))
+  CONIURA json_obj_push(obj, "media_url_field", CONIURA json_str(cfg.media_url_field))
+  CONIURA json_obj_push(obj, "template_name", CONIURA json_str(cfg.template_name))
+  CONIURA json_obj_push(obj, "max_width", CONIURA json_num(cast GENUS(UMBRA)(cfg.max_width)))
+  CONIURA json_obj_push(obj, "max_height", CONIURA json_num(cast GENUS(UMBRA)(cfg.max_height)))
+  CONIURA json_obj_push(obj, "provider_name", CONIURA json_str(cfg.provider_name))
+  CONIURA json_obj_push(obj, "provider_url", CONIURA json_str(cfg.provider_url))
+  CONIURA json_obj_push(obj, "allowed_origins", CONIURA json_str(cfg.allowed_origins))
+  REDDE CONIURA json_stringify(obj)
+EXPLICIT RITUALE
+
+RITUALE embed_config_from_json(VERBUM raw) REDDE EmbedConfig
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_default("", "", "", "", "")
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(raw)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE cfg
+  FIN SI
+  EVOCA Json obj AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  VINCIRE cfg.model_name AD CONIURA json_expect_str(CONIURA json_get_key(obj, "model_name"))
+  VINCIRE cfg.table_name AD CONIURA json_expect_str(CONIURA json_get_key(obj, "table_name"))
+  VINCIRE cfg.pk_field AD CONIURA json_expect_str(CONIURA json_get_key(obj, "pk_field"))
+  VINCIRE cfg.title_field AD CONIURA json_expect_str(CONIURA json_get_key(obj, "title_field"))
+  VINCIRE cfg.body_field AD CONIURA json_expect_str(CONIURA json_get_key(obj, "body_field"))
+  VINCIRE cfg.media_url_field AD CONIURA json_expect_str(CONIURA json_get_key(obj, "media_url_field"))
+  VINCIRE cfg.template_name AD CONIURA json_expect_str(CONIURA json_get_key(obj, "template_name"))
+  VINCIRE cfg.max_width AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(obj, "max_width")))
+  VINCIRE cfg.max_height AD cast GENUS(REX)(CONIURA json_expect_num(CONIURA json_get_key(obj, "max_height")))
+  VINCIRE cfg.provider_name AD CONIURA json_expect_str(CONIURA json_get_key(obj, "provider_name"))
+  VINCIRE cfg.provider_url AD CONIURA json_expect_str(CONIURA json_get_key(obj, "provider_url"))
+  VINCIRE cfg.allowed_origins AD CONIURA json_expect_str(CONIURA json_get_key(obj, "allowed_origins"))
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE embed_config_register(SPECULUM NIHIL db, EmbedConfig cfg) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO embed_configs (model_name, config_json, registered_at_unix) VALUES (?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, cfg.model_name)
+  CONIURA stmt_bind_text(stmt, 2, CONIURA embed_config_to_json(cfg))
+  CONIURA stmt_bind_int(stmt, 3, CONIURA datetime_to_unix(CONIURA datetime_now()))
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE embed_config_load(SPECULUM NIHIL db, VERBUM model_name) REDDE EmbedConfig
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_default("", "", "", "", "")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT config_json FROM embed_configs WHERE model_name = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, model_name)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE cfg AD CONIURA embed_config_from_json(CONIURA stmt_get_text(stmt, 0))
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE embed_access_log_write(SPECULUM NIHIL db, VERBUM model_name, VERBUM object_pk, VERBUM origin, VERBUM referer) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO embed_access_log (id, model_name, object_pk, origin, referer, created_at_unix) VALUES (?, ?, ?, ?, ?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, CONIURA uuid_to_string(CONIURA uuid_v4()))
+  CONIURA stmt_bind_text(stmt, 2, model_name)
+  CONIURA stmt_bind_text(stmt, 3, object_pk)
+  CONIURA stmt_bind_text(stmt, 4, origin)
+  CONIURA stmt_bind_text(stmt, 5, referer)
+  CONIURA stmt_bind_int(stmt, 6, CONIURA datetime_to_unix(CONIURA datetime_now()))
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE embed_access_log_count(SPECULUM NIHIL db, VERBUM model_name, VERBUM object_pk) REDDE REX
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM embed_access_log WHERE model_name = ? AND object_pk = ?")
+  EVOCA REX out AD 0
+  CONIURA stmt_bind_text(stmt, 1, model_name)
+  CONIURA stmt_bind_text(stmt, 2, object_pk)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE out AD CONIURA stmt_get_int(stmt, 0)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE embed_origin_allowed(EmbedConfig cfg, VERBUM origin) REDDE VERUM
+  SI CONIURA compare(cfg.allowed_origins, "*") == 0 VEL CONIURA len(origin) == 0
+    REDDE VERUM
+  FIN SI
+  EVOCA SPECULUM NIHIL items AD CONIURA split(cfg.allowed_origins, ",")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+  DUM i < n
+    EVOCA SPECULUM VERBUM item_ptr AD CONIURA fluxus_get(items, i)
+    SI CONIURA compare(CONIURA trim(*item_ptr), origin) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE embed_load_object(SPECULUM NIHIL db, EmbedConfig cfg, VERBUM pk) REDDE EmbedObject
+  EVOCA EmbedObject obj
+  VINCIRE obj.pk AD ""
+  VINCIRE obj.title AD ""
+  VINCIRE obj.body AD ""
+  VINCIRE obj.media_url AD ""
+  EVOCA VERBUM sql AD "SELECT "
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, ", ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.title_field)
+  VINCIRE sql AD CONIURA concat(sql, ", ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.body_field)
+  VINCIRE sql AD CONIURA concat(sql, ", ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.media_url_field)
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.pk_field)
+  VINCIRE sql AD CONIURA concat(sql, " = ? LIMIT 1")
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, sql)
+  CONIURA stmt_bind_text(stmt, 1, pk)
+  SI CONIURA stmt_step(stmt) ET CONIURA stmt_has_row(stmt)
+    VINCIRE obj.pk AD CONIURA stmt_get_text(stmt, 0)
+    VINCIRE obj.title AD CONIURA stmt_get_text(stmt, 1)
+    VINCIRE obj.body AD CONIURA stmt_get_text(stmt, 2)
+    VINCIRE obj.media_url AD CONIURA stmt_get_text(stmt, 3)
+  FIN SI
+  CONIURA stmt_finalize(stmt)
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE embed_render_video_html(EmbedConfig cfg, EmbedObject obj) REDDE VERBUM
+  EVOCA VERBUM out AD "<!doctype html><html><head><meta charset=\"utf-8\"><title>"
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(obj.title))
+  VINCIRE out AD CONIURA concat(out, "</title></head><body><article class=\"embed-video\"><h1>")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(obj.title))
+  VINCIRE out AD CONIURA concat(out, "</h1><video controls src=\"")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(obj.media_url))
+  VINCIRE out AD CONIURA concat(out, "\"></video></article></body></html>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE embed_render_content_html(EmbedConfig cfg, EmbedObject obj) REDDE VERBUM
+  EVOCA VERBUM out AD "<!doctype html><html><head><meta charset=\"utf-8\"><title>"
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(obj.title))
+  VINCIRE out AD CONIURA concat(out, "</title></head><body><article class=\"embed-content\"><h1>")
+  VINCIRE out AD CONIURA concat(out, CONIURA html_encode(obj.title))
+  VINCIRE out AD CONIURA concat(out, "</h1><div class=\"body\">")
+  VINCIRE out AD CONIURA concat(out, obj.body)
+  VINCIRE out AD CONIURA concat(out, "</div></article></body></html>")
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE embed_handler_common(SPECULUM NIHIL db, VERBUM model_name, VERBUM kind, WebRequest req) REDDE WebResponse
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_load(db, model_name)
+  SI CONIURA len(cfg.model_name) == 0
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA SPECULUM NIHIL pk_opt AD CONIURA request_param(req, "pk")
+  SI CONIURA option_is_none GENUS(VERBUM)(pk_opt)
+    CONIURA option_free GENUS(VERBUM)(pk_opt)
+    REDDE CONIURA response_not_found()
+  FIN SI
+  EVOCA VERBUM pk AD CONIURA option_unwrap GENUS(VERBUM)(pk_opt)
+  CONIURA option_free GENUS(VERBUM)(pk_opt)
+  EVOCA VERBUM origin AD CONIURA request_header_or(req.headers, "origin", "")
+  SI NON CONIURA embed_origin_allowed(cfg, origin)
+    REDDE CONIURA response_with_body(403, "origin not allowed", WEB_RESPONSE_TEXT)
+  FIN SI
+  EVOCA EmbedObject obj AD CONIURA embed_load_object(db, cfg, pk)
+  SI CONIURA len(obj.pk) == 0
+    REDDE CONIURA response_not_found()
+  FIN SI
+  CONIURA embed_access_log_write(db, model_name, pk, origin, CONIURA request_header_or(req.headers, "referer", ""))
+  SI CONIURA compare(kind, "video") == 0
+    REDDE CONIURA response_html(CONIURA embed_render_video_html(cfg, obj))
+  FIN SI
+  REDDE CONIURA response_html(CONIURA embed_render_content_html(cfg, obj))
+EXPLICIT RITUALE
+
+RITUALE embed_video_handler(SPECULUM NIHIL db, VERBUM model_name, WebRequest req) REDDE WebResponse
+  REDDE CONIURA embed_handler_common(db, model_name, "video", req)
+EXPLICIT RITUALE
+
+RITUALE embed_content_handler(SPECULUM NIHIL db, VERBUM model_name, WebRequest req) REDDE WebResponse
+  REDDE CONIURA embed_handler_common(db, model_name, "content", req)
+EXPLICIT RITUALE
+
+RITUALE oembed_json_for_object(SPECULUM NIHIL db, VERBUM model_name, VERBUM kind, VERBUM pk, REX maxwidth) REDDE VERBUM
+  EVOCA EmbedConfig cfg AD CONIURA embed_config_load(db, model_name)
+  EVOCA EmbedObject obj AD CONIURA embed_load_object(db, cfg, pk)
+  EVOCA Json out AD CONIURA json_obj()
+  EVOCA VERBUM iframe_html AD "<iframe src=\""
+  SI CONIURA compare(kind, "video") == 0
+    VINCIRE iframe_html AD CONIURA concat(iframe_html, CONIURA concat(cfg.provider_url, CONIURA concat("/embed/video/", CONIURA concat(pk, "/"))))
+    CONIURA json_obj_push(out, "type", CONIURA json_str("video"))
+  ALITER
+    VINCIRE iframe_html AD CONIURA concat(iframe_html, CONIURA concat(cfg.provider_url, CONIURA concat("/embed/content/", CONIURA concat(pk, "/"))))
+    CONIURA json_obj_push(out, "type", CONIURA json_str("rich"))
+  FIN SI
+  VINCIRE iframe_html AD CONIURA concat(iframe_html, "\" width=\"")
+  VINCIRE iframe_html AD CONIURA concat(iframe_html, CONIURA stringify_int(maxwidth))
+  VINCIRE iframe_html AD CONIURA concat(iframe_html, "\" height=\"")
+  VINCIRE iframe_html AD CONIURA concat(iframe_html, CONIURA stringify_int(cfg.max_height))
+  VINCIRE iframe_html AD CONIURA concat(iframe_html, "\"></iframe>")
+  CONIURA json_obj_push(out, "version", CONIURA json_str("1.0"))
+  CONIURA json_obj_push(out, "title", CONIURA json_str(obj.title))
+  CONIURA json_obj_push(out, "provider_name", CONIURA json_str(cfg.provider_name))
+  CONIURA json_obj_push(out, "provider_url", CONIURA json_str(cfg.provider_url))
+  CONIURA json_obj_push(out, "html", CONIURA json_str(iframe_html))
+  CONIURA json_obj_push(out, "width", CONIURA json_num(cast GENUS(UMBRA)(maxwidth)))
+  CONIURA json_obj_push(out, "height", CONIURA json_num(cast GENUS(UMBRA)(cfg.max_height)))
+  REDDE CONIURA json_stringify(out)
+EXPLICIT RITUALE
+
+RITUALE oembed_handler(SPECULUM NIHIL db, WebRequest req) REDDE WebResponse
+  EVOCA SPECULUM NIHIL url_opt AD CONIURA request_query_first(req, "url")
+  SI CONIURA option_is_none GENUS(VERBUM)(url_opt)
+    CONIURA option_free GENUS(VERBUM)(url_opt)
+    REDDE CONIURA response_bad_request("missing url")
+  FIN SI
+  EVOCA VERBUM url AD CONIURA option_unwrap GENUS(VERBUM)(url_opt)
+  CONIURA option_free GENUS(VERBUM)(url_opt)
+  EVOCA VERUM is_video AD CONIURA find(url, "/embed/video/") != -1
+  EVOCA VERBUM kind AD "content"
+  EVOCA VERBUM marker AD "/embed/content/"
+  EVOCA VERBUM model_name AD "content"
+  SI is_video
+    VINCIRE kind AD "video"
+    VINCIRE marker AD "/embed/video/"
+    VINCIRE model_name AD "video"
+  FIN SI
+  EVOCA REX pos AD CONIURA find(url, marker)
+  SI pos == -1
+    REDDE CONIURA response_bad_request("invalid oembed url")
+  FIN SI
+  EVOCA REX start AD pos + CONIURA len(marker)
+  EVOCA REX rest_len AD CONIURA len(url)
+  EVOCA VERBUM rest AD CONIURA substring(url, start, rest_len)
+  EVOCA REX slash AD CONIURA find(rest, "/")
+  EVOCA VERBUM pk AD rest
+  SI slash != -1
+    VINCIRE pk AD CONIURA substring(rest, 0, slash)
+  FIN SI
+  EVOCA REX maxwidth AD 800
+  EVOCA SPECULUM NIHIL width_opt AD CONIURA request_query_first(req, "maxwidth")
+  SI CONIURA option_is_some GENUS(VERBUM)(width_opt)
+    VINCIRE maxwidth AD CONIURA parse_int(CONIURA option_unwrap GENUS(VERBUM)(width_opt))
+  FIN SI
+  CONIURA option_free GENUS(VERBUM)(width_opt)
+  REDDE CONIURA response_json_text(CONIURA oembed_json_for_object(db, model_name, kind, pk, maxwidth))
+EXPLICIT RITUALE
+
+RITUALE embed_export_sql(ExportConfig cfg) REDDE VERBUM
+  EVOCA VERBUM sql AD "SELECT "
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI i != 0
+      VINCIRE sql AD CONIURA concat(sql, ", ")
+    FIN SI
+    VINCIRE sql AD CONIURA concat(sql, *field_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE sql AD CONIURA concat(sql, " FROM ")
+  VINCIRE sql AD CONIURA concat(sql, cfg.table_name)
+  SI cfg.max_rows > 0
+    VINCIRE sql AD CONIURA concat(sql, " LIMIT ")
+    VINCIRE sql AD CONIURA concat(sql, CONIURA stringify_int(cfg.max_rows))
+  FIN SI
+  REDDE sql
+EXPLICIT RITUALE
+
+RITUALE embed_export_json(DbHandle dbh, ExportConfig cfg) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, CONIURA embed_export_sql(cfg), params)
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    EVOCA Json obj AD CONIURA json_obj()
+    EVOCA REX i AD 0
+    EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+    DUM i < n
+      EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+      CONIURA json_obj_push(obj, *field_ptr, CONIURA json_str(CONIURA dbrows_get_text(rows, i)))
+      VINCIRE i AD i + 1
+    FIN DUM
+    CONIURA json_arr_push(arr, obj)
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE embed_export_csv(DbHandle dbh, ExportConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(cfg.fields)
+  DUM i < n
+    EVOCA SPECULUM VERBUM field_ptr AD CONIURA fluxus_get(cfg.fields, i)
+    SI i != 0
+      VINCIRE out AD CONIURA concat(out, ",")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, *field_ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "\n")
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, CONIURA embed_export_sql(cfg), params)
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE i AD 0
+    VINCIRE n AD CONIURA fluxus_len(cfg.fields)
+    DUM i < n
+      SI i != 0
+        VINCIRE out AD CONIURA concat(out, ",")
+      FIN SI
+      VINCIRE out AD CONIURA concat(out, CONIURA api_csv_escape_field(CONIURA dbrows_get_text(rows, i)))
+      VINCIRE i AD i + 1
+    FIN DUM
+    VINCIRE out AD CONIURA concat(out, "\n")
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE embed_bearer_authorized(SPECULUM NIHIL db, TokenConfig tok_cfg, WebRequest req) REDDE VERUM
+  EVOCA SPECULUM NIHIL bearer_opt AD CONIURA request_bearer_token(req)
+  SI CONIURA option_is_none GENUS(VERBUM)(bearer_opt)
+    CONIURA option_free GENUS(VERBUM)(bearer_opt)
+    REDDE FALSUM
+  FIN SI
+  EVOCA VERBUM token AD CONIURA option_unwrap GENUS(VERBUM)(bearer_opt)
+  CONIURA option_free GENUS(VERBUM)(bearer_opt)
+  EVOCA SPECULUM NIHIL verified AD CONIURA token_verify(db, tok_cfg, token)
+  REDDE CONIURA result_is_ok GENUS(TokenPayload, TokenError)(verified)
+EXPLICIT RITUALE
+
+RITUALE embed_export_json_handler(SPECULUM NIHIL db, DbHandle dbh, TokenConfig tok_cfg, ExportConfig cfg, WebRequest req) REDDE WebResponse
+  SI NON CONIURA embed_bearer_authorized(db, tok_cfg, req)
+    REDDE CONIURA response_unauthorized("invalid bearer token")
+  FIN SI
+  EVOCA WebResponse res AD CONIURA response_json_text(CONIURA embed_export_json(dbh, cfg))
+  CONIURA response_set_header(SPECULUM res, "content-disposition", CONIURA concat("attachment; filename=\"", CONIURA concat(cfg.filename_prefix, ".json\"")))
+  REDDE res
+EXPLICIT RITUALE
+
+RITUALE embed_export_csv_admin_handler(DbHandle dbh, ExportConfig cfg, WebRequest req, VERBUM admin_secret) REDDE WebResponse
+  EVOCA SPECULUM NIHIL auth_res AD CONIURA request_basic_auth(req)
+  SI CONIURA result_is_err GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+    EVOCA WebResponse denied AD CONIURA response_unauthorized("basic auth required")
+    CONIURA response_set_header(SPECULUM denied, "www-authenticate", "Basic realm=\"civitas-export\"")
+    REDDE denied
+  FIN SI
+  EVOCA WebRequestBasicAuth auth AD CONIURA result_unwrap GENUS(WebRequestBasicAuth, VERBUM)(auth_res)
+  SI CONIURA compare(auth.username, "admin") != 0 VEL CONIURA compare(auth.password, admin_secret) != 0
+    EVOCA WebResponse denied AD CONIURA response_unauthorized("basic auth invalid")
+    CONIURA response_set_header(SPECULUM denied, "www-authenticate", "Basic realm=\"civitas-export\"")
+    REDDE denied
+  FIN SI
+  EVOCA WebResponse res AD CONIURA response_text(CONIURA embed_export_csv(dbh, cfg))
+  CONIURA response_set_header(SPECULUM res, "content-type", "text/csv; charset=utf-8")
+  CONIURA response_set_header(SPECULUM res, "content-disposition", CONIURA concat("attachment; filename=\"", CONIURA concat(cfg.filename_prefix, ".csv\"")))
+  REDDE res
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

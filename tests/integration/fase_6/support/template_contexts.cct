@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase6_template_contexts"
+
+ADVOCARE "cct/fluxus.cct"
+
+SIGILLUM PostCardContext
+  titulo: VERBUM
+  resumo: VERBUM
+  body_html: VERBUM
+  views: REX
+  featured: VERUM
+FIN SIGILLUM
+
+SIGILLUM BlogPageContext
+  page_title: VERBUM
+  nome: VERBUM
+  bio_html: VERBUM
+  is_admin: VERUM
+  status: VERBUM
+  post_count: REX
+  posts: SPECULUM NIHIL   -- FLUXUS(PostCardContext)
+  post: PostCardContext
+FIN SIGILLUM
+
+EXPLICIT grimoire

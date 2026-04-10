@@ -1,0 +1,53 @@
+INCIPIT grimoire "fase12_support_common"
+
+ADVOCARE "../../fase_11/support/common.cct"
+ADVOCARE "../../fase_8/8c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_arq.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_redis.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle_sqlite.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase12_tmp_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA concat("tests/tmp/fase_12/", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase12_reset_dir(VERBUM path) REDDE NIHIL
+  CONIURA phase11_reset_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase12_dbh_sqlite(VERBUM test_name) REDDE DbHandle
+  REDDE CONIURA phase11_dbh_sqlite(CONIURA concat("fase12_", test_name))
+EXPLICIT RITUALE
+
+RITUALE phase12_mem_cache(VERBUM namespace) REDDE CacheHandle
+  REDDE CONIURA cache_mem_new(namespace, 3)
+EXPLICIT RITUALE
+
+RITUALE phase12_file_cache(VERBUM test_name, VERBUM namespace) REDDE CacheHandle
+  EVOCA VERBUM root AD CONIURA phase12_tmp_dir(test_name)
+  CONIURA phase12_reset_dir(root)
+  REDDE CONIURA cache_arq_new(root, namespace)
+EXPLICIT RITUALE
+
+RITUALE phase12_redis_cache(VERBUM test_name, VERBUM namespace) REDDE CacheHandle
+  EVOCA VERBUM root AD CONIURA phase8_8c_tmp_dir(CONIURA concat("fase12_", test_name))
+  CONIURA phase11_reset_dir(root)
+  REDDE CONIURA cache_redis_new(CONIURA phase8_8c_connect_fake_redis(root), namespace)
+EXPLICIT RITUALE
+
+RITUALE phase12_write_table_items(DbHandle dbh) REDDE NIHIL
+  CONIURA db_exec(dbh.sqlite_conn, "CREATE TABLE items(id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO items(id, name, active) VALUES(1, 'alpha', 1)")
+  CONIURA db_exec(dbh.sqlite_conn, "INSERT INTO items(id, name, active) VALUES(2, 'beta', 0)")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

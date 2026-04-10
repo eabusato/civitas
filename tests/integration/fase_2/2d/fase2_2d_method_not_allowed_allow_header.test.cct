@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase2_2d_method_not_allowed_allow_header_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE get_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("get"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE post_handler(SPECULUM NIHIL req_ref, SPECULUM NIHIL out_ref) REDDE NIHIL
+  EVOCA SPECULUM WebResponse out
+  VINCIRE out AD out_ref
+  CONIURA response_fill(out, CONIURA response_text("post"))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "GET", "/items", "items.index", "get_handler", get_handler), 1)
+  CONIURA phase2_router_ok_or_fail(CONIURA router_add(SPECULUM router, "POST", "/items", "items.create", "post_handler", post_handler), 2)
+
+  EVOCA WebResponse res AD CONIURA router_dispatch(router, CONIURA phase2_router_request("PATCH", "/items"))
+  SI res.status != 405
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA response_header_or(res, "allow", ""), "GET, POST") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

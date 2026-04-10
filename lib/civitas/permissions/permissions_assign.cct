@@ -1,0 +1,38 @@
+INCIPIT grimoire "civitas_permissions_assign"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "permissions.cct"
+
+RITUALE user_perm_conceder(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO user_permissions (user_id, permissao) VALUES (?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE user_perm_revogar(SPECULUM NIHIL db, VERBUM user_id, VERBUM permissao) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM user_permissions WHERE user_id = ? AND permissao = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, permissao)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE user_group_adicionar(SPECULUM NIHIL db, VERBUM user_id, REX group_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (?, ?)")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, group_id)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE user_group_remover(SPECULUM NIHIL db, VERBUM user_id, REX group_id) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "DELETE FROM user_groups WHERE user_id = ? AND group_id = ?")
+  CONIURA stmt_bind_text(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, group_id)
+  CONIURA permissions_exec_stmt_no_rows(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

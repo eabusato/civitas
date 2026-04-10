@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_bench_root"
+
+ADVOCARE "bench/bench.cct"
+
+EXPLICIT grimoire

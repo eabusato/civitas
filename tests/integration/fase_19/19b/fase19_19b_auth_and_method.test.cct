@@ -1,0 +1,50 @@
+INCIPIT grimoire "fase19_19b_auth_and_method"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api_views/api_views.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_auth_required_and_method_guard() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19b_auth")
+  EVOCA ApiViewConfig cfg
+  EVOCA TokenConfig tok_cfg AD CONIURA auth_test_token_config()
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "Secured", "body-1", 10, "{\"id\":1,\"name\":\"Ana\",\"email\":\"ana@example.com\"}")
+  CONIURA phase19_auth_schema_up(stack.db)
+  CONIURA api_view_config_init(SPECULUM cfg, "Post", "posts", "id", "PostSerializer")
+  VINCIRE cfg.auth_required AD VERUM
+  CONIURA api_view_config_reset_methods(SPECULUM cfg)
+  CONIURA api_view_config_allow_method(SPECULUM cfg, API_GET)
+
+  EVOCA WebRequest req AD CONIURA phase19_request("GET", "/api/v1/posts", "")
+  EVOCA WebResponse res AD CONIURA api_view_list(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, req)
+  SI res.status != 401
+    IACE "missing bearer should return 401"
+  FIN SI
+
+  EVOCA VERBUM token AD CONIURA phase19_auth_token_for_new_user(stack.db, "posts.read")
+  EVOCA WebRequest auth_req AD CONIURA phase19_request_with_bearer("GET", "/api/v1/posts", "", token)
+  EVOCA WebResponse auth_res AD CONIURA api_view_list(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, auth_req)
+  SI auth_res.status != 200
+    IACE "valid bearer should pass"
+  FIN SI
+
+  EVOCA WebRequest bad_req AD CONIURA phase19_request("POST", "/api/v1/posts", "{}")
+  EVOCA WebResponse bad_res AD CONIURA api_view_create(stack.serializers, stack.db, stack.dbh, tok_cfg, cfg, bad_req)
+  SI bad_res.status != 405
+    IACE "method guard should return 405"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_auth_required_and_method_guard()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

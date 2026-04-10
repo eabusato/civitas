@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase22_22c_apply_html_only"
+
+ADVOCARE "../../../../lib/civitas/dev_livereload/dev_livereload.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LivereloadConfig cfg AD CONIURA livereload_config_default()
+  EVOCA WebResponse html_res AD CONIURA response_html("<html><body>ok</body></html>")
+  EVOCA WebResponse json_res AD CONIURA response_json_text("{\"ok\":true}")
+  EVOCA WebResponse html_out AD CONIURA livereload_apply(html_res, cfg)
+  EVOCA WebResponse json_out AD CONIURA livereload_apply(json_res, cfg)
+  SI CONIURA find(html_out.body, "id=\"civitas-livereload\"") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(json_out.body, "id=\"civitas-livereload\"") != -1
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(json_out.body, "{\"ok\":true}") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

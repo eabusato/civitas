@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase23_23c_migrate_applies_pending_sql"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_management/civitas_management.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool.cct"
+ADVOCARE "../../../../lib/civitas/pool/pool_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23c_migrate_applies_pending_sql")
+  EVOCA VERBUM migrations_dir AD CONIURA path_join(root, "migrations")
+  CONIURA mkdir_all(migrations_dir)
+  CONIURA write_all(CONIURA path_join(migrations_dir, "0001_create_items.sql"), "-- UP\nCREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, title TEXT NOT NULL);\nINSERT INTO items (id, title) VALUES (1, 'first');\n\n-- DOWN\nDROP TABLE IF EXISTS items;\n")
+  EVOCA ManagementProject proj AD CONIURA mgmt_project_default(CONIURA path_join(root, "civitas.toml"))
+  VINCIRE proj.db_url AD CONIURA path_join(root, "var/app.db")
+  VINCIRE proj.migrations_dir AD migrations_dir
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_migrate_run(proj))
+    REDDE 1
+  FIN SI
+  EVOCA PoolOpenResult opened AD CONIURA pool_sqlite_open_handle(proj.db_url)
+  EVOCA SPECULUM DbHandle dbh_ptr AD opened.handle
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  EVOCA DbRows rows AD CONIURA dbh_query(*dbh_ptr, "SELECT COUNT(*) FROM items", params)
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    REDDE 2
+  FIN SI
+  SI CONIURA dbrows_get_int(rows, 0) != 1
+    REDDE 3
+  FIN SI
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

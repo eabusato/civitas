@@ -1,0 +1,85 @@
+INCIPIT grimoire "fase18_18d_media_approval"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_schema.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_queue.cct"
+ADVOCARE "../../../../lib/civitas/admin_moderation/admin_moderation_decide.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_media_approval_marks_job() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18d_media_approval")
+  EVOCA TaskConfig task_cfg AD CONIURA task_config_default()
+  CONIURA moderation_schema_up(stack.dbh)
+  CONIURA tasks_schema_up(stack.dbh)
+  CONIURA media_jobs_schema_up(stack.dbh)
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_param_text(SPECULUM params, "job-1")
+  CONIURA dbh_param_text(SPECULUM params, "obj-1")
+  CONIURA dbh_param_text(SPECULUM params, "{\"path\":\"/tmp/a\",\"hash\":\"h1\",\"size\":10,\"mime\":\"image/png\",\"original_name\":\"a.png\",\"state\":\"temp\"}")
+  CONIURA dbh_param_text(SPECULUM params, "/tmp/a")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, "thumb")
+  CONIURA dbh_param_text(SPECULUM params, "waiting_approval")
+  CONIURA dbh_param_text(SPECULUM params, "h1")
+  CONIURA dbh_param_text(SPECULUM params, "thumb")
+  CONIURA dbh_param_text(SPECULUM params, "/tmp/out")
+  CONIURA dbh_param_int(SPECULUM params, 3)
+  CONIURA dbh_param_int(SPECULUM params, 1000)
+  CONIURA dbh_param_int(SPECULUM params, 1)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_int(SPECULUM params, 0)
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_text(SPECULUM params, "")
+  CONIURA dbh_param_int(SPECULUM params, 1000)
+  CONIURA dbh_param_int(SPECULUM params, 1000)
+  CONIURA dbh_exec(stack.dbh, "INSERT INTO media_jobs (id, object_id, descriptor_json, source_path, fallback_path, job_kind, state, input_hash, output_variant, output_path, attempts, max_attempts, timeout_ms, require_approval, approved, allow_fallback, last_error_json, result_json, created_at_unix, updated_at_unix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  EVOCA ModerationItem item
+  VINCIRE item.id AD "mod-media"
+  VINCIRE item.kind AD MODERATION_IMAGE
+  VINCIRE item.state AD MOD_PENDING
+  VINCIRE item.object_id AD "job-1"
+  VINCIRE item.object_type AD "media_job"
+  VINCIRE item.submitter_id AD "user-1"
+  VINCIRE item.content_preview_json AD "{}"
+  VINCIRE item.report_reason AD ""
+  VINCIRE item.assigned_to AD ""
+  VINCIRE item.priority AD 1
+  VINCIRE item.created_at_unix AD 1000
+  VINCIRE item.updated_at_unix AD 1000
+  CONIURA moderation_item_create(stack.dbh, item)
+  CONIURA moderation_decide(stack.dbh, "mod-media", "approve", "ok", "mod-a", FALSUM, task_cfg)
+  EVOCA DbRows rows AD CONIURA dbh_query(stack.dbh, "SELECT state, approved FROM media_jobs WHERE id = 'job-1'", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM rows)
+    IACE "media job missing after approval"
+  FIN SI
+  SI CONIURA compare(CONIURA dbrows_get_text(rows, 0), "queued") != 0
+    IACE "media job state not queued after approval"
+  FIN SI
+  SI CONIURA dbrows_get_int(rows, 1) != 1
+    IACE "media job approved flag missing"
+  FIN SI
+  CONIURA dbrows_close(rows)
+  EVOCA DbRows tasks_rows AD CONIURA dbh_query(stack.dbh, "SELECT COUNT(*) FROM task_queue WHERE task_name = 'media.process'", CONIURA dbh_params_new())
+  SI NON CONIURA dbrows_next(SPECULUM tasks_rows)
+    IACE "task queue count missing"
+  FIN SI
+  SI CONIURA dbrows_get_int(tasks_rows, 0) != 1
+    IACE "media approval did not enqueue process task"
+  FIN SI
+  CONIURA dbrows_close(tasks_rows)
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_media_approval_marks_job()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

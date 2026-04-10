@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase16_16d_open_clear_and_get"
+
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test.cct"
+ADVOCARE "../../../../lib/civitas/mail_test/mail_test_assert.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer.cct"
+ADVOCARE "../../../../lib/civitas/mailer/mailer_send.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Mailer m AD CONIURA mailer_test_open()
+  SI NON CONIURA mail_test_assert_nenhum_enviado(m)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 1
+  FIN SI
+  EVOCA MailMessage msg AD CONIURA mailer_simple("ana@test.local", "Ana", "Ping", "Body", "")
+  EVOCA SPECULUM NIHIL send_res AD CONIURA mailer_send(SPECULUM m, msg)
+  SI CONIURA result_is_err GENUS(MailSendResult, MailerError)(send_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 2
+  FIN SI
+  SI CONIURA mailer_test_count(m) != 1
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 3
+  FIN SI
+  EVOCA SPECULUM NIHIL get_res AD CONIURA mailer_test_get(m, 0)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(get_res)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 4
+  FIN SI
+  CONIURA mailer_test_clear(SPECULUM m)
+  SI NON CONIURA mail_test_assert_nenhum_enviado(m)
+    CONIURA mailer_test_close(SPECULUM m)
+    REDDE 5
+  FIN SI
+  CONIURA mailer_test_close(SPECULUM m)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

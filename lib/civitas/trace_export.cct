@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_trace_export_root"
+
+ADVOCARE "trace_export/trace_export.cct"
+
+EXPLICIT grimoire

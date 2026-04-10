@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase5_5c_app_dispatch_route_limit_middleware_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5c_tmp_dir("5c_app_route_limit")
+  EVOCA Application app AD CONIURA phase5_5c_new_app(
+    root,
+    "[app]\nname = \"f5c\"\nallowed_hosts = [\"example.test\"]\n"
+  )
+  EVOCA SPECULUM NIHIL store AD CONIURA abuse_route_store_new()
+  EVOCA SPECULUM NIHIL rules AD CONIURA abuse_route_rules_new()
+  EVOCA WebRequest req AD CONIURA phase5_request("GET", "/login")
+  EVOCA WebResponse first_res AD CONIURA response_new(500)
+  EVOCA WebResponse second_res AD CONIURA response_new(500)
+
+  CONIURA abuse_route_rules_add(rules, CONIURA rate_limit_rule_make(RlcAuth, 1, 60, 0))
+  CONIURA phase5_5c_install_route_limit(SPECULUM app, store, rules)
+  CONIURA phase5_5c_register_route(SPECULUM app, "GET", "/login", "login", RlcAuth)
+
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM req, SPECULUM first_res)
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM req, SPECULUM second_res)
+
+  SI first_res.status != 200
+    REDDE 1
+  FIN SI
+  SI second_res.status != 429
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA request_header_or(second_res.headers, "retry-after", ""), "60") != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

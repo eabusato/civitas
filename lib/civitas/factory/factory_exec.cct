@@ -1,0 +1,69 @@
+INCIPIT grimoire "civitas_factory_exec"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "factory.cct"
+ADVOCARE "factory_build.cct"
+
+RITUALE factory_json_to_sql(Json v) REDDE VERBUM
+  QUANDO v
+    CASO JsonNull:
+      REDDE "NULL"
+    CASO JsonBool(b):
+      SI b
+        REDDE "1"
+      FIN SI
+      REDDE "0"
+    CASO JsonNum(n):
+      SI cast GENUS(REX)(n) == n
+        REDDE CONIURA stringify_int(cast GENUS(REX)(n))
+      FIN SI
+      REDDE CONIURA stringify_real(n)
+    CASO JsonStr(s):
+      EVOCA VERBUM esc AD CONIURA replace_all(s, "'", "''")
+      REDDE CONIURA concat(CONIURA concat("'", esc), "'")
+    CASO JsonArr(h):
+      IACE "factory_json_to_sql: array values are not supported"
+    CASO JsonObj(h):
+      IACE "factory_json_to_sql: object values are not supported"
+  FIN QUANDO
+  REDDE "NULL"
+EXPLICIT RITUALE
+
+RITUALE factory_insert(SPECULUM NIHIL db, VERBUM modelo, Json obj) REDDE REX
+  EVOCA REX n AD CONIURA json_obj_len(obj)
+  EVOCA VERBUM colunas AD ""
+  EVOCA VERBUM valores AD ""
+  EVOCA REX i AD 0
+  DUM i < n
+    EVOCA VERBUM k AD CONIURA json_obj_key_at(obj, i)
+    EVOCA Json v AD CONIURA json_obj_value_at(obj, i)
+    SI i > 0
+      VINCIRE colunas AD CONIURA concat(colunas, ", ")
+      VINCIRE valores AD CONIURA concat(valores, ", ")
+    FIN SI
+    VINCIRE colunas AD CONIURA concat(colunas, k)
+    VINCIRE valores AD CONIURA concat(valores, CONIURA factory_json_to_sql(v))
+    VINCIRE i AD i + 1
+  FIN DUM
+  EVOCA VERBUM sql AD CONIURA concat("INSERT INTO ", modelo)
+  VINCIRE sql AD CONIURA concat(sql, " (")
+  VINCIRE sql AD CONIURA concat(sql, colunas)
+  VINCIRE sql AD CONIURA concat(sql, ") VALUES (")
+  VINCIRE sql AD CONIURA concat(sql, valores)
+  VINCIRE sql AD CONIURA concat(sql, ")")
+  CONIURA db_exec(db, sql)
+  REDDE CONIURA db_scalar_int(db, "SELECT last_insert_rowid()")
+EXPLICIT RITUALE
+
+RITUALE factory_create(SPECULUM NIHIL db, FactoryDef def) REDDE REX
+  REDDE CONIURA factory_insert(db, def.modelo, CONIURA factory_build(def))
+EXPLICIT RITUALE
+
+RITUALE factory_create_with(SPECULUM NIHIL db, FactoryDef def, Json overrides) REDDE REX
+  REDDE CONIURA factory_insert(db, def.modelo, CONIURA factory_build_with(def, overrides))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

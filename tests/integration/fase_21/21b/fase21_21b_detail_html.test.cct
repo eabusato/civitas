@@ -1,0 +1,39 @@
+INCIPIT grimoire "fase21_21b_detail_html"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/trace_panel/trace_panel.cct"
+ADVOCARE "../../../../lib/civitas/trace_store/trace_store.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase21_reset_root("21b_detail_html")
+  EVOCA VERBUM trace_dir AD CONIURA path_join(root, "traces")
+  EVOCA TraceStore store AD CONIURA trace_store_open(CONIURA phase21_trace_db_path("21b_detail_html"), trace_dir, 20, 24)
+  EVOCA VERBUM file_path AD CONIURA phase21_write_sample_trace(trace_dir, "trace-detail")
+  CONIURA trace_store_index_trace(SPECULUM store, "trace-detail", "/feed", "GET", 200, 180, 4, "user-1", file_path, 1700)
+  EVOCA TracePanelConfig cfg AD CONIURA trace_panel_default_config(SPECULUM store)
+  VINCIRE cfg.render_cfg AD CONIURA phase21_render_config("21b_detail_html")
+  EVOCA HttpRequest req AD CONIURA http_request_new("GET", "/civitas/traces/trace-detail")
+  EVOCA HttpResponse res AD CONIURA trace_panel_handle(req, cfg)
+  CONIURA trace_store_close(SPECULUM store)
+  SI CONIURA http_response_status(res) != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(res), "trace-detail") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(res), "<svg") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(res), "Replay this request") == -1
+    REDDE 4
+  FIN SI
+  SI CONIURA find(CONIURA http_response_body(res), "trace-packet") == -1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

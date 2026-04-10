@@ -1,0 +1,90 @@
+INCIPIT grimoire "civitas_trace_config"
+
+ADVOCARE "cct/config.cct"
+ADVOCARE "cct/env.cct"
+ADVOCARE "cct/instrument.cct"
+ADVOCARE "cct/parse.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM TraceConfig
+  enabled: VERUM
+  mode: InstrumentMode
+  sample_rate: REX
+  trace_dir: VERBUM
+FIN SIGILLUM
+
+RITUALE trace_config_default() REDDE TraceConfig
+  EVOCA TraceConfig cfg
+  VINCIRE cfg.enabled AD FALSUM
+  VINCIRE cfg.mode AD INSTR_MODE_OFF
+  VINCIRE cfg.sample_rate AD 1
+  VINCIRE cfg.trace_dir AD "tests/tmp/traces"
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE trace_config_mode_from_string(VERBUM raw) REDDE InstrumentMode
+  EVOCA VERBUM lower AD CONIURA to_lower(CONIURA trim(raw))
+  SI CONIURA compare(lower, "full") == 0
+    REDDE INSTR_MODE_FULL
+  FIN SI
+  SI CONIURA compare(lower, "minimal") == 0
+    REDDE INSTR_MODE_MINIMAL
+  FIN SI
+  REDDE INSTR_MODE_OFF
+EXPLICIT RITUALE
+
+RITUALE trace_config_bool_from_string(VERBUM raw) REDDE VERUM
+  EVOCA VERBUM lower AD CONIURA to_lower(CONIURA trim(raw))
+  REDDE CONIURA compare(lower, "true") == 0 VEL CONIURA compare(lower, "1") == 0 VEL CONIURA compare(lower, "yes") == 0 VEL CONIURA compare(lower, "on") == 0
+EXPLICIT RITUALE
+
+RITUALE trace_config_load(SPECULUM NIHIL cfg_ptr) REDDE TraceConfig
+  EVOCA TraceConfig cfg AD CONIURA trace_config_default()
+  EVOCA VERBUM enabled_raw AD ""
+  EVOCA VERBUM mode_raw AD ""
+  EVOCA VERBUM sample_raw AD ""
+  EVOCA VERBUM dir_raw AD ""
+
+  SI cfg_ptr != NIHIL
+    VINCIRE enabled_raw AD CONIURA config_get_or(cfg_ptr, "trace", "enabled", enabled_raw)
+    VINCIRE mode_raw AD CONIURA config_get_or(cfg_ptr, "trace", "mode", mode_raw)
+    VINCIRE sample_raw AD CONIURA config_get_or(cfg_ptr, "trace", "sample_rate", sample_raw)
+    VINCIRE dir_raw AD CONIURA config_get_or(cfg_ptr, "trace", "dir", dir_raw)
+  FIN SI
+
+  SI CONIURA has_env("CIVITAS_TRACE_ENABLED")
+    VINCIRE enabled_raw AD CONIURA getenv("CIVITAS_TRACE_ENABLED")
+  FIN SI
+  SI CONIURA has_env("CIVITAS_TRACE_MODE")
+    VINCIRE mode_raw AD CONIURA getenv("CIVITAS_TRACE_MODE")
+  FIN SI
+  SI CONIURA has_env("CIVITAS_TRACE_SAMPLE_RATE")
+    VINCIRE sample_raw AD CONIURA getenv("CIVITAS_TRACE_SAMPLE_RATE")
+  FIN SI
+  SI CONIURA has_env("CIVITAS_TRACE_DIR")
+    VINCIRE dir_raw AD CONIURA getenv("CIVITAS_TRACE_DIR")
+  FIN SI
+
+  SI CONIURA len(enabled_raw) != 0
+    VINCIRE cfg.enabled AD CONIURA trace_config_bool_from_string(enabled_raw)
+  FIN SI
+  SI CONIURA len(mode_raw) != 0
+    VINCIRE cfg.mode AD CONIURA trace_config_mode_from_string(mode_raw)
+  FIN SI
+  SI CONIURA len(sample_raw) != 0 ET CONIURA is_int(sample_raw)
+    VINCIRE cfg.sample_rate AD CONIURA parse_int(sample_raw)
+  FIN SI
+  SI cfg.sample_rate <= 0
+    VINCIRE cfg.sample_rate AD 1
+  FIN SI
+  SI CONIURA len(dir_raw) != 0
+    VINCIRE cfg.trace_dir AD dir_raw
+  FIN SI
+
+  SI NON cfg.enabled
+    VINCIRE cfg.mode AD INSTR_MODE_OFF
+  FIN SI
+  REDDE cfg
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,46 @@
+INCIPIT grimoire "fase2_2b_gzip_and_head_policy_test"
+
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "../../../../lib/civitas/request_http.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA WebResponse gzip_res AD CONIURA response_text("compress me")
+  CONIURA response_enable_gzip(SPECULUM gzip_res)
+  EVOCA HttpRequest gzip_req AD CONIURA http_request_new("GET", "/gzip")
+  CONIURA http_headers_set_or_push(CONIURA http_request_headers_handle(gzip_req), "Accept-Encoding", "gzip, deflate")
+  EVOCA SPECULUM NIHIL gzip_req_res AD CONIURA request_from_http(gzip_req, "127.0.0.1", "http", "example.test", "req-gzip")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(gzip_req_res)
+    REDDE 1
+  FIN SI
+  EVOCA SPECULUM NIHIL http_gzip AD CONIURA response_to_http_with_request(gzip_res, CONIURA result_unwrap GENUS(WebRequest, VERBUM)(gzip_req_res))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_gzip)
+    REDDE 2
+  FIN SI
+  EVOCA HttpResponse gz_out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_gzip)
+  SI CONIURA compare(CONIURA http_response_header(gz_out, "content-encoding", ""), "gzip") != 0
+    REDDE 3
+  FIN SI
+
+  EVOCA WebResponse head_res AD CONIURA response_text("body should disappear")
+  EVOCA HttpRequest head_req AD CONIURA http_request_new("HEAD", "/head")
+  EVOCA SPECULUM NIHIL head_req_res AD CONIURA request_from_http(head_req, "127.0.0.1", "http", "example.test", "req-head")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(head_req_res)
+    REDDE 4
+  FIN SI
+  EVOCA SPECULUM NIHIL http_head AD CONIURA response_to_http_with_request(head_res, CONIURA result_unwrap GENUS(WebRequest, VERBUM)(head_req_res))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_head)
+    REDDE 5
+  FIN SI
+  SI CONIURA len(CONIURA http_response_body(CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_head))) != 0
+    REDDE 6
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

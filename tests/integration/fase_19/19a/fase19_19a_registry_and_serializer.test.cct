@@ -1,0 +1,33 @@
+INCIPIT grimoire "fase19_19a_registry_and_serializer"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/api/api.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_registry_and_serializer_output() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19a_registry")
+  SI CONIURA api_serializer_registry_len(stack.serializers) != 2
+    IACE "serializer registry len mismatch"
+  FIN SI
+  EVOCA SPECULUM SerializerConfig post_cfg AD CONIURA phase19_get_post_serializer(stack.serializers)
+  EVOCA VERBUM row_json AD "{\"id\":7,\"title\":\"Hello\",\"body\":\"secret\",\"published_at\":123,\"author\":{\"id\":2,\"name\":\"Ana\",\"email\":\"ana@example.com\"}}"
+  EVOCA VERBUM out AD CONIURA serializer_to_json(stack.serializers, *post_cfg, row_json)
+  SI CONIURA find(out, "\"title\":\"Hello\"") == -1
+    IACE "serialized title missing"
+  FIN SI
+  SI CONIURA find(out, "\"body\"") != -1
+    IACE "write_only field leaked in serializer output"
+  FIN SI
+  SI CONIURA find(out, "\"author\":{\"id\":2,\"name\":\"Ana\",\"email\":\"ana@example.com\"}") == -1
+    IACE "nested serializer output mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_registry_and_serializer_output()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

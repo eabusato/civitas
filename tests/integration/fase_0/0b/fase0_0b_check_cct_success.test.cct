@@ -1,0 +1,14 @@
+INCIPIT grimoire "fase0_0b_check_cct_success_test"
+
+ADVOCARE "../support/common.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM log AD CONIURA tmp_file("fase0_0b_check_cct_success.log")
+  CONIURA cleanup_file(log)
+  SI CONIURA run_to_log("make check-cct", log) != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

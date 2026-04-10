@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase8_8b_roundtrip_json_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/flash/flash.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL msgs AD CONIURA fluxus_init(MENSURA(FlashMessage))
+  EVOCA FlashMessage a
+  EVOCA FlashMessage b
+  VINCIRE a.level AD FlWarning
+  VINCIRE a.texto AD "Primeira"
+  VINCIRE b.level AD FlError
+  VINCIRE b.texto AD "Segunda"
+  CONIURA fluxus_push(msgs, SPECULUM a)
+  CONIURA fluxus_push(msgs, SPECULUM b)
+
+  EVOCA VERBUM json AD CONIURA flash_to_json(msgs)
+  EVOCA SPECULUM NIHIL parsed AD CONIURA flash_from_json(json)
+  EVOCA SPECULUM FlashMessage first_ptr AD CONIURA fluxus_get(parsed, 0)
+  EVOCA SPECULUM FlashMessage second_ptr AD CONIURA fluxus_get(parsed, 1)
+  EVOCA FlashMessage first AD *first_ptr
+  EVOCA FlashMessage second AD *second_ptr
+
+  SI CONIURA fluxus_len(parsed) != 2
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(first.texto, "Primeira") != 0
+    REDDE 2
+  FIN SI
+  SI NON CONIURA flash_level_equals(second.level, FlError)
+    REDDE 3
+  FIN SI
+  CONIURA fluxus_free(msgs)
+  CONIURA fluxus_free(parsed)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,283 @@
+INCIPIT grimoire "civitas_sanitize_contact"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM EmailSanitizeConfig
+  normalize: VERUM
+  reject_disposable: VERUM
+  disposable_domains: SPECULUM NIHIL
+FIN SIGILLUM
+
+ORDO EmailSanitizeResult
+  EsrOk,
+  EsrInvalidFormat,
+  EsrDisposableDomain,
+  EsrInvalidDomain
+FIN ORDO
+
+SIGILLUM PhoneConfig
+  country_code: VERBUM
+  allow_international: VERUM
+FIN SIGILLUM
+
+ORDO PhoneNormalizeResult
+  PnrOk,
+  PnrInvalidFormat,
+  PnrUnsupportedCountry
+FIN ORDO
+
+SIGILLUM PhoneNormalized
+  result: PhoneNormalizeResult
+  e164: VERBUM
+  display: VERBUM
+FIN SIGILLUM
+
+RITUALE email_string_map_find_key(SPECULUM NIHIL params, VERBUM key) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERUM)(params)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI CONIURA compare(*key_ptr, key) == 0
+      REDDE CONIURA Some GENUS(VERBUM)(*key_ptr)
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE CONIURA None GENUS(VERBUM)()
+EXPLICIT RITUALE
+
+RITUALE email_domain_has_tld(VERBUM domain) REDDE VERUM
+  EVOCA REX dot_idx AD CONIURA find(domain, ".")
+  EVOCA VERBUM last AD ""
+  SI dot_idx == -1 VEL CONIURA starts_with(domain, ".") VEL CONIURA ends_with(domain, ".")
+    REDDE FALSUM
+  FIN SI
+  VINCIRE last AD CONIURA substring(domain, dot_idx + 1, CONIURA len(domain))
+  REDDE CONIURA len(last) >= 2
+EXPLICIT RITUALE
+
+RITUALE email_domain_valid(VERBUM domain) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(domain)
+  EVOCA VERUM previous_dot AD FALSUM
+
+  SI NON CONIURA email_domain_has_tld(domain)
+    REDDE FALSUM
+  FIN SI
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(domain, i)
+    SI ch == 46
+      SI previous_dot
+        REDDE FALSUM
+      FIN SI
+      VINCIRE previous_dot AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+
+    SI (ch >= 97 ET ch <= 122) VEL (ch >= 48 ET ch <= 57) VEL ch == 45
+      VINCIRE previous_dot AD FALSUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    REDDE FALSUM
+  FIN DUM
+
+  REDDE VERUM
+EXPLICIT RITUALE
+
+RITUALE email_config_default() REDDE EmailSanitizeConfig
+  EVOCA EmailSanitizeConfig cfg
+  VINCIRE cfg.normalize AD VERUM
+  VINCIRE cfg.reject_disposable AD VERUM
+  VINCIRE cfg.disposable_domains AD CONIURA map_init GENUS(VERBUM, VERUM)()
+  CONIURA map_insert GENUS(VERBUM, VERUM)(cfg.disposable_domains, "mailinator.com", VERUM)
+  CONIURA map_insert GENUS(VERBUM, VERUM)(cfg.disposable_domains, "tempmail.com", VERUM)
+  CONIURA map_insert GENUS(VERBUM, VERUM)(cfg.disposable_domains, "10minutemail.com", VERUM)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE email_sanitize_normalized(VERBUM email, EmailSanitizeConfig cfg) REDDE VERBUM
+  EVOCA VERBUM out AD CONIURA trim(email)
+  SI cfg.normalize
+    VINCIRE out AD CONIURA to_lower(out)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE email_sanitize(VERBUM email, EmailSanitizeConfig cfg) REDDE EmailSanitizeResult
+  EVOCA VERBUM normalized AD CONIURA email_sanitize_normalized(email, cfg)
+  EVOCA REX at_idx AD CONIURA find(normalized, "@")
+  EVOCA VERBUM local AD ""
+  EVOCA VERBUM domain AD ""
+  EVOCA SPECULUM NIHIL stored_key_opt
+
+  SI at_idx <= 0 VEL at_idx >= CONIURA len(normalized) - 1
+    REDDE EsrInvalidFormat
+  FIN SI
+  SI CONIURA find(CONIURA substring(normalized, at_idx + 1, CONIURA len(normalized)), "@") != -1
+    REDDE EsrInvalidFormat
+  FIN SI
+
+  VINCIRE local AD CONIURA substring(normalized, 0, at_idx)
+  VINCIRE domain AD CONIURA substring(normalized, at_idx + 1, CONIURA len(normalized))
+  SI CONIURA len(local) == 0 VEL CONIURA len(domain) == 0
+    REDDE EsrInvalidFormat
+  FIN SI
+  SI CONIURA find(normalized, " ") != -1
+    REDDE EsrInvalidFormat
+  FIN SI
+  SI NON CONIURA email_domain_valid(domain)
+    REDDE EsrInvalidDomain
+  FIN SI
+  SI cfg.reject_disposable
+    VINCIRE stored_key_opt AD CONIURA email_string_map_find_key(cfg.disposable_domains, domain)
+    SI CONIURA option_is_some GENUS(VERBUM)(stored_key_opt)
+      REDDE EsrDisposableDomain
+    FIN SI
+  FIN SI
+
+  REDDE EsrOk
+EXPLICIT RITUALE
+
+RITUALE email_config_free(SPECULUM EmailSanitizeConfig cfg) REDDE NIHIL
+  CONIURA map_free GENUS(VERBUM, VERUM)((*cfg).disposable_domains)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phone_config_default(VERBUM country_code) REDDE PhoneConfig
+  EVOCA PhoneConfig cfg
+  VINCIRE cfg.country_code AD CONIURA to_upper(CONIURA trim(country_code))
+  VINCIRE cfg.allow_international AD FALSUM
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phone_keep_digits(VERBUM phone) REDDE VERBUM
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA len(phone)
+  EVOCA VERUM leading_plus_used AD FALSUM
+
+  DUM i < n
+    EVOCA MILES ch AD CONIURA char_at(phone, i)
+    SI ch == 43 ET i == 0 ET NON leading_plus_used
+      VINCIRE out AD "+"
+      VINCIRE leading_plus_used AD VERUM
+      VINCIRE i AD i + 1
+      RECEDE
+    FIN SI
+    SI ch >= 48 ET ch <= 57
+      VINCIRE out AD CONIURA concat(out, CONIURA from_char(ch))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phone_display_br(VERBUM digits) REDDE VERBUM
+  SI CONIURA len(digits) == 11
+    REDDE CONIURA concat(
+      CONIURA concat(
+        CONIURA concat(
+          CONIURA concat(
+            CONIURA concat(
+              CONIURA concat(
+                "(",
+                CONIURA substring(digits, 0, 2)
+              ),
+              ") "
+            ),
+            CONIURA substring(digits, 2, 7)
+          ),
+          "-"
+        ),
+        CONIURA substring(digits, 7, 11)
+      ),
+      ""
+    )
+  FIN SI
+  SI CONIURA len(digits) == 10
+    REDDE CONIURA concat(
+      CONIURA concat(
+        CONIURA concat(
+          CONIURA concat(
+            CONIURA concat(
+              CONIURA concat(
+                "(",
+                CONIURA substring(digits, 0, 2)
+              ),
+              ") "
+            ),
+            CONIURA substring(digits, 2, 6)
+          ),
+          "-"
+        ),
+        CONIURA substring(digits, 6, 10)
+      ),
+      ""
+    )
+  FIN SI
+  REDDE digits
+EXPLICIT RITUALE
+
+RITUALE phone_normalize(VERBUM phone, PhoneConfig cfg) REDDE PhoneNormalized
+  EVOCA PhoneNormalized out
+  EVOCA VERBUM cleaned AD CONIURA phone_keep_digits(phone)
+  EVOCA VERBUM country AD CONIURA to_upper(CONIURA trim(cfg.country_code))
+  EVOCA VERBUM digits AD cleaned
+
+  VINCIRE out.result AD PnrInvalidFormat
+  VINCIRE out.e164 AD ""
+  VINCIRE out.display AD ""
+
+  SI CONIURA len(cleaned) == 0
+    REDDE out
+  FIN SI
+
+  SI CONIURA compare(country, "BR") != 0
+    SI cfg.allow_international
+      SI CONIURA starts_with(cleaned, "+") ET CONIURA len(cleaned) > 1
+        VINCIRE out.result AD PnrOk
+        VINCIRE out.e164 AD cleaned
+        VINCIRE out.display AD cleaned
+        REDDE out
+      FIN SI
+    FIN SI
+    VINCIRE out.result AD PnrUnsupportedCountry
+    REDDE out
+  FIN SI
+
+  SI CONIURA starts_with(cleaned, "+55")
+    VINCIRE digits AD CONIURA substring(cleaned, 3, CONIURA len(cleaned))
+  ALITER
+    SI CONIURA starts_with(cleaned, "+")
+      SI cfg.allow_international
+        SI CONIURA len(cleaned) > 1
+          VINCIRE out.result AD PnrOk
+          VINCIRE out.e164 AD cleaned
+          VINCIRE out.display AD cleaned
+          REDDE out
+        FIN SI
+      FIN SI
+      REDDE out
+    FIN SI
+  FIN SI
+
+  SI CONIURA len(digits) != 10 ET CONIURA len(digits) != 11
+    REDDE out
+  FIN SI
+
+  VINCIRE out.result AD PnrOk
+  VINCIRE out.e164 AD CONIURA concat("+55", digits)
+  VINCIRE out.display AD CONIURA phone_display_br(digits)
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

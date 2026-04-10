@@ -1,0 +1,32 @@
+INCIPIT grimoire "civitas_session_cookie"
+
+ADVOCARE "cct/option.cct"
+ADVOCARE "../cookie.cct"
+ADVOCARE "session.cct"
+
+RITUALE session_cookie_header(SessionConfig cfg, VERBUM session_id) REDDE VERBUM
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(cfg.cookie_nome, session_id)
+  VINCIRE cookie.path AD "/"
+  VINCIRE cookie.max_age AD cfg.ttl_segundos
+  VINCIRE cookie.same_site AD cfg.samesite
+  VINCIRE cookie.http_only AD cfg.http_only
+  VINCIRE cookie.secure AD cfg.secure
+  REDDE CONIURA cookie_build_set(cookie)
+EXPLICIT RITUALE
+
+RITUALE session_cookie_clear(SessionConfig cfg) REDDE VERBUM
+  EVOCA SetCookie cookie AD CONIURA cookie_default_set(cfg.cookie_nome, "")
+  VINCIRE cookie.path AD "/"
+  VINCIRE cookie.max_age AD 0
+  VINCIRE cookie.same_site AD cfg.samesite
+  VINCIRE cookie.http_only AD cfg.http_only
+  VINCIRE cookie.secure AD cfg.secure
+  REDDE CONIURA cookie_build_set(cookie)
+EXPLICIT RITUALE
+
+RITUALE session_id_from_cookie_header(VERBUM cookie_header, VERBUM cookie_nome) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL cookies AD CONIURA cookie_parse_header(cookie_header)
+  REDDE CONIURA cookie_get(cookies, cookie_nome)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

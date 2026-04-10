@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase9_9d_moderation_transitions"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image.cct"
+ADVOCARE "../../../../lib/civitas/media_image/image_types.cct"
+ADVOCARE "cct/media_store.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9d_root("moderation")
+  CONIURA phase9_reset_dir(root)
+  EVOCA MediaStore store AD CONIURA phase9_9d_open_store(root)
+  EVOCA VERBUM source_path AD CONIURA phase9_9d_make_image(root, "moderate.jpg", "purple", 200, 200)
+  EVOCA SPECULUM NIHIL proc_res AD CONIURA image_process(
+    source_path,
+    "moderate.jpg",
+    "user-2",
+    CONIURA phase9_9d_process_config(),
+    store
+  )
+  SI CONIURA result_is_err GENUS(ImageRecord, VERBUM)(proc_res)
+    IACE CONIURA result_unwrap_err GENUS(ImageRecord, VERBUM)(proc_res)
+  FIN SI
+
+  EVOCA ImageRecord record AD CONIURA result_unwrap GENUS(ImageRecord, VERBUM)(proc_res)
+  CONIURA image_approve(SPECULUM record)
+  SI NON record.active VEL record.moderation_state != ImsApproved
+    IACE "image_approve should activate approved image"
+  FIN SI
+
+  CONIURA image_reject(SPECULUM record)
+  SI record.active VEL record.moderation_state != ImsRejected
+    IACE "image_reject should deactivate record"
+  FIN SI
+
+  CONIURA image_mark_unsafe(SPECULUM record)
+  SI record.active VEL record.moderation_state != ImsUnsafe
+    IACE "image_mark_unsafe should keep record inactive"
+  FIN SI
+
+  CONIURA image_soft_delete(SPECULUM record)
+  SI NON record.deleted VEL record.active
+    IACE "image_soft_delete should mark deleted and inactive"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

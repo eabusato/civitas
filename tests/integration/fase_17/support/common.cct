@@ -1,0 +1,189 @@
+INCIPIT grimoire "fase17_common"
+
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle_sqlite.cct"
+ADVOCARE "../../../../lib/civitas/editorial_jobs/editorial_jobs.cct"
+ADVOCARE "../../../../lib/civitas/media_jobs/media_jobs.cct"
+ADVOCARE "../../../../lib/civitas/retention/retention.cct"
+ADVOCARE "../../../../lib/civitas/scheduled/scheduled.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "../../../../lib/civitas/upload_descriptor/upload_descriptor.cct"
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/verbum.cct"
+
+SIGILLUM Phase17Stack
+  root: VERBUM
+  db: SPECULUM NIHIL
+  dbh: DbHandle
+FIN SIGILLUM
+
+RITUALE phase17_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_17", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase17_reset_root(VERBUM test_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase17_root(test_name)
+  SI CONIURA exists(root)
+    CONIURA phase17_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase17_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase17_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase17_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase17_root(test_name), "phase17.db")
+EXPLICIT RITUALE
+
+RITUALE phase17_stack_open(VERBUM test_name) REDDE Phase17Stack
+  EVOCA Phase17Stack out
+  VINCIRE out.root AD CONIURA phase17_reset_root(test_name)
+  VINCIRE out.db AD CONIURA db_open(CONIURA phase17_db_path(test_name))
+  EVOCA DbHandle sqlite_dbh AD CONIURA dbh_from_sqlite(out.db)
+  CONIURA dbh_fill(SPECULUM out.dbh, sqlite_dbh)
+  CONIURA tasks_schema_up(out.dbh)
+  CONIURA scheduled_schema_up(out.dbh)
+  CONIURA retention_schema_up(out.dbh)
+  CONIURA media_jobs_schema_up(out.dbh)
+  CONIURA editorial_jobs_schema_up(out.dbh)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE phase17_stack_close(Phase17Stack stack) REDDE NIHIL
+  EVOCA SPECULUM DbHandle dbh_ptr AD SPECULUM stack.dbh
+  CONIURA dbh_close(dbh_ptr)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase17_echo_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  REDDE CONIURA task_callback_result_ok(task.payload_json)
+EXPLICIT RITUALE
+
+RITUALE phase17_retry_once_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  SI task.attempts <= 1
+    REDDE CONIURA task_callback_result_retry("retry_once", "{\"error\":\"retry_once\"}")
+  FIN SI
+  REDDE CONIURA task_callback_result_ok("{\"status\":\"ok_after_retry\"}")
+EXPLICIT RITUALE
+
+RITUALE phase17_fail_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  REDDE CONIURA task_callback_result_error("forced_error", "{\"error\":\"forced_error\"}")
+EXPLICIT RITUALE
+
+RITUALE phase17_registry_basic() REDDE TaskRegistry
+  EVOCA TaskRegistry registry AD CONIURA task_registry_new()
+  CONIURA task_register(SPECULUM registry, "echo", phase17_echo_task)
+  CONIURA task_register(SPECULUM registry, "retry_once", phase17_retry_once_task)
+  CONIURA task_register(SPECULUM registry, "fail", phase17_fail_task)
+  CONIURA media_jobs_register_callbacks(SPECULUM registry)
+  CONIURA editorial_jobs_register_callbacks(SPECULUM registry)
+  REDDE registry
+EXPLICIT RITUALE
+
+RITUALE phase17_task_cfg() REDDE TaskConfig
+  EVOCA TaskConfig cfg AD CONIURA task_config_default()
+  VINCIRE cfg.queue_name AD "default"
+  VINCIRE cfg.worker_name AD "phase17-worker"
+  VINCIRE cfg.default_timeout_ms AD 3000
+  VINCIRE cfg.retry_policy.max_attempts AD 3
+  VINCIRE cfg.retry_policy.initial_backoff_ms AD 1000
+  VINCIRE cfg.retry_policy.max_backoff_ms AD 4000
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase17_scheduler_cfg() REDDE SchedulerConfig
+  EVOCA SchedulerConfig cfg AD CONIURA scheduler_config_default()
+  VINCIRE cfg.default_timezone AD "UTC"
+  VINCIRE cfg.max_catchup_runs AD 3
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase17_write_file(VERBUM root, VERBUM relative_path, VERBUM content) REDDE VERBUM
+  EVOCA VERBUM full_path AD CONIURA path_join(root, relative_path)
+  EVOCA VERBUM parent_dir AD CONIURA path_dirname(full_path)
+  CONIURA mkdir_all(parent_dir)
+  CONIURA write_all(full_path, content)
+  REDDE full_path
+EXPLICIT RITUALE
+
+RITUALE phase17_insert_page(SPECULUM NIHIL db, VERBUM locale, VERBUM slug, VERBUM title, REX state, VERBUM canonical_url, REX published_at) REDDE NIHIL
+  EVOCA REX now_unix AD CONIURA task_now_unix()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "INSERT INTO civitas_pages (locale, slug, title, body_html, state, seo_title, seo_description, canonical_url, menu_slot, menu_label, menu_order, scheduled_for, published_at, created_by, updated_by, request_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, ?, 'tester', 'tester', 'rid', ?, ?)"
+  )
+  CONIURA stmt_bind_text(stmt, 1, locale)
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, title)
+  CONIURA stmt_bind_text(stmt, 4, CONIURA concat("<p>", CONIURA concat(title, "</p>")))
+  CONIURA stmt_bind_int(stmt, 5, state)
+  CONIURA stmt_bind_text(stmt, 6, title)
+  CONIURA stmt_bind_text(stmt, 7, CONIURA concat("desc-", slug))
+  CONIURA stmt_bind_text(stmt, 8, canonical_url)
+  CONIURA stmt_bind_int(stmt, 9, published_at)
+  CONIURA stmt_bind_int(stmt, 10, now_unix)
+  CONIURA stmt_bind_int(stmt, 11, now_unix)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase17_insert_view_counter(SPECULUM NIHIL db, VERBUM object_type, REX object_id, REX total) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "INSERT OR REPLACE INTO civitas_view_counters (object_type, object_id, total, updated_at) VALUES (?, ?, ?, ?)"
+  )
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_int(stmt, 3, total)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA task_now_unix())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase17_insert_reaction(SPECULUM NIHIL db, VERBUM object_type, REX object_id, VERBUM actor_id, REX kind) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(
+    db,
+    "INSERT INTO civitas_reactions (object_type, object_id, actor_id, kind, created_at) VALUES (?, ?, ?, ?, ?)"
+  )
+  CONIURA stmt_bind_text(stmt, 1, object_type)
+  CONIURA stmt_bind_int(stmt, 2, object_id)
+  CONIURA stmt_bind_text(stmt, 3, actor_id)
+  CONIURA stmt_bind_int(stmt, 4, kind)
+  CONIURA stmt_bind_int(stmt, 5, CONIURA task_now_unix())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase17_descriptor_from_file(VERBUM path, VERBUM mime, VERBUM original_name) REDDE UploadDescriptor
+  EVOCA UploadDescriptor descriptor AD CONIURA upload_descriptor_new(path, CONIURA sha256(CONIURA read_all(path)), CONIURA size(path), mime, original_name)
+  REDDE descriptor
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

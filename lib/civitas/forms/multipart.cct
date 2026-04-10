@@ -1,0 +1,114 @@
+INCIPIT grimoire "civitas_forms_multipart"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE multipart_crlf() REDDE VERBUM
+  REDDE CONIURA concat(CONIURA from_char(13), "\n")
+EXPLICIT RITUALE
+
+RITUALE multipart_extract_boundary(VERBUM content_type) REDDE VERBUM
+  EVOCA REX pos AD CONIURA find(content_type, "boundary=")
+  SI pos == -1
+    REDDE ""
+  FIN SI
+
+  EVOCA REX start AD pos + 9
+  EVOCA VERBUM rest AD CONIURA substring(content_type, start, CONIURA len(content_type))
+  EVOCA REX semi AD CONIURA find(rest, ";")
+  SI semi != -1
+    VINCIRE rest AD CONIURA substring(rest, 0, semi)
+  FIN SI
+  VINCIRE rest AD CONIURA trim(rest)
+
+  SI CONIURA starts_with(rest, "\"")
+    VINCIRE rest AD CONIURA substring(rest, 1, CONIURA len(rest))
+    EVOCA REX end_quote AD CONIURA find(rest, "\"")
+    SI end_quote == -1
+      REDDE ""
+    FIN SI
+    REDDE CONIURA substring(rest, 0, end_quote)
+  FIN SI
+
+  REDDE rest
+EXPLICIT RITUALE
+
+RITUALE multipart_header_value(VERBUM headers, VERBUM nome) REDDE VERBUM
+  EVOCA REX pos AD CONIURA find(headers, nome)
+  SI pos == -1
+    REDDE ""
+  FIN SI
+
+  EVOCA VERBUM rest AD CONIURA substring(headers, pos + CONIURA len(nome), CONIURA len(headers))
+  EVOCA REX end AD CONIURA find(rest, CONIURA multipart_crlf())
+  SI end != -1
+    REDDE CONIURA trim(CONIURA substring(rest, 0, end))
+  FIN SI
+  REDDE CONIURA trim(rest)
+EXPLICIT RITUALE
+
+RITUALE multipart_disposition_param(VERBUM disposition, VERBUM param) REDDE VERBUM
+  EVOCA VERBUM search AD CONIURA concat(param, "=\"")
+  EVOCA REX pos AD CONIURA find(disposition, search)
+  SI pos == -1
+    REDDE ""
+  FIN SI
+
+  EVOCA REX start AD pos + CONIURA len(search)
+  EVOCA VERBUM rest AD CONIURA substring(disposition, start, CONIURA len(disposition))
+  EVOCA REX end_quote AD CONIURA find(rest, "\"")
+  SI end_quote == -1
+    REDDE rest
+  FIN SI
+  REDDE CONIURA substring(rest, 0, end_quote)
+EXPLICIT RITUALE
+
+RITUALE multipart_split_parts(VERBUM body, VERBUM boundary) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL parts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  EVOCA VERBUM delim AD CONIURA concat("--", boundary)
+  EVOCA VERBUM marker AD CONIURA concat(CONIURA multipart_crlf(), delim)
+  EVOCA REX start AD CONIURA find(body, delim)
+  EVOCA VERBUM rest AD body
+
+  SI start == -1
+    REDDE parts
+  FIN SI
+
+  VINCIRE rest AD CONIURA substring(rest, start + CONIURA len(delim), CONIURA len(rest))
+
+  DUM VERUM
+    SI CONIURA starts_with(rest, "--")
+      FRANGE
+    FIN SI
+
+    SI CONIURA starts_with(rest, CONIURA multipart_crlf())
+      VINCIRE rest AD CONIURA substring(rest, 2, CONIURA len(rest))
+    FIN SI
+
+    EVOCA REX next AD CONIURA find(rest, marker)
+    SI next == -1
+      EVOCA VERBUM final_part AD rest
+      EVOCA REX trailer AD CONIURA find(final_part, CONIURA concat(marker, "--"))
+      SI trailer != -1
+        VINCIRE final_part AD CONIURA substring(final_part, 0, trailer)
+      FIN SI
+      SI CONIURA ends_with(final_part, CONIURA multipart_crlf())
+        VINCIRE final_part AD CONIURA substring(final_part, 0, CONIURA len(final_part) - 2)
+      FIN SI
+      SI CONIURA len(final_part) > 0
+        CONIURA fluxus_push(parts, SPECULUM final_part)
+      FIN SI
+      FRANGE
+    FIN SI
+
+    EVOCA VERBUM part AD CONIURA substring(rest, 0, next)
+    SI CONIURA len(part) > 0
+      CONIURA fluxus_push(parts, SPECULUM part)
+    FIN SI
+    VINCIRE rest AD CONIURA substring(rest, next + CONIURA len(marker), CONIURA len(rest))
+  FIN DUM
+
+  REDDE parts
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

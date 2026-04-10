@@ -1,0 +1,123 @@
+INCIPIT grimoire "civitas_cache_redis"
+
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/redis.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cache.cct"
+
+RITUALE cache_redis_new(SPECULUM NIHIL redis_ptr, VERBUM namespace) REDDE CacheHandle
+  EVOCA SPECULUM CacheRedis red_ptr AD OBSECRO mem_alloc(MENSURA(CacheRedis))
+  VINCIRE (*red_ptr).redis_ptr AD redis_ptr
+  VINCIRE (*red_ptr).namespace AD namespace
+  VINCIRE (*red_ptr).acertos AD 0
+  VINCIRE (*red_ptr).falhas AD 0
+  EVOCA CacheHandle out AD CONIURA cache_handle_empty()
+  VINCIRE out.kind AD CbRedis
+  VINCIRE out.state AD red_ptr
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_redis_data_key(SPECULUM NIHIL state, VERBUM chave) REDDE VERBUM
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  REDDE CONIURA cache_namespace_key((*red_ptr).namespace, chave)
+EXPLICIT RITUALE
+
+RITUALE cache_redis_index_key(SPECULUM NIHIL state) REDDE VERBUM
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  REDDE CONIURA concat((*red_ptr).namespace, ":__keys__")
+EXPLICIT RITUALE
+
+RITUALE cache_redis_get(SPECULUM NIHIL state, VERBUM chave) REDDE CacheMaybeText
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_get(*redis_typed, CONIURA cache_redis_data_key(state, chave))
+  SI CONIURA result_is_err GENUS(RedisMaybeText, VERBUM)(res)
+    VINCIRE (*red_ptr).falhas AD (*red_ptr).falhas + 1
+    REDDE CONIURA cache_maybe_none()
+  FIN SI
+  EVOCA RedisMaybeText maybe AD CONIURA result_unwrap GENUS(RedisMaybeText, VERBUM)(res)
+  SI maybe.found
+    VINCIRE (*red_ptr).acertos AD (*red_ptr).acertos + 1
+    REDDE CONIURA cache_maybe_hit(maybe.value)
+  FIN SI
+  VINCIRE (*red_ptr).falhas AD (*red_ptr).falhas + 1
+  REDDE CONIURA cache_maybe_none()
+EXPLICIT RITUALE
+
+RITUALE cache_redis_set(SPECULUM NIHIL state, VERBUM chave, VERBUM valor, REX ttl) REDDE NIHIL
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA VERBUM full_key AD CONIURA cache_redis_data_key(state, chave)
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  SI ttl > 0
+    CONIURA redis_setex(*redis_typed, full_key, ttl, valor)
+  ALITER
+    CONIURA redis_set(*redis_typed, full_key, valor)
+  FIN SI
+  CONIURA redis_sadd(*redis_typed, CONIURA cache_redis_index_key(state), full_key)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_redis_delete(SPECULUM NIHIL state, VERBUM chave) REDDE NIHIL
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA VERBUM full_key AD CONIURA cache_redis_data_key(state, chave)
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  CONIURA redis_del(*redis_typed, full_key)
+  CONIURA redis_srem(*redis_typed, CONIURA cache_redis_index_key(state), full_key)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_redis_exists(SPECULUM NIHIL state, VERBUM chave) REDDE VERUM
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_exists(*redis_typed, CONIURA cache_redis_data_key(state, chave))
+  SI CONIURA result_is_err GENUS(VERUM, VERBUM)(res)
+    REDDE FALSUM
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(VERUM, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE cache_redis_flush(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_typed, CONIURA cache_redis_index_key(state))
+  SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+    EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+    EVOCA REX i AD 0
+    DUM i < CONIURA redis_text_list_len(list)
+      CONIURA redis_del(*redis_typed, CONIURA redis_text_list_get(list, i))
+      VINCIRE i AD i + 1
+    FIN DUM
+  FIN SI
+  CONIURA redis_del(*redis_typed, CONIURA cache_redis_index_key(state))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE cache_redis_metrics(SPECULUM NIHIL state) REDDE CacheMetrics
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA CacheMetrics out AD CONIURA cache_metrics_new()
+  VINCIRE out.acertos AD (*red_ptr).acertos
+  VINCIRE out.falhas AD (*red_ptr).falhas
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  EVOCA SPECULUM NIHIL res AD CONIURA redis_smembers(*redis_typed, CONIURA cache_redis_index_key(state))
+  SI NON CONIURA result_is_err GENUS(RedisTextList, VERBUM)(res)
+    EVOCA RedisTextList list AD CONIURA result_unwrap GENUS(RedisTextList, VERBUM)(res)
+    VINCIRE out.total_entradas AD CONIURA redis_text_list_len(list)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE cache_redis_close(SPECULUM NIHIL state) REDDE NIHIL
+  EVOCA SPECULUM CacheRedis red_ptr AD state
+  EVOCA SPECULUM Redis redis_typed
+  VINCIRE redis_typed AD (*red_ptr).redis_ptr
+  CONIURA redis_close(redis_typed)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

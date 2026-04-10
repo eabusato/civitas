@@ -1,0 +1,38 @@
+INCIPIT grimoire "fase5_5c_route_limit_burst_and_class_isolation_test"
+
+ADVOCARE "../../../../lib/civitas/abuse/abuse.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL store AD CONIURA abuse_route_store_new()
+  EVOCA RateLimitRule auth_rule AD CONIURA rate_limit_rule_make(RlcAuth, 1, 30, 1)
+  EVOCA RateLimitRule upload_rule AD CONIURA rate_limit_rule_make(RlcUpload, 1, 30, 0)
+  EVOCA RateLimitKey auth_key
+  EVOCA RateLimitKey upload_key
+
+  VINCIRE auth_key.ip AD "10.0.0.2"
+  VINCIRE auth_key.route_class AD RlcAuth
+  VINCIRE auth_key.actor_id AD ""
+  VINCIRE upload_key.ip AD "10.0.0.2"
+  VINCIRE upload_key.route_class AD RlcUpload
+  VINCIRE upload_key.actor_id AD ""
+
+  SI NON CONIURA rate_limit_route_allowed(store, auth_key, auth_rule, 0)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA rate_limit_route_allowed(store, auth_key, auth_rule, 1)
+    REDDE 2
+  FIN SI
+  SI CONIURA rate_limit_route_allowed(store, auth_key, auth_rule, 2)
+    REDDE 3
+  FIN SI
+  SI NON CONIURA rate_limit_route_allowed(store, upload_key, upload_rule, 3)
+    REDDE 4
+  FIN SI
+  SI CONIURA rate_limit_route_allowed(store, upload_key, upload_rule, 4)
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

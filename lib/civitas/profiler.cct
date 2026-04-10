@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_profiler_root"
+
+ADVOCARE "profiler/profiler.cct"
+
+EXPLICIT grimoire

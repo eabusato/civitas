@@ -1,0 +1,135 @@
+INCIPIT grimoire "civitas_admin_moderation"
+
+ADVOCARE "cct/verbum.cct"
+
+ORDO ModerationKind
+  MODERATION_VIDEO
+  MODERATION_IMAGE
+  MODERATION_REPORT
+  MODERATION_COMMENT
+  MODERATION_USER
+FIN ORDO
+
+ORDO ModerationState
+  MOD_PENDING
+  MOD_APPROVED
+  MOD_HIDDEN
+  MOD_REJECTED
+  MOD_BANNED
+FIN ORDO
+
+SIGILLUM ModerationItem
+  id: VERBUM
+  kind: ModerationKind
+  state: ModerationState
+  object_id: VERBUM
+  object_type: VERBUM
+  submitter_id: VERBUM
+  content_preview_json: VERBUM
+  report_reason: VERBUM
+  assigned_to: VERBUM
+  priority: REX
+  created_at_unix: REX
+  updated_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM ModerationDecision
+  id: VERBUM
+  item_id: VERBUM
+  moderator_id: VERBUM
+  action: VERBUM
+  reason: VERBUM
+  notify_submitter: VERUM
+  created_at_unix: REX
+FIN SIGILLUM
+
+SIGILLUM ModerationBulkResult
+  matched: REX
+  changed: REX
+  failed: REX
+FIN SIGILLUM
+
+RITUALE moderation_kind_to_string(ModerationKind kind) REDDE VERBUM
+  ELIGE kind
+    CASUS MODERATION_VIDEO:
+      REDDE "video"
+    CASUS MODERATION_IMAGE:
+      REDDE "image"
+    CASUS MODERATION_REPORT:
+      REDDE "report"
+    CASUS MODERATION_COMMENT:
+      REDDE "comment"
+    ALIOQUIN:
+      REDDE "user"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE moderation_kind_from_string(VERBUM kind) REDDE ModerationKind
+  SI CONIURA compare(kind, "video") == 0
+    REDDE MODERATION_VIDEO
+  FIN SI
+  SI CONIURA compare(kind, "image") == 0
+    REDDE MODERATION_IMAGE
+  FIN SI
+  SI CONIURA compare(kind, "report") == 0
+    REDDE MODERATION_REPORT
+  FIN SI
+  SI CONIURA compare(kind, "comment") == 0
+    REDDE MODERATION_COMMENT
+  FIN SI
+  REDDE MODERATION_USER
+EXPLICIT RITUALE
+
+RITUALE moderation_state_to_string(ModerationState state) REDDE VERBUM
+  ELIGE state
+    CASUS MOD_APPROVED:
+      REDDE "approved"
+    CASUS MOD_HIDDEN:
+      REDDE "hidden"
+    CASUS MOD_REJECTED:
+      REDDE "rejected"
+    CASUS MOD_BANNED:
+      REDDE "banned"
+    ALIOQUIN:
+      REDDE "pending"
+  FIN ELIGE
+EXPLICIT RITUALE
+
+RITUALE moderation_state_from_action(VERBUM action) REDDE ModerationState
+  SI CONIURA compare(action, "approve") == 0
+    REDDE MOD_APPROVED
+  FIN SI
+  SI CONIURA compare(action, "hide") == 0
+    REDDE MOD_HIDDEN
+  FIN SI
+  SI CONIURA compare(action, "ban") == 0
+    REDDE MOD_BANNED
+  FIN SI
+  REDDE MOD_REJECTED
+EXPLICIT RITUALE
+
+RITUALE moderation_state_from_string(VERBUM state) REDDE ModerationState
+  SI CONIURA compare(state, "approved") == 0
+    REDDE MOD_APPROVED
+  FIN SI
+  SI CONIURA compare(state, "hidden") == 0
+    REDDE MOD_HIDDEN
+  FIN SI
+  SI CONIURA compare(state, "rejected") == 0
+    REDDE MOD_REJECTED
+  FIN SI
+  SI CONIURA compare(state, "banned") == 0
+    REDDE MOD_BANNED
+  FIN SI
+  REDDE MOD_PENDING
+EXPLICIT RITUALE
+
+RITUALE moderation_bulk_result_empty() REDDE ModerationBulkResult
+  EVOCA ModerationBulkResult out
+  VINCIRE out.matched AD 0
+  VINCIRE out.changed AD 0
+  VINCIRE out.failed AD 0
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

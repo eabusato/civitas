@@ -1,0 +1,15 @@
+INCIPIT grimoire "civitas_admin_moderation_schema"
+
+ADVOCARE "../db_handle/db_handle.cct"
+
+RITUALE moderation_schema_up(DbHandle dbh) REDDE NIHIL
+  EVOCA DbParams params AD CONIURA dbh_params_new()
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS moderation_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', object_id TEXT NOT NULL, object_type TEXT NOT NULL, submitter_id TEXT NOT NULL, content_preview_json TEXT NOT NULL DEFAULT '{}', report_reason TEXT NOT NULL DEFAULT '', assigned_to TEXT NOT NULL DEFAULT '', priority INTEGER NOT NULL DEFAULT 100, created_at_unix INTEGER NOT NULL, updated_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_moderation_items_queue ON moderation_items(kind, state, priority, created_at_unix)", params)
+  CONIURA dbh_exec(dbh, "CREATE TABLE IF NOT EXISTS moderation_decisions (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', notify_submitter INTEGER NOT NULL DEFAULT 0, created_at_unix INTEGER NOT NULL)", params)
+  CONIURA dbh_exec(dbh, "CREATE INDEX IF NOT EXISTS idx_moderation_decisions_item ON moderation_decisions(item_id, created_at_unix)", params)
+  CONIURA dbh_params_free(SPECULUM params)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

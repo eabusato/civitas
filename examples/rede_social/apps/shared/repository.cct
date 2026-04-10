@@ -1,0 +1,463 @@
+INCIPIT grimoire "rede_social_repository"
+
+ADVOCARE "types.cct"
+ADVOCARE "../../project/config.cct"
+ADVOCARE "../../../../lib/civitas/storage/storage.cct"
+ADVOCARE "../../../../lib/civitas/ws_room/ws_room.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/crypto.cct"
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/slug.cct"
+ADVOCARE "cct/time.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE rede_db_open(RedeConfig cfg) REDDE SPECULUM NIHIL
+  CONIURA rede_config_prepare_dirs(cfg)
+  REDDE CONIURA db_open(CONIURA storage_topology_main_db_path(cfg.topo))
+EXPLICIT RITUALE
+
+RITUALE rede_password_hash(VERBUM raw) REDDE VERBUM
+  REDDE CONIURA sha256(raw)
+EXPLICIT RITUALE
+
+RITUALE rede_now_unix_ms() REDDE REX
+  REDDE CONIURA datetime_to_unix(CONIURA datetime_now()) * 1000
+EXPLICIT RITUALE
+
+RITUALE rede_wallclock_ms(REX raw_ms) REDDE REX
+  SI raw_ms >= 946684800000
+    REDDE raw_ms
+  FIN SI
+  REDDE raw_ms + (CONIURA rede_now_unix_ms() - CONIURA now_ms())
+EXPLICIT RITUALE
+
+RITUALE rede_format_wallclock_ms(REX raw_ms) REDDE VERBUM
+  REDDE CONIURA datetime_format(CONIURA datetime_from_unix(CONIURA rede_wallclock_ms(raw_ms) / 1000), "%Y-%m-%d %H:%M:%S")
+EXPLICIT RITUALE
+
+RITUALE rede_repository_schema_up(SPECULUM NIHIL db) REDDE NIHIL
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, handle TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, bio TEXT NOT NULL DEFAULT '', avatar_url TEXT NOT NULL DEFAULT '', created_at_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, body TEXT NOT NULL, media_kind TEXT NOT NULL DEFAULT '', media_url TEXT NOT NULL DEFAULT '', created_at_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, author_id INTEGER NOT NULL, body TEXT NOT NULL, created_at_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS follows (follower_id INTEGER NOT NULL, followed_id INTEGER NOT NULL, created_at_ms INTEGER NOT NULL, PRIMARY KEY (follower_id, followed_id))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS likes (user_id INTEGER NOT NULL, post_id INTEGER NOT NULL, created_at_ms INTEGER NOT NULL, PRIMARY KEY (user_id, post_id))")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS activities (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, created_at_ms INTEGER NOT NULL)")
+  CONIURA db_exec(db, "CREATE TABLE IF NOT EXISTS presence (user_id INTEGER NOT NULL, channel TEXT NOT NULL, conn_id TEXT NOT NULL, heartbeat_ms INTEGER NOT NULL, PRIMARY KEY (channel, conn_id))")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at_ms DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at_ms DESC)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_likes_post ON likes(post_id)")
+  CONIURA db_exec(db, "CREATE INDEX IF NOT EXISTS idx_presence_heartbeat ON presence(channel, heartbeat_ms DESC)")
+  CONIURA ws_room_schema_up(db)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_user(
+  SPECULUM NIHIL db,
+  VERBUM handle,
+  VERBUM display_name,
+  VERBUM email,
+  VERBUM password_hash,
+  VERBUM bio,
+  VERBUM avatar_url,
+  REX created_at_ms
+) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO users(handle, display_name, email, password_hash, bio, avatar_url, created_at_ms) VALUES(?,?,?,?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, handle)
+  CONIURA stmt_bind_text(stmt, 2, display_name)
+  CONIURA stmt_bind_text(stmt, 3, email)
+  CONIURA stmt_bind_text(stmt, 4, password_hash)
+  CONIURA stmt_bind_text(stmt, 5, bio)
+  CONIURA stmt_bind_text(stmt, 6, avatar_url)
+  CONIURA stmt_bind_int(stmt, 7, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_post(
+  SPECULUM NIHIL db,
+  REX author_id,
+  VERBUM slug,
+  VERBUM title,
+  VERBUM body,
+  VERBUM media_kind,
+  VERBUM media_url,
+  REX created_at_ms
+) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO posts(author_id, slug, title, body, media_kind, media_url, created_at_ms) VALUES(?,?,?,?,?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, author_id)
+  CONIURA stmt_bind_text(stmt, 2, slug)
+  CONIURA stmt_bind_text(stmt, 3, title)
+  CONIURA stmt_bind_text(stmt, 4, body)
+  CONIURA stmt_bind_text(stmt, 5, media_kind)
+  CONIURA stmt_bind_text(stmt, 6, media_url)
+  CONIURA stmt_bind_int(stmt, 7, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_comment(SPECULUM NIHIL db, REX post_id, REX author_id, VERBUM body, REX created_at_ms) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO comments(post_id, author_id, body, created_at_ms) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, post_id)
+  CONIURA stmt_bind_int(stmt, 2, author_id)
+  CONIURA stmt_bind_text(stmt, 3, body)
+  CONIURA stmt_bind_int(stmt, 4, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_follow(SPECULUM NIHIL db, REX follower_id, REX followed_id, REX created_at_ms) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO follows(follower_id, followed_id, created_at_ms) VALUES(?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, follower_id)
+  CONIURA stmt_bind_int(stmt, 2, followed_id)
+  CONIURA stmt_bind_int(stmt, 3, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_like(SPECULUM NIHIL db, REX user_id, REX post_id, REX created_at_ms) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO likes(user_id, post_id, created_at_ms) VALUES(?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, post_id)
+  CONIURA stmt_bind_int(stmt, 3, created_at_ms)
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_seed_media(RedeConfig cfg) REDDE NIHIL
+  EVOCA VERBUM luna_path AD CONIURA storage_topology_media_path(cfg.topo, "processed", "avatar-luna.svg")
+  EVOCA VERBUM nora_path AD CONIURA storage_topology_media_path(cfg.topo, "processed", "avatar-nora.svg")
+  EVOCA VERBUM ian_path AD CONIURA storage_topology_media_path(cfg.topo, "processed", "avatar-ian.svg")
+  SI NON CONIURA exists(luna_path)
+    CONIURA write_all(luna_path, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><rect width=\"320\" height=\"320\" rx=\"64\" fill=\"#1d4ed8\"/><circle cx=\"160\" cy=\"124\" r=\"56\" fill=\"#dbeafe\"/><path d=\"M88 256c18-44 58-68 72-68s54 24 72 68\" fill=\"#bfdbfe\"/></svg>")
+  FIN SI
+  SI NON CONIURA exists(nora_path)
+    CONIURA write_all(nora_path, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><rect width=\"320\" height=\"320\" rx=\"64\" fill=\"#0f766e\"/><circle cx=\"160\" cy=\"124\" r=\"56\" fill=\"#ccfbf1\"/><path d=\"M88 256c18-44 58-68 72-68s54 24 72 68\" fill=\"#99f6e4\"/></svg>")
+  FIN SI
+  SI NON CONIURA exists(ian_path)
+    CONIURA write_all(ian_path, "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><rect width=\"320\" height=\"320\" rx=\"64\" fill=\"#7c2d12\"/><circle cx=\"160\" cy=\"124\" r=\"56\" fill=\"#ffedd5\"/><path d=\"M88 256c18-44 58-68 72-68s54 24 72 68\" fill=\"#fed7aa\"/></svg>")
+  FIN SI
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_seed_if_empty(RedeConfig cfg, SPECULUM NIHIL db) REDDE NIHIL
+  EVOCA REX now AD CONIURA rede_now_unix_ms()
+  SI CONIURA db_scalar_int(db, "SELECT COUNT(*) FROM users") > 0
+    REDDE
+  FIN SI
+  CONIURA rede_seed_media(cfg)
+  CONIURA rede_seed_user(db, "luna", "Luna Costa", "luna@rede.social", CONIURA rede_password_hash("abc123"), "Builds visual essays about cities and public space.", "/media/avatar-luna.svg", now - 900000)
+  CONIURA rede_seed_user(db, "nora", "Nora Vale", "nora@rede.social", CONIURA rede_password_hash("abc123"), "Curates independent music and neighborhood events.", "/media/avatar-nora.svg", now - 870000)
+  CONIURA rede_seed_user(db, "ian", "Ian Prado", "ian@rede.social", CONIURA rede_password_hash("abc123"), "Documents night runs, bikes and open streets.", "/media/avatar-ian.svg", now - 840000)
+  CONIURA rede_seed_post(db, 1, "luzes-na-ponte", "Lights on the bridge", "A tiny night run turned into a collective photo walk. The point of this network is not volume. It is texture, proximity and memory.", "image", "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80", now - 600000)
+  CONIURA rede_seed_post(db, 2, "set-do-telhado", "Rooftop set", "Nora stitched a public playlist out of voice notes from the block. This post uses an external video to show how Civitas can mix local state with remote media.", "video", "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", now - 420000)
+  CONIURA rede_seed_post(db, 3, "cidade-aberta", "Open city", "Ian mapped safe routes for bikes, cafes with late coffee and the loudest corners of the week. People can follow, like and comment from day zero.", "image", "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80", now - 240000)
+  CONIURA rede_seed_comment(db, 1, 2, "This needs a follow-up walk with a live soundtrack.", now - 180000)
+  CONIURA rede_seed_comment(db, 2, 1, "Keep the stems public. The city sounds better when people can remix it.", now - 120000)
+  CONIURA rede_seed_follow(db, 1, 2, now - 100000)
+  CONIURA rede_seed_like(db, 1, 2, now - 90000)
+  CONIURA rede_seed_like(db, 2, 1, now - 80000)
+  CONIURA rede_repository_emit_activity(db, "seed", "Network scaffold ready", "Profiles, posts, comments and operational views were preloaded so a new Civitas project starts with visible moving parts.")
+  CONIURA rede_repository_emit_activity(db, "media", "Media lane online", "The seed uses both image and video posts to exercise the storage, public media and rendering path from the first boot.")
+  CONIURA ws_room_log(db, "lounge", ROOM_EV_SYSTEM, 0, 0, "{\"message\":\"Seed room ready\"}")
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_user_from_stmt(SPECULUM NIHIL stmt) REDDE RedeUser
+  EVOCA RedeUser out AD CONIURA rede_empty_user()
+  VINCIRE out.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE out.handle AD CONIURA concat("", CONIURA stmt_get_text(stmt, 1))
+  VINCIRE out.display_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE out.email AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+  VINCIRE out.password_hash AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+  VINCIRE out.bio AD CONIURA concat("", CONIURA stmt_get_text(stmt, 5))
+  VINCIRE out.avatar_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_post_from_stmt(SPECULUM NIHIL stmt) REDDE RedePost
+  EVOCA RedePost out AD CONIURA rede_empty_post()
+  VINCIRE out.id AD CONIURA stmt_get_int(stmt, 0)
+  VINCIRE out.author_id AD CONIURA stmt_get_int(stmt, 1)
+  VINCIRE out.author_handle AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+  VINCIRE out.author_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+  VINCIRE out.author_avatar_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+  VINCIRE out.slug AD CONIURA concat("", CONIURA stmt_get_text(stmt, 5))
+  VINCIRE out.title AD CONIURA concat("", CONIURA stmt_get_text(stmt, 6))
+  VINCIRE out.body AD CONIURA concat("", CONIURA stmt_get_text(stmt, 7))
+  VINCIRE out.media_kind AD CONIURA concat("", CONIURA stmt_get_text(stmt, 8))
+  VINCIRE out.media_url AD CONIURA concat("", CONIURA stmt_get_text(stmt, 9))
+  VINCIRE out.created_at AD CONIURA rede_format_wallclock_ms(CONIURA stmt_get_int(stmt, 10))
+  VINCIRE out.likes_count AD CONIURA stmt_get_int(stmt, 11)
+  VINCIRE out.comments_count AD CONIURA stmt_get_int(stmt, 12)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_find_user_by_email(SPECULUM NIHIL db, VERBUM email) REDDE RedeMaybeUser
+  EVOCA RedeMaybeUser out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.user AD CONIURA rede_empty_user()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url FROM users WHERE email = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, email)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out.found AD VERUM
+      VINCIRE out.user AD CONIURA rede_user_from_stmt(stmt)
+      FRANGE
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_find_user_by_handle(SPECULUM NIHIL db, VERBUM handle) REDDE RedeMaybeUser
+  EVOCA RedeMaybeUser out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.user AD CONIURA rede_empty_user()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url FROM users WHERE handle = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, handle)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out.found AD VERUM
+      VINCIRE out.user AD CONIURA rede_user_from_stmt(stmt)
+      FRANGE
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_find_user_by_id(SPECULUM NIHIL db, REX user_id) REDDE RedeMaybeUser
+  EVOCA RedeMaybeUser out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.user AD CONIURA rede_empty_user()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT id, handle, display_name, email, password_hash, bio, avatar_url FROM users WHERE id = ? LIMIT 1")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out.found AD VERUM
+      VINCIRE out.user AD CONIURA rede_user_from_stmt(stmt)
+      FRANGE
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_feed(SPECULUM NIHIL db, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedePost))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, u.id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.body, p.media_kind, p.media_url, p.created_at_ms, (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) FROM posts p INNER JOIN users u ON u.id = p.author_id ORDER BY p.created_at_ms DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RedePost post AD CONIURA rede_post_from_stmt(stmt)
+      CONIURA fluxus_push(out, SPECULUM post)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_post_by_slug(SPECULUM NIHIL db, VERBUM slug) REDDE RedeMaybePost
+  EVOCA RedeMaybePost out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.post AD CONIURA rede_empty_post()
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, u.id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.body, p.media_kind, p.media_url, p.created_at_ms, (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) FROM posts p INNER JOIN users u ON u.id = p.author_id WHERE p.slug = ? LIMIT 1")
+  CONIURA stmt_bind_text(stmt, 1, slug)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      VINCIRE out.found AD VERUM
+      VINCIRE out.post AD CONIURA rede_post_from_stmt(stmt)
+      FRANGE
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_profile_by_handle(SPECULUM NIHIL db, VERBUM handle) REDDE RedeMaybeProfile
+  EVOCA RedeMaybeProfile out
+  VINCIRE out.found AD FALSUM
+  VINCIRE out.profile AD CONIURA rede_empty_profile()
+  EVOCA RedeMaybeUser maybe_user AD CONIURA rede_repository_find_user_by_handle(db, handle)
+  SI NON maybe_user.found
+    REDDE out
+  FIN SI
+  VINCIRE out.found AD VERUM
+  VINCIRE out.profile.user AD maybe_user.user
+  VINCIRE out.profile.followers_count AD CONIURA db_scalar_int(db, CONIURA concat("SELECT COUNT(*) FROM follows WHERE followed_id = ", CONIURA stringify_int(maybe_user.user.id)))
+  VINCIRE out.profile.following_count AD CONIURA db_scalar_int(db, CONIURA concat("SELECT COUNT(*) FROM follows WHERE follower_id = ", CONIURA stringify_int(maybe_user.user.id)))
+  VINCIRE out.profile.posts_count AD CONIURA db_scalar_int(db, CONIURA concat("SELECT COUNT(*) FROM posts WHERE author_id = ", CONIURA stringify_int(maybe_user.user.id)))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_post_comments(SPECULUM NIHIL db, REX post_id, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedeComment))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT c.id, c.post_id, u.handle, u.display_name, c.body, c.created_at_ms FROM comments c INNER JOIN users u ON u.id = c.author_id WHERE c.post_id = ? ORDER BY c.created_at_ms DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, post_id)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RedeComment row
+      VINCIRE row.id AD CONIURA stmt_get_int(stmt, 0)
+      VINCIRE row.post_id AD CONIURA stmt_get_int(stmt, 1)
+      VINCIRE row.author_handle AD CONIURA concat("", CONIURA stmt_get_text(stmt, 2))
+      VINCIRE row.author_name AD CONIURA concat("", CONIURA stmt_get_text(stmt, 3))
+      VINCIRE row.body AD CONIURA concat("", CONIURA stmt_get_text(stmt, 4))
+      VINCIRE row.created_at AD CONIURA rede_format_wallclock_ms(CONIURA stmt_get_int(stmt, 5))
+      CONIURA fluxus_push(out, SPECULUM row)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_posts_by_author(SPECULUM NIHIL db, REX author_id, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedePost))
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT p.id, u.id, u.handle, u.display_name, u.avatar_url, p.slug, p.title, p.body, p.media_kind, p.media_url, p.created_at_ms, (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) FROM posts p INNER JOIN users u ON u.id = p.author_id WHERE p.author_id = ? ORDER BY p.created_at_ms DESC LIMIT ?")
+  CONIURA stmt_bind_int(stmt, 1, author_id)
+  CONIURA stmt_bind_int(stmt, 2, limit_count)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA RedePost post AD CONIURA rede_post_from_stmt(stmt)
+      CONIURA fluxus_push(out, SPECULUM post)
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_has_like(SPECULUM NIHIL db, REX user_id, REX post_id) REDDE VERUM
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT COUNT(*) FROM likes WHERE user_id = ? AND post_id = ?")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, post_id)
+  DUM CONIURA stmt_step(stmt)
+    SI CONIURA stmt_has_row(stmt)
+      EVOCA VERUM found AD CONIURA stmt_get_int(stmt, 0) > 0
+      CONIURA stmt_finalize(stmt)
+      REDDE found
+    FIN SI
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE rede_repository_like_post(SPECULUM NIHIL db, REX user_id, REX post_id) REDDE NIHIL
+  SI CONIURA rede_repository_has_like(db, user_id, post_id)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO likes(user_id, post_id, created_at_ms) VALUES(?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_int(stmt, 2, post_id)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA rede_now_unix_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_follow(SPECULUM NIHIL db, REX follower_id, REX followed_id) REDDE NIHIL
+  SI follower_id == followed_id
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR IGNORE INTO follows(follower_id, followed_id, created_at_ms) VALUES(?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, follower_id)
+  CONIURA stmt_bind_int(stmt, 2, followed_id)
+  CONIURA stmt_bind_int(stmt, 3, CONIURA rede_now_unix_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_add_comment(SPECULUM NIHIL db, REX post_id, REX author_id, VERBUM body) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO comments(post_id, author_id, body, created_at_ms) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, post_id)
+  CONIURA stmt_bind_int(stmt, 2, author_id)
+  CONIURA stmt_bind_text(stmt, 3, body)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA rede_now_unix_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_emit_activity(SPECULUM NIHIL db, VERBUM kind, VERBUM title, VERBUM body) REDDE NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT INTO activities(kind, title, body, created_at_ms) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_text(stmt, 1, kind)
+  CONIURA stmt_bind_text(stmt, 2, title)
+  CONIURA stmt_bind_text(stmt, 3, body)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA rede_now_unix_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_recent_activity(SPECULUM NIHIL db) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "SELECT kind, title, body, created_at_ms FROM activities ORDER BY created_at_ms DESC LIMIT 10")
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedeActivity))
+  DUM CONIURA stmt_step(stmt)
+    EVOCA RedeActivity row AD CONIURA rede_activity_new(
+      CONIURA stmt_get_text(stmt, 0),
+      CONIURA stmt_get_text(stmt, 1),
+      CONIURA stmt_get_text(stmt, 2),
+      CONIURA rede_format_wallclock_ms(CONIURA stmt_get_int(stmt, 3))
+    )
+    CONIURA fluxus_push(out, SPECULUM row)
+  FIN DUM
+  CONIURA stmt_finalize(stmt)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE rede_repository_presence_touch(SPECULUM NIHIL db, REX user_id, VERBUM conn_id) REDDE NIHIL
+  SI user_id <= 0
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL stmt AD CONIURA db_prepare(db, "INSERT OR REPLACE INTO presence(user_id, channel, conn_id, heartbeat_ms) VALUES(?,?,?,?)")
+  CONIURA stmt_bind_int(stmt, 1, user_id)
+  CONIURA stmt_bind_text(stmt, 2, "social.feed")
+  CONIURA stmt_bind_text(stmt, 3, conn_id)
+  CONIURA stmt_bind_int(stmt, 4, CONIURA rede_now_unix_ms())
+  CONIURA stmt_step(stmt)
+  CONIURA stmt_finalize(stmt)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_presence_count(SPECULUM NIHIL db) REDDE REX
+  EVOCA REX cutoff AD CONIURA rede_now_unix_ms() - 600000
+  REDDE CONIURA db_scalar_int(db, CONIURA concat("SELECT COUNT(*) FROM presence WHERE channel = 'social.feed' AND heartbeat_ms >= ", CONIURA stringify_int(cutoff)))
+EXPLICIT RITUALE
+
+RITUALE rede_repository_lounge_send(SPECULUM NIHIL db, REX user_id, VERBUM body) REDDE NIHIL
+  CONIURA ws_room_log(db, "lounge", ROOM_EV_MESSAGE, user_id, user_id, body)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE rede_repository_lounge_events(SPECULUM NIHIL db, REX limit_count) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL raw AD CONIURA ws_room_event_list(db, "lounge", limit_count, 0)
+  EVOCA SPECULUM NIHIL out AD CONIURA fluxus_init(MENSURA(RedeRoomEventView))
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(raw)
+  DUM i < n
+    EVOCA SPECULUM RoomEvent row_ptr AD CONIURA fluxus_get(raw, i)
+    EVOCA RedeRoomEventView row AD CONIURA rede_room_event_new(
+      CONIURA ws_room_tipo_to_string((*row_ptr).tipo),
+      (*row_ptr).actor_id,
+      (*row_ptr).user_id,
+      (*row_ptr).payload,
+      CONIURA rede_format_wallclock_ms((*row_ptr).criado_em)
+    )
+    CONIURA fluxus_push(out, SPECULUM row)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

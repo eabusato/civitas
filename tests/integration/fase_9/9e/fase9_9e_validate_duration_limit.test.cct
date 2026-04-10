@@ -1,0 +1,28 @@
+INCIPIT grimoire "fase9_9e_validate_duration_limit"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video.cct"
+ADVOCARE "../../../../lib/civitas/media_video/video_types.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE NIHIL
+  EVOCA VERBUM root AD CONIURA phase9_9e_root("validate_duration")
+  CONIURA phase9_reset_dir(root)
+  EVOCA VERBUM path AD CONIURA phase9_9e_make_video(root, "clip.mp4", 2.0, 320, 240)
+  EVOCA VideoProcessConfig cfg AD CONIURA video_process_config_new(
+    CONIURA phase9_9e_specs_sd(),
+    0.0,
+    "",
+    MEDIA_ZONE_PROCESSED,
+    1.0,
+    10485760,
+    60000
+  )
+  EVOCA SPECULUM NIHIL res AD CONIURA video_validate(path, cfg)
+  SI NON CONIURA result_is_err GENUS(VideoProbe, VERBUM)(res)
+    IACE "video should exceed duration limit"
+  FIN SI
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,96 @@
+INCIPIT grimoire "fase20_common"
+
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/middleware.cct"
+ADVOCARE "cct/config.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase20_root(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join("tests/tmp/fase_20", test_name)
+EXPLICIT RITUALE
+
+RITUALE phase20_delete_tree(VERBUM path) REDDE NIHIL
+  SI NON CONIURA exists(path)
+    REDDE
+  FIN SI
+  SI CONIURA is_file(path)
+    CONIURA delete_file(path)
+    REDDE
+  FIN SI
+  EVOCA SPECULUM NIHIL entries AD CONIURA list_dir(path)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(entries)
+  DUM i < n
+    EVOCA SPECULUM VERBUM name_ptr AD CONIURA fluxus_get(entries, i)
+    CONIURA phase20_delete_tree(CONIURA path_join(path, *name_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(entries)
+  CONIURA delete_dir(path)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE phase20_reset_root(VERBUM test_name) REDDE VERBUM
+  EVOCA VERBUM root AD CONIURA phase20_root(test_name)
+  SI CONIURA exists(root)
+    CONIURA phase20_delete_tree(root)
+  FIN SI
+  CONIURA mkdir_all(root)
+  REDDE root
+EXPLICIT RITUALE
+
+RITUALE phase20_trace_dir(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase20_reset_root(test_name), "traces")
+EXPLICIT RITUALE
+
+RITUALE phase20_trace_db_path(VERBUM test_name) REDDE VERBUM
+  REDDE CONIURA path_join(CONIURA phase20_root(test_name), "trace_store.db")
+EXPLICIT RITUALE
+
+RITUALE phase20_config(VERBUM enabled, VERBUM mode, VERBUM sample_rate, VERBUM trace_dir) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM NIHIL cfg AD CONIURA config_new()
+  CONIURA config_set(cfg, "trace", "enabled", enabled)
+  CONIURA config_set(cfg, "trace", "mode", mode)
+  CONIURA config_set(cfg, "trace", "sample_rate", sample_rate)
+  CONIURA config_set(cfg, "trace", "dir", trace_dir)
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase20_request(VERBUM method, VERBUM path) REDDE WebRequest
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "host", "example.test")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build(method, path, "HTTP/1.1", headers, "", "127.0.0.1", "http", "example.test", "rid-20", "", "", "")
+  SI CONIURA result_is_err GENUS(WebRequest, VERBUM)(req_res)
+    IACE "phase20_request invalid"
+  FIN SI
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+EXPLICIT RITUALE
+
+RITUALE phase20_response(REX status) REDDE WebResponse
+  REDDE CONIURA response_new(status)
+EXPLICIT RITUALE
+
+RITUALE phase20_context() REDDE RequestContext
+  REDDE CONIURA middleware_context_new()
+EXPLICIT RITUALE
+
+RITUALE phase20_write_trace_file(VERBUM trace_dir, VERBUM trace_id, VERBUM root_name) REDDE VERBUM
+  CONIURA mkdir_all(trace_dir)
+  EVOCA Trace trace AD CONIURA trace_new_with_id(trace_id)
+  EVOCA VERBUM span_id AD CONIURA span_start(SPECULUM trace, root_name)
+  CONIURA span_set_attribute(SPECULUM trace, span_id, "kind", "test")
+  CONIURA span_end(SPECULUM trace, span_id)
+  EVOCA VERBUM path AD CONIURA path_join(trace_dir, CONIURA concat(trace_id, ".ctrace"))
+  CONIURA trace_write_file(trace, path)
+  CONIURA trace_free(SPECULUM trace)
+  REDDE path
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

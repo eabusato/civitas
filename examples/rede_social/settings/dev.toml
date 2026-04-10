@@ -1,0 +1,8 @@
+# Development-only notes.
+# Typical uses:
+# - local ports
+# - verbose logging
+# - relaxed cache policies
+
+[runtime]
+debug = true

@@ -1,0 +1,33 @@
+{% EVOCA RedeBasePageContext %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><a href="/">rede_social</a></div>
+    <nav>
+      <a href="/">Feed</a>
+      <a href="/lounge">Lounge</a>
+      <a href="/api/feed">API</a>
+      <a href="/sigilos-vivos">Sigilos</a>
+      <a href="/ops">Ops</a>
+      {% SI has_user %}
+        <span class="chip">@{{ current_user }}</span>
+        <form method="POST" action="/sair" class="inline-form">
+          <button type="submit">Logout</button>
+        </form>
+      {% ALITER %}
+        <a href="/entrar">Login</a>
+      {% FIN SI %}
+    </nav>
+  </header>
+  <main class="shell">
+    {% SECTIO content %}{% FIN SECTIO %}
+  </main>
+</body>
+</html>

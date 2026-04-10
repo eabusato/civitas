@@ -1,0 +1,48 @@
+INCIPIT grimoire "fase19_19e_exports"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/embed/embed.cct"
+ADVOCARE "../../../../lib/civitas/auth_test/auth_test_token.cct"
+ADVOCARE "../../../../lib/civitas/auth_token/auth_token.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/encoding.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_exports() REDDE NIHIL
+  EVOCA Phase19Stack stack AD CONIURA phase19_stack_open("19e_exports")
+  EVOCA ExportConfig cfg AD CONIURA export_config_default("posts", "posts")
+  EVOCA TokenConfig tok_cfg AD CONIURA auth_test_token_config()
+  CONIURA export_config_add_field(SPECULUM cfg, "id")
+  CONIURA export_config_add_field(SPECULUM cfg, "title")
+  VINCIRE cfg.filename_prefix AD "posts-export"
+  CONIURA phase19_create_posts_table(stack.dbh)
+  CONIURA phase19_insert_post(stack.dbh, "Hello", "Body", 10, "{\"id\":1,\"name\":\"Ana\"}")
+  CONIURA phase19_auth_schema_up(stack.db)
+  EVOCA VERBUM token AD CONIURA phase19_auth_token_for_new_user(stack.db, "api")
+  EVOCA WebRequest json_req AD CONIURA phase19_request_with_bearer("GET", "/api/v1/posts/export/", "", token)
+  EVOCA WebResponse json_res AD CONIURA embed_export_json_handler(stack.db, stack.dbh, tok_cfg, cfg, json_req)
+  SI json_res.status != 200 VEL CONIURA find(json_res.body, "\"title\":\"Hello\"") == -1
+    IACE "json export mismatch"
+  FIN SI
+
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "authorization", CONIURA concat("Basic ", CONIURA base64_encode("admin:secret")))
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/admin/posts/export/csv/", "HTTP/1.1", headers, "", "127.0.0.1", "http", "example.test", "rid", "", "", "")
+  EVOCA WebRequest csv_req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA WebResponse csv_res AD CONIURA embed_export_csv_admin_handler(stack.dbh, cfg, csv_req, "secret")
+  SI csv_res.status != 200 VEL CONIURA find(csv_res.body, "id,title") == -1 VEL CONIURA find(csv_res.body, "1,Hello") == -1
+    IACE "csv export mismatch"
+  FIN SI
+  CONIURA phase19_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_exports()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

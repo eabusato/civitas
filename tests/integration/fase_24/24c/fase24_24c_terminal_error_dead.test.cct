@@ -1,0 +1,25 @@
+INCIPIT grimoire "fase24_24c_terminal_error_dead"
+
+ADVOCARE "../../../../lib/civitas/db_handle/db_handle.cct"
+ADVOCARE "../../../../lib/civitas/test_tasks/test_tasks.cct"
+ADVOCARE "../../../../lib/civitas/tasks/tasks.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE phase24_fail_task(DbHandle dbh, TaskRecord task) REDDE TaskCallbackResult
+  REDDE CONIURA task_callback_result_error("forced_error", "{\"error\":\"forced_error\"}")
+EXPLICIT RITUALE
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL q AD CONIURA test_tasks_setup()
+  CONIURA test_tasks_register(q, "fail_once", phase24_fail_task)
+  SI CONIURA len(CONIURA test_tasks_enqueue(q, "fail_once", "{\"job\":2}")) == 0
+    REDDE 1
+  FIN SI
+  SI CONIURA test_tasks_flush(q) != 1
+    REDDE 1
+  FIN SI
+  CONIURA assert_task_failed(q, "fail_once")
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

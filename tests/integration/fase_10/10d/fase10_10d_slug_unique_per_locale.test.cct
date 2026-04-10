@@ -1,0 +1,24 @@
+INCIPIT grimoire "fase10_10d_slug_unique_per_locale"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/taxonomy/taxonomy.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10d_slug_unique_per_locale")
+  CONIURA taxonomy_ensure_schema(db)
+  CONIURA taxonomy_slug_register(db, "news", "category", 1, "en")
+  EVOCA VERBUM en_slug AD CONIURA taxonomy_slug_reserve(db, "News", "en")
+  EVOCA VERBUM pt_slug AD CONIURA taxonomy_slug_reserve(db, "News", "pt")
+  SI CONIURA compare(en_slug, "news-2") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(pt_slug, "news") != 0
+    REDDE 2
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,5 @@
+INCIPIT grimoire "civitas_ws_room_root"
+
+ADVOCARE "ws_room/ws_room.cct"
+
+EXPLICIT grimoire

@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase0_0c_make_build_artifact_test"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "cct/fs.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM log AD CONIURA tmp_file("fase0_0c_make_build.log")
+  CONIURA cleanup_file(log)
+  SI CONIURA run_to_log("make build", log) != 0
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists("dist/civitas")
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

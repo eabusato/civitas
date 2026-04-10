@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase13_13a_load_json_fixture_suite"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture.cct"
+ADVOCARE "../../../../lib/civitas/fixtures/fixture_loader.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM path AD CONIURA phase13_write_file("13a_load_json_fixture_suite", "cats.json", "[{\"model\":\"categorias\",\"pk\":\"1\",\"fields\":{\"nome\":\"Tecnologia\",\"slug\":\"tecnologia\",\"ativo\":\"1\"}}]")
+  EVOCA FixtureSuite suite AD CONIURA fixture_load_json(path, FkReference)
+  SI suite.kind != FkReference
+    REDDE 1
+  FIN SI
+  SI CONIURA fluxus_len(suite.entradas) != 1
+    REDDE 2
+  FIN SI
+  EVOCA SPECULUM FixtureEntry entry AD CONIURA fluxus_get(suite.entradas, 0)
+  SI CONIURA compare((*entry).modelo, "categorias") != 0 VEL CONIURA compare((*entry).pk, "1") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA json_obj_len((*entry).campos) != 3
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

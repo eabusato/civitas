@@ -1,0 +1,88 @@
+INCIPIT grimoire "civitas_django_migrate"
+
+ADVOCARE "cct/fluxus.cct"
+
+ORDO DjangoFieldType
+  DftAutoField,
+  DftCharField,
+  DftTextField,
+  DftIntegerField,
+  DftFloatField,
+  DftBooleanField,
+  DftDateField,
+  DftDateTimeField,
+  DftForeignKey,
+  DftOneToOneField,
+  DftManyToManyField,
+  DftImageField,
+  DftFileField,
+  DftUUIDField,
+  DftJSONField,
+  DftUnknown
+FIN ORDO
+
+SIGILLUM DjangoField
+  nome: VERBUM
+  tipo: DjangoFieldType
+  null: VERUM
+  blank: VERUM
+  unique: VERUM
+  primary_key: VERUM
+  max_length: REX
+  rel_modelo: VERBUM
+  rel_campo: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DjangoModel
+  nome: VERBUM
+  app: VERBUM
+  db_table: VERBUM
+  campos: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM DjangoMigrateConfig
+  db_django: VERBUM
+  db_civitas: SPECULUM NIHIL
+  media_root_django: VERBUM
+  media_root_civitas: VERBUM
+  dry_run: VERUM
+FIN SIGILLUM
+
+SIGILLUM DjangoMigrateResult
+  modelos_processados: REX
+  registros_importados: REX
+  registros_com_erro: REX
+  arquivos_copiados: REX
+  arquivos_com_erro: REX
+  parity_ok: VERUM
+  mensagem: VERBUM
+FIN SIGILLUM
+
+SIGILLUM DjangoParityCount
+  tabela: VERBUM
+  contagem_django: REX
+  contagem_civitas: REX
+  ok: VERUM
+FIN SIGILLUM
+
+SIGILLUM DjangoParityChecksum
+  tabela: VERBUM
+  campo: VERBUM
+  checksum_django: VERBUM
+  checksum_civitas: VERBUM
+  ok: VERUM
+FIN SIGILLUM
+
+RITUALE django_migrate_result_new() REDDE DjangoMigrateResult
+  EVOCA DjangoMigrateResult r
+  VINCIRE r.modelos_processados AD 0
+  VINCIRE r.registros_importados AD 0
+  VINCIRE r.registros_com_erro AD 0
+  VINCIRE r.arquivos_copiados AD 0
+  VINCIRE r.arquivos_com_erro AD 0
+  VINCIRE r.parity_ok AD VERUM
+  VINCIRE r.mensagem AD ""
+  REDDE r
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,26 @@
+INCIPIT grimoire "fase2_2b_no_content_invariant_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA WebResponse res AD CONIURA response_no_content()
+  VINCIRE res.body AD "ignored"
+  EVOCA SPECULUM NIHIL http_res AD CONIURA response_to_http(res)
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(http_res)
+    REDDE 1
+  FIN SI
+  EVOCA HttpResponse out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(http_res)
+  SI CONIURA http_response_status(out) != 204
+    REDDE 2
+  FIN SI
+  SI CONIURA len(CONIURA http_response_body(out)) != 0
+    REDDE 3
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

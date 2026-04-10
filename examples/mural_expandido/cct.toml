@@ -1,0 +1,15 @@
+[project]
+name = "mural_expandido"
+version = "0.1.0"
+entry = "main.cct"
+description = "Expanded canonical Civitas example: social mural with auth, media, reactions, i18n, API and traces"
+license = "MIT"
+cct_min_version = "0.40.0"
+cct_capability_floor = "FASE_40"
+
+[project.requires]
+cct = ">=0.40.0"
+
+[build]
+out_dir = "dist"
+default_profile = "debug"

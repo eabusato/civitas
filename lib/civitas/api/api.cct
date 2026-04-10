@@ -1,0 +1,864 @@
+INCIPIT grimoire "civitas_api"
+
+ADVOCARE "cct/date.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../db_handle/db_handle.cct"
+
+ORDO ApiFieldKind
+  API_FIELD_TEXT
+  API_FIELD_INT
+  API_FIELD_REAL
+  API_FIELD_BOOL
+  API_FIELD_DATE
+  API_FIELD_DATETIME
+  API_FIELD_JSON
+  API_FIELD_NESTED
+FIN ORDO
+
+ORDO ContentFormat
+  CONTENT_JSON
+  CONTENT_CSV
+FIN ORDO
+
+SIGILLUM SerializerField
+  name: VERBUM
+  source: VERBUM
+  kind: ApiFieldKind
+  read_only: VERUM
+  write_only: VERUM
+  required: VERUM
+  default_json: VERBUM
+  nested_serializer: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SerializerConfig
+  name: VERBUM
+  model_name: VERBUM
+  table_name: VERBUM
+  pk_field: VERBUM
+  fields: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ApiSerializerRegistry
+  items: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ValidationError
+  field: VERBUM
+  code: VERBUM
+  message: VERBUM
+FIN SIGILLUM
+
+SIGILLUM ValidationResult
+  is_valid: VERUM
+  validated_json: VERBUM
+  errors: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM ApiPaginationMeta
+  page: REX
+  page_size: REX
+  total: REX
+  total_pages: REX
+  has_prev: VERUM
+  has_next: VERUM
+  next_cursor: VERBUM
+  prev_cursor: VERBUM
+  total_known: VERUM
+FIN SIGILLUM
+
+SIGILLUM ApiPaginatedResult
+  data_json: VERBUM
+  meta: ApiPaginationMeta
+FIN SIGILLUM
+
+RITUALE serializer_field_default(VERBUM name, VERBUM source, ApiFieldKind kind) REDDE SerializerField
+  EVOCA SerializerField f
+  VINCIRE f.name AD name
+  VINCIRE f.source AD source
+  VINCIRE f.kind AD kind
+  VINCIRE f.read_only AD FALSUM
+  VINCIRE f.write_only AD FALSUM
+  VINCIRE f.required AD VERUM
+  VINCIRE f.default_json AD ""
+  VINCIRE f.nested_serializer AD ""
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE serializer_field_read_only(VERBUM name, VERBUM source, ApiFieldKind kind) REDDE SerializerField
+  EVOCA SerializerField f AD CONIURA serializer_field_default(name, source, kind)
+  VINCIRE f.read_only AD VERUM
+  VINCIRE f.required AD FALSUM
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE serializer_field_write_only(VERBUM name, VERBUM source, ApiFieldKind kind) REDDE SerializerField
+  EVOCA SerializerField f AD CONIURA serializer_field_default(name, source, kind)
+  VINCIRE f.write_only AD VERUM
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE serializer_field_optional(VERBUM name, VERBUM source, ApiFieldKind kind) REDDE SerializerField
+  EVOCA SerializerField f AD CONIURA serializer_field_default(name, source, kind)
+  VINCIRE f.required AD FALSUM
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE serializer_config_init(SPECULUM SerializerConfig config, VERBUM name, VERBUM model_name, VERBUM table_name, VERBUM pk_field) REDDE NIHIL
+  VINCIRE (*config).name AD name
+  VINCIRE (*config).model_name AD model_name
+  VINCIRE (*config).table_name AD table_name
+  VINCIRE (*config).pk_field AD pk_field
+  VINCIRE (*config).fields AD CONIURA fluxus_init(MENSURA(SerializerField))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE serializer_config_create(VERBUM name, VERBUM model_name, VERBUM table_name, VERBUM pk_field) REDDE SerializerConfig
+  EVOCA SerializerConfig config
+  CONIURA serializer_config_init(SPECULUM config, name, model_name, table_name, pk_field)
+  REDDE config
+EXPLICIT RITUALE
+
+RITUALE serializer_config_add_field(SPECULUM SerializerConfig config, SerializerField field) REDDE NIHIL
+  CONIURA fluxus_push((*config).fields, SPECULUM field)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_init(SPECULUM ApiSerializerRegistry reg) REDDE NIHIL
+  VINCIRE (*reg).items AD CONIURA fluxus_init(MENSURA(SerializerConfig))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_new() REDDE ApiSerializerRegistry
+  EVOCA ApiSerializerRegistry reg
+  CONIURA api_serializer_registry_init(SPECULUM reg)
+  REDDE reg
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_put(SPECULUM ApiSerializerRegistry reg, SerializerConfig config) REDDE NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*reg).items)
+  DUM i < n
+    EVOCA SPECULUM SerializerConfig ptr AD CONIURA fluxus_get((*reg).items, i)
+    SI CONIURA compare((*ptr).name, config.name) == 0
+      VINCIRE (*ptr).name AD config.name
+      VINCIRE (*ptr).model_name AD config.model_name
+      VINCIRE (*ptr).table_name AD config.table_name
+      VINCIRE (*ptr).pk_field AD config.pk_field
+      VINCIRE (*ptr).fields AD config.fields
+      REDDE
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_push((*reg).items, SPECULUM config)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_get(SPECULUM ApiSerializerRegistry reg, VERBUM name) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len((*reg).items)
+  DUM i < n
+    EVOCA SPECULUM SerializerConfig ptr AD CONIURA fluxus_get((*reg).items, i)
+    SI CONIURA compare((*ptr).name, name) == 0
+      REDDE ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_len(SPECULUM ApiSerializerRegistry reg) REDDE REX
+  REDDE CONIURA fluxus_len((*reg).items)
+EXPLICIT RITUALE
+
+RITUALE api_serializer_registry_get_at(SPECULUM ApiSerializerRegistry reg, REX idx) REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_get((*reg).items, idx)
+EXPLICIT RITUALE
+
+RITUALE api_validation_error_new(VERBUM field, VERBUM code, VERBUM message) REDDE ValidationError
+  EVOCA ValidationError ve
+  VINCIRE ve.field AD field
+  VINCIRE ve.code AD code
+  VINCIRE ve.message AD message
+  REDDE ve
+EXPLICIT RITUALE
+
+RITUALE api_validation_result_init(SPECULUM ValidationResult vr) REDDE NIHIL
+  VINCIRE (*vr).is_valid AD VERUM
+  VINCIRE (*vr).validated_json AD "{}"
+  VINCIRE (*vr).errors AD CONIURA fluxus_init(MENSURA(ValidationError))
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_validation_result_push_error(SPECULUM ValidationResult vr, ValidationError ve) REDDE NIHIL
+  VINCIRE (*vr).is_valid AD FALSUM
+  CONIURA fluxus_push((*vr).errors, SPECULUM ve)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_validation_errors_to_json(SPECULUM NIHIL errors) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(errors)
+  DUM i < n
+    EVOCA SPECULUM ValidationError ptr AD CONIURA fluxus_get(errors, i)
+    EVOCA Json obj AD CONIURA json_obj()
+    CONIURA json_obj_push(obj, "field", CONIURA json_str((*ptr).field))
+    CONIURA json_obj_push(obj, "code", CONIURA json_str((*ptr).code))
+    CONIURA json_obj_push(obj, "message", CONIURA json_str((*ptr).message))
+    CONIURA json_arr_push(arr, obj)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE api_serializer_find_field(SerializerConfig config, VERBUM field_name) REDDE SPECULUM NIHIL
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(config.fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField ptr AD CONIURA fluxus_get(config.fields, i)
+    SI CONIURA compare((*ptr).name, field_name) == 0
+      REDDE ptr
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE NIHIL
+EXPLICIT RITUALE
+
+RITUALE serializer_convert_value(ApiFieldKind kind, Json value) REDDE Json
+  SI kind == API_FIELD_DATE VEL kind == API_FIELD_DATETIME
+    SI CONIURA json_is_num(value)
+      REDDE CONIURA json_str(CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(value))))
+    FIN SI
+    SI CONIURA json_is_str(value)
+      REDDE CONIURA json_str(CONIURA json_expect_str(value))
+    FIN SI
+    REDDE CONIURA json_str("")
+  FIN SI
+  SI kind == API_FIELD_INT
+    REDDE CONIURA json_num(cast GENUS(UMBRA)(cast GENUS(REX)(CONIURA json_expect_num(value))))
+  FIN SI
+  SI kind == API_FIELD_REAL
+    REDDE CONIURA json_num(CONIURA json_expect_num(value))
+  FIN SI
+  SI kind == API_FIELD_BOOL
+    REDDE CONIURA json_bool(CONIURA json_expect_bool(value))
+  FIN SI
+  REDDE value
+EXPLICIT RITUALE
+
+RITUALE serializer_to_json(SPECULUM ApiSerializerRegistry reg, SerializerConfig config, VERBUM row_json) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(row_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE "{}"
+  FIN SI
+  EVOCA Json row_obj AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(row_obj)
+    REDDE "{}"
+  FIN SI
+
+  EVOCA Json out_obj AD CONIURA json_obj()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(config.fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField field_ptr AD CONIURA fluxus_get(config.fields, i)
+    EVOCA SerializerField field AD *field_ptr
+    SI NON field.write_only
+      SI CONIURA json_has_key(row_obj, field.source)
+        EVOCA Json raw_val AD CONIURA json_get_key(row_obj, field.source)
+        SI field.kind == API_FIELD_NESTED
+          EVOCA SPECULUM SerializerConfig nested_ptr AD CONIURA api_serializer_registry_get(reg, field.nested_serializer)
+          SI nested_ptr != NIHIL
+            EVOCA VERBUM nested_json AD CONIURA serializer_to_json(reg, *nested_ptr, CONIURA json_stringify(raw_val))
+            EVOCA SPECULUM NIHIL nested_parsed AD CONIURA json_try_parse(nested_json)
+            SI CONIURA result_is_ok GENUS(Json, JsonError)(nested_parsed)
+              CONIURA json_obj_push(out_obj, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(nested_parsed))
+            FIN SI
+          FIN SI
+        ALITER
+          CONIURA json_obj_push(out_obj, field.name, CONIURA serializer_convert_value(field.kind, raw_val))
+        FIN SI
+      ALITER
+        SI CONIURA len(field.default_json) > 0
+          EVOCA SPECULUM NIHIL default_parsed AD CONIURA json_try_parse(field.default_json)
+          SI CONIURA result_is_ok GENUS(Json, JsonError)(default_parsed)
+            CONIURA json_obj_push(out_obj, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(default_parsed))
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(out_obj)
+EXPLICIT RITUALE
+
+RITUALE serializer_list_to_json(SPECULUM ApiSerializerRegistry reg, SerializerConfig config, VERBUM rows_json_array) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(rows_json_array)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE "[]"
+  FIN SI
+  EVOCA Json arr AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_arr(arr)
+    REDDE "[]"
+  FIN SI
+  EVOCA Json out_arr AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA json_arr_len(arr)
+  DUM i < n
+    EVOCA Json row AD CONIURA json_arr_get(arr, i)
+    EVOCA SPECULUM NIHIL row_parsed AD CONIURA json_try_parse(CONIURA serializer_to_json(reg, config, CONIURA json_stringify(row)))
+    SI CONIURA result_is_ok GENUS(Json, JsonError)(row_parsed)
+      CONIURA json_arr_push(out_arr, CONIURA result_unwrap GENUS(Json, JsonError)(row_parsed))
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA json_stringify(out_arr)
+EXPLICIT RITUALE
+
+RITUALE serializer_nested(SPECULUM ApiSerializerRegistry reg, SerializerConfig parent_config, VERBUM field_name, VERBUM row_json) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(row_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE "{}"
+  FIN SI
+  EVOCA Json row_obj AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(row_obj)
+    REDDE "{}"
+  FIN SI
+  EVOCA SPECULUM SerializerField field_ptr AD CONIURA api_serializer_find_field(parent_config, field_name)
+  SI field_ptr == NIHIL
+    REDDE "{}"
+  FIN SI
+  EVOCA SerializerField field AD *field_ptr
+  SI field.kind != API_FIELD_NESTED
+    REDDE "{}"
+  FIN SI
+  SI NON CONIURA json_has_key(row_obj, field.source)
+    REDDE "{}"
+  FIN SI
+  EVOCA Json nested_raw AD CONIURA json_get_key(row_obj, field.source)
+  EVOCA SPECULUM SerializerConfig nested_ptr AD CONIURA api_serializer_registry_get(reg, field.nested_serializer)
+  SI nested_ptr == NIHIL
+    REDDE "{}"
+  FIN SI
+  REDDE CONIURA serializer_to_json(reg, *nested_ptr, CONIURA json_stringify(nested_raw))
+EXPLICIT RITUALE
+
+RITUALE serializer_check_type(ApiFieldKind kind, Json value) REDDE VERUM
+  SI kind == API_FIELD_TEXT
+    REDDE CONIURA json_is_str(value)
+  FIN SI
+  SI kind == API_FIELD_INT VEL kind == API_FIELD_REAL
+    REDDE CONIURA json_is_num(value)
+  FIN SI
+  SI kind == API_FIELD_BOOL
+    REDDE CONIURA json_is_bool(value)
+  FIN SI
+  SI kind == API_FIELD_DATE VEL kind == API_FIELD_DATETIME
+    SI CONIURA json_is_str(value)
+      REDDE CONIURA len(CONIURA json_expect_str(value)) >= 10
+    FIN SI
+    REDDE FALSUM
+  FIN SI
+  SI kind == API_FIELD_JSON
+    REDDE VERUM
+  FIN SI
+  SI kind == API_FIELD_NESTED
+    REDDE CONIURA json_is_obj(value)
+  FIN SI
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE serializer_validate(SPECULUM ApiSerializerRegistry reg, SerializerConfig config, VERBUM input_json) REDDE ValidationResult
+  EVOCA ValidationResult result
+  CONIURA api_validation_result_init(SPECULUM result)
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(input_json)
+  EVOCA Json validated AD CONIURA json_obj()
+
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new("__body__", "parse", "Invalid JSON body"))
+    REDDE result
+  FIN SI
+
+  EVOCA Json input AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(input)
+    CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new("__body__", "type", "JSON body must be an object"))
+    REDDE result
+  FIN SI
+
+  EVOCA SPECULUM NIHIL keys AD CONIURA json_keys(input)
+  EVOCA REX key_i AD 0
+  EVOCA REX key_n AD CONIURA fluxus_len(keys)
+  DUM key_i < key_n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, key_i)
+    SI CONIURA api_serializer_find_field(config, *key_ptr) == NIHIL
+      CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new(*key_ptr, "unknown_field", "Field is not declared in serializer"))
+    FIN SI
+    VINCIRE key_i AD key_i + 1
+  FIN DUM
+
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(config.fields)
+  DUM i < n
+    EVOCA SPECULUM SerializerField ptr AD CONIURA fluxus_get(config.fields, i)
+    EVOCA SerializerField field AD *ptr
+    SI NON field.read_only
+      SI CONIURA json_has_key(input, field.name)
+        EVOCA Json val AD CONIURA json_get_key(input, field.name)
+        SI NON CONIURA serializer_check_type(field.kind, val)
+          CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new(field.name, "type", CONIURA concat(field.name, " has invalid type")))
+        ALITER
+          SI field.kind == API_FIELD_NESTED
+            EVOCA SPECULUM SerializerConfig nested_ptr AD CONIURA api_serializer_registry_get(reg, field.nested_serializer)
+            SI nested_ptr == NIHIL
+              CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new(field.name, "nested_not_found", "Nested serializer not found"))
+            ALITER
+              EVOCA ValidationResult nested_res AD CONIURA serializer_validate(reg, *nested_ptr, CONIURA json_stringify(val))
+              SI nested_res.is_valid
+                EVOCA SPECULUM NIHIL nested_json AD CONIURA json_try_parse(nested_res.validated_json)
+                SI CONIURA result_is_ok GENUS(Json, JsonError)(nested_json)
+                  CONIURA json_obj_push(validated, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(nested_json))
+                FIN SI
+              ALITER
+                EVOCA REX ei AD 0
+                EVOCA REX en AD CONIURA fluxus_len(nested_res.errors)
+                DUM ei < en
+                  EVOCA SPECULUM ValidationError e_ptr AD CONIURA fluxus_get(nested_res.errors, ei)
+                  EVOCA ValidationError nested_err AD *e_ptr
+                  VINCIRE nested_err.field AD CONIURA concat(CONIURA concat(field.name, "."), nested_err.field)
+                  CONIURA api_validation_result_push_error(SPECULUM result, nested_err)
+                  VINCIRE ei AD ei + 1
+                FIN DUM
+              FIN SI
+            FIN SI
+          ALITER
+            CONIURA json_obj_push(validated, field.name, val)
+          FIN SI
+        FIN SI
+      ALITER
+        SI field.required
+          CONIURA api_validation_result_push_error(SPECULUM result, CONIURA api_validation_error_new(field.name, "required", CONIURA concat(field.name, " is required")))
+        ALITER
+          SI CONIURA len(field.default_json) > 0
+            EVOCA SPECULUM NIHIL default_parsed AD CONIURA json_try_parse(field.default_json)
+            SI CONIURA result_is_ok GENUS(Json, JsonError)(default_parsed)
+              CONIURA json_obj_push(validated, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(default_parsed))
+            FIN SI
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI result.is_valid
+    VINCIRE result.validated_json AD CONIURA json_stringify(validated)
+  FIN SI
+  REDDE result
+EXPLICIT RITUALE
+
+RITUALE serializer_validate_nested(SPECULUM ApiSerializerRegistry reg, SerializerConfig parent_config, VERBUM field_name, VERBUM input_json) REDDE ValidationResult
+  EVOCA ValidationResult fail
+  CONIURA api_validation_result_init(SPECULUM fail)
+  EVOCA SPECULUM SerializerField field_ptr AD CONIURA api_serializer_find_field(parent_config, field_name)
+  SI field_ptr == NIHIL
+    CONIURA api_validation_result_push_error(SPECULUM fail, CONIURA api_validation_error_new(field_name, "field_not_found", "Field not declared in serializer"))
+    REDDE fail
+  FIN SI
+  EVOCA SerializerField field AD *field_ptr
+  SI field.kind != API_FIELD_NESTED
+    CONIURA api_validation_result_push_error(SPECULUM fail, CONIURA api_validation_error_new(field_name, "not_nested", "Field is not nested"))
+    REDDE fail
+  FIN SI
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(input_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    CONIURA api_validation_result_push_error(SPECULUM fail, CONIURA api_validation_error_new("__body__", "parse", "Invalid JSON body"))
+    REDDE fail
+  FIN SI
+  EVOCA Json input AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  SI NON CONIURA json_is_obj(input) VEL NON CONIURA json_has_key(input, field_name)
+    CONIURA api_validation_result_push_error(SPECULUM fail, CONIURA api_validation_error_new(field_name, "required", "Nested field not present"))
+    REDDE fail
+  FIN SI
+  EVOCA SPECULUM SerializerConfig nested_ptr AD CONIURA api_serializer_registry_get(reg, field.nested_serializer)
+  SI nested_ptr == NIHIL
+    CONIURA api_validation_result_push_error(SPECULUM fail, CONIURA api_validation_error_new(field_name, "nested_not_found", "Nested serializer not found"))
+    REDDE fail
+  FIN SI
+  REDDE CONIURA serializer_validate(reg, *nested_ptr, CONIURA json_stringify(CONIURA json_get_key(input, field_name)))
+EXPLICIT RITUALE
+
+RITUALE api_pagination_meta_empty() REDDE ApiPaginationMeta
+  EVOCA ApiPaginationMeta meta
+  VINCIRE meta.page AD 1
+  VINCIRE meta.page_size AD 20
+  VINCIRE meta.total AD 0
+  VINCIRE meta.total_pages AD 0
+  VINCIRE meta.has_prev AD FALSUM
+  VINCIRE meta.has_next AD FALSUM
+  VINCIRE meta.next_cursor AD ""
+  VINCIRE meta.prev_cursor AD ""
+  VINCIRE meta.total_known AD VERUM
+  REDDE meta
+EXPLICIT RITUALE
+
+RITUALE api_paginated_empty() REDDE ApiPaginatedResult
+  EVOCA ApiPaginatedResult out
+  VINCIRE out.data_json AD "[]"
+  VINCIRE out.meta AD CONIURA api_pagination_meta_empty()
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_dbparams_clone_fill(SPECULUM DbParams out, DbParams params) REDDE NIHIL
+  VINCIRE (*out).valores AD CONIURA fluxus_init(MENSURA(DbParam))
+  VINCIRE (*out).tipos AD CONIURA fluxus_init(MENSURA(DbParamKind))
+  VINCIRE (*out).n AD 0
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(params.valores)
+  DUM i < n
+    EVOCA SPECULUM DbParam ptr AD CONIURA fluxus_get(params.valores, i)
+    CONIURA dbh_params_push(out, *ptr)
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE api_dbrow_to_json_object(SerializerConfig config, DbRows rows) REDDE Json
+  EVOCA Json obj AD CONIURA json_obj()
+  EVOCA REX field_i AD 0
+  EVOCA REX col_i AD 0
+  EVOCA REX field_n AD CONIURA fluxus_len(config.fields)
+  DUM field_i < field_n
+    EVOCA SPECULUM SerializerField ptr AD CONIURA fluxus_get(config.fields, field_i)
+    EVOCA SerializerField field AD *ptr
+    SI NON field.write_only
+      SI CONIURA dbrows_is_null(rows, col_i)
+        CONIURA json_obj_push(obj, field.name, CONIURA json_null())
+      ALITER
+        ELIGE field.kind
+          CASUS API_FIELD_INT:
+            CONIURA json_obj_push(obj, field.name, CONIURA json_num(cast GENUS(UMBRA)(CONIURA dbrows_get_int(rows, col_i))))
+          CASUS API_FIELD_REAL:
+            CONIURA json_obj_push(obj, field.name, CONIURA json_num(CONIURA dbrows_get_real(rows, col_i)))
+          CASUS API_FIELD_BOOL:
+            CONIURA json_obj_push(obj, field.name, CONIURA json_bool(CONIURA dbrows_get_bool(rows, col_i)))
+          CASUS API_FIELD_JSON:
+            EVOCA VERBUM raw_json AD CONIURA dbrows_get_text(rows, col_i)
+            EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(raw_json)
+            SI CONIURA result_is_ok GENUS(Json, JsonError)(parsed)
+              CONIURA json_obj_push(obj, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(parsed))
+            ALITER
+              CONIURA json_obj_push(obj, field.name, CONIURA json_str(raw_json))
+            FIN SI
+          CASUS API_FIELD_NESTED:
+            EVOCA VERBUM raw_nested AD CONIURA dbrows_get_text(rows, col_i)
+            EVOCA SPECULUM NIHIL parsed_nested AD CONIURA json_try_parse(raw_nested)
+            SI CONIURA result_is_ok GENUS(Json, JsonError)(parsed_nested)
+              CONIURA json_obj_push(obj, field.name, CONIURA result_unwrap GENUS(Json, JsonError)(parsed_nested))
+            ALITER
+              CONIURA json_obj_push(obj, field.name, CONIURA json_str(raw_nested))
+            FIN SI
+          ALIOQUIN:
+            CONIURA json_obj_push(obj, field.name, CONIURA json_str(CONIURA dbrows_get_text(rows, col_i)))
+        FIN ELIGE
+      FIN SI
+      VINCIRE col_i AD col_i + 1
+    FIN SI
+    VINCIRE field_i AD field_i + 1
+  FIN DUM
+  REDDE obj
+EXPLICIT RITUALE
+
+RITUALE api_dbrows_to_json_array(SerializerConfig config, DbRows rows) REDDE VERBUM
+  EVOCA Json arr AD CONIURA json_arr()
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    CONIURA json_arr_push(arr, CONIURA api_dbrow_to_json_object(config, rows))
+  FIN DUM
+  REDDE CONIURA json_stringify(arr)
+EXPLICIT RITUALE
+
+RITUALE api_query_scalar_int(DbHandle dbh, VERBUM sql, DbParams params) REDDE REX
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, params)
+  EVOCA REX out AD 0
+  SI CONIURA dbrows_next(SPECULUM rows)
+    VINCIRE out AD CONIURA dbrows_get_int(rows, 0)
+  FIN SI
+  CONIURA dbrows_close(rows)
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE paginate_offset(SPECULUM ApiSerializerRegistry reg, SerializerConfig config, DbHandle dbh, VERBUM select_sql, DbParams select_params, VERBUM count_sql, DbParams count_params, REX page, REX page_size) REDDE ApiPaginatedResult
+  EVOCA ApiPaginatedResult out AD CONIURA api_paginated_empty()
+  EVOCA REX safe_page AD page
+  EVOCA REX safe_page_size AD page_size
+  SI safe_page < 1
+    VINCIRE safe_page AD 1
+  FIN SI
+  SI safe_page_size < 1
+    VINCIRE safe_page_size AD 20
+  FIN SI
+  EVOCA REX total AD CONIURA api_query_scalar_int(dbh, count_sql, count_params)
+  EVOCA REX total_pages AD 0
+  SI total > 0
+    VINCIRE total_pages AD (total + safe_page_size - 1) / safe_page_size
+  FIN SI
+  EVOCA REX offset AD (safe_page - 1) * safe_page_size
+  EVOCA DbParams query_params
+  CONIURA api_dbparams_clone_fill(SPECULUM query_params, select_params)
+  CONIURA dbh_param_int(SPECULUM query_params, safe_page_size)
+  CONIURA dbh_param_int(SPECULUM query_params, offset)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, CONIURA concat(select_sql, " LIMIT ? OFFSET ?"), query_params)
+  VINCIRE out.data_json AD CONIURA api_dbrows_to_json_array(config, rows)
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM query_params)
+  VINCIRE out.meta.page AD safe_page
+  VINCIRE out.meta.page_size AD safe_page_size
+  VINCIRE out.meta.total AD total
+  VINCIRE out.meta.total_pages AD total_pages
+  VINCIRE out.meta.has_prev AD safe_page > 1
+  VINCIRE out.meta.has_next AD safe_page < total_pages
+  VINCIRE out.meta.next_cursor AD ""
+  VINCIRE out.meta.prev_cursor AD ""
+  VINCIRE out.meta.total_known AD VERUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_json_last_cursor(VERBUM data_json, VERBUM field_name) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(data_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE ""
+  FIN SI
+  EVOCA Json arr AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  EVOCA REX n AD CONIURA json_arr_len(arr)
+  SI n < 1
+    REDDE ""
+  FIN SI
+  EVOCA Json last AD CONIURA json_arr_get(arr, n - 1)
+  SI NON CONIURA json_has_key(last, field_name)
+    REDDE ""
+  FIN SI
+  EVOCA Json val AD CONIURA json_get_key(last, field_name)
+  SI CONIURA json_is_str(val)
+    REDDE CONIURA json_expect_str(val)
+  FIN SI
+  SI CONIURA json_is_num(val)
+    REDDE CONIURA stringify_int(cast GENUS(REX)(CONIURA json_expect_num(val)))
+  FIN SI
+  REDDE ""
+EXPLICIT RITUALE
+
+RITUALE paginate_cursor(SPECULUM ApiSerializerRegistry reg, SerializerConfig config, DbHandle dbh, VERBUM select_sql, DbParams select_params, VERBUM cursor_field, VERBUM cursor, REX page_size) REDDE ApiPaginatedResult
+  EVOCA ApiPaginatedResult out AD CONIURA api_paginated_empty()
+  EVOCA REX safe_page_size AD page_size
+  SI safe_page_size < 1
+    VINCIRE safe_page_size AD 20
+  FIN SI
+  EVOCA DbParams query_params
+  CONIURA api_dbparams_clone_fill(SPECULUM query_params, select_params)
+  EVOCA VERBUM sql AD select_sql
+  SI CONIURA len(cursor) > 0
+    VINCIRE sql AD CONIURA concat(sql, " WHERE ")
+    VINCIRE sql AD CONIURA concat(sql, cursor_field)
+    VINCIRE sql AD CONIURA concat(sql, " > ?")
+    CONIURA dbh_param_text(SPECULUM query_params, cursor)
+  FIN SI
+  VINCIRE sql AD CONIURA concat(sql, " ORDER BY ")
+  VINCIRE sql AD CONIURA concat(sql, cursor_field)
+  VINCIRE sql AD CONIURA concat(sql, " ASC LIMIT ?")
+  CONIURA dbh_param_int(SPECULUM query_params, safe_page_size + 1)
+  EVOCA DbRows rows AD CONIURA dbh_query(dbh, sql, query_params)
+  EVOCA Json arr AD CONIURA json_arr()
+  EVOCA REX seen AD 0
+  DUM CONIURA dbrows_next(SPECULUM rows)
+    SI seen < safe_page_size
+      CONIURA json_arr_push(arr, CONIURA api_dbrow_to_json_object(config, rows))
+    FIN SI
+    VINCIRE seen AD seen + 1
+  FIN DUM
+  CONIURA dbrows_close(rows)
+  CONIURA dbh_params_free(SPECULUM query_params)
+  VINCIRE out.data_json AD CONIURA json_stringify(arr)
+  VINCIRE out.meta.page AD 1
+  VINCIRE out.meta.page_size AD safe_page_size
+  VINCIRE out.meta.total AD 0
+  VINCIRE out.meta.total_pages AD 0
+  VINCIRE out.meta.has_prev AD CONIURA len(cursor) > 0
+  VINCIRE out.meta.has_next AD seen > safe_page_size
+  VINCIRE out.meta.next_cursor AD ""
+  VINCIRE out.meta.prev_cursor AD cursor
+  VINCIRE out.meta.total_known AD FALSUM
+  SI out.meta.has_next
+    VINCIRE out.meta.next_cursor AD CONIURA api_json_last_cursor(out.data_json, cursor_field)
+  FIN SI
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE paginate_meta_to_json(ApiPaginationMeta meta) REDDE Json
+  EVOCA Json out AD CONIURA json_obj()
+  CONIURA json_obj_push(out, "page", CONIURA json_num(cast GENUS(UMBRA)(meta.page)))
+  CONIURA json_obj_push(out, "page_size", CONIURA json_num(cast GENUS(UMBRA)(meta.page_size)))
+  CONIURA json_obj_push(out, "total", CONIURA json_num(cast GENUS(UMBRA)(meta.total)))
+  CONIURA json_obj_push(out, "total_pages", CONIURA json_num(cast GENUS(UMBRA)(meta.total_pages)))
+  CONIURA json_obj_push(out, "has_prev", CONIURA json_bool(meta.has_prev))
+  CONIURA json_obj_push(out, "has_next", CONIURA json_bool(meta.has_next))
+  CONIURA json_obj_push(out, "next_cursor", CONIURA json_str(meta.next_cursor))
+  CONIURA json_obj_push(out, "prev_cursor", CONIURA json_str(meta.prev_cursor))
+  CONIURA json_obj_push(out, "total_known", CONIURA json_bool(meta.total_known))
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_content_format_from_accept(VERBUM accept) REDDE ContentFormat
+  SI CONIURA find(CONIURA to_lower(accept), "text/csv") != -1
+    REDDE CONTENT_CSV
+  FIN SI
+  REDDE CONTENT_JSON
+EXPLICIT RITUALE
+
+RITUALE api_csv_escape_field(VERBUM v) REDDE VERBUM
+  EVOCA VERUM needs_quote AD FALSUM
+  SI CONIURA find(v, ",") != -1 VEL CONIURA find(v, "\"") != -1 VEL CONIURA find(v, "\n") != -1
+    VINCIRE needs_quote AD VERUM
+  FIN SI
+  SI needs_quote
+    REDDE CONIURA concat(CONIURA concat("\"", CONIURA replace(v, "\"", "\"\"")), "\"")
+  FIN SI
+  REDDE v
+EXPLICIT RITUALE
+
+RITUALE api_json_val_to_csv_str(Json val) REDDE VERBUM
+  SI CONIURA json_is_str(val)
+    REDDE CONIURA json_expect_str(val)
+  FIN SI
+  SI CONIURA json_is_num(val)
+    REDDE CONIURA stringify_real(CONIURA json_expect_num(val))
+  FIN SI
+  SI CONIURA json_is_bool(val)
+    SI CONIURA json_expect_bool(val)
+      REDDE "true"
+    FIN SI
+    REDDE "false"
+  FIN SI
+  SI CONIURA json_is_null(val)
+    REDDE ""
+  FIN SI
+  REDDE CONIURA json_stringify(val)
+EXPLICIT RITUALE
+
+RITUALE api_json_array_to_csv(VERBUM data_json) REDDE VERBUM
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(data_json)
+  SI CONIURA result_is_err GENUS(Json, JsonError)(parsed)
+    REDDE ""
+  FIN SI
+  EVOCA Json arr AD CONIURA result_unwrap GENUS(Json, JsonError)(parsed)
+  EVOCA REX row_n AD CONIURA json_arr_len(arr)
+  SI row_n < 1
+    REDDE ""
+  FIN SI
+  EVOCA Json first_row AD CONIURA json_arr_get(arr, 0)
+  SI NON CONIURA json_is_obj(first_row)
+    REDDE ""
+  FIN SI
+  EVOCA SPECULUM NIHIL keys AD CONIURA json_keys(first_row)
+  EVOCA REX key_n AD CONIURA fluxus_len(keys)
+  EVOCA VERBUM out AD ""
+  EVOCA REX i AD 0
+  DUM i < key_n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    SI i > 0
+      VINCIRE out AD CONIURA concat(out, ",")
+    FIN SI
+    VINCIRE out AD CONIURA concat(out, CONIURA api_csv_escape_field(*key_ptr))
+    VINCIRE i AD i + 1
+  FIN DUM
+  VINCIRE out AD CONIURA concat(out, "\n")
+  VINCIRE i AD 0
+  DUM i < row_n
+    EVOCA Json row AD CONIURA json_arr_get(arr, i)
+    EVOCA REX j AD 0
+    DUM j < key_n
+      EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, j)
+      SI j > 0
+        VINCIRE out AD CONIURA concat(out, ",")
+      FIN SI
+      SI CONIURA json_has_key(row, *key_ptr)
+        VINCIRE out AD CONIURA concat(out, CONIURA api_csv_escape_field(CONIURA api_json_val_to_csv_str(CONIURA json_get_key(row, *key_ptr))))
+      FIN SI
+      VINCIRE j AD j + 1
+    FIN DUM
+    VINCIRE out AD CONIURA concat(out, "\n")
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE out
+EXPLICIT RITUALE
+
+RITUALE api_format_response(VERBUM data_json, ContentFormat format) REDDE VERBUM
+  SI format == CONTENT_CSV
+    REDDE CONIURA api_json_array_to_csv(data_json)
+  FIN SI
+  REDDE data_json
+EXPLICIT RITUALE
+
+RITUALE api_response_ok(VERBUM data_json) REDDE VERBUM
+  EVOCA Json env AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL parsed AD CONIURA json_try_parse(data_json)
+  CONIURA json_obj_push(env, "ok", CONIURA json_bool(VERUM))
+  SI CONIURA result_is_ok GENUS(Json, JsonError)(parsed)
+    CONIURA json_obj_push(env, "data", CONIURA result_unwrap GENUS(Json, JsonError)(parsed))
+  ALITER
+    CONIURA json_obj_push(env, "data", CONIURA json_str(data_json))
+  FIN SI
+  REDDE CONIURA json_stringify(env)
+EXPLICIT RITUALE
+
+RITUALE api_response_error(VERBUM code, VERBUM message, VERBUM details_json) REDDE VERBUM
+  EVOCA Json env AD CONIURA json_obj()
+  EVOCA Json err AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL details_parsed AD CONIURA json_try_parse(details_json)
+  CONIURA json_obj_push(env, "ok", CONIURA json_bool(FALSUM))
+  CONIURA json_obj_push(err, "code", CONIURA json_str(code))
+  CONIURA json_obj_push(err, "message", CONIURA json_str(message))
+  SI CONIURA result_is_ok GENUS(Json, JsonError)(details_parsed)
+    CONIURA json_obj_push(err, "details", CONIURA result_unwrap GENUS(Json, JsonError)(details_parsed))
+  ALITER
+    CONIURA json_obj_push(err, "details", CONIURA json_null())
+  FIN SI
+  CONIURA json_obj_push(env, "error", err)
+  REDDE CONIURA json_stringify(env)
+EXPLICIT RITUALE
+
+RITUALE api_response_paginated(ApiPaginatedResult paginated) REDDE VERBUM
+  EVOCA Json env AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL data_parsed AD CONIURA json_try_parse(paginated.data_json)
+  CONIURA json_obj_push(env, "ok", CONIURA json_bool(VERUM))
+  SI CONIURA result_is_ok GENUS(Json, JsonError)(data_parsed)
+    CONIURA json_obj_push(env, "data", CONIURA result_unwrap GENUS(Json, JsonError)(data_parsed))
+  ALITER
+    CONIURA json_obj_push(env, "data", CONIURA json_arr())
+  FIN SI
+  CONIURA json_obj_push(env, "meta", CONIURA paginate_meta_to_json(paginated.meta))
+  REDDE CONIURA json_stringify(env)
+EXPLICIT RITUALE
+
+RITUALE api_response_validation_error(ValidationResult vr) REDDE VERBUM
+  EVOCA Json details AD CONIURA json_obj()
+  EVOCA SPECULUM NIHIL errors_parsed AD CONIURA json_try_parse(CONIURA api_validation_errors_to_json(vr.errors))
+  SI CONIURA result_is_ok GENUS(Json, JsonError)(errors_parsed)
+    CONIURA json_obj_push(details, "errors", CONIURA result_unwrap GENUS(Json, JsonError)(errors_parsed))
+  ALITER
+    CONIURA json_obj_push(details, "errors", CONIURA json_arr())
+  FIN SI
+  REDDE CONIURA api_response_error("validation_failed", "Request payload failed validation", CONIURA json_stringify(details))
+EXPLICIT RITUALE
+
+RITUALE api_response_not_found(VERBUM resource_name) REDDE VERBUM
+  REDDE CONIURA api_response_error("not_found", CONIURA concat(resource_name, " not found"), "null")
+EXPLICIT RITUALE
+
+RITUALE api_response_internal_error(VERBUM message) REDDE VERBUM
+  REDDE CONIURA api_response_error("internal_error", message, "null")
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

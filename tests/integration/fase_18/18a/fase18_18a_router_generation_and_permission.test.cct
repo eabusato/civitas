@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase18_18a_router_generation_and_permission"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_auth.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_router.cct"
+ADVOCARE "../../../../lib/civitas/router.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE test_router_generation_and_permission() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18a_router")
+  EVOCA SPECULUM AdminModelConfig cfg_ptr AD CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA Router router AD CONIURA router_new()
+  CONIURA admin_register_routes(SPECULUM router, *cfg_ptr)
+  SI CONIURA fluxus_len((*cfg_ptr).routes) != 7
+    IACE "expected seven generated routes"
+  FIN SI
+  SI NON CONIURA router_has_named_route(router, "post.admin.list")
+    IACE "missing admin list route"
+  FIN SI
+  SI CONIURA admin_user_has_permission(stack.dbh, "u-admin", *cfg_ptr, "list")
+    IACE "permission should fail before grant"
+  FIN SI
+  CONIURA phase18_grant_admin_posts(stack.db, "u-admin")
+  SI NON CONIURA admin_user_has_permission(stack.dbh, "u-admin", *cfg_ptr, "list")
+    IACE "permission should pass after wildcard grant"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_router_generation_and_permission()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

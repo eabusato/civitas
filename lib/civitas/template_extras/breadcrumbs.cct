@@ -1,0 +1,126 @@
+INCIPIT grimoire "civitas_template_extras_breadcrumbs"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/json.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../html.cct"
+
+SIGILLUM BreadcrumbItem
+  label: VERBUM
+  url: VERBUM
+  current: VERUM
+FIN SIGILLUM
+
+RITUALE breadcrumb_item(VERBUM label, VERBUM url, VERUM current) REDDE BreadcrumbItem
+  EVOCA BreadcrumbItem item
+  VINCIRE item.label AD label
+  VINCIRE item.url AD url
+  VINCIRE item.current AD current
+  REDDE item
+EXPLICIT RITUALE
+
+RITUALE breadcrumbs_absolute_url(VERBUM base_url, VERBUM path) REDDE VERBUM
+  EVOCA VERBUM base AD CONIURA trim(base_url)
+  EVOCA VERBUM target AD CONIURA trim(path)
+
+  SI CONIURA len(target) == 0
+    REDDE base
+  FIN SI
+  SI CONIURA starts_with(target, "http://") VEL CONIURA starts_with(target, "https://")
+    REDDE target
+  FIN SI
+  SI CONIURA len(base) == 0
+    SI CONIURA starts_with(target, "/")
+      REDDE target
+    FIN SI
+    REDDE CONIURA concat("/", target)
+  FIN SI
+  SI CONIURA ends_with(base, "/") ET CONIURA starts_with(target, "/")
+    REDDE CONIURA concat(CONIURA substring(base, 0, CONIURA len(base) - 1), target)
+  FIN SI
+  SI NON CONIURA ends_with(base, "/") ET NON CONIURA starts_with(target, "/")
+    REDDE CONIURA concat(CONIURA concat(base, "/"), target)
+  FIN SI
+  REDDE CONIURA concat(base, target)
+EXPLICIT RITUALE
+
+RITUALE breadcrumbs_html(SPECULUM NIHIL items, VERBUM css_class) REDDE VERBUM
+  EVOCA SPECULUM NIHIL nav AD CONIURA html_tag("nav")
+  EVOCA SPECULUM NIHIL ol AD CONIURA html_tag("ol")
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  CONIURA html_attr(nav, "aria-label", "Breadcrumb")
+  CONIURA html_attr(ol, "itemscope", "")
+  CONIURA html_attr(ol, "itemtype", "https://schema.org/BreadcrumbList")
+  SI CONIURA len(css_class) != 0
+    CONIURA html_class(ol, css_class)
+  FIN SI
+
+  DUM i < n
+    EVOCA SPECULUM BreadcrumbItem item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA SPECULUM NIHIL li AD CONIURA html_tag("li")
+    EVOCA SPECULUM NIHIL pos AD CONIURA html_void_tag("meta")
+    CONIURA html_attr(li, "itemprop", "itemListElement")
+    CONIURA html_attr(li, "itemscope", "")
+    CONIURA html_attr(li, "itemtype", "https://schema.org/ListItem")
+
+    SI (*item_ptr).current
+      EVOCA SPECULUM NIHIL span AD CONIURA html_tag("span")
+      CONIURA html_attr(span, "itemprop", "name")
+      CONIURA html_attr(span, "aria-current", "page")
+      CONIURA html_text(span, (*item_ptr).label)
+      CONIURA html_child(li, span)
+    ALITER
+      EVOCA SPECULUM NIHIL a AD CONIURA html_tag("a")
+      EVOCA SPECULUM NIHIL span AD CONIURA html_tag("span")
+      CONIURA html_attr(a, "href", (*item_ptr).url)
+      CONIURA html_attr(a, "itemprop", "item")
+      CONIURA html_attr(span, "itemprop", "name")
+      CONIURA html_text(span, (*item_ptr).label)
+      CONIURA html_child(a, span)
+      CONIURA html_child(li, a)
+    FIN SI
+
+    CONIURA html_attr(pos, "itemprop", "position")
+    CONIURA html_attr(pos, "content", CONIURA stringify_int(i + 1))
+    CONIURA html_child(li, pos)
+    CONIURA html_child(ol, li)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA html_child(nav, ol)
+  REDDE CONIURA html_render_free(nav)
+EXPLICIT RITUALE
+
+RITUALE breadcrumbs_json_ld(VERBUM base_url, SPECULUM NIHIL items) REDDE VERBUM
+  EVOCA Json root AD CONIURA json_obj()
+  EVOCA Json elements AD CONIURA json_arr()
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(items)
+
+  CONIURA json_obj_push(root, "@context", CONIURA json_str("https://schema.org"))
+  CONIURA json_obj_push(root, "@type", CONIURA json_str("BreadcrumbList"))
+
+  DUM i < n
+    EVOCA SPECULUM BreadcrumbItem item_ptr AD CONIURA fluxus_get(items, i)
+    EVOCA Json element AD CONIURA json_obj()
+    CONIURA json_obj_push(element, "@type", CONIURA json_str("ListItem"))
+    CONIURA json_obj_push(element, "position", CONIURA json_num(cast GENUS(UMBRA)(i + 1)))
+    CONIURA json_obj_push(element, "name", CONIURA json_str((*item_ptr).label))
+    SI CONIURA len((*item_ptr).url) != 0
+      CONIURA json_obj_push(element, "item", CONIURA json_str(CONIURA breadcrumbs_absolute_url(base_url, (*item_ptr).url)))
+    FIN SI
+    CONIURA json_arr_push(elements, element)
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  CONIURA json_obj_push(root, "itemListElement", elements)
+  REDDE CONIURA concat(
+    "<script type=\"application/ld+json\">",
+    CONIURA concat(CONIURA json_stringify(root), "</script>")
+  )
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

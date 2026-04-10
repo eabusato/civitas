@@ -1,0 +1,81 @@
+INCIPIT grimoire "civitas_sanitize_url"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../url.cct"
+
+SIGILLUM EmbedPolicy
+  allowed_hosts: SPECULUM NIHIL
+  require_https: VERUM
+FIN SIGILLUM
+
+ORDO EmbedCheckResult
+  EcrAllowed,
+  EcrDomainNotAllowed,
+  EcrSchemeNotAllowed,
+  EcrMalformedUrl
+FIN ORDO
+
+RITUALE embed_policy_default() REDDE EmbedPolicy
+  EVOCA EmbedPolicy policy
+  EVOCA VERBUM host_youtube AD "www.youtube.com"
+  EVOCA VERBUM host_short AD "youtu.be"
+  EVOCA VERBUM host_vimeo AD "vimeo.com"
+  EVOCA VERBUM host_player AD "player.vimeo.com"
+  VINCIRE policy.allowed_hosts AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE policy.require_https AD VERUM
+  CONIURA fluxus_push(policy.allowed_hosts, SPECULUM host_youtube)
+  CONIURA fluxus_push(policy.allowed_hosts, SPECULUM host_short)
+  CONIURA fluxus_push(policy.allowed_hosts, SPECULUM host_vimeo)
+  CONIURA fluxus_push(policy.allowed_hosts, SPECULUM host_player)
+  REDDE policy
+EXPLICIT RITUALE
+
+RITUALE embed_policy_add_host(SPECULUM EmbedPolicy policy, VERBUM host) REDDE NIHIL
+  EVOCA VERBUM lowered AD CONIURA to_lower(CONIURA trim(host))
+  CONIURA fluxus_push((*policy).allowed_hosts, SPECULUM lowered)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE embed_policy_has_host(EmbedPolicy policy, VERBUM host) REDDE VERUM
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(policy.allowed_hosts)
+  EVOCA VERBUM wanted AD CONIURA to_lower(CONIURA trim(host))
+
+  DUM i < n
+    EVOCA SPECULUM VERBUM host_ptr AD CONIURA fluxus_get(policy.allowed_hosts, i)
+    SI CONIURA compare(*host_ptr, wanted) == 0
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE embed_check(VERBUM url, EmbedPolicy policy) REDDE EmbedCheckResult
+  EVOCA SPECULUM NIHIL parsed AD CONIURA url_parse(url)
+  SI CONIURA result_is_err GENUS(WebUrl, VERBUM)(parsed)
+    REDDE EcrMalformedUrl
+  FIN SI
+
+  EVOCA WebUrl parsed_url AD CONIURA result_unwrap GENUS(WebUrl, VERBUM)(parsed)
+  SI NON parsed_url.is_absolute VEL CONIURA len(parsed_url.host) == 0
+    REDDE EcrMalformedUrl
+  FIN SI
+  SI policy.require_https ET CONIURA compare(CONIURA to_lower(parsed_url.scheme), "https") != 0
+    REDDE EcrSchemeNotAllowed
+  FIN SI
+  SI NON CONIURA embed_policy_has_host(policy, parsed_url.host)
+    REDDE EcrDomainNotAllowed
+  FIN SI
+  REDDE EcrAllowed
+EXPLICIT RITUALE
+
+RITUALE embed_policy_free(SPECULUM EmbedPolicy policy) REDDE NIHIL
+  CONIURA fluxus_free((*policy).allowed_hosts)
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

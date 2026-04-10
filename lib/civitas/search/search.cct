@@ -1,0 +1,149 @@
+INCIPIT grimoire "civitas_search"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "cct/db_postgres_search.cct"
+
+SIGILLUM SearchField
+  column_name: VERBUM
+  weight: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SearchIndex
+  object_type: VERBUM
+  table_name: VERBUM
+  id_column: VERBUM
+  locale: VERBUM
+  fields: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM SearchFilter
+  object_types: SPECULUM NIHIL
+  locale: VERBUM
+  publicado_de_ms: REX
+  publicado_ate_ms: REX
+  apenas_publico: VERUM
+  author_id: VERBUM
+  tag_slugs: SPECULUM NIHIL
+FIN SIGILLUM
+
+SIGILLUM SearchQuery
+  input: VERBUM
+  mode: PgSearchQueryMode
+  filter: SearchFilter
+  limit: REX
+  offset: REX
+  rank_mode: PgSearchRankMode
+  with_headline: VERUM
+FIN SIGILLUM
+
+SIGILLUM SearchHit
+  object_type: VERBUM
+  object_id: VERBUM
+  rank: UMBRA
+  headline: VERBUM
+FIN SIGILLUM
+
+SIGILLUM SearchResultSet
+  hits: SPECULUM NIHIL
+  total_estimate: REX
+  query_ms: REX
+FIN SIGILLUM
+
+RITUALE search_filter_fill(SPECULUM SearchFilter dest, SearchFilter src) REDDE NIHIL
+  VINCIRE (*dest).object_types AD src.object_types
+  VINCIRE (*dest).locale AD src.locale
+  VINCIRE (*dest).publicado_de_ms AD src.publicado_de_ms
+  VINCIRE (*dest).publicado_ate_ms AD src.publicado_ate_ms
+  VINCIRE (*dest).apenas_publico AD src.apenas_publico
+  VINCIRE (*dest).author_id AD src.author_id
+  VINCIRE (*dest).tag_slugs AD src.tag_slugs
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE search_field_new(VERBUM column_name, VERBUM weight) REDDE SearchField
+  EVOCA SearchField field
+  VINCIRE field.column_name AD column_name
+  VINCIRE field.weight AD weight
+  REDDE field
+EXPLICIT RITUALE
+
+RITUALE search_filter_empty() REDDE SearchFilter
+  EVOCA SearchFilter f
+  VINCIRE f.object_types AD CONIURA fluxus_init(MENSURA(VERBUM))
+  VINCIRE f.locale AD ""
+  VINCIRE f.publicado_de_ms AD 0
+  VINCIRE f.publicado_ate_ms AD 0
+  VINCIRE f.apenas_publico AD FALSUM
+  VINCIRE f.author_id AD ""
+  VINCIRE f.tag_slugs AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE f
+EXPLICIT RITUALE
+
+RITUALE search_query_default(VERBUM input) REDDE SearchQuery
+  EVOCA SearchQuery q
+  VINCIRE q.input AD input
+  VINCIRE q.mode AD SEARCH_QUERY_WEB
+  CONIURA search_filter_fill(SPECULUM q.filter, CONIURA search_filter_empty())
+  VINCIRE q.limit AD 20
+  VINCIRE q.offset AD 0
+  VINCIRE q.rank_mode AD SEARCH_RANK_COVER_DENSITY
+  VINCIRE q.with_headline AD VERUM
+  REDDE q
+EXPLICIT RITUALE
+
+RITUALE search_headline_options_default() REDDE PgSearchHeadlineOptions
+  EVOCA PgSearchHeadlineOptions opts
+  VINCIRE opts.start_sel AD "<mark>"
+  VINCIRE opts.stop_sel AD "</mark>"
+  VINCIRE opts.max_words AD 35
+  VINCIRE opts.min_words AD 15
+  VINCIRE opts.short_word AD 3
+  VINCIRE opts.highlight_all AD FALSUM
+  REDDE opts
+EXPLICIT RITUALE
+
+RITUALE search_locale_to_dict(VERBUM locale) REDDE VERBUM
+  EVOCA VERBUM lower AD CONIURA to_lower(locale)
+  SI CONIURA starts_with(lower, "pt")
+    REDDE "portuguese"
+  FIN SI
+  SI CONIURA starts_with(lower, "en")
+    REDDE "english"
+  FIN SI
+  SI CONIURA starts_with(lower, "es")
+    REDDE "spanish"
+  FIN SI
+  SI CONIURA starts_with(lower, "fr")
+    REDDE "french"
+  FIN SI
+  SI CONIURA starts_with(lower, "de")
+    REDDE "german"
+  FIN SI
+  REDDE "simple"
+EXPLICIT RITUALE
+
+RITUALE search_index_new(VERBUM object_type, VERBUM table_name, VERBUM id_column, VERBUM locale, SPECULUM NIHIL fields) REDDE SPECULUM NIHIL
+  SI CONIURA fluxus_len(fields) == 0
+    REDDE CONIURA Err GENUS(SearchIndex, VERBUM)("search_index_new: fields cannot be empty")
+  FIN SI
+  SI NON CONIURA pg_search_valid_name(object_type)
+    REDDE CONIURA Err GENUS(SearchIndex, VERBUM)("search_index_new: invalid object_type")
+  FIN SI
+  SI NON CONIURA pg_search_valid_name(table_name)
+    REDDE CONIURA Err GENUS(SearchIndex, VERBUM)("search_index_new: invalid table_name")
+  FIN SI
+  SI NON CONIURA pg_search_valid_name(id_column)
+    REDDE CONIURA Err GENUS(SearchIndex, VERBUM)("search_index_new: invalid id_column")
+  FIN SI
+  EVOCA SearchIndex idx
+  VINCIRE idx.object_type AD object_type
+  VINCIRE idx.table_name AD table_name
+  VINCIRE idx.id_column AD id_column
+  VINCIRE idx.locale AD locale
+  VINCIRE idx.fields AD fields
+  REDDE CONIURA Ok GENUS(SearchIndex, VERBUM)(idx)
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

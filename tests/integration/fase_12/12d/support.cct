@@ -1,0 +1,45 @@
+INCIPIT grimoire "fase12_12d_support"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_mem.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_redis.cct"
+ADVOCARE "../../../../lib/civitas/cache_query/cache_query.cct"
+ADVOCARE "../../../../lib/civitas/cache_view/cache_view.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/invalidation.cct"
+ADVOCARE "../../../../lib/civitas/model/model_registry.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE phase12_12d_view_cfg(VERBUM namespace, REX ttl) REDDE CacheViewConfig
+  EVOCA CacheViewConfig cfg
+  VINCIRE cfg.namespace AD namespace
+  VINCIRE cfg.ttl_padrao AD ttl
+  VINCIRE cfg.vary_headers AD CONIURA fluxus_init(MENSURA(VERBUM))
+  REDDE cfg
+EXPLICIT RITUALE
+
+RITUALE phase12_12d_request(VERBUM method, VERBUM target) REDDE WebRequest
+  EVOCA SPECULUM NIHIL res AD CONIURA request_build(method, target, "HTTP/1.1", CONIURA request_empty_headers(), "", "127.0.0.1", "http", "example.test", "req-12d", "", "", "")
+  REDDE CONIURA result_unwrap GENUS(WebRequest, VERBUM)(res)
+EXPLICIT RITUALE
+
+RITUALE phase12_12d_registry_items() REDDE ModelRegistry
+  EVOCA ModelRegistry registry AD CONIURA model_registry_new()
+  CONIURA model_registry_register(SPECULUM registry, CONIURA phase12_12c_model_items())
+  REDDE registry
+EXPLICIT RITUALE
+
+RITUALE phase12_12d_redis_ptr(CacheHandle h) REDDE SPECULUM NIHIL
+  EVOCA SPECULUM CacheHandle ch AD SPECULUM h
+  EVOCA SPECULUM CacheRedis red_ptr AD (*ch).state
+  REDDE (*red_ptr).redis_ptr
+EXPLICIT RITUALE
+
+RITUALE phase12_12d_scopes() REDDE SPECULUM NIHIL
+  REDDE CONIURA fluxus_init(MENSURA(InvalidationScope))
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

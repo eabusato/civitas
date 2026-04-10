@@ -1,0 +1,68 @@
+INCIPIT grimoire "civitas_mail_test_assert"
+
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/mail.cct"
+ADVOCARE "cct/option.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "../mailer/mailer.cct"
+ADVOCARE "mail_test.cct"
+
+RITUALE mail_test_find_by_to(Mailer m, VERBUM email) REDDE SPECULUM NIHIL
+  EVOCA REX total AD CONIURA mailer_memory_count(m)
+  EVOCA REX i AD 0
+  DUM i < total
+    EVOCA SPECULUM NIHIL res AD CONIURA mailer_memory_get(m, i)
+    SI CONIURA result_is_ok GENUS(MailMessage, MailerError)(res)
+      EVOCA MailMessage msg AD CONIURA result_unwrap GENUS(MailMessage, MailerError)(res)
+      EVOCA REX j AD 0
+      DUM j < CONIURA fluxus_len(msg.to)
+        EVOCA SPECULUM MailAddress addr_ptr AD CONIURA fluxus_get(msg.to, j)
+        SI CONIURA compare((*addr_ptr).email, email) == 0
+          REDDE CONIURA Some GENUS(MailMessage)(msg)
+        FIN SI
+        VINCIRE j AD j + 1
+      FIN DUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  REDDE CONIURA None GENUS(MailMessage)()
+EXPLICIT RITUALE
+
+RITUALE mail_test_assert_count(Mailer m, REX esperado) REDDE VERUM
+  REDDE CONIURA mailer_test_count(m) == esperado
+EXPLICIT RITUALE
+
+RITUALE mail_test_assert_enviado_para(Mailer m, VERBUM email) REDDE VERUM
+  EVOCA SPECULUM NIHIL opt_msg AD CONIURA mail_test_find_by_to(m, email)
+  EVOCA VERUM ok AD CONIURA option_is_some GENUS(MailMessage)(opt_msg)
+  CONIURA option_free GENUS(MailMessage)(opt_msg)
+  REDDE ok
+EXPLICIT RITUALE
+
+RITUALE mail_test_assert_subject(Mailer m, REX index, VERBUM esperado) REDDE VERUM
+  EVOCA SPECULUM NIHIL res AD CONIURA mailer_memory_get(m, index)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA MailMessage msg AD CONIURA result_unwrap GENUS(MailMessage, MailerError)(res)
+  REDDE CONIURA compare(msg.subject, esperado) == 0
+EXPLICIT RITUALE
+
+RITUALE mail_test_assert_body_contem(Mailer m, REX index, VERBUM trecho) REDDE VERUM
+  EVOCA SPECULUM NIHIL res AD CONIURA mailer_memory_get(m, index)
+  SI CONIURA result_is_err GENUS(MailMessage, MailerError)(res)
+    REDDE FALSUM
+  FIN SI
+  EVOCA MailMessage msg AD CONIURA result_unwrap GENUS(MailMessage, MailerError)(res)
+  SI CONIURA len(msg.text_body) > 0 ET CONIURA find(msg.text_body, trecho) != -1
+    REDDE VERUM
+  FIN SI
+  REDDE CONIURA find(msg.html_body, trecho) != -1
+EXPLICIT RITUALE
+
+RITUALE mail_test_assert_nenhum_enviado(Mailer m) REDDE VERUM
+  REDDE CONIURA mailer_test_count(m) == 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase2_2b_redirect_helpers_test"
+
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/response_http.cct"
+ADVOCARE "cct/http.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL temp_res AD CONIURA response_to_http(CONIURA response_redirect("/signin"))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(temp_res)
+    REDDE 1
+  FIN SI
+  EVOCA HttpResponse temp_out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(temp_res)
+  SI CONIURA http_response_status(temp_out) != 302
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(CONIURA http_response_header(temp_out, "location", ""), "/signin") != 0
+    REDDE 3
+  FIN SI
+
+  EVOCA SPECULUM NIHIL perm_res AD CONIURA response_to_http(CONIURA response_redirect_permanent("/moved"))
+  SI CONIURA result_is_err GENUS(HttpResponse, VERBUM)(perm_res)
+    REDDE 4
+  FIN SI
+  EVOCA HttpResponse perm_out AD CONIURA result_unwrap GENUS(HttpResponse, VERBUM)(perm_res)
+  SI CONIURA http_response_status(perm_out) != 301
+    REDDE 5
+  FIN SI
+  SI CONIURA compare(CONIURA http_response_header(perm_out, "location", ""), "/moved") != 0
+    REDDE 6
+  FIN SI
+
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

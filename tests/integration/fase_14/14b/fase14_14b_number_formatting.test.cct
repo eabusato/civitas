@@ -1,0 +1,23 @@
+INCIPIT grimoire "fase14_14b_number_formatting"
+
+ADVOCARE "../../../../lib/civitas/l10n/l10n.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_rules.cct"
+ADVOCARE "../../../../lib/civitas/l10n/l10n_number.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA LocaleRules pt AD CONIURA l10n_rules_pt_br()
+  EVOCA LocaleRules en AD CONIURA l10n_rules_en_us()
+  SI CONIURA compare(CONIURA l10n_format_int(1234567, pt.numero), "1.234.567") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_real(1234567.89, 2, pt.numero), "1.234.567,89") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA l10n_format_real(1234567.89, 2, en.numero), "1,234,567.89") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

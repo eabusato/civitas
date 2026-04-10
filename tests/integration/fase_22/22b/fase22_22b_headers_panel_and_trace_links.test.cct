@@ -1,0 +1,41 @@
+INCIPIT grimoire "fase22_22b_headers_panel_and_trace_links"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/debug_toolbar/debug_toolbar.cct"
+ADVOCARE "../../../../lib/civitas/request.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "cct/trace.cct"
+ADVOCARE "cct/map.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Trace trace AD CONIURA phase22_toolbar_trace("toolbar-links")
+  EVOCA SPECULUM NIHIL headers AD CONIURA map_init GENUS(VERBUM, VERBUM)()
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "host", "dev.local")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "authorization", "Basic abc123")
+  CONIURA map_insert GENUS(VERBUM, VERBUM)(headers, "x-requested-with", "toolbar-test")
+  EVOCA SPECULUM NIHIL req_res AD CONIURA request_build("GET", "/feed", "HTTP/1.1", headers, "", "127.0.0.1", "http", "dev.local", "rid-22b-links", "", "", "")
+  EVOCA WebRequest req AD CONIURA result_unwrap GENUS(WebRequest, VERBUM)(req_res)
+  EVOCA WebResponse res AD CONIURA response_html("<html><body>ok</body></html>")
+  EVOCA ToolbarData data AD CONIURA debug_toolbar_collect(trace, req, res, 220)
+  EVOCA DebugToolbarConfig cfg AD CONIURA debug_toolbar_config_default()
+  VINCIRE cfg.render_cfg AD CONIURA phase22_render_config("22b_headers_panel_and_trace_links")
+  EVOCA VERBUM html AD CONIURA debug_toolbar_render(trace, data, req, cfg)
+  CONIURA trace_free(SPECULUM trace)
+  SI CONIURA find(html, "authorization") == -1
+    REDDE 1
+  FIN SI
+  SI CONIURA find(html, "Basic abc123") == -1
+    REDDE 2
+  FIN SI
+  SI CONIURA find(html, "/civitas/traces/toolbar-links") == -1
+    REDDE 3
+  FIN SI
+  SI CONIURA find(html, "/civitas/traces/toolbar-links/svg") == -1
+    REDDE 4
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

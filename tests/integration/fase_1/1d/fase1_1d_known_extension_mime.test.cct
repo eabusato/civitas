@@ -1,0 +1,16 @@
+INCIPIT grimoire "fase1_1d_known_extension_mime_test"
+
+ADVOCARE "../../../../lib/civitas/mime.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  SI CONIURA compare(CONIURA mime_from_extension("html"), "text/html") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA mime_from_extension(".woff2"), "font/woff2") != 0
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

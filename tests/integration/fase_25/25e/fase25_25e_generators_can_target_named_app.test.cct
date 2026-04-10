@@ -1,0 +1,73 @@
+INCIPIT grimoire "fase25_25e_generators_can_target_named_app"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "../../../../lib/civitas/civitas_generate/civitas_generate.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/fluxus.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase25e_reset_root("25e_generators_can_target_named_app")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg_with_style("orion25", TemplateApi, StyleDomain, root, FALSUM)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_new_create(cfg))
+    REDDE 1
+  FIN SI
+
+  EVOCA SPECULUM NIHIL fields AD CONIURA fluxus_init(MENSURA(ModelField))
+  EVOCA ModelField nickname_field AD CONIURA civitas_gen_parse_field("nickname:VERBUM")
+  CONIURA fluxus_push(fields, SPECULUM nickname_field)
+
+  EVOCA GenerateModelConfig model_cfg
+  VINCIRE model_cfg.model_name AD "Profile"
+  VINCIRE model_cfg.table_name AD "profile"
+  VINCIRE model_cfg.module_name AD "profile"
+  VINCIRE model_cfg.fields AD fields
+  VINCIRE model_cfg.dest_dir AD CONIURA path_join(root, "orion25")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_model_run_in_app(model_cfg, "accounts"))
+    REDDE 2
+  FIN SI
+
+  EVOCA GenerateApiConfig api_cfg
+  VINCIRE api_cfg.model_name AD "Profile"
+  VINCIRE api_cfg.module_name AD "profile"
+  VINCIRE api_cfg.dest_dir AD CONIURA path_join(root, "orion25")
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_api_run_in_app(api_cfg, "accounts"))
+    REDDE 3
+  FIN SI
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(CONIURA civitas_gen_admin_run_in_app(api_cfg, "accounts"))
+    REDDE 4
+  FIN SI
+
+  SI NON CONIURA exists(CONIURA path_join(root, "orion25/apps/accounts/models/profile.cct"))
+    REDDE 5
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "orion25/apps/accounts/views/profile.cct"))
+    REDDE 6
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "orion25/apps/accounts/routes/profile.cct"))
+    REDDE 7
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "orion25/apps/accounts/admin/profile.cct"))
+    REDDE 8
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "orion25/apps/accounts/urls.cct"), "ADVOCARE \"routes/profile.cct\"")
+    REDDE 9
+  FIN SI
+  SI NON CONIURA phase25e_contains(CONIURA path_join(root, "orion25/apps/accounts/urls.cct"), "CONIURA profile_routes_register()")
+    REDDE 10
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "orion25/migrations/0001_create_profile.sql"))
+    REDDE 11
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "orion25/apps/accounts/urls.cct")) != 0
+    REDDE 12
+  FIN SI
+  SI CONIURA phase25e_compile_file(CONIURA path_join(root, "orion25/apps/accounts/models/profile.cct")) != 0
+    REDDE 13
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

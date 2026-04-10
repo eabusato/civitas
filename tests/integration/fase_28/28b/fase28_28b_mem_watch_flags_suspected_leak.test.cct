@@ -1,0 +1,40 @@
+INCIPIT grimoire "fase28_28b_mem_watch_flags_suspected_leak"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/mem_watch.cct"
+ADVOCARE "../../../../lib/civitas/mem_watch/mem_watch.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler.cct"
+ADVOCARE "../../../../lib/civitas/memory_profiler/memory_profiler.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/path.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase28_reset_root("28b_mem_watch_leak")
+  EVOCA SPECULUM NIHIL db AD CONIURA db_open(CONIURA path_join(root, "mem.db"))
+  EVOCA MemProfilerState state AD CONIURA mem_profiler_state_new(db, 0)
+  EVOCA MemDelta delta
+  VINCIRE delta.route AD "/leaky"
+  VINCIRE delta.request_id AD "req-1"
+  VINCIRE delta.alloc_count_delta AD 2
+  VINCIRE delta.alloc_bytes_delta AD 128
+  VINCIRE delta.free_count_delta AD 0
+  VINCIRE delta.live_count_delta AD 2
+  VINCIRE delta.live_bytes_delta AD 128
+  VINCIRE delta.duration_ms AD 1
+  VINCIRE delta.suspected_leak AD VERUM
+  VINCIRE delta.timestamp_ms AD 1
+  CONIURA mem_profiler_record(SPECULUM state, delta)
+  EVOCA MemWatchConfig cfg AD CONIURA mem_watch_config_default()
+  EVOCA MemWatchResult result
+  CONIURA mem_watch_fill_from_state(SPECULUM result, SPECULUM state, cfg)
+  CONIURA db_close(db)
+  SI result.approved
+    REDDE 1
+  FIN SI
+  SI result.report.suspected_count != 1
+    REDDE 2
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

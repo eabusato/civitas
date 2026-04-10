@@ -1,0 +1,29 @@
+INCIPIT grimoire "fase10_10e_reaction_toggle_count"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/social/social.cct"
+ADVOCARE "../../../../lib/civitas/social/social_reaction.cct"
+ADVOCARE "cct/db_sqlite.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10e_reaction_toggle_count")
+  SI NON CONIURA reaction_toggle(db, "post", 9, "user-1", RkLike)
+    REDDE 1
+  FIN SI
+  SI CONIURA reaction_count(db, "post", 9, RkLike) != 1
+    REDDE 2
+  FIN SI
+  SI NON CONIURA reaction_has(db, "post", 9, "user-1", RkLike)
+    REDDE 3
+  FIN SI
+  SI CONIURA reaction_toggle(db, "post", 9, "user-1", RkLike)
+    REDDE 4
+  FIN SI
+  SI CONIURA reaction_count(db, "post", 9, RkLike) != 0
+    REDDE 5
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

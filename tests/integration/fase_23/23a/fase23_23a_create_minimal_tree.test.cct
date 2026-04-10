@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase23_23a_create_minimal_tree"
+
+ADVOCARE "../support.cct"
+ADVOCARE "../../../../lib/civitas/civitas_new/civitas_new.cct"
+ADVOCARE "cct/fs.cct"
+ADVOCARE "cct/path.cct"
+ADVOCARE "cct/result.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase23_reset_root("23a_create_minimal_tree")
+  EVOCA CivitasNewConfig cfg AD CONIURA civitas_new_cfg("atlas", TemplateMinimal, root, FALSUM)
+  EVOCA SPECULUM NIHIL res AD CONIURA civitas_new_create(cfg)
+  SI CONIURA result_is_err GENUS(REX, VERBUM)(res)
+    REDDE 1
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas/civitas.toml"))
+    REDDE 2
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas/project/main.cct"))
+    REDDE 3
+  FIN SI
+  SI NON CONIURA exists(CONIURA path_join(root, "atlas/apps/core/urls.cct"))
+    REDDE 4
+  FIN SI
+  SI NON CONIURA phase23_contains(CONIURA path_join(root, "atlas/README.md"), "Template: `minimal`.")
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

@@ -1,0 +1,21 @@
+INCIPIT grimoire "fase10_10f_review_list_pending"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship.cct"
+ADVOCARE "../../../../lib/civitas/authorship/authorship_review.cct"
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fluxus.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL db AD CONIURA phase10_db_open("10f_review_list_pending")
+  CONIURA review_needs_revision(db, "page", 1, "1", "Editor", "fix body")
+  CONIURA review_approve(db, "page", 2, "1", "Editor", "ok")
+  EVOCA SPECULUM NIHIL pending AD CONIURA review_list_pending(db, "page")
+  SI CONIURA fluxus_len(pending) != 1
+    REDDE 1
+  FIN SI
+  CONIURA db_close(db)
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

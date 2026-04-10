@@ -1,0 +1,20 @@
+INCIPIT grimoire "fase6_6c_form_and_csrf_test"
+
+ADVOCARE "../../../../lib/civitas/html.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA SPECULUM NIHIL form AD CONIURA html_form("post", "/submit")
+  EVOCA VERBUM html AD ""
+
+  CONIURA html_child(form, CONIURA html_csrf_input("civitas_csrf_token", "tok-123"))
+  CONIURA html_child(form, CONIURA html_button("Enviar", "submit"))
+  VINCIRE html AD CONIURA html_render_free(form)
+
+  SI CONIURA compare(html, "<form method=\"post\" action=\"/submit\"><input type=\"hidden\" name=\"civitas_csrf_token\" value=\"tok-123\"><button type=\"submit\">Enviar</button></form>") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

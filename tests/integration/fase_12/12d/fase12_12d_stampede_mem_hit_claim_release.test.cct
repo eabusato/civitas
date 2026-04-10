@@ -1,0 +1,37 @@
+INCIPIT grimoire "fase12_12d_stampede_mem_hit_claim_release"
+
+ADVOCARE "support.cct"
+ADVOCARE "../12c/support.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache.cct"
+ADVOCARE "../../../../lib/civitas/cache/cache_api.cct"
+ADVOCARE "../../../../lib/civitas/cache_invalidation/stampede.cct"
+ADVOCARE "cct/result.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA CacheHandle h AD CONIURA phase12_12c_mem_cache("12d-stampede-mem")
+  CONIURA cache_set(SPECULUM h, "hit-key", "ready", 60)
+  EVOCA StampedeHandle sh AD CONIURA stampede_handle_mem(SPECULUM h, "civitas:inflight:view")
+  EVOCA StampedeResult hit AD CONIURA stampede_try(sh, "hit-key")
+  SI hit.status != SsHit
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(hit.valor, "ready") != 0
+    REDDE 2
+  FIN SI
+  EVOCA StampedeResult first AD CONIURA stampede_try(sh, "miss-key")
+  SI first.status != SsClaimed
+    REDDE 3
+  FIN SI
+  CONIURA result_unwrap GENUS(REX, VERBUM)(CONIURA stampede_release(sh, "miss-key", "computed", 60))
+  EVOCA StampedeResult second AD CONIURA stampede_try(sh, "miss-key")
+  SI second.status != SsHit
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(second.valor, "computed") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

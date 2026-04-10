@@ -1,0 +1,42 @@
+INCIPIT grimoire "fase5_5a_app_dispatch_rate_limit_and_headers_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/core/app.cct"
+ADVOCARE "../../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../../lib/civitas/response.cct"
+ADVOCARE "../../../../lib/civitas/security.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM root AD CONIURA phase5_5a_tmp_dir("5a_rate_limit")
+  EVOCA Application app AD CONIURA phase5_5a_new_app(
+    root,
+    "[app]\nname = \"f5\"\nallowed_hosts = [\"example.test\"]\n\n[security]\nrate_limit_enabled = true\nrate_limit_max_rps = 1\nrate_limit_burst = 1\n"
+  )
+  EVOCA WebRequest req AD CONIURA phase5_request("GET", "/ok")
+  EVOCA WebResponse first_res AD CONIURA response_new(500)
+  EVOCA WebResponse second_res AD CONIURA response_new(500)
+  CONIURA phase5_5a_register_ok_route(SPECULUM app, "/ok")
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM req, SPECULUM first_res)
+  CONIURA app_dispatch_fill(SPECULUM app, SPECULUM req, SPECULUM second_res)
+
+  SI first_res.status != 200
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(CONIURA request_header_or(first_res.headers, "x-frame-options", ""), "DENY") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA len(CONIURA request_header_or(first_res.headers, "content-security-policy", "")) == 0
+    REDDE 3
+  FIN SI
+  SI second_res.status != 429
+    REDDE 4
+  FIN SI
+  SI CONIURA app_security_metric_rate_limited(SPECULUM app) != 1
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

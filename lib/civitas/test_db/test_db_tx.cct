@@ -1,0 +1,38 @@
+INCIPIT grimoire "civitas_test_db_tx"
+
+ADVOCARE "cct/db_sqlite.cct"
+ADVOCARE "cct/fmt.cct"
+ADVOCARE "cct/verbum.cct"
+ADVOCARE "test_db.cct"
+
+RITUALE test_db_begin_test(SPECULUM TestDb tdb) REDDE NIHIL
+  VINCIRE (*tdb).sp_contador AD (*tdb).sp_contador + 1
+  VINCIRE (*tdb).sp_ativo AD CONIURA concat("civitas_test_", CONIURA stringify_int((*tdb).sp_contador))
+  EVOCA VERBUM sql AD CONIURA concat("SAVEPOINT ", (*tdb).sp_ativo)
+  CONIURA db_exec((*tdb).db, sql)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_db_rollback_test(SPECULUM TestDb tdb) REDDE NIHIL
+  SI CONIURA len((*tdb).sp_ativo) == 0
+    IACE "test_db_rollback_test chamado sem savepoint ativo"
+  FIN SI
+  EVOCA VERBUM sql_rollback AD CONIURA concat("ROLLBACK TO SAVEPOINT ", (*tdb).sp_ativo)
+  EVOCA VERBUM sql_release AD CONIURA concat("RELEASE SAVEPOINT ", (*tdb).sp_ativo)
+  CONIURA db_exec((*tdb).db, sql_rollback)
+  CONIURA db_exec((*tdb).db, sql_release)
+  VINCIRE (*tdb).sp_ativo AD ""
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE test_db_commit_test(SPECULUM TestDb tdb) REDDE NIHIL
+  SI CONIURA len((*tdb).sp_ativo) == 0
+    IACE "test_db_commit_test chamado sem savepoint ativo"
+  FIN SI
+  EVOCA VERBUM sql AD CONIURA concat("RELEASE SAVEPOINT ", (*tdb).sp_ativo)
+  CONIURA db_exec((*tdb).db, sql)
+  VINCIRE (*tdb).sp_ativo AD ""
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

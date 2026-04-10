@@ -1,0 +1,41 @@
+INCIPIT grimoire "mural_web_routes"
+
+ADVOCARE "../../../lib/civitas/request_core.cct"
+ADVOCARE "../../../lib/civitas/response.cct"
+ADVOCARE "../../../lib/civitas/static/static_index.cct"
+ADVOCARE "config.cct"
+ADVOCARE "web_runtime.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE mural_is_delete_path(VERBUM path) REDDE VERUM
+  REDDE CONIURA starts_with(path, "/admin-lite/mensagens/") ET CONIURA ends_with(path, "/delete")
+EXPLICIT RITUALE
+
+RITUALE mural_dispatch_runtime(MuralConfig cfg, StaticIndex static_index, SPECULUM WebRequest req) REDDE WebResponse
+  EVOCA VERBUM method AD (*req).method
+  EVOCA VERBUM path AD (*req).path
+
+  SI CONIURA compare(method, "GET") == 0 ET CONIURA compare(path, "/") == 0
+    REDDE CONIURA mural_handle_index_runtime(cfg, static_index, req)
+  FIN SI
+
+  SI CONIURA compare(method, "POST") == 0 ET CONIURA compare(path, "/mensagens") == 0
+    REDDE CONIURA mural_handle_create_runtime(cfg, static_index, req)
+  FIN SI
+
+  SI CONIURA compare(method, "GET") == 0 ET CONIURA compare(path, "/admin-lite") == 0
+    REDDE CONIURA mural_handle_admin_runtime(cfg, static_index, req)
+  FIN SI
+
+  SI CONIURA compare(method, "POST") == 0 ET CONIURA mural_is_delete_path(path)
+    REDDE CONIURA mural_handle_delete_runtime(cfg, req)
+  FIN SI
+
+  SI CONIURA compare(method, "GET") == 0 ET CONIURA starts_with(path, "/static/")
+    REDDE CONIURA mural_handle_static_runtime(static_index, req)
+  FIN SI
+
+  REDDE CONIURA response_not_found()
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

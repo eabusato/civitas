@@ -1,0 +1,52 @@
+INCIPIT grimoire "fase18_18b_submit_transactional"
+
+ADVOCARE "../support/common.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_submit.cct"
+ADVOCARE "../../../../lib/civitas/admin/admin_inline_query.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE test_inline_submit_transactional() REDDE NIHIL
+  EVOCA Phase18Stack stack AD CONIURA phase18_stack_open("18b_submit_all")
+  CONIURA phase18_register_post_admin(SPECULUM stack)
+  EVOCA AdminInlineConfig inline_cfg AD CONIURA phase18_register_comment_inline(SPECULUM stack)
+  CONIURA phase18_insert_post(stack.db, "Post A", "draft", "u1", 1000)
+  CONIURA phase18_insert_comment(stack.db, 1, "Keep", "visible")
+  EVOCA InlineSubmit submit
+  VINCIRE submit.parent_pk AD "1"
+  VINCIRE submit.inline_name AD "comments"
+  VINCIRE submit.forms_json AD "[{\"prefix\":\"comments-0\",\"object_pk\":\"1\",\"fields_json\":\"{\\\"body\\\":\\\"Edited\\\",\\\"state\\\":\\\"hidden\\\"}\",\"delete_flag\":false},{\"prefix\":\"comments-1\",\"object_pk\":\"\",\"fields_json\":\"{\\\"body\\\":\\\"Added\\\",\\\"state\\\":\\\"visible\\\"}\",\"delete_flag\":false}]"
+  SI CONIURA admin_inline_submit_all(inline_cfg, stack.dbh, submit, "actor-1") != 2
+    IACE "inline submit changed count mismatch"
+  FIN SI
+  EVOCA VERBUM rows_json AD CONIURA admin_inline_list_for_parent(inline_cfg, stack.dbh, "1")
+  SI CONIURA find(rows_json, "\"body\":\"Edited\"") == -1
+    IACE "inline submit update missing"
+  FIN SI
+  SI CONIURA find(rows_json, "\"body\":\"Added\"") == -1
+    IACE "inline submit create missing"
+  FIN SI
+  VINCIRE submit.forms_json AD "[{\"prefix\":\"comments-0\",\"object_pk\":\"1\",\"fields_json\":\"{\\\"body\\\":\\\"Rollback\\\",\\\"state\\\":\\\"visible\\\"}\",\"delete_flag\":false},{\"prefix\":\"comments-1\",\"object_pk\":\"\",\"fields_json\":\"{\\\"body\\\":\\\"\\\",\\\"state\\\":\\\"visible\\\"}\",\"delete_flag\":false}]"
+  EVOCA VERUM failed AD FALSUM
+  TEMPTA
+    CONIURA admin_inline_submit_all(inline_cfg, stack.dbh, submit, "actor-1")
+  CAPE FRACTUM error
+    VINCIRE failed AD VERUM
+  FIN TEMPTA
+  SI NON failed
+    IACE "expected inline submit rollback on invalid child"
+  FIN SI
+  VINCIRE rows_json AD CONIURA admin_inline_list_for_parent(inline_cfg, stack.dbh, "1")
+  SI CONIURA find(rows_json, "\"body\":\"Rollback\"") != -1
+    IACE "transaction rollback failed for inline submit"
+  FIN SI
+  CONIURA phase18_stack_close(stack)
+  REDDE
+EXPLICIT RITUALE
+
+RITUALE principalis() REDDE NIHIL
+  CONIURA test_inline_submit_transactional()
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

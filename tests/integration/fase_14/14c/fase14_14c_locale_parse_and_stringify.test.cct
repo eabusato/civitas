@@ -1,0 +1,18 @@
+INCIPIT grimoire "fase14_14c_locale_parse_and_stringify"
+
+ADVOCARE "../../../../lib/civitas/locale/locale.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA Locale pt AD CONIURA locale_parse("pt-BR")
+  EVOCA Locale zh AD CONIURA locale_parse("zh-Hans-CN")
+  SI CONIURA compare(CONIURA locale_to_string(pt), "pt-BR") != 0
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(zh.lang, "zh") != 0 VEL CONIURA compare(zh.script, "Hans") != 0 VEL CONIURA compare(zh.regiao, "CN") != 0
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

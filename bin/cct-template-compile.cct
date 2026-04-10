@@ -1,0 +1,99 @@
+INCIPIT grimoire "cct_template_compile"
+
+ADVOCARE "../lib/civitas/template/compiler.cct"
+ADVOCARE "cct/args.cct"
+ADVOCARE "cct/io.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA VERBUM template_path AD ""
+  EVOCA VERBUM output_path AD ""
+  EVOCA VERBUM root_path AD ""
+  EVOCA VERBUM dir_path AD ""
+  EVOCA VERBUM out_dir AD ""
+  EVOCA REX i AD 1
+
+  SI CONIURA argc() <= 1
+    CONIURA template_cli_help()
+    REDDE 1
+  FIN SI
+
+  DUM i < CONIURA argc()
+    EVOCA VERBUM argi AD CONIURA arg(i)
+    SI CONIURA compare(argi, "--help") == 0
+      CONIURA template_cli_help()
+      REDDE 0
+    FIN SI
+    SI CONIURA compare(argi, "--template") == 0
+      VINCIRE i AD i + 1
+      VINCIRE template_path AD CONIURA arg(i)
+    ALITER
+      SI CONIURA compare(argi, "--output") == 0
+        VINCIRE i AD i + 1
+        VINCIRE output_path AD CONIURA arg(i)
+      ALITER
+        SI CONIURA compare(argi, "--root") == 0
+          VINCIRE i AD i + 1
+          VINCIRE root_path AD CONIURA arg(i)
+        ALITER
+          SI CONIURA compare(argi, "--dir") == 0
+            VINCIRE i AD i + 1
+            VINCIRE dir_path AD CONIURA arg(i)
+          ALITER
+            SI CONIURA compare(argi, "--out-dir") == 0
+              VINCIRE i AD i + 1
+              VINCIRE out_dir AD CONIURA arg(i)
+            ALITER
+              CONIURA eprintln(CONIURA concat("argumento invalido: ", argi))
+              REDDE 2
+            FIN SI
+          FIN SI
+        FIN SI
+      FIN SI
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+
+  SI CONIURA len(template_path) != 0
+    SI CONIURA len(output_path) == 0 VEL CONIURA len(root_path) == 0
+      CONIURA eprintln("uso invalido: --template exige --output e --root")
+      REDDE 2
+    FIN SI
+    REDDE CONIURA template_cli_exit(CONIURA template_compile_file_cli_error(template_path, output_path, root_path))
+  FIN SI
+
+  SI CONIURA len(dir_path) != 0
+    SI CONIURA len(out_dir) == 0
+      CONIURA eprintln("uso invalido: --dir exige --out-dir")
+      REDDE 2
+    FIN SI
+    REDDE CONIURA template_cli_exit(CONIURA template_compile_directory_cli_error(dir_path, out_dir, dir_path))
+  FIN SI
+
+  CONIURA template_cli_help()
+  REDDE 2
+EXPLICIT RITUALE
+
+RITUALE template_cli_exit(VERBUM error_text) REDDE REX
+  SI CONIURA len(error_text) != 0
+    EVOCA REX nl_pos AD CONIURA find(error_text, "\n")
+    CONIURA eprint("[ERRO] ")
+    SI nl_pos != -1
+      CONIURA eprintln(CONIURA substring(error_text, 0, nl_pos))
+      CONIURA eprintln(CONIURA substring(error_text, nl_pos + 1, CONIURA len(error_text)))
+    ALITER
+      CONIURA eprintln(error_text)
+    FIN SI
+    REDDE 1
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+RITUALE template_cli_help() REDDE NIHIL
+  CONIURA println("cct-template-compile --template <path.html> --output <path.cct> --root <templates-dir>")
+  CONIURA println("cct-template-compile --dir <templates-dir> --out-dir <output-dir>")
+  CONIURA println("cct-template-compile --help")
+  REDDE
+EXPLICIT RITUALE
+
+EXPLICIT grimoire

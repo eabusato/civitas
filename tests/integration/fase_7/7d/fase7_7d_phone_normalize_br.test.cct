@@ -1,0 +1,31 @@
+INCIPIT grimoire "fase7_7d_phone_normalize_br_test"
+
+ADVOCARE "support.cct"
+ADVOCARE "../../../../lib/civitas/sanitize/contact.cct"
+ADVOCARE "cct/verbum.cct"
+
+RITUALE main() REDDE REX
+  EVOCA PhoneConfig cfg AD CONIURA phone_config_default("BR")
+  EVOCA PhoneNormalized a AD CONIURA phone_normalize("(11) 98765-4321", cfg)
+  EVOCA PhoneNormalized b AD CONIURA phone_normalize("11987654321", cfg)
+  EVOCA PhoneNormalized c AD CONIURA phone_normalize("+5511987654321", cfg)
+
+  SI a.result != PnrOk VEL b.result != PnrOk VEL c.result != PnrOk
+    REDDE 1
+  FIN SI
+  SI CONIURA compare(a.e164, "+5511987654321") != 0
+    REDDE 2
+  FIN SI
+  SI CONIURA compare(b.e164, "+5511987654321") != 0
+    REDDE 3
+  FIN SI
+  SI CONIURA compare(c.e164, "+5511987654321") != 0
+    REDDE 4
+  FIN SI
+  SI CONIURA compare(a.display, "(11) 98765-4321") != 0
+    REDDE 5
+  FIN SI
+  REDDE 0
+EXPLICIT RITUALE
+
+EXPLICIT grimoire
