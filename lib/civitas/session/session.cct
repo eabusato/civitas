@@ -906,11 +906,57 @@ RITUALE session_build_cookie(VERBUM valor, SessionConfig cfg) REDDE SetCookie
   REDDE cookie
 EXPLICIT RITUALE
 
-RITUALE session_finalize(SPECULUM Session sess, SessionStore store, SessionConfig cfg, WebResponse res) REDDE WebResponse
+RITUALE session_has_meaningful_data(SPECULUM Session sess) REDDE VERUM
+  EVOCA SPECULUM NIHIL keys AD CONIURA map_keys GENUS(VERBUM, VERBUM)((*sess).dados)
+  EVOCA REX i AD 0
+  EVOCA REX n AD CONIURA fluxus_len(keys)
+  DUM i < n
+    EVOCA SPECULUM VERBUM key_ptr AD CONIURA fluxus_get(keys, i)
+    EVOCA VERBUM value AD CONIURA map_get_or_default GENUS(VERBUM, VERBUM)((*sess).dados, *key_ptr, "")
+    SI CONIURA compare(*key_ptr, "_civitas_flash") == 0 VEL CONIURA compare(*key_ptr, "_civitas_flash_pending") == 0
+      SI CONIURA compare(value, "[]") != 0
+        CONIURA fluxus_free(keys)
+        REDDE VERUM
+      FIN SI
+    ALITER
+      CONIURA fluxus_free(keys)
+      REDDE VERUM
+    FIN SI
+    VINCIRE i AD i + 1
+  FIN DUM
+  CONIURA fluxus_free(keys)
+  REDDE FALSUM
+EXPLICIT RITUALE
+
+RITUALE session_sync_flash_state(SPECULUM Session sess) REDDE VERUM
   EVOCA VERBUM pending AD CONIURA session_get_or(sess, "_civitas_flash_pending", "[]")
-  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash", pending)
-  CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash_pending", "[]")
-  VINCIRE (*sess).modificado AD VERUM
+  EVOCA VERBUM current_flash AD CONIURA session_get_or(sess, "_civitas_flash", "[]")
+  EVOCA VERBUM current_pending AD CONIURA session_get_or(sess, "_civitas_flash_pending", "[]")
+  EVOCA VERUM changed AD FALSUM
+
+  SI CONIURA compare(current_flash, pending) != 0
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash", pending)
+    VINCIRE changed AD VERUM
+  FIN SI
+  SI CONIURA compare(current_pending, "[]") != 0
+    CONIURA map_update_or_insert GENUS(VERBUM, VERBUM)((*sess).dados, "_civitas_flash_pending", "[]")
+    VINCIRE changed AD VERUM
+  FIN SI
+  SI changed
+    VINCIRE (*sess).modificado AD VERUM
+  FIN SI
+  REDDE changed
+EXPLICIT RITUALE
+
+RITUALE session_finalize(SPECULUM Session sess, SessionStore store, SessionConfig cfg, WebResponse res) REDDE WebResponse
+  EVOCA VERUM had_meaningful_data AD CONIURA session_has_meaningful_data(sess)
+  CONIURA session_sync_flash_state(sess)
+
+  SI (*sess).novo ET NON had_meaningful_data ET NON CONIURA session_has_meaningful_data(sess)
+    VINCIRE (*sess).novo AD FALSUM
+    VINCIRE (*sess).modificado AD FALSUM
+    REDDE res
+  FIN SI
 
   SI (*sess).modificado VEL (*sess).novo
     CONIURA session_backend_save(store, sess, cfg)
