@@ -40,6 +40,15 @@ Civitas now exposes the compositional core of the web framework, the formal infr
 
 The planned Civitas 1.0 line ends at PHASE 28. Phases `29`, `30`, and `31` are no longer part of the executable roadmap for this version.
 
+## Known Issues
+
+- The current HTTP runtime is synchronous and process-local. In practice, the web loop is `accept -> dispatch -> respond`, so one slow or stuck request can stall other requests handled by the same process.
+- Civitas does not currently promise internal multithreading or preemptive cancellation in the web runtime. The operational model documented by the framework is still `web process + worker process + scheduler process`, not a threaded application server.
+- This means a single Civitas web process is not a robust production topology for hostile or bursty public traffic. Health checks, home pages, and user requests still contend for the same request loop when they hit the same process.
+- Reverse proxying with `nginx` improves buffering and connection handling, but it does not change the execution model of the Civitas application process itself.
+- File-backed sessions, local trace persistence, and SQLite as the primary production database amplify the impact of this limitation because they keep more work and more contention inside the same process and host-local state.
+- Civitas should not currently be presented as suitable for real production deployment. Until the framework has a formal serving model with real concurrency guarantees, the current web runtime should be treated as development-grade and operationally fragile under public traffic.
+
 ## Relationship to CCT
 
 Civitas is a web framework for CCT. The CCT compiler remains a separate project and must be installed externally to compile, test, and run this repository.
